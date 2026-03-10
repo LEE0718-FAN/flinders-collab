@@ -36,22 +36,22 @@ export default function ChatPanel({ roomId }) {
   }, [messages, scrollToBottom]);
 
   useEffect(() => {
-    emit('join_room', { room_id: roomId });
+    emit('chat:join', { roomId });
 
     const handleNewMessage = (msg) => {
       setMessages((prev) => [...prev, msg]);
     };
 
-    on('new_message', handleNewMessage);
+    on('chat:message', handleNewMessage);
 
     return () => {
-      off('new_message', handleNewMessage);
-      emit('leave_room', { room_id: roomId });
+      off('chat:message', handleNewMessage);
+      emit('chat:leave', { roomId });
     };
   }, [roomId, emit, on, off]);
 
   const handleSend = (content) => {
-    emit('send_message', { room_id: roomId, content });
+    emit('chat:message', { roomId, content });
   };
 
   if (loading) {

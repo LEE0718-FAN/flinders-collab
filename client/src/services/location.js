@@ -8,21 +8,21 @@ async function getAuthHeaders() {
   };
 }
 
-export async function startSharing(roomId, eventId, coords) {
+export async function startSharing(eventId, coords) {
   const headers = await getAuthHeaders();
-  const res = await fetch(`/api/rooms/${roomId}/location/start`, {
+  const res = await fetch(`/api/events/${eventId}/location/start`, {
     method: 'POST',
     headers,
-    body: JSON.stringify({ event_id: eventId, ...coords }),
+    body: JSON.stringify(coords),
   });
   if (!res.ok) throw new Error((await res.json()).error || 'Failed to start sharing');
   return res.json();
 }
 
-export async function updateLocation(roomId, coords) {
+export async function updateLocation(eventId, coords) {
   const headers = await getAuthHeaders();
-  const res = await fetch(`/api/rooms/${roomId}/location/update`, {
-    method: 'PUT',
+  const res = await fetch(`/api/events/${eventId}/location/update`, {
+    method: 'POST',
     headers,
     body: JSON.stringify(coords),
   });
@@ -30,9 +30,9 @@ export async function updateLocation(roomId, coords) {
   return res.json();
 }
 
-export async function stopSharing(roomId) {
+export async function stopSharing(eventId) {
   const headers = await getAuthHeaders();
-  const res = await fetch(`/api/rooms/${roomId}/location/stop`, {
+  const res = await fetch(`/api/events/${eventId}/location/stop`, {
     method: 'POST',
     headers,
   });
@@ -40,9 +40,9 @@ export async function stopSharing(roomId) {
   return res.json();
 }
 
-export async function getLocationStatus(roomId, eventId) {
+export async function getLocationStatus(eventId) {
   const headers = await getAuthHeaders();
-  const res = await fetch(`/api/rooms/${roomId}/location/status?event_id=${eventId}`, { headers });
+  const res = await fetch(`/api/events/${eventId}/location-status`, { headers });
   if (!res.ok) throw new Error((await res.json()).error || 'Failed to get location status');
   return res.json();
 }

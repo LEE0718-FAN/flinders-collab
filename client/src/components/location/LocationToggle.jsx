@@ -13,7 +13,7 @@ export default function LocationToggle({ roomId, eventId, isSharing, onToggle })
       const pos = await new Promise((resolve, reject) => {
         navigator.geolocation.getCurrentPosition(resolve, reject, { enableHighAccuracy: true });
       });
-      await startSharing(roomId, eventId, {
+      await startSharing(eventId, {
         latitude: pos.coords.latitude,
         longitude: pos.coords.longitude,
       });
@@ -28,7 +28,7 @@ export default function LocationToggle({ roomId, eventId, isSharing, onToggle })
   const handleStop = async () => {
     setLoading(true);
     try {
-      await stopSharing(roomId);
+      await stopSharing(eventId);
       onToggle?.(false);
     } catch {
       // silently fail

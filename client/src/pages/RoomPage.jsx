@@ -69,8 +69,8 @@ export default function RoomPage() {
 
   const fetchLocation = async (eventId) => {
     try {
-      const data = await getLocationStatus(roomId, eventId);
-      setLocationMembers(data.members || data || []);
+      const data = await getLocationStatus(eventId);
+      setLocationMembers(data || []);
     } catch {
       // silently fail
     }
