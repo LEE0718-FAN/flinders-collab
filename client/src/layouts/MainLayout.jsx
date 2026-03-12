@@ -8,22 +8,22 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSepara
 import { useAuth } from '@/hooks/useAuth';
 import { getRooms } from '@/services/rooms';
 
-function SidebarContent({ rooms, location }) {
+function SidebarContent({ rooms, location, onNavigate }) {
   return (
     <nav className="flex flex-col gap-1">
-      <Link to="/dashboard">
+      <Link to="/dashboard" onClick={onNavigate}>
         <Button variant={location.pathname === '/dashboard' ? 'secondary' : 'ghost'} className="w-full justify-start gap-2">
           <LayoutDashboard className="h-4 w-4" />
           Dashboard
         </Button>
       </Link>
       <div className="mt-4 px-2">
-        <p className="mb-2 text-xs font-semibold uppercase text-muted-foreground">Your Rooms</p>
+        <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Your Rooms</p>
       </div>
       {rooms.map((room) => (
-        <Link key={room.id} to={`/rooms/${room.id}`}>
+        <Link key={room.id} to={`/rooms/${room.id}`} onClick={onNavigate}>
           <Button variant={location.pathname === `/rooms/${room.id}` ? 'secondary' : 'ghost'} className="w-full justify-start gap-2">
-            <Users className="h-4 w-4" />
+            <Users className="h-4 w-4 shrink-0" />
             <span className="truncate">{room.name}</span>
           </Button>
         </Link>
@@ -35,17 +35,21 @@ function SidebarContent({ rooms, location }) {
   );
 }
 
-export default function MainLayout({ children }) {
+export default function MainLayout({ children, onRoomChange }) {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const [rooms, setRooms] = useState([]);
   const [sheetOpen, setSheetOpen] = useState(false);
 
-  useEffect(() => {
+  const refreshRooms = () => {
     getRooms()
       .then((data) => setRooms(data.rooms || data || []))
       .catch(() => {});
+  };
+
+  useEffect(() => {
+    refreshRooms();
   }, [location.pathname]);
 
   const handleLogout = async () => {
@@ -77,12 +81,12 @@ export default function MainLayout({ children }) {
                   <Menu className="h-5 w-5" />
                 </Button>
               </SheetTrigger>
-              <SheetContent side="left">
+              <SheetContent side="left" className="w-72">
                 <SheetHeader>
                   <SheetTitle>Flinders Collab</SheetTitle>
                 </SheetHeader>
                 <div className="mt-4">
-                  <SidebarContent rooms={rooms} location={location} />
+                  <SidebarContent rooms={rooms} location={location} onNavigate={() => setSheetOpen(false)} />
                 </div>
               </SheetContent>
             </Sheet>

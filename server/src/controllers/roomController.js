@@ -121,8 +121,65 @@ async function getRoom(req, res, next) {
 }
 
 /**
+ * POST /rooms/join
+ * Join a room using only an invite code (no roomId required).
+ */
+async function joinRoomByCode(req, res, next) {
+  try {
+    const { invite_code } = req.body;
+    const userId = req.user.id;
+
+    // Look up room by invite code
+    const { data: room, error: roomError } = await supabaseAdmin
+      .from('rooms')
+      .select('id, name, course_name, description, owner_id, invite_code, created_at')
+      .eq('invite_code', invite_code)
+      .single();
+
+    if (roomError || !room) {
+      return res.status(404).json({ error: 'Invalid invite code. Please check and try again.' });
+    }
+
+    // Check if already a member
+    const { data: existing } = await supabaseAdmin
+      .from('room_members')
+      .select('id')
+      .eq('room_id', room.id)
+      .eq('user_id', userId)
+      .single();
+
+    if (existing) {
+      return res.status(400).json({ error: 'You are already a member of this room' });
+    }
+
+    // Add as member
+    const { data: membership, error: joinError } = await supabaseAdmin
+      .from('room_members')
+      .insert({
+        room_id: room.id,
+        user_id: userId,
+        role: 'member',
+      })
+      .select()
+      .single();
+
+    if (joinError) {
+      return res.status(400).json({ error: joinError.message });
+    }
+
+    res.status(201).json({
+      message: 'Joined room successfully',
+      room,
+      membership,
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
+/**
  * POST /rooms/:roomId/join
- * Join a room using an invite code.
+ * Join a room using an invite code (legacy route requiring roomId).
  */
 async function joinRoom(req, res, next) {
   try {
@@ -228,5 +285,6 @@ module.exports = {
   getRooms,
   getRoom,
   joinRoom,
+  joinRoomByCode,
   getMembers,
 };
