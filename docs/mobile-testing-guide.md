@@ -1,112 +1,120 @@
 # Mobile Testing Guide
 
-Date: 2026-03-11
+## Overview
 
-## Current State
+This document describes how to verify the Flinders Collab app on web and Android platforms. iOS is planned but not yet implemented.
 
-- Capacitor is installed in `client`
-- Native projects exist:
-  - `client/android`
-  - `client/ios`
-- Mobile-safe wrappers were added for:
-  - geolocation
-  - clipboard
-- Build command is ready:
-  - `npm run mobile:build`
+---
 
-## What Was Prepared
+## Test Coverage Summary
 
-- Web app build output is synced into the native shells
-- Android location permissions were added
-- iOS location usage descriptions were added
-- Frontend now supports environment-based API and socket URLs
+| Layer | Location | Runner | Device Required? |
+|-------|----------|--------|------------------|
+| Android unit tests (JVM) | `client/android/app/src/test/java/com/getcapacitor/myapp/ExampleUnitTest.java` | `./gradlew test` | No |
+| Android instrumented tests | `client/android/app/src/androidTest/java/com/getcapacitor/myapp/ExampleInstrumentedTest.java` | `./gradlew connectedAndroidTest` | Yes (emulator or device) |
+| Manual smoke tests (web + Android) | [`docs/qa/web-android-smoke-checklist.md`](qa/web-android-smoke-checklist.md) | Human / manual | Depends on section |
 
-## What You Need On Your Mac To Run It
+### What is NOT automated
 
-### iPhone Simulator / iOS device
+- **Frontend (React) tests:** There is no JS test framework (Jest, Vitest, etc.) configured in the `client/` project. All web UI verification is manual via the smoke checklist.
+- **Backend API tests:** No automated API test suite exists. Backend routes are verified manually through the smoke checklist or ad-hoc `curl`/Postman calls.
+- **End-to-end tests:** No Cypress, Playwright, or similar E2E framework is set up.
 
-- Full Xcode installed from the App Store
-- Xcode selected as active developer directory
+> **Gap note:** Adding Vitest to the client and a test runner for the server would significantly improve automated coverage. This is a future improvement.
 
-Commands after Xcode install:
+---
+
+## Running Android Unit Tests (JVM)
+
+These tests run on the host machine without an emulator. They verify package naming, stable constants, and basic assumptions about the Capacitor shell.
 
 ```bash
-sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
-npm run mobile:open:ios
+cd client/android
+./gradlew test
 ```
 
-### Android emulator / Android device
+**What they check:**
+- App package name matches `com.getcapacitor.myapp`
+- MainActivity class name convention is stable
+- Capacitor defaults (dev server port, WebView scheme) are consistent
+- JUnit infrastructure is operational
 
-- Java JDK installed
-- Android Studio installed
-- Android SDK configured
+### Common Blockers
 
-Command after Java + Android Studio install:
+| Blocker | Symptom | Fix |
+|---------|---------|-----|
+| Java not installed | `./gradlew: command not found` or `JAVA_HOME is not set` | Install JDK 17+ and set `JAVA_HOME` |
+| Android SDK missing | Gradle sync fails with SDK errors | Install Android SDK via Android Studio or `sdkmanager` |
+| No `client/android` directory | Path does not exist | Run `npx cap add android && npx cap sync android` from `client/` |
+
+---
+
+## Running Android Instrumented Tests (Device/Emulator)
+
+These tests run on a real Android device or emulator and verify that the APK installs correctly and has expected metadata.
 
 ```bash
-npm run mobile:open:android
+cd client/android
+./gradlew connectedAndroidTest
 ```
 
-## Environment Variables
+**What they check:**
+- App context package name is `com.getcapacitor.myapp`
+- App is resolvable by PackageManager (installed correctly)
+- App context is non-null after launch
+- ApplicationInfo has valid source directory
 
-Set these in your local `.env` before mobile testing:
+### Common Blockers
 
-```bash
-VITE_SUPABASE_URL=https://your-project.supabase.co
-VITE_SUPABASE_ANON_KEY=your-anon-key
-VITE_API_BASE_URL=https://your-backend-url
-VITE_SOCKET_URL=https://your-backend-url
-```
+| Blocker | Symptom | Fix |
+|---------|---------|-----|
+| No emulator or device | `No connected devices` error | Start an AVD via Android Studio or connect a USB device with developer mode |
+| APK not built | Test task fails before running tests | Run `./gradlew assembleDebug` first |
+| SDK version mismatch | `Unsupported class file major version` | Ensure JDK version matches AGP requirements (JDK 17 for AGP 8.x) |
 
-## Important Architecture Note
+---
 
-This app is not Supabase-only.
+## Manual Smoke Testing
 
-You still need:
+The full feature-by-feature smoke checklist is at:
 
-- Supabase for database/auth/storage
-- A deployed Node backend for:
-  - `/api/*`
-  - Socket.IO chat
-  - Socket.IO location updates
+**[`docs/qa/web-android-smoke-checklist.md`](qa/web-android-smoke-checklist.md)**
 
-## Best Test Path
+It covers all user-facing flows:
+1. Signup
+2. Login
+3. Create Room
+4. Join Room
+5. Schedule Event
+6. Share Location
+7. Stop Location Sharing
+8. Upload File
+9. Download File
+10. Delete File
+11. Chat (real-time messaging)
+12. Logout
+13. Android-specific checks (launch, navigation, permissions, file picker, back button)
 
-1. Deploy backend first
-2. Put backend public URL into `VITE_API_BASE_URL` and `VITE_SOCKET_URL`
-3. Run `npm run mobile:build`
-4. Open Android or iOS project
-5. Test signup, login, room create/join, event create, file upload, chat, location
+Each check includes expected behaviour and failure symptoms for quick reproduction.
 
-## Local Network Test Path
+---
 
-If you want to test on your own phone before deploying the backend, you can use your Mac's LAN IP.
+## Environment Blockers (Current)
 
-Example:
+The following blockers apply to this repo's current CI/dev environment:
 
-```bash
-VITE_API_BASE_URL=http://192.168.0.10:3001
-VITE_SOCKET_URL=http://192.168.0.10:3001
-CLIENT_URL=http://localhost:5173,capacitor://localhost,http://localhost
-```
+| Blocker | Impact | Workaround |
+|---------|--------|------------|
+| No Android emulator in CI | Instrumented tests cannot run in CI | Run locally with an emulator; unit tests still run in CI |
+| No JS test framework in `client/` | Cannot automate React component or service tests | Use manual smoke checklist; consider adding Vitest later |
+| No Xcode / iOS target | iOS build and tests are not available | Defer to future sprint; see iOS parity note in smoke checklist |
+| Capacitor not yet initialized | `client/android` may not exist until `npx cap add android` is run | Run Capacitor init before first Android test run |
 
-Then:
+---
 
-1. Start the backend on your Mac
-2. Make sure your phone and Mac are on the same Wi‑Fi
-3. Run `npm run mobile:build`
-4. Open the native project and run it on your phone
+## Future: iOS
 
-## Commands
-
-```bash
-npm run mobile:build
-npm run mobile:open:android
-npm run mobile:open:ios
-```
-
-## Known Limits Right Now
-
-- iOS build was not run on this machine because full Xcode is not installed
-- Android build was not run on this machine because Java runtime is missing
-- Backend still needs deployment before the mobile app can fully function outside local web dev
+When iOS support is added (`npx cap add ios`):
+1. Mirror the instrumented test structure under `client/ios/AppTests/`
+2. Add iOS-specific checks to the smoke checklist (see "Future: iOS Parity" section)
+3. Update this guide with `xcodebuild test` instructions
