@@ -12,31 +12,55 @@ export default function EventForm({ roomId, onCreated }) {
   const [description, setDescription] = useState('');
   const [date, setDate] = useState('');
   const [time, setTime] = useState('');
-  const [location, setLocation] = useState('');
+  const [endDate, setEndDate] = useState('');
+  const [endTime, setEndTime] = useState('');
+  const [locationName, setLocationName] = useState('');
   const [enableLocation, setEnableLocation] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
+  const resetForm = () => {
+    setTitle('');
+    setDescription('');
+    setDate('');
+    setTime('');
+    setEndDate('');
+    setEndTime('');
+    setLocationName('');
+    setEnableLocation(false);
+    setError('');
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+
+    if (!date) {
+      setError('Start date is required.');
+      return;
+    }
+
+    const startTime = date && time ? `${date}T${time}` : `${date}T00:00`;
+    const endTimeVal = endDate ? (endTime ? `${endDate}T${endTime}` : `${endDate}T23:59`) : null;
+
+    // Validate end is after start
+    if (endTimeVal && new Date(endTimeVal) <= new Date(startTime)) {
+      setError('End time must be after start time.');
+      return;
+    }
+
     setLoading(true);
     try {
-      const startTime = date && time ? `${date}T${time}` : date;
       await createEvent(roomId, {
         title,
-        description,
+        description: description || undefined,
         start_time: startTime,
-        location,
+        end_time: endTimeVal || undefined,
+        location_name: locationName || undefined,
         enable_location_sharing: enableLocation,
       });
       setOpen(false);
-      setTitle('');
-      setDescription('');
-      setDate('');
-      setTime('');
-      setLocation('');
-      setEnableLocation(false);
+      resetForm();
       onCreated?.();
     } catch (err) {
       setError(err.message);
@@ -65,17 +89,27 @@ export default function EventForm({ roomId, onCreated }) {
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <label className="text-sm font-medium">Date</label>
+              <label className="text-sm font-medium">Start Date</label>
               <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} required />
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-medium">Time</label>
+              <label className="text-sm font-medium">Start Time</label>
               <Input type="time" value={time} onChange={(e) => setTime(e.target.value)} />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">End Date (optional)</label>
+              <Input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">End Time</label>
+              <Input type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)} />
             </div>
           </div>
           <div className="space-y-2">
             <label className="text-sm font-medium">Location</label>
-            <Input placeholder="e.g. Flinders Library Room 3" value={location} onChange={(e) => setLocation(e.target.value)} />
+            <Input placeholder="e.g. Flinders Library Room 3" value={locationName} onChange={(e) => setLocationName(e.target.value)} />
           </div>
           <div className="space-y-2">
             <label className="text-sm font-medium">Description (optional)</label>
