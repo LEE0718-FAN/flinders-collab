@@ -92,7 +92,13 @@ const createEventValidation = [
     .withMessage('Valid start time is required'),
   body('end_time')
     .isISO8601()
-    .withMessage('Valid end time is required'),
+    .withMessage('Valid end time is required')
+    .custom((value, { req }) => {
+      if (new Date(value) <= new Date(req.body.start_time)) {
+        throw new Error('End time must be after start time');
+      }
+      return true;
+    }),
   body('enable_location_sharing')
     .optional()
     .isBoolean(),
@@ -115,7 +121,15 @@ const updateEventValidation = [
     .isISO8601(),
   body('end_time')
     .optional()
-    .isISO8601(),
+    .isISO8601()
+    .custom((value, { req }) => {
+      // If both are provided, end must be after start
+      const startTime = req.body.start_time;
+      if (startTime && new Date(value) <= new Date(startTime)) {
+        throw new Error('End time must be after start time');
+      }
+      return true;
+    }),
   body('enable_location_sharing')
     .optional()
     .isBoolean(),
