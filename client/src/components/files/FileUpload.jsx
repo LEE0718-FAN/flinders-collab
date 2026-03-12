@@ -10,6 +10,8 @@ const ALLOWED_TYPES = [
   'image/png',
   'image/jpeg',
   'application/zip',
+  'application/x-zip-compressed',
+  'text/plain',
 ];
 const MAX_SIZE = 10 * 1024 * 1024; // 10MB
 
@@ -23,7 +25,7 @@ export default function FileUpload({ roomId, onUploaded }) {
     setError('');
 
     if (!ALLOWED_TYPES.includes(file.type)) {
-      setError('File type not allowed. Accepted: PDF, PPTX, DOCX, PNG, JPG, ZIP');
+      setError('File type not allowed. Accepted: PDF, PPTX, DOCX, PNG, JPG, ZIP, TXT');
       return;
     }
 
@@ -74,8 +76,8 @@ export default function FileUpload({ roomId, onUploaded }) {
             <Button variant="outline" size="sm" className="mt-2" onClick={() => inputRef.current?.click()}>
               Browse Files
             </Button>
-            <input ref={inputRef} type="file" className="hidden" onChange={handleChange} accept=".pdf,.pptx,.docx,.png,.jpg,.jpeg,.zip" />
-            <p className="mt-2 text-xs text-muted-foreground">PDF, PPTX, DOCX, PNG, JPG, ZIP (max 10MB)</p>
+            <input ref={inputRef} type="file" className="hidden" onChange={handleChange} accept=".pdf,.pptx,.docx,.png,.jpg,.jpeg,.zip,.txt" />
+            <p className="mt-2 text-xs text-muted-foreground">PDF, PPTX, DOCX, PNG, JPG, ZIP, TXT (max 10MB)</p>
           </>
         )}
       </div>

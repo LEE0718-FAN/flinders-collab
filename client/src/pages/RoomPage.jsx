@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
 import MainLayout from '@/layouts/MainLayout';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -11,13 +11,11 @@ import EventList from '@/components/schedule/EventList';
 import ChatPanel from '@/components/chat/ChatPanel';
 import FileList from '@/components/files/FileList';
 import FileUpload from '@/components/files/FileUpload';
-import LocationMap from '@/components/location/LocationMap';
-import LocationToggle from '@/components/location/LocationToggle';
 import { getRoom, getMembers } from '@/services/rooms';
 import { getEvents } from '@/services/events';
 import { getFiles } from '@/services/files';
-import { getLocationStatus } from '@/services/location';
-import { Loader2, Copy } from 'lucide-react';
+import { copyToClipboard } from '@/lib/native';
+import { Loader2, Copy, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 export default function RoomPage() {
@@ -26,55 +24,45 @@ export default function RoomPage() {
   const [members, setMembers] = useState([]);
   const [events, setEvents] = useState([]);
   const [files, setFiles] = useState([]);
-  const [locationMembers, setLocationMembers] = useState([]);
-  const [isSharing, setIsSharing] = useState(false);
   const [selectedDate, setSelectedDate] = useState(undefined);
   const [loading, setLoading] = useState(true);
+  const [copied, setCopied] = useState(false);
 
-  const fetchRoom = async () => {
+  const fetchRoom = useCallback(async () => {
     try {
       const data = await getRoom(roomId);
       setRoom(data.room || data);
     } catch {
-      // silently fail
+      // non-critical
     }
-  };
+  }, [roomId]);
 
-  const fetchMembers = async () => {
+  const fetchMembers = useCallback(async () => {
     try {
       const data = await getMembers(roomId);
       setMembers(data.members || data || []);
     } catch {
-      // silently fail
+      // non-critical
     }
-  };
+  }, [roomId]);
 
-  const fetchEvents = async () => {
+  const fetchEvents = useCallback(async () => {
     try {
       const data = await getEvents(roomId);
-      setEvents(data.events || data || []);
+      setEvents(Array.isArray(data) ? data : data.events || []);
     } catch {
-      // silently fail
+      // non-critical
     }
-  };
+  }, [roomId]);
 
-  const fetchFiles = async () => {
+  const fetchFiles = useCallback(async () => {
     try {
       const data = await getFiles(roomId);
-      setFiles(data.files || data || []);
+      setFiles(Array.isArray(data) ? data : data.files || []);
     } catch {
-      // silently fail
+      // non-critical
     }
-  };
-
-  const fetchLocation = async (eventId) => {
-    try {
-      const data = await getLocationStatus(eventId);
-      setLocationMembers(data || []);
-    } catch {
-      // silently fail
-    }
-  };
+  }, [roomId]);
 
   useEffect(() => {
     const init = async () => {
@@ -82,11 +70,17 @@ export default function RoomPage() {
       setLoading(false);
     };
     init();
-  }, [roomId]);
+  }, [fetchRoom, fetchMembers, fetchEvents, fetchFiles]);
 
-  const copyInviteCode = () => {
+  const handleCopyInviteCode = async () => {
     if (room?.invite_code) {
-      navigator.clipboard.writeText(room.invite_code);
+      try {
+        await copyToClipboard(room.invite_code);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+      } catch {
+        // clipboard not available
+      }
     }
   };
 
@@ -130,8 +124,8 @@ export default function RoomPage() {
                   <div className="flex items-center gap-2">
                     <span className="text-sm text-muted-foreground">Invite Code:</span>
                     <code className="rounded bg-muted px-2 py-1 text-sm font-mono">{room.invite_code}</code>
-                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={copyInviteCode}>
-                      <Copy className="h-3 w-3" />
+                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleCopyInviteCode}>
+                      {copied ? <Check className="h-3 w-3 text-green-500" /> : <Copy className="h-3 w-3" />}
                     </Button>
                   </div>
                 )}
