@@ -10,8 +10,11 @@ export default function EventForm({ roomId, onCreated }) {
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
+  const [category, setCategory] = useState('meeting');
   const [date, setDate] = useState('');
   const [time, setTime] = useState('');
+  const [endDate, setEndDate] = useState('');
+  const [endTime, setEndTime] = useState('');
   const [location, setLocation] = useState('');
   const [enableLocation, setEnableLocation] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -23,18 +26,24 @@ export default function EventForm({ roomId, onCreated }) {
     setLoading(true);
     try {
       const startTime = date && time ? `${date}T${time}` : date;
+      const endDateTime = endDate && endTime ? `${endDate}T${endTime}` : (endDate || (date && time ? `${date}T${time}` : date));
       await createEvent(roomId, {
         title,
         description,
+        category,
         start_time: startTime,
-        location,
+        end_time: endDateTime,
+        location_name: location,
         enable_location_sharing: enableLocation,
       });
       setOpen(false);
       setTitle('');
       setDescription('');
+      setCategory('meeting');
       setDate('');
       setTime('');
+      setEndDate('');
+      setEndTime('');
       setLocation('');
       setEnableLocation(false);
       onCreated?.();
@@ -63,14 +72,39 @@ export default function EventForm({ roomId, onCreated }) {
             <label className="text-sm font-medium">Title</label>
             <Input placeholder="Event title" value={title} onChange={(e) => setTitle(e.target.value)} required />
           </div>
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Category</label>
+            <select
+              value={category}
+              onChange={(e) => setCategory(e.target.value)}
+              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              <option value="meeting">Meeting</option>
+              <option value="lecture">Lecture</option>
+              <option value="deadline">Deadline</option>
+              <option value="study">Study Session</option>
+              <option value="social">Social</option>
+              <option value="other">Other</option>
+            </select>
+          </div>
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <label className="text-sm font-medium">Date</label>
+              <label className="text-sm font-medium">Start Date</label>
               <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} required />
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-medium">Time</label>
+              <label className="text-sm font-medium">Start Time</label>
               <Input type="time" value={time} onChange={(e) => setTime(e.target.value)} />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">End Date</label>
+              <Input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">End Time</label>
+              <Input type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)} />
             </div>
           </div>
           <div className="space-y-2">

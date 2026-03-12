@@ -1,7 +1,8 @@
 import React from 'react';
 import { Card, CardContent } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { CalendarDays, MapPin, Clock, Trash2 } from 'lucide-react';
+import { CalendarDays, MapPin, Clock, Trash2, Tag } from 'lucide-react';
 import { format } from 'date-fns';
 import { deleteEvent } from '@/services/events';
 
@@ -32,16 +33,21 @@ export default function EventList({ events = [], roomId, onUpdated }) {
                 <CalendarDays className="h-5 w-5" />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="font-medium">{event.title}</p>
+                <div className="flex items-center gap-2">
+                  <p className="font-medium">{event.title}</p>
+                  {event.category && event.category !== 'other' && (
+                    <Badge variant="secondary" className="text-xs capitalize">{event.category}</Badge>
+                  )}
+                </div>
                 <div className="mt-1 flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
                   <span className="flex items-center gap-1">
                     <Clock className="h-3 w-3" />
                     {format(dt, 'MMM d, yyyy h:mm a')}
                   </span>
-                  {event.location && (
+                  {event.location_name && (
                     <span className="flex items-center gap-1">
                       <MapPin className="h-3 w-3" />
-                      {event.location}
+                      {event.location_name}
                     </span>
                   )}
                 </div>

@@ -28,8 +28,8 @@ export async function getEvents(roomId) {
 
 export async function updateEvent(roomId, eventId, eventData) {
   const headers = await getAuthHeaders();
-  const res = await fetch(`/api/rooms/${roomId}/events/${eventId}`, {
-    method: 'PUT',
+  const res = await fetch(`/api/events/${eventId}`, {
+    method: 'PATCH',
     headers,
     body: JSON.stringify(eventData),
   });
@@ -39,7 +39,7 @@ export async function updateEvent(roomId, eventId, eventData) {
 
 export async function deleteEvent(roomId, eventId) {
   const headers = await getAuthHeaders();
-  const res = await fetch(`/api/rooms/${roomId}/events/${eventId}`, {
+  const res = await fetch(`/api/events/${eventId}`, {
     method: 'DELETE',
     headers,
   });

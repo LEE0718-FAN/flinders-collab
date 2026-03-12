@@ -11,6 +11,7 @@ async function createEvent(req, res, next) {
     const {
       title,
       description,
+      category,
       location_name,
       start_time,
       end_time,
@@ -23,6 +24,7 @@ async function createEvent(req, res, next) {
         room_id: roomId,
         title,
         description: description || null,
+        category: category || 'other',
         location_name: location_name || null,
         start_time,
         end_time,
@@ -118,6 +120,7 @@ async function updateEvent(req, res, next) {
     const allowedFields = [
       'title',
       'description',
+      'category',
       'location_name',
       'start_time',
       'end_time',

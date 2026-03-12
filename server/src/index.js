@@ -14,6 +14,7 @@ const eventRoutes = require('./routes/events');
 const fileRoutes = require('./routes/files');
 const locationRoutes = require('./routes/location');
 const messageRoutes = require('./routes/messages');
+const taskRoutes = require('./routes/tasks');
 
 // Create Express app and HTTP server
 const app = express();
@@ -50,6 +51,7 @@ app.use('/api', eventRoutes);
 app.use('/api', fileRoutes);
 app.use('/api', locationRoutes);
 app.use('/api', messageRoutes);
+app.use('/api', taskRoutes);
 
 // Error handling
 app.use(notFoundHandler);

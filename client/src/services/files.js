@@ -29,7 +29,7 @@ export async function getFiles(roomId) {
 
 export async function deleteFile(roomId, fileId) {
   const headers = await getAuthHeaders();
-  const res = await fetch(`/api/rooms/${roomId}/files/${fileId}`, {
+  const res = await fetch(`/api/files/${fileId}`, {
     method: 'DELETE',
     headers,
   });

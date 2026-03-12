@@ -149,6 +149,51 @@ const updateLocationValidation = [
     .withMessage('Invalid status'),
 ];
 
+// Task validators
+const createTaskValidation = [
+  body('title')
+    .trim()
+    .notEmpty()
+    .withMessage('Task title is required')
+    .isLength({ max: 200 }),
+  body('description')
+    .optional()
+    .trim()
+    .isLength({ max: 1000 }),
+  body('assigned_to')
+    .optional()
+    .isUUID(),
+  body('due_date')
+    .optional()
+    .isISO8601(),
+  body('priority')
+    .optional()
+    .isIn(['low', 'medium', 'high']),
+];
+
+const updateTaskValidation = [
+  body('title')
+    .optional()
+    .trim()
+    .isLength({ max: 200 }),
+  body('description')
+    .optional()
+    .trim()
+    .isLength({ max: 1000 }),
+  body('status')
+    .optional()
+    .isIn(['todo', 'in_progress', 'done']),
+  body('assigned_to')
+    .optional()
+    .isUUID(),
+  body('due_date')
+    .optional()
+    .isISO8601(),
+  body('priority')
+    .optional()
+    .isIn(['low', 'medium', 'high']),
+];
+
 // Param validators
 const roomIdParam = [
   param('roomId').isUUID().withMessage('Invalid room ID'),
@@ -162,6 +207,10 @@ const fileIdParam = [
   param('fileId').isUUID().withMessage('Invalid file ID'),
 ];
 
+const taskIdParam = [
+  param('taskId').isUUID().withMessage('Invalid task ID'),
+];
+
 module.exports = {
   isUniversityEmail,
   ALLOWED_DOMAINS,
@@ -173,7 +222,10 @@ module.exports = {
   updateEventValidation,
   sendMessageValidation,
   updateLocationValidation,
+  createTaskValidation,
+  updateTaskValidation,
   roomIdParam,
   eventIdParam,
   fileIdParam,
+  taskIdParam,
 };
