@@ -18,6 +18,9 @@ router.post('/', createRoomValidation, validate, roomController.createRoom);
 // GET /rooms - List my rooms
 router.get('/', roomController.getRooms);
 
+// POST /rooms/join - Join a room by invite code (no roomId needed)
+router.post('/join', joinRoomValidation, validate, roomController.joinRoomByCode);
+
 // GET /rooms/:roomId - Get room details (requires membership)
 router.get(
   '/:roomId',

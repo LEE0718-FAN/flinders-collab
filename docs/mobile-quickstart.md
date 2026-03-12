@@ -1,80 +1,70 @@
-# Mobile Quickstart
+# Mobile Quick-Start Guide
 
-Local network IP detected on this Mac: `10.14.45.29`
+Get the Flinders Collab app running on web and Android.
 
-## Current setup
+## Prerequisites
 
-The project is already prepared for Capacitor mobile testing.
+- Node.js 18+
+- npm 9+
+- Android Studio (for Android builds only)
 
-- Android project: `client/android`
-- iOS project: `client/ios`
-- Mobile build command: `npm run mobile:build`
+## 1. Install Dependencies
 
-## Before testing
-
-You still need real Supabase credentials in `.env`:
+From the project root:
 
 ```bash
-SUPABASE_URL=...
-SUPABASE_ANON_KEY=...
-SUPABASE_SERVICE_ROLE_KEY=...
-VITE_SUPABASE_URL=...
-VITE_SUPABASE_ANON_KEY=...
+npm install
 ```
 
-The local API and socket URLs are already set to:
+This installs both `client` and `server` workspaces.
+
+## 2. Start the Backend
 
 ```bash
-VITE_API_BASE_URL=http://10.14.45.29:3001
-VITE_SOCKET_URL=http://10.14.45.29:3001
+npm run dev:server
 ```
 
-## Test on your own phone
+The Express server starts on `http://localhost:3001` (default) with Socket.IO for real-time features.
 
-1. Make sure your Mac and phone are on the same Wi‑Fi.
-2. Start the backend on your Mac.
-3. Run `npm run mobile:build`.
-4. Open the native project.
-
-iOS:
+## 3. Start the Web Client
 
 ```bash
-npm run mobile:open:ios
+npm run dev:client
 ```
 
-Android:
+Vite serves the React app at `http://localhost:5173`. The dev proxy forwards `/api` requests to the backend.
+
+## 4. Core Flows to Verify
+
+1. **Sign up / Log in** — use a `@flinders.edu.au` email.
+2. **Create a room** — tap "Create Room" on the dashboard, fill in name and optional course name.
+3. **Copy the invite code** — shown after room creation.
+4. **Join a room** — tap "Join Room", paste the invite code. No room UUID needed.
+5. **Navigate** — rooms appear in the sidebar and on the dashboard cards.
+
+## 5. Android (Capacitor)
+
+The project uses Capacitor for native Android builds.
 
 ```bash
-npm run mobile:open:android
+cd client
+npx cap sync android
+npx cap open android
 ```
 
-## Current machine blockers
+Build and run from Android Studio. The web app runs inside a WebView. All API calls route through the same backend — make sure the device/emulator can reach your dev server.
 
-- iOS cannot be built yet because full Xcode is not installed
-- Android cannot be built yet because Java is not installed
+> **Tip:** On an emulator, use `10.0.2.2` instead of `localhost` to reach the host machine.
 
-## What to install
+## 6. iOS (Future)
 
-iOS:
+iOS support is planned but not yet configured. The Capacitor setup will extend to iOS when ready — no code changes are expected on the web or backend side.
 
-- Xcode from the App Store
+## Troubleshooting
 
-Android:
-
-- Java JDK
-- Android Studio
-
-## After installation
-
-iOS:
-
-```bash
-sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
-npm run mobile:open:ios
-```
-
-Android:
-
-```bash
-npm run mobile:open:android
-```
+| Issue | Fix |
+|---|---|
+| "Failed to fetch rooms" on dashboard | Ensure the backend is running and the Vite proxy is configured. |
+| Invalid invite code | Codes are case-insensitive and 8 characters (e.g. `A1B2C3D4`). Check for trailing spaces. |
+| Android WebView blank screen | Run `npx cap sync android` after any client build to copy assets. |
+| CORS errors in browser | The Vite dev server proxies `/api` — don't call the backend directly from the browser. |
