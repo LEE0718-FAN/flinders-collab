@@ -1,66 +1,62 @@
-import React, { useState } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from '@/components/ui/dialog';
+import React, { useState, useEffect } from 'react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Plus, Loader2 } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import { createEvent } from '@/services/events';
+import { format } from 'date-fns';
 
 const CATEGORIES = [
-  { value: 'meeting', label: 'Meeting' },
-  { value: 'lecture', label: 'Lecture' },
-  { value: 'deadline', label: 'Deadline' },
-  { value: 'study', label: 'Study Session' },
-  { value: 'social', label: 'Social' },
-  { value: 'other', label: 'Other' },
+  { value: 'meeting', label: 'Meeting', icon: '👥' },
+  { value: 'presentation', label: 'Presentation', icon: '📊' },
+  { value: 'deadline', label: 'Deadline', icon: '⏰' },
+  { value: 'study', label: 'Study Session', icon: '📚' },
+  { value: 'lecture', label: 'Lecture', icon: '🎓' },
+  { value: 'social', label: 'Social', icon: '🎉' },
+  { value: 'other', label: 'Other', icon: '📌' },
 ];
 
-export default function EventForm({ roomId, onCreated }) {
-  const [open, setOpen] = useState(false);
+export default function EventForm({ roomId, onCreated, selectedDate, open, onOpenChange }) {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState('meeting');
-  const [startDate, setStartDate] = useState('');
-  const [startTime, setStartTime] = useState('');
-  const [endDate, setEndDate] = useState('');
-  const [endTime, setEndTime] = useState('');
+  const [startTime, setStartTime] = useState('09:00');
+  const [endTime, setEndTime] = useState('10:00');
   const [locationName, setLocationName] = useState('');
-  const [enableLocation, setEnableLocation] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  const resetForm = () => {
-    setTitle('');
-    setDescription('');
-    setCategory('meeting');
-    setStartDate('');
-    setStartTime('');
-    setEndDate('');
-    setEndTime('');
-    setLocationName('');
-    setEnableLocation(false);
-    setError('');
-  };
+  useEffect(() => {
+    if (open) {
+      setTitle('');
+      setDescription('');
+      setCategory('meeting');
+      setStartTime('09:00');
+      setEndTime('10:00');
+      setLocationName('');
+      setError('');
+    }
+  }, [open]);
+
+  const dateStr = selectedDate ? format(selectedDate, 'yyyy-MM-dd') : '';
+  const displayDate = selectedDate ? format(selectedDate, 'EEEE, MMMM d, yyyy') : '';
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
 
-    if (!startDate) {
-      setError('Start date is required.');
+    if (!dateStr) {
+      setError('Please select a date from the calendar.');
+      return;
+    }
+    if (!title.trim()) {
+      setError('Title is required.');
       return;
     }
 
-    const start = startDate && startTime
-      ? new Date(`${startDate}T${startTime}`).toISOString()
-      : new Date(`${startDate}T00:00`).toISOString();
-
-    const eDate = endDate || startDate;
-    const eTime = endTime || (startTime ? (() => {
-      const [h, m] = startTime.split(':');
-      return `${String(Math.min(23, parseInt(h) + 1)).padStart(2, '0')}:${m}`;
-    })() : '23:59');
-    const end = new Date(`${eDate}T${eTime}`).toISOString();
+    const start = new Date(`${dateStr}T${startTime}`).toISOString();
+    const end = new Date(`${dateStr}T${endTime}`).toISOString();
 
     if (new Date(end) <= new Date(start)) {
       setError('End time must be after start time.');
@@ -70,16 +66,14 @@ export default function EventForm({ roomId, onCreated }) {
     setLoading(true);
     try {
       await createEvent(roomId, {
-        title,
-        description: description || undefined,
+        title: title.trim(),
+        description: description.trim() || undefined,
         category,
         start_time: start,
         end_time: end,
-        location_name: locationName || undefined,
-        enable_location_sharing: enableLocation,
+        location_name: locationName.trim() || undefined,
       });
-      setOpen(false);
-      resetForm();
+      onOpenChange(false);
       onCreated?.();
     } catch (err) {
       setError(err.message);
@@ -89,79 +83,78 @@ export default function EventForm({ roomId, onCreated }) {
   };
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button size="sm">
-          <Plus className="mr-2 h-4 w-4" />
-          Add Event
-        </Button>
-      </DialogTrigger>
-      <DialogContent>
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-[420px]">
         <DialogHeader>
-          <DialogTitle>Create Event</DialogTitle>
-          <DialogDescription>Schedule a new event for your team.</DialogDescription>
+          <DialogTitle>New Event</DialogTitle>
+          <DialogDescription>{displayDate}</DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-2">
-            <label className="text-sm font-medium">Title</label>
-            <Input placeholder="Event title" value={title} onChange={(e) => setTitle(e.target.value)} required />
-          </div>
-
+          {/* Category selection */}
           <div className="space-y-2">
             <label className="text-sm font-medium">Category</label>
-            <select
-              value={category}
-              onChange={(e) => setCategory(e.target.value)}
-              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-            >
+            <div className="grid grid-cols-4 gap-1.5">
               {CATEGORIES.map((c) => (
-                <option key={c.value} value={c.value}>{c.label}</option>
+                <button
+                  key={c.value}
+                  type="button"
+                  onClick={() => setCategory(c.value)}
+                  className={`flex flex-col items-center gap-1 rounded-lg border px-2 py-2 text-xs transition-all ${
+                    category === c.value
+                      ? 'border-primary bg-primary/10 text-primary font-medium'
+                      : 'border-border hover:border-primary/40 hover:bg-muted text-muted-foreground'
+                  }`}
+                >
+                  <span className="text-base">{c.icon}</span>
+                  <span className="truncate w-full text-center leading-tight">{c.label}</span>
+                </button>
               ))}
-            </select>
-          </div>
-
-          <div className="space-y-2">
-            <label className="text-sm font-medium">Date & Time</label>
-            <div className="grid grid-cols-2 gap-2">
-              <Input type="date" value={startDate} onChange={(e) => { setStartDate(e.target.value); if (!endDate) setEndDate(e.target.value); }} required />
-              <Input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} />
             </div>
           </div>
 
+          {/* Title */}
           <div className="space-y-2">
-            <label className="text-sm font-medium">End (optional)</label>
-            <div className="grid grid-cols-2 gap-2">
-              <Input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} min={startDate} />
-              <Input type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)} />
-            </div>
-            <p className="text-xs text-muted-foreground">Defaults to 1 hour after start if not set.</p>
+            <label className="text-sm font-medium">Event Title</label>
+            <Input
+              placeholder="e.g. Group Meeting, Final Presentation..."
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              autoFocus
+              required
+            />
           </div>
 
+          {/* Time */}
           <div className="space-y-2">
-            <label className="text-sm font-medium">Location (optional)</label>
+            <label className="text-sm font-medium">Time</label>
+            <div className="flex items-center gap-2">
+              <Input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} className="flex-1" />
+              <span className="text-sm text-muted-foreground">to</span>
+              <Input type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)} className="flex-1" />
+            </div>
+          </div>
+
+          {/* Location */}
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Location <span className="text-muted-foreground font-normal">(optional)</span></label>
             <Input placeholder="e.g. Flinders Library Room 3" value={locationName} onChange={(e) => setLocationName(e.target.value)} />
           </div>
 
+          {/* Description */}
           <div className="space-y-2">
-            <label className="text-sm font-medium">Description (optional)</label>
-            <Textarea placeholder="Event details" value={description} onChange={(e) => setDescription(e.target.value)} />
-          </div>
-
-          <div className="flex items-center gap-2">
-            <input
-              type="checkbox"
-              id="enableLocation"
-              checked={enableLocation}
-              onChange={(e) => setEnableLocation(e.target.checked)}
-              className="h-4 w-4 rounded border-input"
+            <label className="text-sm font-medium">Description <span className="text-muted-foreground font-normal">(optional)</span></label>
+            <Textarea
+              placeholder="Add any details about this event..."
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              rows={3}
             />
-            <label htmlFor="enableLocation" className="text-sm">Enable location sharing for this event</label>
           </div>
 
           {error && <p className="text-sm text-destructive">{error}</p>}
           <Button type="submit" className="w-full" disabled={loading}>
             {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Create Event
+            Add Event
           </Button>
         </form>
       </DialogContent>

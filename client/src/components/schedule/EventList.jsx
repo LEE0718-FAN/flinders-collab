@@ -1,199 +1,187 @@
-import React, { useState, useCallback } from 'react';
-import { Card, CardContent } from '@/components/ui/card';
+import React, { useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { CalendarDays, MapPin, Clock, Trash2, ChevronDown, ChevronUp } from 'lucide-react';
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel,
+  AlertDialogContent, AlertDialogDescription, AlertDialogFooter,
+  AlertDialogHeader, AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { MapPin, Clock, Trash2, ChevronDown, ChevronUp } from 'lucide-react';
 import { format } from 'date-fns';
 import { deleteEvent } from '@/services/events';
-import { getLocationStatus } from '@/services/location';
-import LocationToggle from '@/components/location/LocationToggle';
-import LocationMap from '@/components/location/LocationMap';
-import { useAuth } from '@/hooks/useAuth';
-
-const STATUS_LABEL = {
-  on_the_way: 'On the way',
-  arrived: 'Arrived',
-  late: 'Late',
-};
 
 const categoryConfig = {
-  meeting: { label: 'Meeting', className: 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300' },
-  lecture: { label: 'Lecture', className: 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300' },
-  deadline: { label: 'Deadline', className: 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300' },
-  study: { label: 'Study Session', className: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300' },
-  social: { label: 'Social', className: 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300' },
-  other: { label: 'Other', className: 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300' },
+  meeting:      { label: 'Meeting',       icon: '👥', color: 'bg-blue-500' },
+  presentation: { label: 'Presentation',  icon: '📊', color: 'bg-purple-500' },
+  deadline:     { label: 'Deadline',       icon: '⏰', color: 'bg-red-500' },
+  study:        { label: 'Study Session',  icon: '📚', color: 'bg-emerald-500' },
+  lecture:      { label: 'Lecture',        icon: '🎓', color: 'bg-indigo-500' },
+  social:       { label: 'Social',        icon: '🎉', color: 'bg-amber-500' },
+  other:        { label: 'Other',         icon: '📌', color: 'bg-gray-400' },
 };
 
 export default function EventList({ events = [], roomId, onUpdated }) {
-  const { user } = useAuth();
+  const [expandedId, setExpandedId] = useState(null);
+  const [deletingId, setDeletingId] = useState(null);
+  const [confirmDelete, setConfirmDelete] = useState(null); // { id, title }
+
   const sorted = [...events].sort((a, b) => new Date(a.start_time) - new Date(b.start_time));
 
-  const [expandedEventId, setExpandedEventId] = useState(null);
-  const [locationData, setLocationData] = useState({});
-  const [sharingEvents, setSharingEvents] = useState({});
-  const [deleteError, setDeleteError] = useState('');
-
-  const handleDelete = async (eventId) => {
-    setDeleteError('');
+  const handleDelete = async () => {
+    if (!confirmDelete) return;
+    const eventId = confirmDelete.id;
+    setConfirmDelete(null);
+    setDeletingId(eventId);
     try {
       await deleteEvent(roomId, eventId);
       onUpdated?.();
-    } catch (err) {
-      setDeleteError(err.message || 'Failed to delete event.');
+    } catch {
+      // fail silently
+    } finally {
+      setDeletingId(null);
     }
   };
 
-  const fetchLocationForEvent = useCallback(async (eventId) => {
-    try {
-      const data = await getLocationStatus(eventId);
-      const members = (Array.isArray(data) ? data : []).map((s) => ({
-        id: s.id,
-        user_id: s.user_id,
-        name: s.users?.full_name || 'User',
-        avatar_url: s.users?.avatar_url,
-        latitude: s.latitude,
-        longitude: s.longitude,
-        status: s.status,
-        updated_at: s.updated_at,
-      }));
-      setLocationData((prev) => ({ ...prev, [eventId]: members }));
-
-      const mySession = members.find((m) => m.user_id === user?.id);
-      setSharingEvents((prev) => ({
-        ...prev,
-        [eventId]: !!mySession && mySession.status !== 'stopped',
-      }));
-    } catch {
-      setLocationData((prev) => ({ ...prev, [eventId]: [] }));
-    }
-  }, [user?.id]);
-
-  const toggleMap = useCallback(
-    (eventId) => {
-      if (expandedEventId === eventId) {
-        setExpandedEventId(null);
-      } else {
-        setExpandedEventId(eventId);
-        fetchLocationForEvent(eventId);
-      }
-    },
-    [expandedEventId, fetchLocationForEvent],
-  );
-
-  const handleSharingToggle = useCallback(
-    (eventId) => (sharing) => {
-      setSharingEvents((prev) => ({ ...prev, [eventId]: sharing }));
-      setTimeout(() => fetchLocationForEvent(eventId), 500);
-    },
-    [fetchLocationForEvent],
-  );
-
   if (sorted.length === 0) {
-    return <p className="py-4 text-center text-sm text-muted-foreground">No upcoming events</p>;
+    return (
+      <div className="flex flex-col items-center justify-center py-12 text-center">
+        <div className="text-4xl mb-3">📅</div>
+        <p className="text-sm font-medium text-muted-foreground">No events yet</p>
+        <p className="text-xs text-muted-foreground/70 mt-1">Click a date on the calendar to add one</p>
+      </div>
+    );
   }
 
+  // Group events by date
+  const grouped = {};
+  sorted.forEach((event) => {
+    const dateKey = format(new Date(event.start_time), 'yyyy-MM-dd');
+    if (!grouped[dateKey]) grouped[dateKey] = [];
+    grouped[dateKey].push(event);
+  });
+
   return (
-    <div className="space-y-3">
-      {deleteError && <p className="text-sm text-destructive">{deleteError}</p>}
-      {sorted.map((event) => {
-        const dt = new Date(event.start_time);
-        const locationName = event.location_name || event.location;
-        const hasLocationSharing = !!event.enable_location_sharing;
-        const isExpanded = expandedEventId === event.id;
-        const members = locationData[event.id] || [];
-        const iAmSharing = !!sharingEvents[event.id];
-        const cat = categoryConfig[event.category] || categoryConfig.other;
-
-        return (
-          <Card key={event.id}>
-            <CardContent className="p-4">
-              <div className="flex items-start gap-3">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                  <CalendarDays className="h-5 w-5" />
+    <>
+      <div className="space-y-4">
+        {Object.entries(grouped).map(([dateKey, dayEvents]) => {
+          const date = new Date(dateKey + 'T00:00:00');
+          return (
+            <div key={dateKey}>
+              {/* Date header */}
+              <div className="sticky top-0 z-10 flex items-center gap-3 pb-2">
+                <div className="flex flex-col items-center rounded-lg border bg-background px-3 py-1.5 shadow-sm">
+                  <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                    {format(date, 'EEE')}
+                  </span>
+                  <span className="text-lg font-bold leading-tight">{format(date, 'd')}</span>
+                  <span className="text-[10px] text-muted-foreground">{format(date, 'MMM')}</span>
                 </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <p className="font-medium">{event.title}</p>
-                    <Badge variant="secondary" className={`text-[10px] px-1.5 py-0 leading-4 border-0 ${cat.className}`}>
-                      {cat.label}
-                    </Badge>
-                    {hasLocationSharing && (
-                      <Badge variant="outline" className="text-xs">
-                        <MapPin className="mr-1 h-3 w-3" />
-                        Location
-                      </Badge>
-                    )}
-                  </div>
-                  <div className="mt-1 flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
-                    <span className="flex items-center gap-1">
-                      <Clock className="h-3 w-3" />
-                      {format(dt, 'MMM d, yyyy h:mm a')}
-                    </span>
-                    {locationName && (
-                      <span className="flex items-center gap-1">
-                        <MapPin className="h-3 w-3" />
-                        {locationName}
-                      </span>
-                    )}
-                  </div>
-                  {event.description && <p className="mt-1 text-sm text-muted-foreground">{event.description}</p>}
-
-                  {hasLocationSharing && (
-                    <div className="mt-3 flex flex-wrap items-center gap-2">
-                      <LocationToggle
-                        roomId={roomId}
-                        eventId={event.id}
-                        isSharing={iAmSharing}
-                        onToggle={handleSharingToggle(event.id)}
-                      />
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => toggleMap(event.id)}
-                        className="text-xs"
-                      >
-                        {isExpanded ? (
-                          <>
-                            <ChevronUp className="mr-1 h-3 w-3" />
-                            Hide Map
-                          </>
-                        ) : (
-                          <>
-                            <ChevronDown className="mr-1 h-3 w-3" />
-                            View Map{members.length > 0 ? ` (${members.length})` : ''}
-                          </>
-                        )}
-                      </Button>
-                    </div>
-                  )}
-                </div>
-                <Button variant="ghost" size="icon" className="shrink-0" onClick={() => handleDelete(event.id)}>
-                  <Trash2 className="h-4 w-4 text-muted-foreground" />
-                </Button>
+                <div className="h-px flex-1 bg-border" />
               </div>
 
-              {hasLocationSharing && isExpanded && (
-                <div className="mt-4">
-                  <LocationMap members={members.filter((m) => m.latitude != null && m.longitude != null)} />
-                  {members.length > 0 && (
-                    <div className="mt-2 flex flex-wrap gap-2">
-                      {members.map((m) => (
-                        <Badge key={m.id} variant="secondary" className="text-xs">
-                          {m.name}
-                          {m.status && STATUS_LABEL[m.status] && (
-                            <span className="ml-1 opacity-70">— {STATUS_LABEL[m.status]}</span>
-                          )}
-                        </Badge>
-                      ))}
+              {/* Events for this date */}
+              <div className="ml-[52px] space-y-2">
+                {dayEvents.map((event) => {
+                  const cat = categoryConfig[event.category] || categoryConfig.other;
+                  const startDt = new Date(event.start_time);
+                  const endDt = event.end_time ? new Date(event.end_time) : null;
+                  const locationName = event.location_name || event.location;
+                  const isExpanded = expandedId === event.id;
+
+                  return (
+                    <div
+                      key={event.id}
+                      className="group relative flex gap-3 rounded-lg border bg-card p-3 transition-all hover:shadow-sm"
+                    >
+                      {/* Category color bar */}
+                      <div className={`w-1 shrink-0 rounded-full ${cat.color}`} />
+
+                      {/* Content */}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="flex-1 min-w-0">
+                            {/* Category + Time */}
+                            <div className="flex items-center gap-2 mb-1">
+                              <Badge variant="secondary" className="text-[10px] px-1.5 py-0 leading-4 gap-1 font-normal">
+                                <span>{cat.icon}</span>
+                                {cat.label}
+                              </Badge>
+                              <span className="flex items-center gap-1 text-[11px] text-muted-foreground">
+                                <Clock className="h-3 w-3" />
+                                {format(startDt, 'h:mm a')}
+                                {endDt && <> – {format(endDt, 'h:mm a')}</>}
+                              </span>
+                            </div>
+
+                            {/* Event title */}
+                            <p className="font-medium text-sm leading-snug">{event.title}</p>
+
+                            {/* Location */}
+                            {locationName && (
+                              <p className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
+                                <MapPin className="h-3 w-3 shrink-0" />
+                                {locationName}
+                              </p>
+                            )}
+
+                            {/* Expandable description */}
+                            {event.description && (
+                              <>
+                                <button
+                                  type="button"
+                                  onClick={() => setExpandedId(isExpanded ? null : event.id)}
+                                  className="flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground mt-1.5 transition-colors"
+                                >
+                                  {isExpanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+                                  {isExpanded ? 'Hide details' : 'Show details'}
+                                </button>
+                                {isExpanded && (
+                                  <p className="text-xs text-muted-foreground mt-1.5 pl-1 border-l-2 border-border">
+                                    {event.description}
+                                  </p>
+                                )}
+                              </>
+                            )}
+                          </div>
+
+                          {/* Delete button */}
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7 shrink-0"
+                            onClick={() => setConfirmDelete({ id: event.id, title: event.title })}
+                            disabled={deletingId === event.id}
+                          >
+                            <Trash2 className="h-3.5 w-3.5 text-muted-foreground hover:text-destructive transition-colors" />
+                          </Button>
+                        </div>
+                      </div>
                     </div>
-                  )}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        );
-      })}
-    </div>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Delete confirmation dialog */}
+      <AlertDialog open={!!confirmDelete} onOpenChange={(open) => !open && setConfirmDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Event</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete "{confirmDelete?.title}"? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 }

@@ -53,6 +53,17 @@ app.use('/api', locationRoutes);
 app.use('/api', messageRoutes);
 app.use('/api', taskRoutes);
 
+// Serve built client in production
+const path = require('path');
+const clientDist = path.resolve(__dirname, '../../client/dist');
+if (config.nodeEnv === 'production') {
+  app.use(express.static(clientDist));
+  // SPA fallback — any non-API route serves index.html
+  app.get(/^\/(?!api).*/, (req, res) => {
+    res.sendFile(path.join(clientDist, 'index.html'));
+  });
+}
+
 // Error handling
 app.use(notFoundHandler);
 app.use(errorHandler);

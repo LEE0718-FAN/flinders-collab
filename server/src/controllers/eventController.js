@@ -32,21 +32,36 @@ async function createEvent(req, res, next) {
       });
     }
 
-    const { data, error } = await supabaseAdmin
+    const insertObj = {
+      room_id: roomId,
+      title,
+      description: description || null,
+      location_name: location_name || null,
+      start_time,
+      end_time,
+      created_by: userId,
+      enable_location_sharing: enable_location_sharing || false,
+    };
+    if (category) insertObj.category = category;
+
+    let { data, error } = await supabaseAdmin
       .from('events')
-      .insert({
-        room_id: roomId,
-        title,
-        description: description || null,
-        category: category || 'other',
-        location_name: location_name || null,
-        start_time,
-        end_time,
-        created_by: userId,
-        enable_location_sharing: enable_location_sharing || false,
-      })
+      .insert(insertObj)
       .select()
       .single();
+
+    // If category column doesn't exist yet, retry without it
+    if (error && error.message?.includes('category')) {
+      delete insertObj.category;
+      const retry = await supabaseAdmin
+        .from('events')
+        .insert(insertObj)
+        .select()
+        .single();
+      data = retry.data;
+      error = retry.error;
+      if (data) data.category = category || 'other';
+    }
 
     if (error) {
       return res.status(400).json({ error: error.message });
@@ -171,12 +186,27 @@ async function updateEvent(req, res, next) {
       });
     }
 
-    const { data, error } = await supabaseAdmin
+    let { data, error } = await supabaseAdmin
       .from('events')
       .update(updates)
       .eq('id', eventId)
       .select()
       .single();
+
+    // If category column doesn't exist yet, retry without it
+    if (error && error.message?.includes('category')) {
+      const savedCat = updates.category;
+      delete updates.category;
+      const retry = await supabaseAdmin
+        .from('events')
+        .update(updates)
+        .eq('id', eventId)
+        .select()
+        .single();
+      data = retry.data;
+      error = retry.error;
+      if (data && savedCat) data.category = savedCat;
+    }
 
     if (error) {
       return res.status(400).json({ error: error.message });

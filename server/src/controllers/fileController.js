@@ -3,9 +3,12 @@ const config = require('../config');
 const path = require('path');
 const { v4: uuidv4 } = require('uuid');
 
+const BACKUP_BUCKET = 'room-files-backup';
+
 /**
  * POST /rooms/:roomId/files
  * Upload a file to Supabase Storage and record metadata.
+ * Automatically creates a backup copy in the backup bucket.
  */
 async function uploadFile(req, res, next) {
   try {
@@ -36,9 +39,11 @@ async function uploadFile(req, res, next) {
 
     // Generate a unique storage path
     const ext = path.extname(file.originalname);
-    const storagePath = `rooms/${roomId}/${uuidv4()}${ext}`;
+    const fileUuid = uuidv4();
+    const storagePath = `rooms/${roomId}/${fileUuid}${ext}`;
+    const backupPath = `rooms/${roomId}/${fileUuid}_backup${ext}`;
 
-    // Upload to Supabase Storage
+    // Upload to main bucket
     const { error: uploadError } = await supabaseAdmin.storage
       .from(bucket)
       .upload(storagePath, file.buffer, {
@@ -50,22 +55,37 @@ async function uploadFile(req, res, next) {
       return res.status(400).json({ error: uploadError.message });
     }
 
+    // Upload backup copy (non-blocking, don't fail if backup fails)
+    supabaseAdmin.storage
+      .from(BACKUP_BUCKET)
+      .upload(backupPath, file.buffer, {
+        contentType: file.mimetype,
+        upsert: false,
+      })
+      .catch(() => {});
+
     // Get public URL
     const { data: urlData } = supabaseAdmin.storage
       .from(bucket)
       .getPublicUrl(storagePath);
 
     // Save file metadata to database
+    const insertObj = {
+      room_id: roomId,
+      uploaded_by: userId,
+      file_name: file.originalname,
+      file_url: urlData.publicUrl,
+      file_type: file.mimetype,
+      file_size: file.size,
+      backup_path: backupPath,
+    };
+    if (req.body.category) insertObj.category = req.body.category;
+    if (req.body.description) insertObj.file_description = req.body.description;
+    if (req.body.event_id) insertObj.event_id = req.body.event_id;
+
     const { data, error: dbError } = await supabaseAdmin
       .from('files')
-      .insert({
-        room_id: roomId,
-        uploaded_by: userId,
-        file_name: file.originalname,
-        file_url: urlData.publicUrl,
-        file_type: file.mimetype,
-        file_size: file.size,
-      })
+      .insert(insertObj)
       .select()
       .single();
 
@@ -81,7 +101,7 @@ async function uploadFile(req, res, next) {
 
 /**
  * GET /rooms/:roomId/files
- * List all files in a room.
+ * List all files in a room (excluding soft-deleted).
  */
 async function getFiles(req, res, next) {
   try {
@@ -95,9 +115,15 @@ async function getFiles(req, res, next) {
           id,
           full_name,
           avatar_url
+        ),
+        event:event_id (
+          id,
+          title,
+          start_time
         )
       `)
       .eq('room_id', roomId)
+      .is('deleted_at', null)
       .order('created_at', { ascending: false });
 
     if (error) {
@@ -112,7 +138,8 @@ async function getFiles(req, res, next) {
 
 /**
  * DELETE /files/:fileId
- * Delete a file. Only the uploader or room admin/owner can delete.
+ * Soft-delete a file. The file is hidden from the UI but remains in the
+ * backup bucket for recovery. Only the uploader or room admin/owner can delete.
  */
 async function deleteFile(req, res, next) {
   try {
@@ -153,38 +180,33 @@ async function deleteFile(req, res, next) {
       });
     }
 
-    const bucket = config.upload.storageBucket;
+    // Soft-delete: mark as deleted in DB, remove from main bucket only.
+    // Backup bucket retains the file for recovery.
+    const { error: updateError } = await supabaseAdmin
+      .from('files')
+      .update({ deleted_at: new Date().toISOString() })
+      .eq('id', fileId);
 
-    // Extract storage path from URL robustly
-    // Handles public URLs, signed URLs, and plain object keys
+    if (updateError) {
+      return res.status(400).json({ error: updateError.message });
+    }
+
+    // Remove from main bucket (backup stays)
+    const bucket = config.upload.storageBucket;
     let storagePath = null;
     try {
       const url = new URL(file.file_url);
-      // Try both bucket names in the path for resilience
       const bucketPattern = new RegExp(`/(?:object/(?:public|sign)/)?${bucket}/(.+?)(?:\\?.*)?$`);
       const match = url.pathname.match(bucketPattern);
       if (match) {
         storagePath = decodeURIComponent(match[1]);
       }
     } catch {
-      // file_url might be a plain object key (no protocol)
       storagePath = file.file_url;
     }
 
     if (storagePath) {
-      await supabaseAdmin.storage
-        .from(bucket)
-        .remove([storagePath]);
-    }
-
-    // Delete metadata from database
-    const { error: deleteError } = await supabaseAdmin
-      .from('files')
-      .delete()
-      .eq('id', fileId);
-
-    if (deleteError) {
-      return res.status(400).json({ error: deleteError.message });
+      await supabaseAdmin.storage.from(bucket).remove([storagePath]);
     }
 
     res.json({ message: 'File deleted successfully' });

@@ -24,10 +24,13 @@ async function parseResponse(res) {
   return body;
 }
 
-export async function uploadFile(roomId, file) {
+export async function uploadFile(roomId, file, { description, category, event_id } = {}) {
   const headers = await getAuthHeaders(false);
   const formData = new FormData();
   formData.append('file', file);
+  if (description) formData.append('description', description);
+  if (category) formData.append('category', category);
+  if (event_id) formData.append('event_id', event_id);
   const res = await fetch(`/api/rooms/${roomId}/files`, {
     method: 'POST',
     headers,
@@ -42,10 +45,6 @@ export async function getFiles(roomId) {
   return parseResponse(res);
 }
 
-/**
- * Delete a file. Backend route is DELETE /api/files/:fileId.
- * Only the uploader or room admin/owner can delete.
- */
 export async function deleteFile(roomId, fileId) {
   const headers = await getAuthHeaders();
   const res = await fetch(`/api/files/${fileId}`, {
