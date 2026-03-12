@@ -24,8 +24,8 @@ const signupValidation = [
       return true;
     }),
   body('password')
-    .isLength({ min: 8 })
-    .withMessage('Password must be at least 8 characters'),
+    .isLength({ min: 6 })
+    .withMessage('Password must be at least 6 characters'),
   body('full_name')
     .trim()
     .notEmpty()
