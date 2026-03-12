@@ -31,7 +31,12 @@ export default function SignupForm({ onSubmit }) {
     try {
       await onSubmit(email, password, { name, student_id: studentId, major });
     } catch (err) {
-      setError(err.message || 'Signup failed');
+      const msg = err.message || 'Signup failed';
+      if (msg === 'Failed to fetch' || msg === 'Load failed') {
+        setError('Server is starting up. Please try again in a few seconds.');
+      } else {
+        setError(msg);
+      }
     } finally {
       setLoading(false);
     }
@@ -58,11 +63,12 @@ export default function SignupForm({ onSubmit }) {
       <div className="space-y-2">
         <label htmlFor="password" className="text-sm font-medium">Password</label>
         <Input id="password" type="password" placeholder="Min. 6 characters" value={password} onChange={(e) => setPassword(e.target.value)} required />
+        <p className="text-xs text-muted-foreground">Must be at least 6 characters</p>
       </div>
       {error && <p className="text-sm text-destructive">{error}</p>}
       <Button type="submit" className="w-full" disabled={loading}>
         {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-        Create Account
+        {loading ? 'Creating account...' : 'Create Account'}
       </Button>
       <p className="text-center text-sm text-muted-foreground">
         Already have an account?{' '}

@@ -107,15 +107,14 @@ export default function MainLayout({ children }) {
       {/* Desktop Sidebar */}
       <aside className="hidden w-64 shrink-0 flex-col border-r bg-muted/20 md:flex">
         {/* Sidebar header / brand */}
-        <div className="flex h-14 items-center gap-2.5 border-b px-5">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary shadow-sm">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-              <circle cx="9" cy="7" r="4" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-              <path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
-          </div>
-          <span className="text-[15px] font-bold tracking-tight text-foreground">
+        <div className="flex h-14 items-center gap-2.5 border-b px-5 bg-primary">
+          <img
+            src="https://upload.wikimedia.org/wikipedia/commons/0/0e/Flinders-logo-stand-alone.svg"
+            alt="Flinders"
+            className="h-7 w-7"
+            onError={(e) => { e.target.style.display = 'none'; }}
+          />
+          <span className="text-[15px] font-bold tracking-tight text-primary-foreground">
             Flinders Collab
           </span>
         </div>
@@ -152,16 +151,14 @@ export default function MainLayout({ children }) {
                 </Button>
               </SheetTrigger>
               <SheetContent side="left" className="w-72 p-0">
-                <SheetHeader className="border-b px-5 py-4">
+                <SheetHeader className="border-b px-5 py-4 bg-primary">
                   <SheetTitle className="flex items-center gap-2.5 text-left">
-                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary shadow-sm">
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                        <circle cx="9" cy="7" r="4" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                        <path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                      </svg>
-                    </div>
-                    <span className="text-[15px] font-bold tracking-tight">Flinders Collab</span>
+                    <img
+                      src="https://upload.wikimedia.org/wikipedia/commons/0/0e/Flinders-logo-stand-alone.svg"
+                      alt="Flinders"
+                      className="h-7 w-7"
+                    />
+                    <span className="text-[15px] font-bold tracking-tight text-primary-foreground">Flinders Collab</span>
                   </SheetTitle>
                 </SheetHeader>
                 <div className="px-3 py-4">

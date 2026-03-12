@@ -5,30 +5,31 @@
 @layer base {
   :root {
     --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    --foreground: 216 50% 12%;
     --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    --card-foreground: 216 50% 12%;
     --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
-    --primary: 221 83% 53%;
-    --primary-foreground: 210 40% 98%;
-    --secondary: 174 58% 44%;
-    --secondary-foreground: 210 40% 98%;
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 221 83% 53%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 221 83% 53%;
+    --popover-foreground: 216 50% 12%;
+    --primary: 213 100% 19%;
+    --primary-foreground: 48 100% 95%;
+    --secondary: 48 100% 50%;
+    --secondary-foreground: 213 100% 19%;
+    --muted: 214 30% 96%;
+    --muted-foreground: 215 16% 47%;
+    --accent: 214 30% 96%;
+    --accent-foreground: 213 100% 19%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 214 32% 91%;
+    --input: 214 32% 91%;
+    --ring: 213 100% 19%;
     --radius: 0.75rem;
-    --sidebar-bg: 220 20% 97%;
+    --sidebar-bg: 216 30% 97%;
     --success: 142 71% 45%;
     --success-foreground: 0 0% 100%;
     --warning: 38 92% 50%;
     --warning-foreground: 0 0% 100%;
+    --gold: 48 100% 50%;
   }
 
   * {
@@ -43,21 +44,18 @@
     letter-spacing: -0.011em;
   }
 
-  /* Smooth focus rings for accessibility */
   *:focus-visible {
     @apply outline-none ring-2 ring-ring ring-offset-2 ring-offset-background;
     transition: box-shadow 0.15s ease;
   }
 
-  /* Selection style */
   ::selection {
-    background: hsl(221 83% 53% / 0.15);
+    background: hsl(213 100% 19% / 0.15);
     color: hsl(var(--foreground));
   }
 }
 
 @layer components {
-  /* Smooth scrollbar styling */
   .custom-scrollbar::-webkit-scrollbar {
     width: 6px;
   }
@@ -74,38 +72,33 @@
 }
 
 @layer utilities {
-  /* Glass morphism utility */
   .glass {
     background: rgba(255, 255, 255, 0.8);
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
   }
 
-  /* Smooth transition utility */
   .transition-smooth {
     transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   }
 
-  /* Gradient text utility */
   .text-gradient {
-    background: linear-gradient(135deg, hsl(221, 83%, 53%), hsl(174, 58%, 44%));
+    background: linear-gradient(135deg, hsl(213, 100%, 19%), hsl(213, 80%, 40%));
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
   }
 
-  /* Subtle card hover elevation */
   .hover-lift {
     transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1),
                 box-shadow 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   }
   .hover-lift:hover {
     transform: translateY(-2px);
-    box-shadow: 0 8px 25px -5px rgba(0, 0, 0, 0.08),
-                0 4px 10px -6px rgba(0, 0, 0, 0.04);
+    box-shadow: 0 8px 25px -5px rgba(0, 47, 96, 0.12),
+                0 4px 10px -6px rgba(0, 47, 96, 0.06);
   }
 
-  /* Fade-in animation */
   .animate-fade-in {
     animation: fadeIn 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards;
   }

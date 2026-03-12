@@ -26,41 +26,118 @@ export function useAuth() {
     if (!email.endsWith('@flinders.edu.au')) {
       throw new Error('Please use your @flinders.edu.au email address');
     }
-    // Use backend API for login, then set Supabase session
-    const result = await apiLogin({ email, password });
-    const { data, error } = await supabase.auth.setSession({
-      access_token: result.session.access_token,
-      refresh_token: result.session.refresh_token,
-    });
-    if (error) throw error;
-    return data;
-  }, []);
+
+    // Call backend API for login
+    let result;
+    try {
+      result = await apiLogin({ email, password });
+    } catch (err) {
+      // If fetch fails (cold start / network), retry once after a short delay
+      if (err.message === 'Failed to fetch' || err.message === 'Load failed') {
+        await new Promise((r) => setTimeout(r, 2000));
+        result = await apiLogin({ email, password });
+      } else {
+        throw err;
+      }
+    }
+
+    // Set the session in Supabase client
+    try {
+      const { data, error } = await supabase.auth.setSession({
+        access_token: result.session.access_token,
+        refresh_token: result.session.refresh_token,
+      });
+      if (error) throw error;
+      return data;
+    } catch (sessionErr) {
+      // Even if setSession fails, store the session manually so the app works
+      const manualSession = {
+        access_token: result.session.access_token,
+        refresh_token: result.session.refresh_token,
+        user: {
+          id: result.user.id,
+          email: result.user.email,
+          user_metadata: { name: result.user.full_name, full_name: result.user.full_name },
+        },
+      };
+      setSession(manualSession);
+      setUser(manualSession.user);
+      return manualSession;
+    }
+  }, [setSession, setUser]);
 
   const signup = useCallback(async (email, password, metadata) => {
     if (!email.endsWith('@flinders.edu.au')) {
       throw new Error('Please use your @flinders.edu.au email address');
     }
-    // Use backend API which auto-confirms email
-    await apiSignup({
-      email,
-      password,
-      full_name: metadata.name,
-      student_id: metadata.student_id,
-      major: metadata.major,
-    });
+
+    // Call backend signup API
+    let signupResult;
+    try {
+      signupResult = await apiSignup({
+        email,
+        password,
+        full_name: metadata.name,
+        student_id: metadata.student_id,
+        major: metadata.major,
+      });
+    } catch (err) {
+      if (err.message === 'Failed to fetch' || err.message === 'Load failed') {
+        await new Promise((r) => setTimeout(r, 2000));
+        signupResult = await apiSignup({
+          email,
+          password,
+          full_name: metadata.name,
+          student_id: metadata.student_id,
+          major: metadata.major,
+        });
+      } else {
+        throw err;
+      }
+    }
+
     // After signup, immediately log in
-    const result = await apiLogin({ email, password });
-    const { data, error } = await supabase.auth.setSession({
-      access_token: result.session.access_token,
-      refresh_token: result.session.refresh_token,
-    });
-    if (error) throw error;
-    return data;
-  }, []);
+    let loginResult;
+    try {
+      loginResult = await apiLogin({ email, password });
+    } catch (err) {
+      if (err.message === 'Failed to fetch' || err.message === 'Load failed') {
+        await new Promise((r) => setTimeout(r, 2000));
+        loginResult = await apiLogin({ email, password });
+      } else {
+        throw err;
+      }
+    }
+
+    try {
+      const { data, error } = await supabase.auth.setSession({
+        access_token: loginResult.session.access_token,
+        refresh_token: loginResult.session.refresh_token,
+      });
+      if (error) throw error;
+      return data;
+    } catch (sessionErr) {
+      const manualSession = {
+        access_token: loginResult.session.access_token,
+        refresh_token: loginResult.session.refresh_token,
+        user: {
+          id: loginResult.user.id,
+          email: loginResult.user.email,
+          user_metadata: { name: loginResult.user.full_name, full_name: loginResult.user.full_name },
+        },
+      };
+      setSession(manualSession);
+      setUser(manualSession.user);
+      return manualSession;
+    }
+  }, [setSession, setUser]);
 
   const logout = useCallback(async () => {
-    const { error } = await supabase.auth.signOut();
-    if (error) throw error;
+    try {
+      await supabase.auth.signOut();
+    } catch {
+      // ignore signout errors
+    }
     clearAuth();
   }, [clearAuth]);
 

@@ -19,11 +19,21 @@ export default function LoginForm({ onSubmit }) {
       return;
     }
 
+    if (password.length < 6) {
+      setError('Password must be at least 6 characters');
+      return;
+    }
+
     setLoading(true);
     try {
       await onSubmit(email, password);
     } catch (err) {
-      setError(err.message || 'Login failed');
+      const msg = err.message || 'Login failed';
+      if (msg === 'Failed to fetch' || msg === 'Load failed') {
+        setError('Server is starting up. Please try again in a few seconds.');
+      } else {
+        setError(msg);
+      }
     } finally {
       setLoading(false);
     }
@@ -47,7 +57,7 @@ export default function LoginForm({ onSubmit }) {
         <Input
           id="password"
           type="password"
-          placeholder="Enter your password"
+          placeholder="Min. 6 characters"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           required
@@ -56,7 +66,7 @@ export default function LoginForm({ onSubmit }) {
       {error && <p className="text-sm text-destructive">{error}</p>}
       <Button type="submit" className="w-full" disabled={loading}>
         {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-        Sign In
+        {loading ? 'Signing in...' : 'Sign In'}
       </Button>
       <p className="text-center text-sm text-muted-foreground">
         Don&apos;t have an account?{' '}
