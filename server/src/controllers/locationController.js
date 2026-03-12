@@ -1,4 +1,36 @@
 const { supabaseAdmin } = require('../services/supabase');
+const config = require('../config');
+
+/**
+ * Helper: verify event exists, has location sharing enabled, and user is a room member.
+ * Returns { event, membership } on success or sends an error response and returns null.
+ */
+async function verifyEventMembership(req, res, eventId, userId) {
+  const { data: event, error: eventError } = await supabaseAdmin
+    .from('events')
+    .select('*')
+    .eq('id', eventId)
+    .single();
+
+  if (eventError || !event) {
+    res.status(404).json({ error: 'Event not found' });
+    return null;
+  }
+
+  const { data: membership } = await supabaseAdmin
+    .from('room_members')
+    .select('id, role')
+    .eq('room_id', event.room_id)
+    .eq('user_id', userId)
+    .single();
+
+  if (!membership) {
+    res.status(403).json({ error: 'You are not a member of this room' });
+    return null;
+  }
+
+  return { event, membership };
+}
 
 /**
  * POST /events/:eventId/location/start
@@ -9,34 +41,13 @@ async function startSharing(req, res, next) {
     const { eventId } = req.params;
     const userId = req.user.id;
 
-    // Verify event exists and has location sharing enabled
-    const { data: event, error: eventError } = await supabaseAdmin
-      .from('events')
-      .select('*')
-      .eq('id', eventId)
-      .single();
-
-    if (eventError || !event) {
-      return res.status(404).json({ error: 'Event not found' });
-    }
+    const result = await verifyEventMembership(req, res, eventId, userId);
+    if (!result) return;
+    const { event } = result;
 
     if (!event.enable_location_sharing) {
       return res.status(400).json({
         error: 'Location sharing is not enabled for this event',
-      });
-    }
-
-    // Verify user is a member of the event's room
-    const { data: membership } = await supabaseAdmin
-      .from('room_members')
-      .select('id')
-      .eq('room_id', event.room_id)
-      .eq('user_id', userId)
-      .single();
-
-    if (!membership) {
-      return res.status(403).json({
-        error: 'You are not a member of this room',
       });
     }
 
@@ -97,6 +108,10 @@ async function updateLocation(req, res, next) {
     const userId = req.user.id;
     const { latitude, longitude, status } = req.body;
 
+    // Verify membership before allowing update
+    const result = await verifyEventMembership(req, res, eventId, userId);
+    if (!result) return;
+
     const updates = {
       latitude,
       longitude,
@@ -107,19 +122,17 @@ async function updateLocation(req, res, next) {
       updates.status = status;
     }
 
+    // Only update sessions that are not stopped
     const { data, error } = await supabaseAdmin
       .from('location_sessions')
       .update(updates)
       .eq('event_id', eventId)
       .eq('user_id', userId)
+      .neq('status', 'stopped')
       .select()
       .single();
 
-    if (error) {
-      return res.status(400).json({ error: error.message });
-    }
-
-    if (!data) {
+    if (error || !data) {
       return res.status(404).json({
         error: 'No active location session found. Start sharing first.',
       });
@@ -140,6 +153,11 @@ async function stopSharing(req, res, next) {
     const { eventId } = req.params;
     const userId = req.user.id;
 
+    // Verify membership before allowing stop
+    const result = await verifyEventMembership(req, res, eventId, userId);
+    if (!result) return;
+
+    // Only stop sessions that are not already stopped
     const { data, error } = await supabaseAdmin
       .from('location_sessions')
       .update({
@@ -148,11 +166,14 @@ async function stopSharing(req, res, next) {
       })
       .eq('event_id', eventId)
       .eq('user_id', userId)
+      .neq('status', 'stopped')
       .select()
       .single();
 
-    if (error) {
-      return res.status(400).json({ error: error.message });
+    if (error || !data) {
+      return res.status(404).json({
+        error: 'No active location session found',
+      });
     }
 
     res.json({ message: 'Location sharing stopped', session: data });
@@ -168,30 +189,14 @@ async function stopSharing(req, res, next) {
 async function getLocationStatus(req, res, next) {
   try {
     const { eventId } = req.params;
+    const userId = req.user.id;
 
-    // Verify user is a member of the event's room
-    const { data: event } = await supabaseAdmin
-      .from('events')
-      .select('room_id')
-      .eq('id', eventId)
-      .single();
+    const result = await verifyEventMembership(req, res, eventId, userId);
+    if (!result) return;
 
-    if (!event) {
-      return res.status(404).json({ error: 'Event not found' });
-    }
-
-    const { data: membership } = await supabaseAdmin
-      .from('room_members')
-      .select('id')
-      .eq('room_id', event.room_id)
-      .eq('user_id', req.user.id)
-      .single();
-
-    if (!membership) {
-      return res.status(403).json({
-        error: 'You are not a member of this room',
-      });
-    }
+    // Calculate staleness cutoff
+    const staleMinutes = config.location.staleSessionMinutes;
+    const staleCutoff = new Date(Date.now() - staleMinutes * 60 * 1000).toISOString();
 
     const { data, error } = await supabaseAdmin
       .from('location_sessions')
@@ -205,6 +210,7 @@ async function getLocationStatus(req, res, next) {
       `)
       .eq('event_id', eventId)
       .neq('status', 'stopped')
+      .gte('updated_at', staleCutoff)
       .order('updated_at', { ascending: false });
 
     if (error) {

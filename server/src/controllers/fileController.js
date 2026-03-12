@@ -25,13 +25,22 @@ async function uploadFile(req, res, next) {
       });
     }
 
+    // Validate file size (defence-in-depth; multer also limits)
+    if (file.size > config.upload.maxFileSize) {
+      return res.status(400).json({
+        error: `File size exceeds the ${config.upload.maxFileSize / (1024 * 1024)}MB limit`,
+      });
+    }
+
+    const bucket = config.upload.storageBucket;
+
     // Generate a unique storage path
     const ext = path.extname(file.originalname);
     const storagePath = `rooms/${roomId}/${uuidv4()}${ext}`;
 
     // Upload to Supabase Storage
     const { error: uploadError } = await supabaseAdmin.storage
-      .from('project-files')
+      .from(bucket)
       .upload(storagePath, file.buffer, {
         contentType: file.mimetype,
         upsert: false,
@@ -43,7 +52,7 @@ async function uploadFile(req, res, next) {
 
     // Get public URL
     const { data: urlData } = supabaseAdmin.storage
-      .from('project-files')
+      .from(bucket)
       .getPublicUrl(storagePath);
 
     // Save file metadata to database
@@ -55,6 +64,7 @@ async function uploadFile(req, res, next) {
         file_name: file.originalname,
         file_url: urlData.publicUrl,
         file_type: file.mimetype,
+        file_size: file.size,
       })
       .select()
       .single();
@@ -120,7 +130,7 @@ async function deleteFile(req, res, next) {
       return res.status(404).json({ error: 'File not found' });
     }
 
-    // Check permissions
+    // Check room membership
     const { data: membership } = await supabaseAdmin
       .from('room_members')
       .select('role')
@@ -128,9 +138,14 @@ async function deleteFile(req, res, next) {
       .eq('user_id', userId)
       .single();
 
+    if (!membership) {
+      return res.status(403).json({
+        error: 'You are not a member of this room',
+      });
+    }
+
     const isUploader = file.uploaded_by === userId;
-    const isAdmin =
-      membership && (membership.role === 'owner' || membership.role === 'admin');
+    const isAdmin = membership.role === 'owner' || membership.role === 'admin';
 
     if (!isUploader && !isAdmin) {
       return res.status(403).json({
@@ -138,13 +153,28 @@ async function deleteFile(req, res, next) {
       });
     }
 
-    // Extract storage path from URL and delete from storage
-    const url = new URL(file.file_url);
-    const storagePath = url.pathname.split('/project-files/')[1];
+    const bucket = config.upload.storageBucket;
+
+    // Extract storage path from URL robustly
+    // Handles public URLs, signed URLs, and plain object keys
+    let storagePath = null;
+    try {
+      const url = new URL(file.file_url);
+      // Try both bucket names in the path for resilience
+      const bucketPattern = new RegExp(`/(?:object/(?:public|sign)/)?${bucket}/(.+?)(?:\\?.*)?$`);
+      const match = url.pathname.match(bucketPattern);
+      if (match) {
+        storagePath = decodeURIComponent(match[1]);
+      }
+    } catch {
+      // file_url might be a plain object key (no protocol)
+      storagePath = file.file_url;
+    }
+
     if (storagePath) {
       await supabaseAdmin.storage
-        .from('project-files')
-        .remove([decodeURIComponent(storagePath)]);
+        .from(bucket)
+        .remove([storagePath]);
     }
 
     // Delete metadata from database

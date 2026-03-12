@@ -26,6 +26,11 @@ const config = {
       'application/x-zip-compressed',
       'text/plain',
     ],
+    storageBucket: 'room-files',
+  },
+  location: {
+    // Sessions older than this (in minutes) are considered stale
+    staleSessionMinutes: 30,
   },
 };
 
