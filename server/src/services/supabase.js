@@ -9,11 +9,19 @@ if (!config.supabase.url) {
   console.warn('WARNING: SUPABASE_URL is not set. Set it in .env for the server to work properly.');
 }
 
-// Admin client with service role key — for server-side operations
+// Admin client with service role key — for server-side operations (bypasses RLS)
 const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY, {
   auth: {
     autoRefreshToken: false,
     persistSession: false,
+  },
+  db: {
+    schema: 'public',
+  },
+  global: {
+    headers: {
+      Authorization: `Bearer ${SUPABASE_SERVICE_KEY}`,
+    },
   },
 });
 

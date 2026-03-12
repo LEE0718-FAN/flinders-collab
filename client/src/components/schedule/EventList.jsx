@@ -16,6 +16,15 @@ const STATUS_LABEL = {
   late: 'Late',
 };
 
+const categoryConfig = {
+  meeting: { label: 'Meeting', className: 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300' },
+  lecture: { label: 'Lecture', className: 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300' },
+  deadline: { label: 'Deadline', className: 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300' },
+  study: { label: 'Study Session', className: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300' },
+  social: { label: 'Social', className: 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300' },
+  other: { label: 'Other', className: 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300' },
+};
+
 export default function EventList({ events = [], roomId, onUpdated }) {
   const { user } = useAuth();
   const sorted = [...events].sort((a, b) => new Date(a.start_time) - new Date(b.start_time));
@@ -94,6 +103,7 @@ export default function EventList({ events = [], roomId, onUpdated }) {
         const isExpanded = expandedEventId === event.id;
         const members = locationData[event.id] || [];
         const iAmSharing = !!sharingEvents[event.id];
+        const cat = categoryConfig[event.category] || categoryConfig.other;
 
         return (
           <Card key={event.id}>
@@ -105,9 +115,9 @@ export default function EventList({ events = [], roomId, onUpdated }) {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
                     <p className="font-medium">{event.title}</p>
-                    {event.category && event.category !== 'other' && (
-                      <Badge variant="secondary" className="text-xs capitalize">{event.category}</Badge>
-                    )}
+                    <Badge variant="secondary" className={`text-[10px] px-1.5 py-0 leading-4 border-0 ${cat.className}`}>
+                      {cat.label}
+                    </Badge>
                     {hasLocationSharing && (
                       <Badge variant="outline" className="text-xs">
                         <MapPin className="mr-1 h-3 w-3" />
@@ -129,7 +139,6 @@ export default function EventList({ events = [], roomId, onUpdated }) {
                   </div>
                   {event.description && <p className="mt-1 text-sm text-muted-foreground">{event.description}</p>}
 
-                  {/* Location sharing controls */}
                   {hasLocationSharing && (
                     <div className="mt-3 flex flex-wrap items-center gap-2">
                       <LocationToggle
@@ -164,7 +173,6 @@ export default function EventList({ events = [], roomId, onUpdated }) {
                 </Button>
               </div>
 
-              {/* Expanded location map */}
               {hasLocationSharing && isExpanded && (
                 <div className="mt-4">
                   <LocationMap members={members.filter((m) => m.latitude != null && m.longitude != null)} />

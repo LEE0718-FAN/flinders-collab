@@ -19,7 +19,7 @@ export default function CreateRoomDialog({ onCreated }) {
     setError('');
     setLoading(true);
     try {
-      await createRoom({ name, course_code: courseCode, description });
+      await createRoom({ name, course_name: courseCode, description });
       setOpen(false);
       setName('');
       setCourseCode('');

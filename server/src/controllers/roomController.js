@@ -1,38 +1,67 @@
 const { supabaseAdmin } = require('../services/supabase');
-const { v4: uuidv4 } = require('uuid');
 
 /**
  * Generate a short invite code for room joining.
+ * Uses an alphanumeric charset excluding visually ambiguous characters (0, O, 1, I).
  */
 function generateInviteCode() {
-  return uuidv4().split('-')[0].toUpperCase();
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let code = '';
+  for (let i = 0; i < 6; i++) {
+    code += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return code;
 }
 
 /**
  * POST /rooms
  * Create a new room and add the creator as owner.
+ * Retries up to 3 times if invite code collides with an existing one.
  */
 async function createRoom(req, res, next) {
   try {
     const { name, course_name, description } = req.body;
     const userId = req.user.id;
-    const inviteCode = generateInviteCode();
 
-    // Create the room
-    const { data: room, error: roomError } = await supabaseAdmin
-      .from('rooms')
-      .insert({
-        name,
-        course_name: course_name || null,
-        description: description || null,
-        owner_id: userId,
-        invite_code: inviteCode,
-      })
-      .select()
-      .single();
+    const MAX_RETRIES = 3;
+    let room = null;
+    let lastError = null;
 
-    if (roomError) {
-      return res.status(400).json({ error: roomError.message });
+    for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
+      const inviteCode = generateInviteCode();
+
+      const { data, error: roomError } = await supabaseAdmin
+        .from('rooms')
+        .insert({
+          name,
+          course_name: course_name || null,
+          description: description || null,
+          owner_id: userId,
+          invite_code: inviteCode,
+        })
+        .select()
+        .single();
+
+      if (roomError) {
+        // Check for unique constraint violation on invite_code
+        if (
+          roomError.code === '23505' &&
+          roomError.message.includes('invite_code')
+        ) {
+          lastError = roomError;
+          continue; // retry with a new code
+        }
+        return res.status(400).json({ error: roomError.message });
+      }
+
+      room = data;
+      break;
+    }
+
+    if (!room) {
+      return res.status(500).json({
+        error: 'Failed to generate a unique invite code. Please try again.',
+      });
     }
 
     // Add creator as owner member
@@ -280,6 +309,56 @@ async function getMembers(req, res, next) {
   }
 }
 
+/**
+ * DELETE /rooms/:roomId
+ * Delete a room. Only the room owner may delete it.
+ */
+async function deleteRoom(req, res, next) {
+  try {
+    const { roomId } = req.params;
+    const userId = req.user.id;
+
+    // Verify the room exists and the user is the owner
+    const { data: room, error: roomError } = await supabaseAdmin
+      .from('rooms')
+      .select('id, owner_id')
+      .eq('id', roomId)
+      .single();
+
+    if (roomError || !room) {
+      return res.status(404).json({ error: 'Room not found' });
+    }
+
+    if (room.owner_id !== userId) {
+      return res.status(403).json({ error: 'Only the room owner can delete this room' });
+    }
+
+    // Delete room members first (foreign key constraint)
+    const { error: membersDeleteError } = await supabaseAdmin
+      .from('room_members')
+      .delete()
+      .eq('room_id', roomId);
+
+    if (membersDeleteError) {
+      console.error('Failed to delete room members:', membersDeleteError.message);
+    }
+
+    // Delete the room
+    const { error: deleteError } = await supabaseAdmin
+      .from('rooms')
+      .delete()
+      .eq('id', roomId);
+
+    if (deleteError) {
+      return res.status(400).json({ error: deleteError.message });
+    }
+
+    res.json({ message: 'Room deleted successfully' });
+  } catch (err) {
+    next(err);
+  }
+}
+
 module.exports = {
   createRoom,
   getRooms,
@@ -287,4 +366,5 @@ module.exports = {
   joinRoom,
   joinRoomByCode,
   getMembers,
+  deleteRoom,
 };

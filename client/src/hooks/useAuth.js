@@ -1,6 +1,7 @@
 import { useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/authStore';
+import { apiSignup, apiLogin } from '@/services/auth';
 
 export function useAuth() {
   const { user, session, isLoading, setUser, setSession, setLoading, logout: clearAuth } = useAuthStore();
@@ -25,7 +26,12 @@ export function useAuth() {
     if (!email.endsWith('@flinders.edu.au')) {
       throw new Error('Please use your @flinders.edu.au email address');
     }
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+    // Use backend API for login, then set Supabase session
+    const result = await apiLogin({ email, password });
+    const { data, error } = await supabase.auth.setSession({
+      access_token: result.session.access_token,
+      refresh_token: result.session.refresh_token,
+    });
     if (error) throw error;
     return data;
   }, []);
@@ -34,10 +40,19 @@ export function useAuth() {
     if (!email.endsWith('@flinders.edu.au')) {
       throw new Error('Please use your @flinders.edu.au email address');
     }
-    const { data, error } = await supabase.auth.signUp({
+    // Use backend API which auto-confirms email
+    await apiSignup({
       email,
       password,
-      options: { data: metadata },
+      full_name: metadata.name,
+      student_id: metadata.student_id,
+      major: metadata.major,
+    });
+    // After signup, immediately log in
+    const result = await apiLogin({ email, password });
+    const { data, error } = await supabase.auth.setSession({
+      access_token: result.session.access_token,
+      refresh_token: result.session.refresh_token,
     });
     if (error) throw error;
     return data;

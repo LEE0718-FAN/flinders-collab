@@ -6,17 +6,18 @@ export default function MemberList({ members = [] }) {
   return (
     <div className="space-y-3">
       {members.map((member) => {
-        const name = member.name || member.email || 'Unknown';
+        const name = member.full_name || member.name || member.university_email || member.email || 'Unknown';
+        const email = member.university_email || member.email;
         const initials = name.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2);
 
         return (
-          <div key={member.id} className="flex items-center gap-3 rounded-lg border p-3">
+          <div key={member.id || member.membership_id} className="flex items-center gap-3 rounded-lg border p-3">
             <Avatar className="h-9 w-9">
               <AvatarFallback className="text-xs">{initials}</AvatarFallback>
             </Avatar>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium truncate">{name}</p>
-              {member.email && <p className="text-xs text-muted-foreground truncate">{member.email}</p>}
+              {email && <p className="text-xs text-muted-foreground truncate">{email}</p>}
             </div>
             {member.role && (
               <Badge variant={member.role === 'admin' ? 'default' : 'outline'} className="shrink-0">

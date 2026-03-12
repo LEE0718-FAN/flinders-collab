@@ -48,4 +48,12 @@ router.get(
   roomController.getMembers
 );
 
+// DELETE /rooms/:roomId - Delete a room (owner only)
+router.delete(
+  '/:roomId',
+  roomIdParam,
+  validate,
+  roomController.deleteRoom
+);
+
 module.exports = router;

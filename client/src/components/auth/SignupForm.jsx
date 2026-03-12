@@ -48,8 +48,8 @@ export default function SignupForm({ onSubmit }) {
         <Input id="email" type="email" placeholder="you@flinders.edu.au" value={email} onChange={(e) => setEmail(e.target.value)} required />
       </div>
       <div className="space-y-2">
-        <label htmlFor="studentId" className="text-sm font-medium">Student ID</label>
-        <Input id="studentId" placeholder="e.g. 1234567" value={studentId} onChange={(e) => setStudentId(e.target.value)} required />
+        <label htmlFor="studentId" className="text-sm font-medium">FAN ID</label>
+        <Input id="studentId" placeholder="e.g. lee2086" value={studentId} onChange={(e) => setStudentId(e.target.value)} required />
       </div>
       <div className="space-y-2">
         <label htmlFor="major" className="text-sm font-medium">Major</label>

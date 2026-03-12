@@ -8,6 +8,15 @@ async function getAuthHeaders() {
   };
 }
 
+async function safeJsonError(res, fallback) {
+  try {
+    const body = await res.json();
+    return new Error(body.error || fallback);
+  } catch {
+    return new Error(fallback);
+  }
+}
+
 export async function createEvent(roomId, eventData) {
   const headers = await getAuthHeaders();
   const res = await fetch(`/api/rooms/${roomId}/events`, {
@@ -15,14 +24,14 @@ export async function createEvent(roomId, eventData) {
     headers,
     body: JSON.stringify(eventData),
   });
-  if (!res.ok) throw new Error((await res.json()).error || 'Failed to create event');
+  if (!res.ok) throw await safeJsonError(res, 'Failed to create event');
   return res.json();
 }
 
 export async function getEvents(roomId) {
   const headers = await getAuthHeaders();
   const res = await fetch(`/api/rooms/${roomId}/events`, { headers });
-  if (!res.ok) throw new Error((await res.json()).error || 'Failed to fetch events');
+  if (!res.ok) throw await safeJsonError(res, 'Failed to fetch events');
   return res.json();
 }
 
@@ -33,7 +42,7 @@ export async function updateEvent(roomId, eventId, eventData) {
     headers,
     body: JSON.stringify(eventData),
   });
-  if (!res.ok) throw new Error((await res.json()).error || 'Failed to update event');
+  if (!res.ok) throw await safeJsonError(res, 'Failed to update event');
   return res.json();
 }
 
@@ -43,6 +52,6 @@ export async function deleteEvent(roomId, eventId) {
     method: 'DELETE',
     headers,
   });
-  if (!res.ok) throw new Error((await res.json()).error || 'Failed to delete event');
+  if (!res.ok) throw await safeJsonError(res, 'Failed to delete event');
   return res.json();
 }
