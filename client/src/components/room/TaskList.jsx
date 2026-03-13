@@ -17,6 +17,7 @@ import {
   Loader2, CalendarDays, GripVertical, UserPlus, AlertCircle,
 } from 'lucide-react';
 import { updateTask, deleteTask, createTask } from '@/services/tasks';
+import { useToast } from '@/components/ui/toast';
 
 const priorityConfig = {
   low:    { dot: 'bg-slate-400', label: 'Low',    border: 'border-l-slate-400' },
@@ -404,6 +405,7 @@ function TaskCard({ task, onStatusChange, onEdit, onDelete }) {
 
 /* ─── Main TaskList Component ─── */
 export default function TaskList({ tasks = [], members = [], roomId, currentUserId, onTasksChange, onUpdated }) {
+  const { addToast } = useToast();
   const [confirmDelete, setConfirmDelete] = useState(null);
   const [editTask, setEditTask] = useState(null);
   const [editForm, setEditForm] = useState({});
@@ -445,6 +447,7 @@ export default function TaskList({ tasks = [], members = [], roomId, currentUser
     } catch (err) {
       setLocalTasks(previousTasks);
       console.error('Failed to update task status:', err.message);
+      addToast(err.message || 'Failed to update task status.', 'error');
       throw err;
     }
   };
@@ -459,6 +462,7 @@ export default function TaskList({ tasks = [], members = [], roomId, currentUser
     } catch (err) {
       setLocalTasks(previousTasks);
       console.error('Failed to delete task:', err.message);
+      addToast(err.message || 'Failed to delete task.', 'error');
     } finally {
       setConfirmDelete(null);
     }
@@ -496,7 +500,7 @@ export default function TaskList({ tasks = [], members = [], roomId, currentUser
       setEditTask(null);
       onUpdated?.();
     } catch {
-      // fail silently
+      addToast('Failed to save task changes.', 'error');
     } finally {
       setEditLoading(false);
     }
