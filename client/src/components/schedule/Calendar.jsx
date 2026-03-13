@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { DayPicker } from 'react-day-picker';
-import { isSameDay, addMonths, subMonths, format } from 'date-fns';
+import { addMonths, subMonths, format } from 'date-fns';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -9,17 +9,26 @@ import { buttonVariants } from '@/components/ui/button';
 export default function ScheduleCalendar({ events = [], selectedDate, onSelectDate, onDateClick }) {
   const [month, setMonth] = useState(new Date());
 
-  const eventDates = events.map((e) => new Date(e.date || e.start_time));
+  const eventDateKeys = new Set(
+    events
+      .map((event) => event.date || event.start_time)
+      .filter(Boolean)
+      .map((value) => format(new Date(value), 'yyyy-MM-dd'))
+  );
+
+  const hasEvent = (date) => eventDateKeys.has(format(date, 'yyyy-MM-dd'));
 
   const modifiers = {
-    hasEvent: (date) => eventDates.some((d) => isSameDay(d, date)),
+    hasEvent,
   };
 
   const modifiersStyles = {
     hasEvent: {
-      fontWeight: 'bold',
-      textDecoration: 'underline',
-      textDecorationColor: 'hsl(174, 60%, 40%)',
+      fontWeight: 700,
+      backgroundColor: 'rgba(14, 116, 144, 0.12)',
+      color: 'hsl(199, 89%, 22%)',
+      borderRadius: '0.65rem',
+      boxShadow: 'inset 0 -3px 0 rgba(14, 116, 144, 0.28)',
     },
   };
 
@@ -61,6 +70,12 @@ export default function ScheduleCalendar({ events = [], selectedDate, onSelectDa
         hideNavigation
         modifiers={modifiers}
         modifiersStyles={modifiersStyles}
+        footer={eventDateKeys.size > 0 ? (
+          <div className="mt-3 flex items-center gap-2 text-xs text-muted-foreground">
+            <span className="inline-block h-2.5 w-2.5 rounded-full bg-cyan-600/70" />
+            Dates with events are highlighted
+          </div>
+        ) : null}
         showOutsideDays
         classNames={{
           months: 'flex flex-col',
