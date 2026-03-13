@@ -295,13 +295,14 @@ function TaskCard({ task, onStatusChange, onEdit, onDelete }) {
             <span className={`inline-flex items-center gap-1 text-xs font-medium ${
               due.overdue && !isCompleted ? 'text-red-600' : 'text-muted-foreground'
             }`}>
-              <CalendarDays className="h-3.5 w-3.5" />
+              <Clock className="h-3.5 w-3.5" />
+              <span className="font-normal">Due:</span>
               {due.text}
               {due.overdue && !isCompleted && <span>· Overdue</span>}
             </span>
           ) : (
             <span className="inline-flex items-center gap-1 text-xs text-muted-foreground/40">
-              <CalendarDays className="h-3.5 w-3.5" />
+              <Clock className="h-3.5 w-3.5" />
               No due date
             </span>
           )}
@@ -327,7 +328,7 @@ function TaskCard({ task, onStatusChange, onEdit, onDelete }) {
             {statusOpen && (
               <>
                 <div className="fixed inset-0 z-40" onClick={() => setStatusOpen(false)} />
-                <div className="absolute left-0 bottom-full mb-1 z-50 rounded-lg border bg-popover shadow-lg p-1 min-w-[140px]">
+                <div className="absolute left-0 top-full mt-1 z-50 rounded-lg border bg-popover shadow-lg p-1 min-w-[140px]">
                   {Object.entries(statusConfig).map(([key, cfg]) => (
                     <button
                       key={key}
