@@ -106,23 +106,9 @@ async function updateTask(req, res, next) {
       return res.status(404).json({ error: 'Task not found' });
     }
 
-    // Check permissions
-    const { data: membership } = await supabaseAdmin
-      .from('room_members')
-      .select('role')
-      .eq('room_id', roomId)
-      .eq('user_id', userId)
-      .single();
-
-    if (!membership) {
-      return res.status(403).json({
-        error: 'You must be a room member to update tasks',
-      });
-    }
-
     const isAssigner = existing.assigned_by === userId;
     const isAdmin =
-      membership.role === 'owner' || membership.role === 'admin';
+      req.memberRole === 'owner' || req.memberRole === 'admin';
 
     // Any room member can update status; admins/assigners can update all fields
     const allowedFields =
@@ -142,11 +128,7 @@ async function updateTask(req, res, next) {
       .from('tasks')
       .update(updates)
       .eq('id', taskId)
-      .select(`
-        *,
-        assignee:assigned_to ( id, full_name, university_email, avatar_url ),
-        assigner:assigned_by ( id, full_name, university_email, avatar_url )
-      `)
+      .select('*')
       .single();
 
     if (error) {
@@ -179,23 +161,9 @@ async function deleteTask(req, res, next) {
       return res.status(404).json({ error: 'Task not found' });
     }
 
-    // Check permissions
-    const { data: membership } = await supabaseAdmin
-      .from('room_members')
-      .select('role')
-      .eq('room_id', roomId)
-      .eq('user_id', userId)
-      .single();
-
-    if (!membership) {
-      return res.status(403).json({
-        error: 'You must be a room member to delete tasks',
-      });
-    }
-
     const isAssigner = existing.assigned_by === userId;
     const isAssignee = existing.assigned_to === userId;
-    const isAdmin = membership.role === 'owner' || membership.role === 'admin';
+    const isAdmin = req.memberRole === 'owner' || req.memberRole === 'admin';
 
     if (!isAssigner && !isAssignee && !isAdmin) {
       return res.status(403).json({

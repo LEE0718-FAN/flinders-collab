@@ -274,7 +274,6 @@ function TaskCreateForm({ roomId, members = [], onCreated }) {
 /* ─── Single Task Card (Compact) ─── */
 function TaskCard({ task, onStatusChange, onEdit, onDelete }) {
   const [statusOpen, setStatusOpen] = useState(false);
-  const [statusLoading, setStatusLoading] = useState(false);
   const statusBtnRef = useRef(null);
   const prio = priorityConfig[task.priority] || priorityConfig.medium;
   const status = statusConfig[task.status] || statusConfig.pending;
@@ -285,12 +284,7 @@ function TaskCard({ task, onStatusChange, onEdit, onDelete }) {
   const handleStatusSelect = async (newStatus) => {
     setStatusOpen(false);
     if (newStatus !== task.status) {
-      setStatusLoading(true);
-      try {
-        await onStatusChange(task, newStatus);
-      } finally {
-        setStatusLoading(false);
-      }
+      onStatusChange(task, newStatus).catch(() => {});
     }
   };
 
@@ -356,10 +350,9 @@ function TaskCard({ task, onStatusChange, onEdit, onDelete }) {
             <button
               ref={statusBtnRef}
               onClick={() => setStatusOpen(!statusOpen)}
-              disabled={statusLoading}
               className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold transition-all hover:scale-105 active:scale-95 cursor-pointer ${status.bg}`}
             >
-              {statusLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : isCompleted ? <CheckCircle2 className="h-3.5 w-3.5" /> : <Circle className="h-3.5 w-3.5" />}
+              {isCompleted ? <CheckCircle2 className="h-3.5 w-3.5" /> : <Circle className="h-3.5 w-3.5" />}
               {status.label}
             </button>
 
@@ -449,7 +442,6 @@ export default function TaskList({ tasks = [], members = [], roomId, currentUser
             : item
         ))
       );
-      onUpdated?.();
     } catch (err) {
       setLocalTasks(previousTasks);
       console.error('Failed to update task status:', err.message);
