@@ -196,7 +196,7 @@ const updateTaskValidation = [
     .isLength({ max: 1000 }),
   body('status')
     .optional()
-    .isIn(['todo', 'in_progress', 'done']),
+    .isIn(['pending', 'in_progress', 'completed']),
   body('assigned_to')
     .optional()
     .isUUID(),
