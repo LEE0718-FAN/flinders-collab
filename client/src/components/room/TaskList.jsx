@@ -244,6 +244,7 @@ function TaskCreateForm({ roomId, members = [], onCreated }) {
 /* ─── Single Task Card (Compact) ─── */
 function TaskCard({ task, onStatusChange, onEdit, onDelete }) {
   const [statusOpen, setStatusOpen] = useState(false);
+  const statusBtnRef = useRef(null);
   const prio = priorityConfig[task.priority] || priorityConfig.medium;
   const status = statusConfig[task.status] || statusConfig.pending;
   const due = formatDueDate(task.due_date);
@@ -315,8 +316,9 @@ function TaskCard({ task, onStatusChange, onEdit, onDelete }) {
         {/* Row 3: Status badge (click to open menu) + assigned member */}
         <div className="flex items-center justify-between mt-2.5 pt-2 border-t border-border/40">
           {/* Status badge with popup menu */}
-          <div className="relative">
+          <div>
             <button
+              ref={statusBtnRef}
               onClick={() => setStatusOpen(!statusOpen)}
               className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold transition-all hover:scale-105 active:scale-95 cursor-pointer ${status.bg}`}
             >
@@ -324,29 +326,35 @@ function TaskCard({ task, onStatusChange, onEdit, onDelete }) {
               {status.label}
             </button>
 
-            {/* Status picker popup */}
-            {statusOpen && (
-              <>
-                <div className="fixed inset-0 z-40" onClick={() => setStatusOpen(false)} />
-                <div className="absolute left-0 top-full mt-1 z-50 rounded-lg border bg-popover shadow-lg p-1 min-w-[140px]">
-                  {Object.entries(statusConfig).map(([key, cfg]) => (
-                    <button
-                      key={key}
-                      onClick={() => handleStatusSelect(key)}
-                      className={`w-full flex items-center gap-2 rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
-                        task.status === key ? 'bg-muted' : 'hover:bg-muted/60'
-                      }`}
-                    >
-                      <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 ${cfg.bg}`}>
-                        {key === 'completed' ? <CheckCircle2 className="h-3 w-3" /> : <Circle className="h-3 w-3" />}
-                        {cfg.label}
-                      </span>
-                      {task.status === key && <span className="text-primary ml-auto">✓</span>}
-                    </button>
-                  ))}
-                </div>
-              </>
-            )}
+            {/* Status picker — fixed position to escape overflow */}
+            {statusOpen && statusBtnRef.current && (() => {
+              const rect = statusBtnRef.current.getBoundingClientRect();
+              return (
+                <>
+                  <div className="fixed inset-0 z-[100]" onClick={() => setStatusOpen(false)} />
+                  <div
+                    className="fixed z-[101] rounded-lg border bg-popover shadow-lg p-1 min-w-[150px]"
+                    style={{ top: rect.top - 4, left: rect.left, transform: 'translateY(-100%)' }}
+                  >
+                    {Object.entries(statusConfig).map(([key, cfg]) => (
+                      <button
+                        key={key}
+                        onClick={() => handleStatusSelect(key)}
+                        className={`w-full flex items-center gap-2 rounded-md px-3 py-2 text-xs font-medium transition-colors ${
+                          task.status === key ? 'bg-muted' : 'hover:bg-muted/60'
+                        }`}
+                      >
+                        <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 ${cfg.bg}`}>
+                          {key === 'completed' ? <CheckCircle2 className="h-3 w-3" /> : <Circle className="h-3 w-3" />}
+                          {cfg.label}
+                        </span>
+                        {task.status === key && <span className="text-primary ml-auto">✓</span>}
+                      </button>
+                    ))}
+                  </div>
+                </>
+              );
+            })()}
           </div>
 
           {/* Assigned member */}
