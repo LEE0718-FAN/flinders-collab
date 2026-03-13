@@ -1,10 +1,20 @@
 import React, { useState } from 'react';
-import { DayPicker } from 'react-day-picker';
+import { DayButton, DayPicker } from 'react-day-picker';
 import { addMonths, subMonths, format } from 'date-fns';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { buttonVariants } from '@/components/ui/button';
+
+const categoryColors = {
+  meeting: '#3b82f6',
+  presentation: '#a855f7',
+  deadline: '#ef4444',
+  study: '#10b981',
+  lecture: '#4f46e5',
+  social: '#f59e0b',
+  other: '#94a3b8',
+};
 
 export default function ScheduleCalendar({ events = [], selectedDate, onSelectDate, onDateClick }) {
   const [month, setMonth] = useState(new Date());
@@ -15,8 +25,53 @@ export default function ScheduleCalendar({ events = [], selectedDate, onSelectDa
       .filter(Boolean)
       .map((value) => format(new Date(value), 'yyyy-MM-dd'))
   );
+  const eventMarkersByDate = events.reduce((map, event) => {
+    const rawDate = event.date || event.start_time;
+    if (!rawDate) return map;
+
+    const dateKey = format(new Date(rawDate), 'yyyy-MM-dd');
+    const color = categoryColors[event.category] || categoryColors.other;
+    const existing = map.get(dateKey) || [];
+
+    if (!existing.includes(color)) {
+      existing.push(color);
+    }
+
+    map.set(dateKey, existing.slice(0, 3));
+    return map;
+  }, new Map());
 
   const hasEvent = (date) => eventDateKeys.has(format(date, 'yyyy-MM-dd'));
+
+  const EventDayButton = (props) => {
+    const { modifiers, day, className, children, ...buttonProps } = props;
+    const dateKey = format(day.date, 'yyyy-MM-dd');
+    const markerColors = eventMarkersByDate.get(dateKey) || [];
+
+    return (
+      <DayButton
+        {...buttonProps}
+        day={day}
+        modifiers={modifiers}
+        className={cn(className, 'relative flex h-9 w-9 items-center justify-center')}
+      >
+        <span className="relative inline-flex items-center justify-center">
+          <span>{children}</span>
+          {markerColors.length > 0 && (
+            <span className="absolute left-1/2 top-[1.5rem] flex -translate-x-1/2 items-center gap-0.5" aria-hidden="true">
+              {markerColors.map((color) => (
+                <span
+                  key={color}
+                  className="h-1.5 w-1.5 rounded-full"
+                  style={{ backgroundColor: color }}
+                />
+              ))}
+            </span>
+          )}
+        </span>
+      </DayButton>
+    );
+  };
 
   const modifiers = {
     hasEvent,
@@ -25,10 +80,10 @@ export default function ScheduleCalendar({ events = [], selectedDate, onSelectDa
   const modifiersStyles = {
     hasEvent: {
       fontWeight: 700,
-      backgroundColor: 'rgba(14, 116, 144, 0.12)',
-      color: 'hsl(199, 89%, 22%)',
+      backgroundColor: 'rgba(59, 130, 246, 0.10)',
+      color: '#0f172a',
       borderRadius: '0.65rem',
-      boxShadow: 'inset 0 -3px 0 rgba(14, 116, 144, 0.28)',
+      boxShadow: 'inset 0 -2px 0 rgba(59, 130, 246, 0.18)',
     },
   };
 
@@ -70,10 +125,17 @@ export default function ScheduleCalendar({ events = [], selectedDate, onSelectDa
         hideNavigation
         modifiers={modifiers}
         modifiersStyles={modifiersStyles}
+        components={{
+          DayButton: EventDayButton,
+        }}
         footer={eventDateKeys.size > 0 ? (
           <div className="mt-3 flex items-center gap-2 text-xs text-muted-foreground">
-            <span className="inline-block h-2.5 w-2.5 rounded-full bg-cyan-600/70" />
-            Dates with events are highlighted
+            <span className="inline-flex items-center gap-1">
+              {Object.entries(categoryColors).slice(0, 3).map(([key, color]) => (
+                <span key={key} className="inline-block h-2.5 w-2.5 rounded-full" style={{ backgroundColor: color }} />
+              ))}
+            </span>
+            Event dates use the same colors as the schedule cards
           </div>
         ) : null}
         showOutsideDays
