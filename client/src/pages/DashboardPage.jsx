@@ -6,7 +6,6 @@ import JoinRoomDialog from '@/components/room/JoinRoomDialog';
 import { getRooms } from '@/services/rooms';
 import { useAuth } from '@/hooks/useAuth';
 import { applyRoomOrder, buildOrderedIds, loadRoomOrder, persistRoomOrder } from '@/lib/room-order';
-import { useRoomOrderStore } from '@/store/roomOrderStore';
 import { Loader2, Plus, UserPlus } from 'lucide-react';
 
 const TEMP_ROOM_PREFIX = 'temp-room-';
@@ -44,6 +43,8 @@ function swapRoomOrder(rooms, draggedId, targetId) {
 
 export default function DashboardPage() {
   const swapDelayMs = 110;
+  const swapCooldownMs = 260;
+  const sidebarSyncDelayMs = 220;
   const { user } = useAuth();
   const [rooms, setRooms] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -55,16 +56,14 @@ export default function DashboardPage() {
   const previousPositionsRef = useRef(new Map());
   const swapTimerRef = useRef(null);
   const pendingSwapTargetRef = useRef(null);
-  const orderedIds = useRoomOrderStore((state) => (user?.id ? state.orderedIdsByUser[user.id] || [] : []));
-  const setOrder = useRoomOrderStore((state) => state.setOrder);
+  const lastSwapAtRef = useRef(0);
 
   const fetchRooms = useCallback(async () => {
     setError('');
     try {
       const data = await getRooms();
       const nextRooms = data.rooms || data || [];
-      const nextOrder = loadRoomOrder(user?.id);
-      setRooms(applyRoomOrder(nextRooms, nextOrder));
+      setRooms(applyRoomOrder(nextRooms, loadRoomOrder(user?.id)));
     } catch (err) {
       setError('Failed to load rooms. Please refresh the page.');
     } finally {
@@ -75,18 +74,6 @@ export default function DashboardPage() {
   useEffect(() => {
     fetchRooms();
   }, [fetchRooms]);
-
-  useEffect(() => {
-    if (!user?.id) return;
-    if (orderedIds.length === 0) {
-      setOrder(user.id, loadRoomOrder(user.id));
-    }
-  }, [orderedIds.length, setOrder, user?.id]);
-
-  useEffect(() => {
-    if (!user?.id || draggedRoomId || orderedIds.length === 0) return;
-    setRooms((prev) => applyRoomOrder(prev, orderedIds));
-  }, [draggedRoomId, orderedIds, user?.id]);
 
   useEffect(() => () => {
     if (swapTimerRef.current) {
@@ -161,6 +148,10 @@ export default function DashboardPage() {
       return;
     }
 
+    if (Date.now() - lastSwapAtRef.current < swapCooldownMs) {
+      return;
+    }
+
     const targetNode = roomNodeMapRef.current.get(targetRoomId);
     const draggedNode = roomNodeMapRef.current.get(draggedRoomId);
     if (!targetNode || !draggedNode) {
@@ -206,27 +197,35 @@ export default function DashboardPage() {
     swapTimerRef.current = window.setTimeout(() => {
       setRooms((prev) => swapRoomOrder(prev, draggedRoomId, targetRoomId));
       setDropTargetId(targetRoomId);
+      lastSwapAtRef.current = Date.now();
       pendingSwapTargetRef.current = null;
       swapTimerRef.current = null;
     }, swapDelayMs);
-  }, [draggedRoomId, dropTargetId, swapDelayMs]);
+  }, [draggedRoomId, dropTargetId, swapCooldownMs, swapDelayMs]);
 
   const handleDragEnd = useCallback(() => {
-    const nextOrderedIds = buildOrderedIds(rooms, TEMP_ROOM_PREFIX);
-    if (user?.id) {
-      persistRoomOrder(user.id, nextOrderedIds);
-      setOrder(user.id, nextOrderedIds);
-    }
     if (swapTimerRef.current) {
       window.clearTimeout(swapTimerRef.current);
       swapTimerRef.current = null;
     }
     pendingSwapTargetRef.current = null;
+    const nextOrderedIds = buildOrderedIds(rooms, TEMP_ROOM_PREFIX);
+    if (user?.id) {
+      persistRoomOrder(user.id, nextOrderedIds);
+      window.setTimeout(() => {
+        window.dispatchEvent(new CustomEvent('room-order-updated', {
+          detail: {
+            userId: user.id,
+            orderedIds: nextOrderedIds,
+          },
+        }));
+      }, sidebarSyncDelayMs);
+    }
     setDraggedRoomId(null);
     setDropTargetId(null);
     setSuppressNavigation(true);
     window.setTimeout(() => setSuppressNavigation(false), 150);
-  }, [rooms, setOrder, user?.id]);
+  }, [rooms, sidebarSyncDelayMs, user?.id]);
 
   return (
     <MainLayout onRoomChange={fetchRooms}>

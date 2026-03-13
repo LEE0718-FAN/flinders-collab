@@ -13,7 +13,6 @@ import {
 import { useAuth } from '@/hooks/useAuth';
 import { getRooms } from '@/services/rooms';
 import { applyRoomOrder, loadRoomOrder } from '@/lib/room-order';
-import { useRoomOrderStore } from '@/store/roomOrderStore';
 
 const roomPalettes = [
   { softBg: '#fff1f6', softBorder: '#fbcfe8', text: '#831843', icon: '#9d174d' },
@@ -139,47 +138,44 @@ export default function MainLayout({ children }) {
   const [rooms, setRooms] = useState([]);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [logoutOpen, setLogoutOpen] = useState(false);
-  const orderedIds = useRoomOrderStore((state) => (user?.id ? state.orderedIdsByUser[user.id] || [] : []));
-  const setOrder = useRoomOrderStore((state) => state.setOrder);
 
   useEffect(() => {
     getRooms()
       .then((data) => {
         const nextRooms = data.rooms || data || [];
-        const nextOrder = orderedIds.length > 0 ? orderedIds : loadRoomOrder(user?.id);
-        setRooms(applyRoomOrder(nextRooms, nextOrder));
+        setRooms(applyRoomOrder(nextRooms, loadRoomOrder(user?.id)));
       })
       .catch(() => {});
   }, [location.pathname, user?.id]);
 
   useEffect(() => {
-    if (!user?.id || orderedIds.length === 0) return;
-    setRooms((prev) => applyRoomOrder(prev, orderedIds));
-  }, [orderedIds, user?.id]);
+    const handleRoomOrderUpdated = (event) => {
+      const detail = event.detail || {};
+      if (detail.userId && detail.userId !== user?.id) {
+        return;
+      }
 
-  useEffect(() => {
+      const nextOrder = detail.orderedIds || loadRoomOrder(user?.id);
+      setRooms((prev) => applyRoomOrder(prev, nextOrder));
+    };
+
     const handleStorage = (event) => {
       const key = user?.id ? `room-order:${user.id}` : null;
       if (!key || event.key !== key) {
         return;
       }
 
-      const nextOrder = loadRoomOrder(user?.id);
-      setOrder(user.id, nextOrder);
-      setRooms((prev) => applyRoomOrder(prev, nextOrder));
+      setRooms((prev) => applyRoomOrder(prev, loadRoomOrder(user?.id)));
     };
 
+    window.addEventListener('room-order-updated', handleRoomOrderUpdated);
     window.addEventListener('storage', handleStorage);
 
     return () => {
+      window.removeEventListener('room-order-updated', handleRoomOrderUpdated);
       window.removeEventListener('storage', handleStorage);
     };
-  }, [setOrder, user?.id]);
-
-  useEffect(() => {
-    if (!user?.id || orderedIds.length > 0) return;
-    setOrder(user.id, loadRoomOrder(user.id));
-  }, [orderedIds.length, setOrder, user?.id]);
+  }, [user?.id]);
 
   const handleLogout = async () => {
     await logout();
