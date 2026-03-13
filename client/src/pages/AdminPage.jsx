@@ -10,9 +10,16 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { getReports, updateReport, getAdminUsers, toggleUserAdmin } from '@/services/reports';
+import { Input } from '@/components/ui/input';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel,
+  AlertDialogContent, AlertDialogDescription, AlertDialogFooter,
+  AlertDialogHeader, AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { getReports, updateReport, getAdminUsers, toggleUserAdmin, deleteAdminUser } from '@/services/reports';
 import { useAuth } from '@/hooks/useAuth';
-import { Loader2, ChevronDown, Shield, ShieldOff, AlertCircle, User, ShieldAlert } from 'lucide-react';
+import { Loader2, ChevronDown, Shield, ShieldOff, AlertCircle, User, ShieldAlert, Search, Trash2, Mail, GraduationCap, Calendar } from 'lucide-react';
 import { format } from 'date-fns';
 
 const STATUS_OPTIONS = ['open', 'in_progress', 'resolved', 'closed'];
@@ -155,7 +162,7 @@ function ReportsTab() {
                     </p>
                     <div className="flex items-center gap-2 text-xs text-muted-foreground">
                       <User className="h-3 w-3" />
-                      <span>{report.reporter_name || report.reporter_email || 'Unknown'}</span>
+                      <span>{report.reporter?.full_name || report.reporter?.university_email || 'Unknown'}</span>
                       <span>&middot;</span>
                       <span>
                         {report.created_at
@@ -209,20 +216,22 @@ function UsersTab() {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [togglingId, setTogglingId] = useState(null);
+  const [search, setSearch] = useState('');
+  const [confirmDelete, setConfirmDelete] = useState(null);
+  const [deleting, setDeleting] = useState(false);
 
-  useEffect(() => {
-    const fetchUsers = async () => {
-      try {
-        const data = await getAdminUsers();
-        setUsers(Array.isArray(data) ? data : data.users || []);
-      } catch {
-        // error handled silently
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchUsers();
-  }, []);
+  const fetchUsers = async () => {
+    try {
+      const data = await getAdminUsers();
+      setUsers(Array.isArray(data) ? data : data.users || []);
+    } catch {
+      // error handled silently
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => { fetchUsers(); }, []);
 
   const handleToggleAdmin = async (userId) => {
     setTogglingId(userId);
@@ -240,6 +249,20 @@ function UsersTab() {
     }
   };
 
+  const handleDeleteUser = async () => {
+    if (!confirmDelete) return;
+    setDeleting(true);
+    try {
+      await deleteAdminUser(confirmDelete.id);
+      setUsers((prev) => prev.filter((u) => u.id !== confirmDelete.id));
+      setConfirmDelete(null);
+    } catch {
+      // error handled silently
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex justify-center py-12">
@@ -248,61 +271,155 @@ function UsersTab() {
     );
   }
 
-  if (users.length === 0) {
+  // Filter users by search
+  const filtered = users.filter((u) => {
+    if (!search.trim()) return true;
+    const q = search.toLowerCase();
     return (
-      <div className="flex flex-col items-center gap-2 py-12 text-muted-foreground">
-        <User className="h-8 w-8" />
-        <p className="text-sm">No users found</p>
-      </div>
+      (u.full_name || '').toLowerCase().includes(q) ||
+      (u.university_email || '').toLowerCase().includes(q) ||
+      (u.student_id || '').toLowerCase().includes(q) ||
+      (u.major || '').toLowerCase().includes(q)
     );
-  }
+  });
+
+  const adminCount = users.filter((u) => u.is_admin).length;
 
   return (
-    <div className="space-y-2">
-      {users.map((u) => (
-        <Card key={u.id}>
-          <CardContent className="flex items-center justify-between gap-4 p-4">
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2">
-                <span className="font-medium text-sm truncate">{u.name || 'Unnamed'}</span>
-                {u.is_admin && (
-                  <Badge variant="default" className="text-[10px] gap-1">
-                    <Shield className="h-3 w-3" />
-                    Admin
-                  </Badge>
-                )}
-              </div>
-              <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 mt-1 text-xs text-muted-foreground">
-                {u.email && <span>{u.email}</span>}
-                {u.student_id && <span>ID: {u.student_id}</span>}
-                {u.major && <span>{u.major}</span>}
-              </div>
-            </div>
+    <div className="space-y-4">
+      {/* Stats */}
+      <div className="flex items-center gap-4 text-sm">
+        <Badge variant="secondary" className="gap-1">
+          <User className="h-3 w-3" />
+          {users.length} users
+        </Badge>
+        <Badge variant="default" className="gap-1">
+          <Shield className="h-3 w-3" />
+          {adminCount} admins
+        </Badge>
+      </div>
 
-            <Button
-              variant={u.is_admin ? 'destructive' : 'outline'}
-              size="sm"
-              className="h-8 gap-1.5 text-xs shrink-0"
-              onClick={() => handleToggleAdmin(u.id)}
-              disabled={togglingId === u.id}
+      {/* Search */}
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <Input
+          placeholder="Search by name, email, student ID, or major..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="pl-9"
+        />
+      </div>
+
+      {/* User list */}
+      {filtered.length === 0 ? (
+        <div className="flex flex-col items-center gap-2 py-12 text-muted-foreground">
+          <User className="h-8 w-8" />
+          <p className="text-sm">{search ? 'No users match your search' : 'No users found'}</p>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {filtered.map((u) => {
+            const name = u.full_name || 'Unnamed';
+            const initials = name.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2);
+
+            return (
+              <Card key={u.id}>
+                <CardContent className="flex items-center gap-4 p-4">
+                  <Avatar className="h-10 w-10 shrink-0">
+                    <AvatarFallback className="text-xs font-semibold bg-primary/10 text-primary">{initials}</AvatarFallback>
+                  </Avatar>
+
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="font-semibold text-sm truncate">{name}</span>
+                      {u.is_admin && (
+                        <Badge variant="default" className="text-[10px] gap-1">
+                          <Shield className="h-3 w-3" />
+                          Admin
+                        </Badge>
+                      )}
+                    </div>
+                    <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-1.5">
+                      {u.university_email && (
+                        <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                          <Mail className="h-3 w-3" />
+                          {u.university_email}
+                        </span>
+                      )}
+                      {u.student_id && (
+                        <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                          <User className="h-3 w-3" />
+                          {u.student_id}
+                        </span>
+                      )}
+                      {u.major && (
+                        <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                          <GraduationCap className="h-3 w-3" />
+                          {u.major}
+                        </span>
+                      )}
+                      {u.created_at && (
+                        <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                          <Calendar className="h-3 w-3" />
+                          Joined {format(new Date(u.created_at), 'MMM d, yyyy')}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 shrink-0">
+                    <Button
+                      variant={u.is_admin ? 'destructive' : 'outline'}
+                      size="sm"
+                      className="h-8 gap-1.5 text-xs"
+                      onClick={() => handleToggleAdmin(u.id)}
+                      disabled={togglingId === u.id}
+                    >
+                      {togglingId === u.id ? (
+                        <Loader2 className="h-3 w-3 animate-spin" />
+                      ) : u.is_admin ? (
+                        <><ShieldOff className="h-3.5 w-3.5" />Remove Admin</>
+                      ) : (
+                        <><Shield className="h-3.5 w-3.5" />Make Admin</>
+                      )}
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 text-muted-foreground hover:text-red-600 hover:bg-red-50"
+                      onClick={() => setConfirmDelete({ id: u.id, name })}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Delete user confirmation */}
+      <AlertDialog open={!!confirmDelete} onOpenChange={(open) => !open && setConfirmDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete User</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete <strong>{confirmDelete?.name}</strong>? This will remove the user from all rooms and delete their account. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => { e.preventDefault(); handleDeleteUser(); }}
+              className="bg-red-600 hover:bg-red-700 text-white"
+              disabled={deleting}
             >
-              {togglingId === u.id ? (
-                <Loader2 className="h-3 w-3 animate-spin" />
-              ) : u.is_admin ? (
-                <>
-                  <ShieldOff className="h-3.5 w-3.5" />
-                  Remove Admin
-                </>
-              ) : (
-                <>
-                  <Shield className="h-3.5 w-3.5" />
-                  Make Admin
-                </>
-              )}
-            </Button>
-          </CardContent>
-        </Card>
-      ))}
+              {deleting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Deleting...</> : 'Yes, Delete User'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

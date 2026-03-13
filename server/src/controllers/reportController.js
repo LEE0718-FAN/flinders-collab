@@ -186,10 +186,42 @@ async function toggleAdmin(req, res, next) {
   }
 }
 
+/**
+ * DELETE /api/admin/users/:userId
+ * Delete a user (admin only). Cannot delete yourself.
+ */
+async function deleteUser(req, res, next) {
+  try {
+    const { data: profile } = await supabaseAdmin.from('users').select('is_admin').eq('id', req.user.id).single();
+    if (!profile?.is_admin) return res.status(403).json({ error: 'Admin access required' });
+
+    const { userId } = req.params;
+
+    if (userId === req.user.id) {
+      return res.status(400).json({ error: 'Cannot delete yourself' });
+    }
+
+    // Delete from users table
+    const { error } = await supabaseAdmin
+      .from('users')
+      .delete()
+      .eq('id', userId);
+
+    if (error) {
+      return res.status(400).json({ error: error.message });
+    }
+
+    res.json({ success: true });
+  } catch (err) {
+    next(err);
+  }
+}
+
 module.exports = {
   createReport,
   getReports,
   updateReport,
   getUsers,
   toggleAdmin,
+  deleteUser,
 };

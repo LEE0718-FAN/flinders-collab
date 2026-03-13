@@ -30,3 +30,9 @@ export async function toggleUserAdmin(userId) {
   const res = await fetch(`/api/admin/users/${userId}/admin`, { method: 'PATCH', headers });
   return parseResponse(res);
 }
+
+export async function deleteAdminUser(userId) {
+  const headers = getAuthHeaders();
+  const res = await fetch(`/api/admin/users/${userId}`, { method: 'DELETE', headers });
+  return parseResponse(res);
+}

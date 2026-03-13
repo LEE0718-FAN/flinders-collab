@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -35,33 +34,43 @@ export default function RoomCard({ room, onDeleted }) {
   };
 
   return (
-    <>
-      <Card
-        className="transition-shadow hover:shadow-md cursor-pointer"
+    <div className="h-full">
+      <div
+        className="flex flex-col h-full rounded-lg border bg-card text-card-foreground shadow-sm transition-shadow hover:shadow-md cursor-pointer"
         onClick={() => navigate(`/rooms/${room.id}`)}
       >
-        <CardHeader className="pb-3">
-          <div className="flex items-start justify-between gap-2">
-            <CardTitle className="text-lg leading-snug">{room.name}</CardTitle>
-            <div className="flex shrink-0 items-center gap-1">
-              {room.course_name && <Badge variant="secondary">{room.course_name}</Badge>}
-              {isOwner && (
-                <Badge variant="outline" className="gap-1 text-xs">
-                  <Crown className="h-3 w-3" />
-                  Owner
-                </Badge>
-              )}
-            </div>
+        {/* Top section: badges + title + description */}
+        <div className="flex-1 p-5 pb-0">
+          {/* Badges row — always 28px tall */}
+          <div className="flex items-center gap-1.5 h-7">
+            {room.course_name && (
+              <Badge variant="secondary" className="text-xs">{room.course_name}</Badge>
+            )}
+            {isOwner && (
+              <Badge variant="outline" className="gap-1 text-xs">
+                <Crown className="h-3 w-3" />
+                Owner
+              </Badge>
+            )}
           </div>
-          {room.description && (
-            <CardDescription className="line-clamp-2">{room.description}</CardDescription>
-          )}
-        </CardHeader>
-        <CardContent>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-1 text-sm text-muted-foreground">
+
+          {/* Title — single line, truncated */}
+          <h3 className="text-lg font-semibold leading-snug mt-1.5 truncate">
+            {room.name}
+          </h3>
+
+          {/* Description — always one line tall */}
+          <p className="text-sm text-muted-foreground mt-1 truncate h-5">
+            {room.description || '\u00A0'}
+          </p>
+        </div>
+
+        {/* Footer — pinned to bottom */}
+        <div className="p-5 pt-3">
+          <div className="flex items-center justify-between border-t pt-3">
+            <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
               <Users className="h-4 w-4" />
-              <span>{room.my_role || 'member'}</span>
+              <span className="capitalize">{room.my_role || 'member'}</span>
             </div>
 
             <Button
@@ -84,8 +93,8 @@ export default function RoomCard({ room, onDeleted }) {
               )}
             </Button>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
       <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
         <AlertDialogContent>
@@ -120,6 +129,6 @@ export default function RoomCard({ room, onDeleted }) {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </>
+    </div>
   );
 }

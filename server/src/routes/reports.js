@@ -21,4 +21,7 @@ router.get('/admin/users', reportController.getUsers);
 // PATCH /api/admin/users/:userId/admin - Toggle admin status (admin only)
 router.patch('/admin/users/:userId/admin', reportController.toggleAdmin);
 
+// DELETE /api/admin/users/:userId - Delete a user (admin only)
+router.delete('/admin/users/:userId', reportController.deleteUser);
+
 module.exports = router;
