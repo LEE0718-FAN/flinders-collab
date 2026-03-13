@@ -13,6 +13,35 @@ import {
 import { useAuth } from '@/hooks/useAuth';
 import { getRooms } from '@/services/rooms';
 
+function getRoomOrderKey(userId) {
+  return userId ? `room-order:${userId}` : null;
+}
+
+function loadRoomOrder(userId) {
+  const key = getRoomOrderKey(userId);
+  if (!key) return [];
+
+  try {
+    const stored = window.localStorage.getItem(key);
+    const parsed = stored ? JSON.parse(stored) : [];
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+function applyRoomOrder(rooms, orderedIds) {
+  if (!orderedIds.length) return rooms;
+
+  const roomMap = new Map(rooms.map((room) => [room.id, room]));
+  const orderedRooms = orderedIds
+    .map((id) => roomMap.get(id))
+    .filter(Boolean);
+  const remainingRooms = rooms.filter((room) => !orderedIds.includes(room.id));
+
+  return [...orderedRooms, ...remainingRooms];
+}
+
 function NavItem({ to, isActive, icon: Icon, label }) {
   return (
     <Link to={to}>
@@ -104,9 +133,12 @@ export default function MainLayout({ children }) {
 
   useEffect(() => {
     getRooms()
-      .then((data) => setRooms(data.rooms || data || []))
+      .then((data) => {
+        const nextRooms = data.rooms || data || [];
+        setRooms(applyRoomOrder(nextRooms, loadRoomOrder(user?.id)));
+      })
       .catch(() => {});
-  }, [location.pathname]);
+  }, [location.pathname, user?.id]);
 
   const handleLogout = async () => {
     await logout();
