@@ -3,9 +3,18 @@ import { Card, CardContent } from '@/components/ui/card';
 
 export default function AuthLayout({ children }) {
   return (
-    <div className="relative flex min-h-screen items-center justify-center overflow-hidden p-4">
+    <div className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden p-4">
       {/* Background */}
       <div className="absolute inset-0 bg-gradient-to-br from-[#001a3a] via-[#002F60] to-[#003d7a]" />
+
+      {/* Subtle pattern overlay */}
+      <div
+        className="absolute inset-0 opacity-[0.03]"
+        style={{
+          backgroundImage: 'radial-gradient(circle at 1px 1px, white 1px, transparent 0)',
+          backgroundSize: '32px 32px',
+        }}
+      />
 
       {/* Gold accent shapes */}
       <div
@@ -17,41 +26,68 @@ export default function AuthLayout({ children }) {
         style={{ background: 'radial-gradient(circle, #FFD300, transparent 70%)' }}
       />
       <div
-        className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 h-[600px] w-[600px] rounded-full opacity-[0.03]"
+        className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 h-[500px] w-[500px] rounded-full opacity-[0.04]"
         style={{ background: 'radial-gradient(circle, #ffffff, transparent 60%)' }}
       />
 
-      {/* Content */}
+      {/* Main content */}
       <div className="relative z-10 w-full max-w-md animate-slide-up">
         {/* Logo area */}
         <div className="mb-8 text-center">
           {/* Flinders University logo */}
-          <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-2xl bg-white/10 backdrop-blur-sm border border-white/20 shadow-lg">
+          <div className="mx-auto mb-5 flex h-20 items-center justify-center">
             <img
-              src="https://upload.wikimedia.org/wikipedia/commons/0/0e/Flinders-logo-stand-alone.svg"
+              src="/images/flinders-logo.png"
               alt="Flinders University"
-              className="h-10 w-10"
-              onError={(e) => { e.target.style.display = 'none'; }}
+              className="h-16 object-contain brightness-0 invert"
+              onError={(e) => {
+                e.target.onerror = null;
+                e.target.src = 'https://upload.wikimedia.org/wikipedia/commons/0/0e/Flinders-logo-stand-alone.svg';
+                e.target.className = 'h-12 w-12';
+              }}
             />
           </div>
           <h1 className="text-3xl font-bold tracking-tight text-white">
             Flinders Collab
           </h1>
-          <p className="mt-2 text-sm text-white/60">
+          <p className="mt-2 text-sm text-white/50">
             Team collaboration for Flinders University students
           </p>
-          <div className="mx-auto mt-3 h-0.5 w-12 rounded-full bg-[#FFD300]/60" />
+          <div className="mx-auto mt-4 h-0.5 w-16 rounded-full bg-gradient-to-r from-transparent via-[#FFD300]/60 to-transparent" />
         </div>
 
         {/* Auth card */}
-        <Card className="border-0 shadow-2xl shadow-black/20 bg-white/95 backdrop-blur-sm">
+        <Card className="border-0 shadow-2xl shadow-black/30 bg-white/[0.97] backdrop-blur-md">
           <CardContent className="p-6 sm:p-8">{children}</CardContent>
         </Card>
 
-        {/* Footer */}
-        <p className="mt-6 text-center text-xs text-white/40">
+        {/* Footer - university info */}
+        <p className="mt-6 text-center text-xs text-white/30">
           Flinders University &middot; Adelaide, South Australia
         </p>
+      </div>
+
+      {/* Developer credit - bottom of page */}
+      <div className="relative z-10 mt-10 mb-4 flex flex-col items-center gap-2.5">
+        <div className="h-px w-16 bg-white/10" />
+        <div className="flex items-center gap-3">
+          <div className="relative">
+            <img
+              src="/images/seungyun.png"
+              alt="Seung Yun Lee"
+              className="h-9 w-9 rounded-full object-cover ring-2 ring-white/20 shadow-lg"
+            />
+            <div className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full bg-[#FFD300] ring-2 ring-[#002F60]" />
+          </div>
+          <div className="text-center">
+            <p className="text-[11px] text-white/40 leading-tight">
+              Designed & Built by
+            </p>
+            <p className="text-xs font-semibold text-white/70 tracking-wide">
+              Seung Yun Lee
+            </p>
+          </div>
+        </div>
       </div>
     </div>
   );

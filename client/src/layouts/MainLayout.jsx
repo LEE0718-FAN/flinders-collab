@@ -120,9 +120,9 @@ export default function MainLayout({ children }) {
         {/* Sidebar header / brand */}
         <div className="flex h-14 items-center gap-2.5 border-b px-5 bg-primary">
           <img
-            src="https://upload.wikimedia.org/wikipedia/commons/0/0e/Flinders-logo-stand-alone.svg"
+            src="/images/flinders-logo.png"
             alt="Flinders"
-            className="h-7 w-7"
+            className="h-8 object-contain brightness-0 invert"
             onError={(e) => { e.target.style.display = 'none'; }}
           />
           <span className="text-[15px] font-bold tracking-tight text-primary-foreground">
@@ -165,9 +165,9 @@ export default function MainLayout({ children }) {
                 <SheetHeader className="border-b px-5 py-4 bg-primary">
                   <SheetTitle className="flex items-center gap-2.5 text-left">
                     <img
-                      src="https://upload.wikimedia.org/wikipedia/commons/0/0e/Flinders-logo-stand-alone.svg"
+                      src="/images/flinders-logo.png"
                       alt="Flinders"
-                      className="h-7 w-7"
+                      className="h-8 object-contain brightness-0 invert"
                     />
                     <span className="text-[15px] font-bold tracking-tight text-primary-foreground">Flinders Collab</span>
                   </SheetTitle>
