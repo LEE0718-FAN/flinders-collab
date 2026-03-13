@@ -6,7 +6,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Plus, Loader2 } from 'lucide-react';
 import { createRoom } from '@/services/rooms';
 
-export default function CreateRoomDialog({ onCreated }) {
+export default function CreateRoomDialog({ onCreateStart, onCreated, onCreateError }) {
   const [open, setOpen] = useState(false);
   const [name, setName] = useState('');
   const [courseCode, setCourseCode] = useState('');
@@ -18,14 +18,31 @@ export default function CreateRoomDialog({ onCreated }) {
     e.preventDefault();
     setError('');
     setLoading(true);
+    const tempRoomId = `temp-room-${Date.now()}`;
+
     try {
-      await createRoom({ name, course_name: courseCode, description });
+      onCreateStart?.({
+        id: tempRoomId,
+        name: name.trim(),
+        course_name: courseCode.trim() || null,
+        description: description.trim() || null,
+        member_count: 1,
+        my_role: 'owner',
+      });
+
+      const room = await createRoom({
+        name: name.trim(),
+        course_name: courseCode.trim(),
+        description: description.trim(),
+      });
+
       setOpen(false);
       setName('');
       setCourseCode('');
       setDescription('');
-      onCreated?.();
+      onCreated?.(room, tempRoomId);
     } catch (err) {
+      onCreateError?.(tempRoomId);
       setError(err.message);
     } finally {
       setLoading(false);

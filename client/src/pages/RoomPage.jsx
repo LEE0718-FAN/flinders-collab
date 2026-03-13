@@ -24,6 +24,17 @@ import { Button } from '@/components/ui/button';
 import ReportButton from '@/components/ReportButton';
 import EditRoomDialog from '@/components/room/EditRoomDialog';
 
+function sortEvents(items) {
+  return [...items].sort((a, b) => new Date(a.start_time) - new Date(b.start_time));
+}
+
+function upsertById(items, nextItem, { prepend = true, sorter } = {}) {
+  if (!nextItem?.id) return items;
+  const remaining = items.filter((item) => item.id !== nextItem.id);
+  const next = prepend ? [nextItem, ...remaining] : [...remaining, nextItem];
+  return sorter ? sorter(next) : next;
+}
+
 export default function RoomPage() {
   const { roomId } = useParams();
   const { user } = useAuth();
@@ -107,6 +118,35 @@ export default function RoomPage() {
       }
     }
   };
+
+  const handleEventCreated = useCallback((event, tempId) => {
+    setEvents((prev) => {
+      const withoutTemp = tempId ? prev.filter((item) => item.id !== tempId) : prev;
+      return upsertById(withoutTemp, event, { sorter: sortEvents });
+    });
+  }, []);
+
+  const handleEventCreateStart = useCallback((tempEvent) => {
+    setEvents((prev) => upsertById(prev, tempEvent, { sorter: sortEvents }));
+  }, []);
+
+  const handleEventCreateError = useCallback((tempId) => {
+    setEvents((prev) => prev.filter((item) => item.id !== tempId));
+  }, []);
+
+  const handleEventsChange = useCallback((updater) => {
+    setEvents((prev) => {
+      const next = typeof updater === 'function' ? updater(prev) : updater;
+      return sortEvents(next);
+    });
+  }, []);
+
+  const handleFileUploaded = useCallback((file) => {
+    setFiles((prev) => upsertById(prev, file, {
+      prepend: true,
+      sorter: (items) => [...items].sort((a, b) => new Date(b.created_at) - new Date(a.created_at)),
+    }));
+  }, []);
 
   if (loading) {
     return (
@@ -192,14 +232,16 @@ export default function RoomPage() {
                 onSelectDate={setSelectedDate}
                 onDateClick={(date) => { setSelectedDate(date); setEventFormOpen(true); }}
               />
-              <EventList events={events} roomId={roomId} onUpdated={fetchEvents} />
+              <EventList events={events} roomId={roomId} onEventsChange={handleEventsChange} />
             </div>
             <EventForm
               roomId={roomId}
               selectedDate={selectedDate}
               open={eventFormOpen}
               onOpenChange={setEventFormOpen}
-              onCreated={fetchEvents}
+              onCreateStart={handleEventCreateStart}
+              onCreated={handleEventCreated}
+              onCreateError={handleEventCreateError}
             />
           </TabsContent>
 
@@ -232,9 +274,9 @@ export default function RoomPage() {
                   <h2 className="text-lg font-semibold">Lecture Materials</h2>
                   <Badge variant="secondary" className="text-xs">{files.filter(f => f.category === 'lecture').length}</Badge>
                 </div>
-                <FileUpload roomId={roomId} onUploaded={fetchFiles} category="lecture" />
+                <FileUpload roomId={roomId} onUploaded={handleFileUploaded} category="lecture" events={events} />
               </div>
-              <FileList files={files} roomId={roomId} onUpdated={fetchFiles} filterCategory="lecture" />
+              <FileList files={files} roomId={roomId} onFilesChange={setFiles} filterCategory="lecture" />
             </div>
 
             <div className="h-px bg-border" />
@@ -247,9 +289,9 @@ export default function RoomPage() {
                   <h2 className="text-lg font-semibold">Team Submissions</h2>
                   <Badge variant="secondary" className="text-xs">{files.filter(f => f.category === 'submission').length}</Badge>
                 </div>
-                <FileUpload roomId={roomId} onUploaded={fetchFiles} category="submission" events={events} />
+                <FileUpload roomId={roomId} onUploaded={handleFileUploaded} category="submission" events={events} />
               </div>
-              <FileList files={files} roomId={roomId} onUpdated={fetchFiles} filterCategory="submission" />
+              <FileList files={files} roomId={roomId} onFilesChange={setFiles} filterCategory="submission" />
             </div>
           </TabsContent>
 

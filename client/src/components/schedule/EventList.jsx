@@ -26,7 +26,7 @@ const categoryConfig = {
   other:        { label: 'Other',         icon: '📌', color: 'bg-gray-400' },
 };
 
-export default function EventList({ events = [], roomId, onUpdated }) {
+export default function EventList({ events = [], roomId, onEventsChange }) {
   const [expandedId, setExpandedId] = useState(null);
   const [deletingId, setDeletingId] = useState(null);
   const [confirmDelete, setConfirmDelete] = useState(null);
@@ -43,7 +43,7 @@ export default function EventList({ events = [], roomId, onUpdated }) {
     setDeletingId(eventId);
     try {
       await deleteEvent(roomId, eventId);
-      onUpdated?.();
+      onEventsChange?.((prev) => prev.filter((event) => event.id !== eventId));
     } catch {
       // fail silently
     } finally {
@@ -79,9 +79,15 @@ export default function EventList({ events = [], roomId, onUpdated }) {
       if (editForm.end_time) {
         updates.end_time = new Date(`${editForm.start_date}T${editForm.end_time}`).toISOString();
       }
-      await updateEvent(roomId, editEvent.id, updates);
+      const updatedEvent = await updateEvent(roomId, editEvent.id, updates);
+      onEventsChange?.((prev) =>
+        prev.map((event) => (
+          event.id === editEvent.id
+            ? { ...event, ...updatedEvent }
+            : event
+        ))
+      );
       setEditEvent(null);
-      onUpdated?.();
     } catch {
       // fail silently
     } finally {

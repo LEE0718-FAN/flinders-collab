@@ -7,6 +7,20 @@ import { getRooms } from '@/services/rooms';
 import { useAuth } from '@/hooks/useAuth';
 import { Loader2, Plus, UserPlus } from 'lucide-react';
 
+function upsertRoom(rooms, room, fallback = {}) {
+  if (!room?.id) return rooms;
+
+  const nextRoom = {
+    member_count: 1,
+    my_role: 'member',
+    ...fallback,
+    ...room,
+  };
+
+  const remaining = rooms.filter((item) => item.id !== nextRoom.id);
+  return [nextRoom, ...remaining];
+}
+
 export default function DashboardPage() {
   const { user } = useAuth();
   const [rooms, setRooms] = useState([]);
@@ -30,6 +44,29 @@ export default function DashboardPage() {
   }, [fetchRooms]);
 
   const displayName = user?.user_metadata?.name || user?.email?.split('@')[0] || 'Student';
+  const handleCreateStart = useCallback((tempRoom) => {
+    setRooms((prev) => upsertRoom(prev, tempRoom, { member_count: 1, my_role: 'owner' }));
+    setLoading(false);
+  }, []);
+
+  const handleRoomCreated = useCallback((room, tempRoomId) => {
+    setRooms((prev) => {
+      const withoutTemp = tempRoomId
+        ? prev.filter((item) => item.id !== tempRoomId)
+        : prev;
+      return upsertRoom(withoutTemp, room, { member_count: 1, my_role: 'owner' });
+    });
+    setLoading(false);
+  }, []);
+
+  const handleCreateError = useCallback((tempRoomId) => {
+    setRooms((prev) => prev.filter((item) => item.id !== tempRoomId));
+  }, []);
+
+  const handleRoomJoined = useCallback((room) => {
+    setRooms((prev) => upsertRoom(prev, room, { member_count: 1, my_role: 'member' }));
+    setLoading(false);
+  }, []);
 
   return (
     <MainLayout onRoomChange={fetchRooms}>
@@ -40,8 +77,12 @@ export default function DashboardPage() {
             <p className="text-muted-foreground">Manage your team rooms and collaborate.</p>
           </div>
           <div className="flex gap-2">
-            <CreateRoomDialog onCreated={fetchRooms} />
-            <JoinRoomDialog onJoined={fetchRooms} />
+            <CreateRoomDialog
+              onCreateStart={handleCreateStart}
+              onCreated={handleRoomCreated}
+              onCreateError={handleCreateError}
+            />
+            <JoinRoomDialog onJoined={handleRoomJoined} />
           </div>
         </div>
 

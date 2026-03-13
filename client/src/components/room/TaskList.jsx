@@ -55,8 +55,29 @@ function getInitials(name) {
   return name.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2);
 }
 
+function buildOptimisticTask({ id, title, dueDate, priority, member, currentUserId }) {
+  const assigneeId = member.user_id || member.id;
+  return {
+    id,
+    room_id: null,
+    title,
+    due_date: dueDate ? new Date(`${dueDate}T23:59`).toISOString() : null,
+    priority,
+    status: 'pending',
+    assigned_to: assigneeId,
+    assigned_by: currentUserId,
+    created_at: new Date().toISOString(),
+    assignee: {
+      id: assigneeId,
+      full_name: member.full_name || null,
+      university_email: member.university_email || null,
+      avatar_url: member.avatar_url || null,
+    },
+  };
+}
+
 /* ─── Task Creation Form with Drag & Drop Member Assignment ─── */
-function TaskCreateForm({ roomId, members = [], onCreated }) {
+function TaskCreateForm({ roomId, members = [], currentUserId, onCreated, onError }) {
   const [title, setTitle] = useState('');
   const [dueDate, setDueDate] = useState('');
   const [priority, setPriority] = useState('medium');
@@ -83,24 +104,44 @@ function TaskCreateForm({ roomId, members = [], onCreated }) {
     e.preventDefault();
     if (!title.trim() || assignedMembers.length === 0) return;
     setSubmitting(true);
+    const normalizedTitle = title.trim();
+    const tempTasks = assignedMembers.map((member) =>
+      buildOptimisticTask({
+        id: `temp-task-${member.user_id || member.id}-${Date.now()}`,
+        title: normalizedTitle,
+        dueDate,
+        priority,
+        member,
+        currentUserId,
+      })
+    );
+
+    onCreated?.(tempTasks);
+
     try {
       // Create one task per assigned member
-      await Promise.all(
+      const createdTasks = await Promise.all(
         assignedMembers.map((member) =>
           createTask(roomId, {
-            title: title.trim(),
+            title: normalizedTitle,
             assigned_to: member.user_id || member.id,
             due_date: dueDate ? new Date(`${dueDate}T23:59`).toISOString() : undefined,
             priority,
           })
         )
       );
+      const savedTasks = createdTasks.map((task, index) => ({
+        ...task,
+        assignee: tempTasks[index].assignee,
+      }));
+
       setTitle('');
       setDueDate('');
       setPriority('medium');
       setAssignedMembers([]);
-      onCreated?.();
+      onCreated?.(savedTasks, tempTasks.map((task) => task.id));
     } catch (err) {
+      onError?.(tempTasks.map((task) => task.id), err);
       console.error('Failed to create task:', err.message);
     } finally {
       setSubmitting(false);
@@ -404,7 +445,7 @@ function TaskCard({ task, onStatusChange, onEdit, onDelete }) {
 }
 
 /* ─── Main TaskList Component ─── */
-export default function TaskList({ tasks = [], members = [], roomId, currentUserId, onTasksChange, onUpdated }) {
+export default function TaskList({ tasks = [], members = [], roomId, currentUserId, onTasksChange }) {
   const { addToast } = useToast();
   const [confirmDelete, setConfirmDelete] = useState(null);
   const [editTask, setEditTask] = useState(null);
@@ -445,7 +486,7 @@ export default function TaskList({ tasks = [], members = [], roomId, currentUser
         ))
       );
     } catch (err) {
-      setLocalTasks(previousTasks);
+      syncTasks(previousTasks);
       console.error('Failed to update task status:', err.message);
       addToast(err.message || 'Failed to update task status.', 'error');
       throw err;
@@ -458,9 +499,8 @@ export default function TaskList({ tasks = [], members = [], roomId, currentUser
     syncTasks((prev) => prev.filter((task) => task.id !== confirmDelete.id));
     try {
       await deleteTask(roomId, confirmDelete.id);
-      onUpdated?.();
     } catch (err) {
-      setLocalTasks(previousTasks);
+      syncTasks(previousTasks);
       console.error('Failed to delete task:', err.message);
       addToast(err.message || 'Failed to delete task.', 'error');
     } finally {
@@ -498,7 +538,6 @@ export default function TaskList({ tasks = [], members = [], roomId, currentUser
         ))
       );
       setEditTask(null);
-      onUpdated?.();
     } catch {
       addToast('Failed to save task changes.', 'error');
     } finally {
@@ -532,7 +571,26 @@ export default function TaskList({ tasks = [], members = [], roomId, currentUser
       {/* Task creation form */}
       {showForm && (
         <div className="mb-6">
-          <TaskCreateForm roomId={roomId} members={members} onCreated={() => { onUpdated?.(); setShowForm(false); }} />
+          <TaskCreateForm
+            roomId={roomId}
+            members={members}
+            currentUserId={currentUserId}
+            onCreated={(createdTasks, replaceIds = []) => {
+              syncTasks((prev) => {
+                const base = replaceIds.length > 0
+                  ? prev.filter((task) => !replaceIds.includes(task.id))
+                  : prev;
+                return [...createdTasks, ...base];
+              });
+              if (replaceIds.length > 0) {
+                setShowForm(false);
+              }
+            }}
+            onError={(replaceIds, err) => {
+              syncTasks((prev) => prev.filter((task) => !replaceIds.includes(task.id)));
+              addToast(err.message || 'Failed to create task.', 'error');
+            }}
+          />
         </div>
       )}
 

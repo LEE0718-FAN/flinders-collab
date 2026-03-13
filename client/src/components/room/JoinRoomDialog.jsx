@@ -27,7 +27,7 @@ export default function JoinRoomDialog({ onJoined }) {
       const roomName = result?.room?.name || 'the room';
       setSuccess(`Joined "${roomName}" successfully!`);
       setInviteCode('');
-      onJoined?.();
+      onJoined?.(result?.room);
       // Auto-close after a brief moment so the user sees the success message
       setTimeout(() => {
         setOpen(false);

@@ -17,7 +17,7 @@ const CATEGORIES = [
   { value: 'other', label: 'Other', icon: '📌' },
 ];
 
-export default function EventForm({ roomId, onCreated, selectedDate, open, onOpenChange }) {
+export default function EventForm({ roomId, onCreateStart, onCreated, onCreateError, selectedDate, open, onOpenChange }) {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState('meeting');
@@ -64,18 +64,27 @@ export default function EventForm({ roomId, onCreated, selectedDate, open, onOpe
     }
 
     setLoading(true);
+    const tempEventId = `temp-event-${Date.now()}`;
+    const payload = {
+      title: title.trim(),
+      description: description.trim() || undefined,
+      category,
+      start_time: start,
+      end_time: end,
+      location_name: locationName.trim() || undefined,
+    };
     try {
-      await createEvent(roomId, {
-        title: title.trim(),
-        description: description.trim() || undefined,
-        category,
-        start_time: start,
-        end_time: end,
-        location_name: locationName.trim() || undefined,
+      onCreateStart?.({
+        id: tempEventId,
+        room_id: roomId,
+        ...payload,
       });
+
+      const createdEvent = await createEvent(roomId, payload);
       onOpenChange(false);
-      onCreated?.();
+      onCreated?.(createdEvent, tempEventId);
     } catch (err) {
+      onCreateError?.(tempEventId);
       setError(err.message);
     } finally {
       setLoading(false);

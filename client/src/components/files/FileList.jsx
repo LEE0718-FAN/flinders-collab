@@ -102,7 +102,7 @@ function FileRow({ file, canEdit, onDelete, onEdit, onDownload, deleting, downlo
   );
 }
 
-export default function FileList({ files = [], roomId, onUpdated, filterCategory }) {
+export default function FileList({ files = [], roomId, onFilesChange, filterCategory }) {
   const { user } = useAuth();
   const [deletingId, setDeletingId] = useState(null);
   const [downloadingId, setDownloadingId] = useState(null);
@@ -118,7 +118,7 @@ export default function FileList({ files = [], roomId, onUpdated, filterCategory
     setDeletingId(fileId);
     try {
       await deleteFile(roomId, fileId);
-      onUpdated?.();
+      onFilesChange?.((prev) => prev.filter((file) => file.id !== fileId));
     } catch {
       // fail silently
     } finally {
@@ -135,9 +135,15 @@ export default function FileList({ files = [], roomId, onUpdated, filterCategory
     if (!editFile) return;
     setEditLoading(true);
     try {
-      await updateFile(editFile.id, { file_description: editDesc.trim() });
+      const updatedFile = await updateFile(editFile.id, { file_description: editDesc.trim() });
+      onFilesChange?.((prev) =>
+        prev.map((file) => (
+          file.id === editFile.id
+            ? { ...file, ...updatedFile }
+            : file
+        ))
+      );
       setEditFile(null);
-      onUpdated?.();
     } catch {
       // fail silently
     } finally {

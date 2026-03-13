@@ -5,6 +5,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Upload, Loader2, FileText, Image, FileArchive, File } from 'lucide-react';
 import { uploadFile } from '@/services/files';
 import { format } from 'date-fns';
+import { useAuth } from '@/hooks/useAuth';
 
 const ALLOWED_TYPES = [
   'application/pdf',
@@ -37,6 +38,7 @@ function formatSize(bytes) {
 }
 
 export default function FileUpload({ roomId, onUploaded, category: initialCategory, events = [] }) {
+  const { user } = useAuth();
   const [open, setOpen] = useState(false);
   const [file, setFile] = useState(null);
   const [description, setDescription] = useState('');
@@ -85,13 +87,21 @@ export default function FileUpload({ roomId, onUploaded, category: initialCatego
 
     setLoading(true);
     try {
-      await uploadFile(roomId, file, {
+      const uploadedFile = await uploadFile(roomId, file, {
         description: description.trim(),
         category,
         event_id: eventId || undefined,
       });
+      const linkedEvent = eventId ? events.find((item) => String(item.id) === String(eventId)) : null;
+      onUploaded?.({
+        ...uploadedFile,
+        users: uploadedFile.users || (user ? {
+          id: user.id,
+          full_name: user.user_metadata?.full_name || user.user_metadata?.name || user.email?.split('@')[0] || 'You',
+        } : undefined),
+        event: uploadedFile.event || linkedEvent || undefined,
+      });
       handleOpenChange(false);
-      onUploaded?.();
     } catch (err) {
       setError(err.message);
     } finally {
