@@ -21,6 +21,7 @@ import { copyToClipboard } from '@/lib/native';
 import { useAuth } from '@/hooks/useAuth';
 import { Loader2, Copy, Check, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import ReportButton from '@/components/ReportButton';
 
 export default function RoomPage() {
   const { roomId } = useParams();
@@ -131,6 +132,9 @@ export default function RoomPage() {
           </TabsList>
 
           <TabsContent value="overview" className="space-y-4">
+            <div className="flex justify-end">
+              <ReportButton section="overview" roomId={roomId} />
+            </div>
             <Card>
               <CardHeader>
                 <CardTitle className="text-lg">Room Info</CardTitle>
@@ -161,10 +165,13 @@ export default function RoomPage() {
           <TabsContent value="schedule" className="space-y-4">
             <div className="flex items-center justify-between">
               <h2 className="text-lg font-semibold">Schedule</h2>
-              <Button size="sm" onClick={() => { if (!selectedDate) setSelectedDate(new Date()); setEventFormOpen(true); }}>
-                <Plus className="mr-2 h-4 w-4" />
-                Add Event
-              </Button>
+              <div className="flex items-center gap-2">
+                <ReportButton section="schedule" roomId={roomId} />
+                <Button size="sm" onClick={() => { if (!selectedDate) setSelectedDate(new Date()); setEventFormOpen(true); }}>
+                  <Plus className="mr-2 h-4 w-4" />
+                  Add Event
+                </Button>
+              </div>
             </div>
             <div className="grid gap-4 md:grid-cols-[280px_1fr]">
               <ScheduleCalendar
@@ -187,7 +194,10 @@ export default function RoomPage() {
           <TabsContent value="tasks" className="space-y-4">
             <div className="flex items-center justify-between">
               <h2 className="text-lg font-semibold">Tasks</h2>
-              <TaskForm roomId={roomId} members={members} onCreated={fetchTasks} />
+              <div className="flex items-center gap-2">
+                <ReportButton section="tasks" roomId={roomId} />
+                <TaskForm roomId={roomId} members={members} onCreated={fetchTasks} />
+              </div>
             </div>
             <TaskList
               tasks={tasks}
@@ -199,6 +209,9 @@ export default function RoomPage() {
           </TabsContent>
 
           <TabsContent value="chat">
+            <div className="flex justify-end mb-2">
+              <ReportButton section="chat" roomId={roomId} />
+            </div>
             <Card>
               <CardContent className="p-0">
                 <ChatPanel roomId={roomId} />
@@ -207,6 +220,9 @@ export default function RoomPage() {
           </TabsContent>
 
           <TabsContent value="files" className="space-y-6">
+            <div className="flex justify-end">
+              <ReportButton section="files" roomId={roomId} />
+            </div>
             {/* Lecture Materials */}
             <div className="space-y-3">
               <div className="flex items-center justify-between">

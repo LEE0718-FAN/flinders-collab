@@ -15,6 +15,7 @@ const fileRoutes = require('./routes/files');
 const locationRoutes = require('./routes/location');
 const messageRoutes = require('./routes/messages');
 const taskRoutes = require('./routes/tasks');
+const reportRoutes = require('./routes/reports');
 
 // Create Express app and HTTP server
 const app = express();
@@ -52,6 +53,7 @@ app.use('/api', fileRoutes);
 app.use('/api', locationRoutes);
 app.use('/api', messageRoutes);
 app.use('/api', taskRoutes);
+app.use('/api', reportRoutes);
 
 // Serve built client in production
 const path = require('path');
@@ -73,6 +75,15 @@ const PORT = config.port;
 server.listen(PORT, () => {
   console.log(`Server running on port ${PORT} in ${config.nodeEnv} mode`);
   console.log(`Health check: http://localhost:${PORT}/api/health`);
+
+  // Keep-alive ping to prevent Render free tier from sleeping
+  if (config.nodeEnv === 'production') {
+    const PING_URL = process.env.RENDER_EXTERNAL_URL || 'https://flinders-collab.onrender.com';
+    setInterval(() => {
+      const https = require('https');
+      https.get(`${PING_URL}/api/health`, () => {}).on('error', () => {});
+    }, 14 * 60 * 1000); // every 14 minutes
+  }
 });
 
 module.exports = { app, server, io };

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { LayoutDashboard, LogOut, Menu, Users, ChevronRight } from 'lucide-react';
+import { LayoutDashboard, LogOut, Menu, Users, ChevronRight, Shield } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
@@ -74,6 +74,13 @@ function SidebarContent({ rooms, location }) {
           <p className="mt-0.5 text-[11px] text-muted-foreground/50">Create or join a room to start</p>
         </div>
       )}
+
+      {/* Admin */}
+      <div className="mt-5 mb-1 flex items-center gap-2 px-3">
+        <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/70">Admin</span>
+        <div className="h-px flex-1 bg-border/60" />
+      </div>
+      <NavItem to="/admin" isActive={location.pathname === '/admin'} icon={Shield} label="Admin Panel" />
     </nav>
   );
 }
