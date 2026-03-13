@@ -205,11 +205,11 @@ export default function MainLayout({ children }) {
       <aside className="hidden w-64 shrink-0 flex-col bg-gradient-to-b from-slate-900 via-slate-900 to-indigo-950 md:flex">
         {/* Sidebar header / brand */}
         <div className="flex h-16 items-center gap-3 px-5">
-          <div className="h-10 w-10 shrink-0 overflow-hidden rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 p-1.5 shadow-lg shadow-indigo-500/30 flex items-center justify-center">
+          <div className="h-10 w-10 shrink-0 overflow-hidden rounded-xl bg-white p-1 shadow-lg flex items-center justify-center">
             <img
               src="/images/flinders-logo.png"
               alt="Flinders"
-              className="h-full w-full object-contain brightness-0 invert"
+              className="h-full w-full object-contain"
               onError={(e) => { e.target.parentElement.style.display = 'none'; }}
             />
           </div>
@@ -253,11 +253,11 @@ export default function MainLayout({ children }) {
               <SheetContent side="left" className="w-72 p-0 bg-gradient-to-b from-slate-900 via-slate-900 to-indigo-950 border-r-0">
                 <SheetHeader className="px-5 py-4">
                   <SheetTitle className="flex items-center gap-2.5 text-left">
-                    <div className="h-10 w-10 shrink-0 overflow-hidden rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 p-1.5 shadow-lg shadow-indigo-500/30 flex items-center justify-center">
+                    <div className="h-10 w-10 shrink-0 overflow-hidden rounded-xl bg-white p-1 shadow-lg flex items-center justify-center">
                       <img
                         src="/images/flinders-logo.png"
                         alt="Flinders"
-                        className="h-full w-full object-contain brightness-0 invert"
+                        className="h-full w-full object-contain"
                       />
                     </div>
                     <span className="text-[15px] font-bold tracking-tight text-white">Flinders Collab</span>
