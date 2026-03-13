@@ -334,7 +334,7 @@ function TaskCard({ task, onStatusChange, onEdit, onDelete }) {
                   <div className="fixed inset-0 z-[100]" onClick={() => setStatusOpen(false)} />
                   <div
                     className="fixed z-[101] rounded-lg border bg-popover shadow-lg p-1 min-w-[150px]"
-                    style={{ top: rect.top - 4, left: rect.left, transform: 'translateY(-100%)' }}
+                    style={{ top: rect.bottom + 4, left: rect.left }}
                   >
                     {Object.entries(statusConfig).map(([key, cfg]) => (
                       <button
