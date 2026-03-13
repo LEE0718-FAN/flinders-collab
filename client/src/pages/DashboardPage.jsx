@@ -174,8 +174,34 @@ export default function DashboardPage() {
     event.dataTransfer.setData('text/plain', roomId);
   }, []);
 
-  const handleDragOverRoom = useCallback((targetRoomId) => {
+  const handleDragOverRoom = useCallback((targetRoomId, event) => {
     if (!draggedRoomId || draggedRoomId === targetRoomId || dropTargetId === targetRoomId) {
+      return;
+    }
+
+    const targetNode = roomNodeMapRef.current.get(targetRoomId);
+    const draggedNode = roomNodeMapRef.current.get(draggedRoomId);
+    if (!targetNode || !draggedNode) {
+      return;
+    }
+
+    const targetRect = targetNode.getBoundingClientRect();
+    const draggedRect = draggedNode.getBoundingClientRect();
+    const targetCenterX = targetRect.left + (targetRect.width / 2);
+    const targetCenterY = targetRect.top + (targetRect.height / 2);
+    const draggedCenterX = draggedRect.left + (draggedRect.width / 2);
+    const draggedCenterY = draggedRect.top + (draggedRect.height / 2);
+    const horizontalMove = Math.abs(targetCenterX - draggedCenterX) >= Math.abs(targetCenterY - draggedCenterY);
+
+    const crossedThreshold = horizontalMove
+      ? (targetCenterX > draggedCenterX
+          ? event.clientX >= targetCenterX
+          : event.clientX <= targetCenterX)
+      : (targetCenterY > draggedCenterY
+          ? event.clientY >= targetCenterY
+          : event.clientY <= targetCenterY);
+
+    if (!crossedThreshold) {
       return;
     }
 
@@ -232,12 +258,11 @@ export default function DashboardPage() {
                 }}
                 onDragEnter={(e) => {
                   e.preventDefault();
-                  handleDragOverRoom(room.id);
                 }}
                 onDragOver={(e) => {
                   e.preventDefault();
                   e.dataTransfer.dropEffect = 'move';
-                  handleDragOverRoom(room.id);
+                  handleDragOverRoom(room.id, e);
                 }}
                 className={`rounded-lg ${
                   draggedRoomId === room.id ? 'scale-[0.98] opacity-70' : ''
