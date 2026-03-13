@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useLayoutEffect, useRef } from 'react';
 import MainLayout from '@/layouts/MainLayout';
 import RoomCard from '@/components/room/RoomCard';
 import CreateRoomDialog from '@/components/room/CreateRoomDialog';
@@ -88,6 +88,8 @@ export default function DashboardPage() {
   const [draggedRoomId, setDraggedRoomId] = useState(null);
   const [dropTargetId, setDropTargetId] = useState(null);
   const [suppressNavigation, setSuppressNavigation] = useState(false);
+  const roomNodeMapRef = useRef(new Map());
+  const previousPositionsRef = useRef(new Map());
 
   const fetchRooms = useCallback(async () => {
     setError('');
@@ -109,6 +111,36 @@ export default function DashboardPage() {
   useEffect(() => {
     saveRoomOrder(user?.id, rooms);
   }, [rooms, user?.id]);
+
+  useLayoutEffect(() => {
+    const nextPositions = new Map();
+
+    rooms.forEach((room) => {
+      const node = roomNodeMapRef.current.get(room.id);
+      if (!node) return;
+
+      const rect = node.getBoundingClientRect();
+      nextPositions.set(room.id, rect);
+
+      const previousRect = previousPositionsRef.current.get(room.id);
+      if (!previousRect) return;
+
+      const deltaX = previousRect.left - rect.left;
+      const deltaY = previousRect.top - rect.top;
+
+      if (deltaX === 0 && deltaY === 0) return;
+
+      node.style.transition = 'none';
+      node.style.transform = `translate(${deltaX}px, ${deltaY}px)`;
+
+      requestAnimationFrame(() => {
+        node.style.transition = 'transform 220ms ease';
+        node.style.transform = 'translate(0, 0)';
+      });
+    });
+
+    previousPositionsRef.current = nextPositions;
+  }, [rooms]);
 
   const displayName = user?.user_metadata?.name || user?.email?.split('@')[0] || 'Student';
   const handleCreateStart = useCallback((tempRoom) => {
@@ -191,6 +223,13 @@ export default function DashboardPage() {
             {rooms.map((room) => (
               <div
                 key={room.id}
+                ref={(node) => {
+                  if (node) {
+                    roomNodeMapRef.current.set(room.id, node);
+                  } else {
+                    roomNodeMapRef.current.delete(room.id);
+                  }
+                }}
                 onDragEnter={(e) => {
                   e.preventDefault();
                   handleDragOverRoom(room.id);
@@ -200,7 +239,7 @@ export default function DashboardPage() {
                   e.dataTransfer.dropEffect = 'move';
                   handleDragOverRoom(room.id);
                 }}
-                className={`rounded-lg transition-transform ${
+                className={`rounded-lg ${
                   draggedRoomId === room.id ? 'scale-[0.98] opacity-70' : ''
                 } ${
                   dropTargetId === room.id && draggedRoomId !== room.id
