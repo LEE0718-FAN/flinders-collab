@@ -42,7 +42,31 @@ function applyRoomOrder(rooms, orderedIds) {
   return [...orderedRooms, ...remainingRooms];
 }
 
-function NavItem({ to, isActive, icon: Icon, label }) {
+const roomPalettes = [
+  { softBg: '#fff1f6', softBorder: '#fbcfe8', text: '#831843', icon: '#9d174d' },
+  { softBg: '#f0f9ff', softBorder: '#bae6fd', text: '#0c4a6e', icon: '#075985' },
+  { softBg: '#f0fdf4', softBorder: '#bbf7d0', text: '#14532d', icon: '#166534' },
+  { softBg: '#fffbeb', softBorder: '#fde68a', text: '#78350f', icon: '#92400e' },
+  { softBg: '#f5f3ff', softBorder: '#ddd6fe', text: '#4c1d95', icon: '#5b21b6' },
+  { softBg: '#f0fdfa', softBorder: '#ccfbf1', text: '#134e4a', icon: '#0f766e' },
+];
+
+function getRoomPalette(room) {
+  const seed = `${room.id || ''}-${room.name || ''}`;
+  const hash = [...seed].reduce((acc, char) => ((acc * 31) + char.charCodeAt(0)) % roomPalettes.length, 0);
+  return roomPalettes[Math.abs(hash) % roomPalettes.length];
+}
+
+function NavItem({ to, isActive, icon: Icon, label, palette }) {
+  const roomStyle = palette ? {
+    backgroundColor: isActive ? palette.softBg : 'transparent',
+    color: isActive ? palette.text : undefined,
+    border: `1px solid ${isActive ? palette.softBorder : 'transparent'}`,
+  } : undefined;
+  const iconStyle = palette ? {
+    color: isActive ? palette.icon : undefined,
+  } : undefined;
+
   return (
     <Link to={to}>
       <button
@@ -53,13 +77,17 @@ function NavItem({ to, isActive, icon: Icon, label }) {
             : 'text-muted-foreground hover:bg-muted hover:text-foreground'
           }
         `}
+        style={roomStyle}
         role="link"
         aria-current={isActive ? 'page' : undefined}
       >
-        <Icon className={`h-[18px] w-[18px] shrink-0 transition-smooth ${isActive ? 'text-primary' : 'text-muted-foreground group-hover:text-foreground'}`} />
+        <Icon
+          className={`h-[18px] w-[18px] shrink-0 transition-smooth ${isActive ? 'text-primary' : 'text-muted-foreground group-hover:text-foreground'}`}
+          style={iconStyle}
+        />
         <span className="truncate">{label}</span>
         {isActive && (
-          <ChevronRight className="ml-auto h-3.5 w-3.5 text-primary/50" />
+          <ChevronRight className="ml-auto h-3.5 w-3.5" style={{ color: palette?.icon || 'rgb(59 130 246 / 0.5)' }} />
         )}
       </button>
     </Link>
@@ -98,6 +126,7 @@ function SidebarContent({ rooms, location, isAdmin }) {
             isActive={location.pathname === `/rooms/${room.id}`}
             icon={Users}
             label={room.name}
+            palette={getRoomPalette(room)}
           />
         ))}
       </div>
