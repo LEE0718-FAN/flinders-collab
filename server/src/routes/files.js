@@ -37,6 +37,14 @@ router.get(
   fileController.getFiles
 );
 
+// GET /files/:fileId/download - Get a signed download URL
+router.get(
+  '/files/:fileId/download',
+  fileIdParam,
+  validate,
+  fileController.getFileDownloadUrl
+);
+
 // PATCH /files/:fileId - Update file metadata
 router.patch(
   '/files/:fileId',

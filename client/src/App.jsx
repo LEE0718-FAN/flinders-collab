@@ -29,6 +29,28 @@ function ProtectedRoute({ children }) {
   return children;
 }
 
+function AdminRoute({ children }) {
+  const { user, isLoading } = useAuth();
+
+  if (isLoading) {
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  if (!user) {
+    return <Navigate to="/login" replace />;
+  }
+
+  if (!user.is_admin) {
+    return <Navigate to="/dashboard" replace />;
+  }
+
+  return children;
+}
+
 function PublicRoute({ children }) {
   const { user, isLoading } = useAuth();
 
@@ -59,7 +81,7 @@ export default function App() {
               <Route path="/signup" element={<PublicRoute><SignupPage /></PublicRoute>} />
               <Route path="/dashboard" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
               <Route path="/rooms/:roomId" element={<ProtectedRoute><RoomPage /></ProtectedRoute>} />
-              <Route path="/admin" element={<ProtectedRoute><AdminPage /></ProtectedRoute>} />
+              <Route path="/admin" element={<AdminRoute><AdminPage /></AdminRoute>} />
             </Routes>
           </BrowserRouter>
         </TooltipProvider>

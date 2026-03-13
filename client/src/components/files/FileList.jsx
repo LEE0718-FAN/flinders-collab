@@ -10,9 +10,9 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from '@/components/ui/dialog';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
-import { FileText, Image, FileArchive, File, Download, Trash2, Pencil, CalendarDays, Loader2 } from 'lucide-react';
+import { Download, Trash2, Pencil, CalendarDays, Loader2 } from 'lucide-react';
 import { format } from 'date-fns';
-import { deleteFile, updateFile } from '@/services/files';
+import { deleteFile, getFileDownloadUrl, updateFile } from '@/services/files';
 import { useAuth } from '@/hooks/useAuth';
 
 function formatSize(bytes) {
@@ -39,9 +39,8 @@ async function forceDownload(url, fileName) {
   }
 }
 
-function FileRow({ file, canEdit, onDelete, onEdit, deleting }) {
+function FileRow({ file, canEdit, onDelete, onEdit, onDownload, deleting, downloading }) {
   const fileName = file.file_name || file.name;
-  const fileUrl = file.file_url || file.url;
   const uploaderName = file.users?.full_name || file.uploader_name || 'Unknown';
 
   return (
@@ -69,16 +68,14 @@ function FileRow({ file, canEdit, onDelete, onEdit, deleting }) {
           </p>
         </div>
         <div className="flex items-center gap-0.5">
-          {fileUrl && (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => forceDownload(fileUrl, fileName)}>
-                  <Download className="h-3.5 w-3.5" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent side="top"><p>Download</p></TooltipContent>
-            </Tooltip>
-          )}
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => onDownload(file)} disabled={downloading}>
+                {downloading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="top"><p>Download</p></TooltipContent>
+          </Tooltip>
           {canEdit && (
             <Tooltip>
               <TooltipTrigger asChild>
@@ -108,6 +105,7 @@ function FileRow({ file, canEdit, onDelete, onEdit, deleting }) {
 export default function FileList({ files = [], roomId, onUpdated, filterCategory }) {
   const { user } = useAuth();
   const [deletingId, setDeletingId] = useState(null);
+  const [downloadingId, setDownloadingId] = useState(null);
   const [confirmDelete, setConfirmDelete] = useState(null);
   const [editFile, setEditFile] = useState(null);
   const [editDesc, setEditDesc] = useState('');
@@ -147,6 +145,20 @@ export default function FileList({ files = [], roomId, onUpdated, filterCategory
     }
   };
 
+  const handleDownload = async (file) => {
+    setDownloadingId(file.id);
+    try {
+      const data = await getFileDownloadUrl(file.id);
+      if (data?.download_url) {
+        await forceDownload(data.download_url, file.file_name || file.name);
+      }
+    } catch {
+      // fail silently
+    } finally {
+      setDownloadingId(null);
+    }
+  };
+
   const filtered = filterCategory
     ? files.filter((f) => f.category === filterCategory)
     : files;
@@ -170,9 +182,11 @@ export default function FileList({ files = [], roomId, onUpdated, filterCategory
               key={file.id}
               file={file}
               canEdit={isUploader}
+              onDownload={handleDownload}
               onDelete={(id, name) => setConfirmDelete({ id, name })}
               onEdit={handleEditOpen}
               deleting={deletingId === file.id}
+              downloading={downloadingId === file.id}
             />
           );
         })}

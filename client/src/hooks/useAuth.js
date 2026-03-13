@@ -1,6 +1,6 @@
 import { useEffect, useCallback } from 'react';
 import { useAuthStore } from '@/store/authStore';
-import { apiSignup, apiLogin } from '@/services/auth';
+import { apiSignup, apiLogin, apiLogout } from '@/services/auth';
 import { saveSession, loadSession, clearSession } from '@/lib/auth-token';
 
 export function useAuth() {
@@ -25,7 +25,6 @@ export function useAuth() {
 
     const sessionData = {
       access_token: result.session.access_token,
-      refresh_token: result.session.refresh_token,
       expires_at: result.session.expires_at,
       user: {
         id: result.user.id,
@@ -64,7 +63,6 @@ export function useAuth() {
 
     const sessionData = {
       access_token: result.session.access_token,
-      refresh_token: result.session.refresh_token,
       expires_at: result.session.expires_at,
       user: {
         id: result.user.id,
@@ -85,8 +83,14 @@ export function useAuth() {
   }, [setSession, setUser]);
 
   const logout = useCallback(async () => {
-    clearSession();
-    clearAuth();
+    try {
+      await apiLogout();
+    } catch {
+      // Clear local session even if remote revoke fails
+    } finally {
+      clearSession();
+      clearAuth();
+    }
   }, [clearAuth]);
 
   return { user, session, isLoading, login, signup, logout };

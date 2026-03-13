@@ -1,6 +1,17 @@
 const { saveMessage } = require('../controllers/messageController');
 const { supabaseAdmin } = require('../services/supabase');
 
+async function isRoomMember(roomId, userId) {
+  const { data } = await supabaseAdmin
+    .from('room_members')
+    .select('id')
+    .eq('room_id', roomId)
+    .eq('user_id', userId)
+    .maybeSingle();
+
+  return !!data;
+}
+
 /**
  * Handle chat-related socket events for a connected user.
  */
@@ -11,8 +22,16 @@ function chatHandler(io, socket) {
    * Join a room's chat channel.
    * Client emits: 'chat:join' { roomId }
    */
-  socket.on('chat:join', ({ roomId }) => {
+  socket.on('chat:join', async ({ roomId }) => {
     if (!roomId) return;
+    try {
+      const member = await isRoomMember(roomId, userId);
+      if (!member) {
+        return socket.emit('chat:error', { error: 'Not a room member' });
+      }
+    } catch (err) {
+      return socket.emit('chat:error', { error: 'Failed to verify room access' });
+    }
     socket.join(`room:${roomId}`);
     console.log(`User ${userId} joined chat room:${roomId}`);
   });
@@ -37,14 +56,7 @@ function chatHandler(io, socket) {
 
     try {
       // Verify user is a member of the room
-      const { data: membership } = await supabaseAdmin
-        .from('room_members')
-        .select('id')
-        .eq('room_id', roomId)
-        .eq('user_id', socket.userId)
-        .single();
-
-      if (!membership) {
+      if (!(await isRoomMember(roomId, userId))) {
         return socket.emit('chat:error', { error: 'Not a room member' });
       }
 
@@ -68,8 +80,15 @@ function chatHandler(io, socket) {
    * Client emits: 'chat:typing' { roomId, isTyping }
    * Server broadcasts to room (except sender): 'chat:typing' { userId, isTyping }
    */
-  socket.on('chat:typing', ({ roomId, isTyping }) => {
+  socket.on('chat:typing', async ({ roomId, isTyping }) => {
     if (!roomId) return;
+    try {
+      if (!(await isRoomMember(roomId, userId))) {
+        return;
+      }
+    } catch {
+      return;
+    }
     socket.to(`room:${roomId}`).emit('chat:typing', {
       userId,
       isTyping: !!isTyping,

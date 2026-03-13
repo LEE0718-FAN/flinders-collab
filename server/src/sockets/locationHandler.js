@@ -1,5 +1,30 @@
 const { supabaseAdmin } = require('../services/supabase');
 
+async function verifyEventAccess(eventId, userId) {
+  const { data: event } = await supabaseAdmin
+    .from('events')
+    .select('id, room_id, enable_location_sharing')
+    .eq('id', eventId)
+    .maybeSingle();
+
+  if (!event || !event.enable_location_sharing) {
+    return null;
+  }
+
+  const { data: membership } = await supabaseAdmin
+    .from('room_members')
+    .select('id')
+    .eq('room_id', event.room_id)
+    .eq('user_id', userId)
+    .maybeSingle();
+
+  if (!membership) {
+    return null;
+  }
+
+  return event;
+}
+
 /**
  * Handle location-sharing socket events for real-time updates.
  */
@@ -10,8 +35,16 @@ function locationHandler(io, socket) {
    * Join an event's location channel.
    * Client emits: 'location:join' { eventId }
    */
-  socket.on('location:join', ({ eventId }) => {
+  socket.on('location:join', async ({ eventId }) => {
     if (!eventId) return;
+    try {
+      const event = await verifyEventAccess(eventId, userId);
+      if (!event) {
+        return socket.emit('location:error', { error: 'Not allowed to view this event location' });
+      }
+    } catch {
+      return socket.emit('location:error', { error: 'Failed to verify event access' });
+    }
     socket.join(`event-location:${eventId}`);
     console.log(`User ${userId} joined location channel for event:${eventId}`);
   });
@@ -34,16 +67,9 @@ function locationHandler(io, socket) {
     if (!eventId || latitude == null || longitude == null) return;
 
     try {
-      // Verify user is a participant of the event
-      const { data: participant } = await supabaseAdmin
-        .from('event_participants')
-        .select('id')
-        .eq('event_id', eventId)
-        .eq('user_id', userId)
-        .single();
-
-      if (!participant) {
-        return socket.emit('location:error', { error: 'Not an event participant' });
+      const event = await verifyEventAccess(eventId, userId);
+      if (!event) {
+        return socket.emit('location:error', { error: 'Not allowed to share location for this event' });
       }
     } catch (err) {
       console.error('Error verifying event participation:', err.message);
@@ -64,8 +90,14 @@ function locationHandler(io, socket) {
    * Notify others that user stopped sharing.
    * Client emits: 'location:stop' { eventId }
    */
-  socket.on('location:stop', ({ eventId }) => {
+  socket.on('location:stop', async ({ eventId }) => {
     if (!eventId) return;
+    try {
+      const event = await verifyEventAccess(eventId, userId);
+      if (!event) return;
+    } catch {
+      return;
+    }
 
     io.to(`event-location:${eventId}`).emit('location:stopped', {
       userId,

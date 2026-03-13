@@ -1,25 +1,28 @@
+import { apiUrl } from '@/lib/api';
+import { getAuthHeaders, parseResponse } from '@/lib/api-headers';
+
 export async function apiSignup(userData) {
-  const res = await fetch('/api/auth/signup', {
+  const res = await fetch(apiUrl('/api/auth/signup'), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(userData),
   });
-  if (!res.ok) {
-    const body = await res.json().catch(() => null);
-    throw new Error(body?.error || 'Signup failed');
-  }
-  return res.json();
+  return parseResponse(res);
 }
 
 export async function apiLogin(credentials) {
-  const res = await fetch('/api/auth/login', {
+  const res = await fetch(apiUrl('/api/auth/login'), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(credentials),
   });
-  if (!res.ok) {
-    const body = await res.json().catch(() => null);
-    throw new Error(body?.error || 'Login failed');
-  }
-  return res.json();
+  return parseResponse(res);
+}
+
+export async function apiLogout() {
+  const res = await fetch(apiUrl('/api/auth/logout'), {
+    method: 'POST',
+    headers: getAuthHeaders(),
+  });
+  return parseResponse(res);
 }

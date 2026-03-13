@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -274,6 +274,7 @@ function TaskCreateForm({ roomId, members = [], onCreated }) {
 /* ─── Single Task Card (Compact) ─── */
 function TaskCard({ task, onStatusChange, onEdit, onDelete }) {
   const [statusOpen, setStatusOpen] = useState(false);
+  const [statusLoading, setStatusLoading] = useState(false);
   const statusBtnRef = useRef(null);
   const prio = priorityConfig[task.priority] || priorityConfig.medium;
   const status = statusConfig[task.status] || statusConfig.pending;
@@ -281,10 +282,15 @@ function TaskCard({ task, onStatusChange, onEdit, onDelete }) {
   const isCompleted = task.status === 'completed';
   const assigneeName = task.assignee?.full_name || task.assignee?.university_email || 'Unassigned';
 
-  const handleStatusSelect = (newStatus) => {
+  const handleStatusSelect = async (newStatus) => {
     setStatusOpen(false);
     if (newStatus !== task.status) {
-      onStatusChange(task, newStatus);
+      setStatusLoading(true);
+      try {
+        await onStatusChange(task, newStatus);
+      } finally {
+        setStatusLoading(false);
+      }
     }
   };
 
@@ -350,9 +356,10 @@ function TaskCard({ task, onStatusChange, onEdit, onDelete }) {
             <button
               ref={statusBtnRef}
               onClick={() => setStatusOpen(!statusOpen)}
+              disabled={statusLoading}
               className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold transition-all hover:scale-105 active:scale-95 cursor-pointer ${status.bg}`}
             >
-              {isCompleted ? <CheckCircle2 className="h-3.5 w-3.5" /> : <Circle className="h-3.5 w-3.5" />}
+              {statusLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : isCompleted ? <CheckCircle2 className="h-3.5 w-3.5" /> : <Circle className="h-3.5 w-3.5" />}
               {status.label}
             </button>
 
@@ -403,28 +410,62 @@ function TaskCard({ task, onStatusChange, onEdit, onDelete }) {
 }
 
 /* ─── Main TaskList Component ─── */
-export default function TaskList({ tasks = [], members = [], roomId, currentUserId, onUpdated }) {
+export default function TaskList({ tasks = [], members = [], roomId, currentUserId, onTasksChange, onUpdated }) {
   const [confirmDelete, setConfirmDelete] = useState(null);
   const [editTask, setEditTask] = useState(null);
   const [editForm, setEditForm] = useState({});
   const [editLoading, setEditLoading] = useState(false);
   const [showForm, setShowForm] = useState(false);
+  const [localTasks, setLocalTasks] = useState(tasks);
+
+  useEffect(() => {
+    setLocalTasks(tasks);
+  }, [tasks]);
+
+  const syncTasks = (updater) => {
+    setLocalTasks((prev) => {
+      const next = typeof updater === 'function' ? updater(prev) : updater;
+      onTasksChange?.(next);
+      return next;
+    });
+  };
 
   const handleStatusChange = async (task, newStatus) => {
+    const previousTasks = localTasks;
+    syncTasks((prev) =>
+      prev.map((item) => (
+        item.id === task.id
+          ? { ...item, status: newStatus }
+          : item
+      ))
+    );
+
     try {
-      await updateTask(roomId, task.id, { status: newStatus });
+      const updatedTask = await updateTask(roomId, task.id, { status: newStatus });
+      syncTasks((prev) =>
+        prev.map((item) => (
+          item.id === task.id
+            ? { ...item, ...updatedTask }
+            : item
+        ))
+      );
       onUpdated?.();
     } catch (err) {
+      setLocalTasks(previousTasks);
       console.error('Failed to update task status:', err.message);
+      throw err;
     }
   };
 
   const handleDelete = async () => {
     if (!confirmDelete) return;
+    const previousTasks = localTasks;
+    syncTasks((prev) => prev.filter((task) => task.id !== confirmDelete.id));
     try {
       await deleteTask(roomId, confirmDelete.id);
       onUpdated?.();
     } catch (err) {
+      setLocalTasks(previousTasks);
       console.error('Failed to delete task:', err.message);
     } finally {
       setConfirmDelete(null);
@@ -448,9 +489,18 @@ export default function TaskList({ tasks = [], members = [], roomId, currentUser
       const updates = { title: editForm.title.trim() };
       if (editForm.due_date) {
         updates.due_date = new Date(`${editForm.due_date}T23:59`).toISOString();
+      } else {
+        updates.due_date = null;
       }
       updates.priority = editForm.priority;
-      await updateTask(roomId, editTask.id, updates);
+      const updatedTask = await updateTask(roomId, editTask.id, updates);
+      syncTasks((prev) =>
+        prev.map((task) => (
+          task.id === editTask.id
+            ? { ...task, ...updatedTask }
+            : task
+        ))
+      );
       setEditTask(null);
       onUpdated?.();
     } catch {
@@ -461,8 +511,8 @@ export default function TaskList({ tasks = [], members = [], roomId, currentUser
   };
 
   // Separate active and completed
-  const activeTasks = tasks.filter((t) => t.status !== 'completed');
-  const completedTasks = tasks.filter((t) => t.status === 'completed');
+  const activeTasks = localTasks.filter((t) => t.status !== 'completed');
+  const completedTasks = localTasks.filter((t) => t.status === 'completed');
 
   return (
     <>
@@ -476,7 +526,7 @@ export default function TaskList({ tasks = [], members = [], roomId, currentUser
           <Plus className="mr-2 h-4 w-4" />
           {showForm ? 'Hide Form' : 'New Task'}
         </Button>
-        {tasks.length > 0 && (
+        {localTasks.length > 0 && (
           <p className="text-sm text-muted-foreground">
             {activeTasks.length} active · {completedTasks.length} done
           </p>
@@ -491,7 +541,7 @@ export default function TaskList({ tasks = [], members = [], roomId, currentUser
       )}
 
       {/* Task grid */}
-      {tasks.length === 0 ? (
+      {localTasks.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-16 text-center">
           <div className="text-5xl mb-4">📋</div>
           <p className="text-lg font-semibold text-muted-foreground">No tasks yet</p>

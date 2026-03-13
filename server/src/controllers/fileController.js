@@ -4,6 +4,58 @@ const path = require('path');
 const { v4: uuidv4 } = require('uuid');
 
 const BACKUP_BUCKET = 'room-files-backup';
+const SIGNED_URL_TTL_SECONDS = 60 * 5;
+
+function extractStoragePath(rawValue, bucket) {
+  if (!rawValue) return null;
+
+  if (!/^https?:\/\//i.test(rawValue)) {
+    return rawValue;
+  }
+
+  try {
+    const url = new URL(rawValue);
+    const bucketPattern = new RegExp(
+      `/(?:object/(?:public|sign)/)?${bucket}/(.+?)(?:\\?.*)?$`
+    );
+    const match = url.pathname.match(bucketPattern);
+    return match ? decodeURIComponent(match[1]) : null;
+  } catch {
+    return null;
+  }
+}
+
+async function getMembershipRole(roomId, userId) {
+  const { data } = await supabaseAdmin
+    .from('room_members')
+    .select('role')
+    .eq('room_id', roomId)
+    .eq('user_id', userId)
+    .maybeSingle();
+
+  return data?.role || null;
+}
+
+async function buildSignedDownloadUrl(storagePath) {
+  const bucket = config.upload.storageBucket;
+  const normalizedPath = extractStoragePath(storagePath, bucket);
+
+  if (!normalizedPath) {
+    return null;
+  }
+
+  const { data, error } = await supabaseAdmin.storage
+    .from(bucket)
+    .createSignedUrl(normalizedPath, SIGNED_URL_TTL_SECONDS, {
+      download: true,
+    });
+
+  if (error) {
+    throw error;
+  }
+
+  return data.signedUrl;
+}
 
 /**
  * POST /rooms/:roomId/files
@@ -55,26 +107,28 @@ async function uploadFile(req, res, next) {
       return res.status(400).json({ error: uploadError.message });
     }
 
-    // Upload backup copy (non-blocking, don't fail if backup fails)
-    supabaseAdmin.storage
+    // Upload backup copy as part of the write path so every stored file
+    // has a deterministic recovery target in the backup bucket.
+    const { error: backupError } = await supabaseAdmin.storage
       .from(BACKUP_BUCKET)
       .upload(backupPath, file.buffer, {
         contentType: file.mimetype,
         upsert: false,
-      })
-      .catch(() => {});
+      });
 
-    // Get public URL
-    const { data: urlData } = supabaseAdmin.storage
-      .from(bucket)
-      .getPublicUrl(storagePath);
+    if (backupError) {
+      await supabaseAdmin.storage.from(bucket).remove([storagePath]).catch(() => {});
+      return res.status(500).json({
+        error: 'Failed to create backup copy for this file upload',
+      });
+    }
 
     // Save file metadata to database
     const insertObj = {
       room_id: roomId,
       uploaded_by: userId,
       file_name: file.originalname,
-      file_url: urlData.publicUrl,
+      file_url: storagePath,
       file_type: file.mimetype,
       file_size: file.size,
       backup_path: backupPath,
@@ -90,10 +144,15 @@ async function uploadFile(req, res, next) {
       .single();
 
     if (dbError) {
+      await supabaseAdmin.storage.from(bucket).remove([storagePath]).catch(() => {});
       return res.status(400).json({ error: dbError.message });
     }
 
-    res.status(201).json(data);
+    const download_url = await buildSignedDownloadUrl(data.file_url).catch(() => null);
+    res.status(201).json({
+      ...data,
+      download_url,
+    });
   } catch (err) {
     next(err);
   }
@@ -130,7 +189,47 @@ async function getFiles(req, res, next) {
       return res.status(400).json({ error: error.message });
     }
 
-    res.json(data);
+    const filesWithSignedUrls = await Promise.all(
+      data.map(async (file) => ({
+        ...file,
+        download_url: await buildSignedDownloadUrl(file.file_url).catch(() => null),
+      }))
+    );
+
+    res.json(filesWithSignedUrls);
+  } catch (err) {
+    next(err);
+  }
+}
+
+async function getFileDownloadUrl(req, res, next) {
+  try {
+    const { fileId } = req.params;
+    const userId = req.user.id;
+
+    const { data: file, error } = await supabaseAdmin
+      .from('files')
+      .select('id, room_id, file_name, file_url, deleted_at')
+      .eq('id', fileId)
+      .maybeSingle();
+
+    if (error || !file || file.deleted_at) {
+      return res.status(404).json({ error: 'File not found' });
+    }
+
+    const role = await getMembershipRole(file.room_id, userId);
+    if (!role) {
+      return res.status(403).json({ error: 'You are not a member of this room' });
+    }
+
+    const download_url = await buildSignedDownloadUrl(file.file_url);
+
+    res.json({
+      file_id: file.id,
+      file_name: file.file_name,
+      download_url,
+      expires_in: SIGNED_URL_TTL_SECONDS,
+    });
   } catch (err) {
     next(err);
   }
@@ -158,21 +257,15 @@ async function deleteFile(req, res, next) {
     }
 
     // Check room membership
-    const { data: membership } = await supabaseAdmin
-      .from('room_members')
-      .select('role')
-      .eq('room_id', file.room_id)
-      .eq('user_id', userId)
-      .single();
-
-    if (!membership) {
+    const role = await getMembershipRole(file.room_id, userId);
+    if (!role) {
       return res.status(403).json({
         error: 'You are not a member of this room',
       });
     }
 
     const isUploader = file.uploaded_by === userId;
-    const isAdmin = membership.role === 'owner' || membership.role === 'admin';
+    const isAdmin = role === 'owner' || role === 'admin';
 
     if (!isUploader && !isAdmin) {
       return res.status(403).json({
@@ -193,17 +286,7 @@ async function deleteFile(req, res, next) {
 
     // Remove from main bucket (backup stays)
     const bucket = config.upload.storageBucket;
-    let storagePath = null;
-    try {
-      const url = new URL(file.file_url);
-      const bucketPattern = new RegExp(`/(?:object/(?:public|sign)/)?${bucket}/(.+?)(?:\\?.*)?$`);
-      const match = url.pathname.match(bucketPattern);
-      if (match) {
-        storagePath = decodeURIComponent(match[1]);
-      }
-    } catch {
-      storagePath = file.file_url;
-    }
+    const storagePath = extractStoragePath(file.file_url, bucket);
 
     if (storagePath) {
       await supabaseAdmin.storage.from(bucket).remove([storagePath]);
@@ -232,17 +315,11 @@ async function updateFile(req, res, next) {
 
     if (!file) return res.status(404).json({ error: 'File not found' });
 
-    const { data: membership } = await supabaseAdmin
-      .from('room_members')
-      .select('role')
-      .eq('room_id', file.room_id)
-      .eq('user_id', userId)
-      .single();
-
-    if (!membership) return res.status(403).json({ error: 'Not a room member' });
+    const role = await getMembershipRole(file.room_id, userId);
+    if (!role) return res.status(403).json({ error: 'Not a room member' });
 
     const isUploader = file.uploaded_by === userId;
-    const isAdmin = membership.role === 'owner' || membership.role === 'admin';
+    const isAdmin = role === 'owner' || role === 'admin';
     if (!isUploader && !isAdmin) {
       return res.status(403).json({ error: 'Only the uploader or admin can edit this file' });
     }
@@ -273,6 +350,7 @@ async function updateFile(req, res, next) {
 module.exports = {
   uploadFile,
   getFiles,
+  getFileDownloadUrl,
   deleteFile,
   updateFile,
 };

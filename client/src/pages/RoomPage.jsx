@@ -210,6 +210,7 @@ export default function RoomPage() {
               members={members}
               roomId={roomId}
               currentUserId={user?.id}
+              onTasksChange={setTasks}
               onUpdated={fetchTasks}
             />
           </TabsContent>
