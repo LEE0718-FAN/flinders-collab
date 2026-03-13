@@ -140,6 +140,39 @@ export default function MainLayout({ children }) {
       .catch(() => {});
   }, [location.pathname, user?.id]);
 
+  useEffect(() => {
+    const handleRoomOrderUpdated = (event) => {
+      const detail = event.detail || {};
+      if (detail.userId && detail.userId !== user?.id) {
+        return;
+      }
+
+      if (Array.isArray(detail.rooms) && detail.rooms.length > 0) {
+        setRooms(applyRoomOrder(detail.rooms, detail.orderedIds || loadRoomOrder(user?.id)));
+        return;
+      }
+
+      setRooms((prev) => applyRoomOrder(prev, detail.orderedIds || loadRoomOrder(user?.id)));
+    };
+
+    const handleStorage = (event) => {
+      const key = getRoomOrderKey(user?.id);
+      if (!key || event.key !== key) {
+        return;
+      }
+
+      setRooms((prev) => applyRoomOrder(prev, loadRoomOrder(user?.id)));
+    };
+
+    window.addEventListener('room-order-updated', handleRoomOrderUpdated);
+    window.addEventListener('storage', handleStorage);
+
+    return () => {
+      window.removeEventListener('room-order-updated', handleRoomOrderUpdated);
+      window.removeEventListener('storage', handleStorage);
+    };
+  }, [user?.id]);
+
   const handleLogout = async () => {
     await logout();
     navigate('/login');

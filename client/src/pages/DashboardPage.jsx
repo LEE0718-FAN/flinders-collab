@@ -61,6 +61,13 @@ function saveRoomOrder(userId, rooms) {
     .filter((id) => typeof id === 'string' && !id.startsWith(TEMP_ROOM_PREFIX));
 
   window.localStorage.setItem(key, JSON.stringify(orderedIds));
+  window.dispatchEvent(new CustomEvent('room-order-updated', {
+    detail: {
+      userId,
+      orderedIds,
+      rooms,
+    },
+  }));
 }
 
 function swapRoomOrder(rooms, draggedId, targetId) {
