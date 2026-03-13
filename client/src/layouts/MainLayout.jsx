@@ -32,9 +32,10 @@ function getRoomPalette(room) {
 
 function NavItem({ to, isActive, icon: Icon, label, palette }) {
   const roomStyle = palette ? {
-    backgroundColor: isActive ? palette.softBg : `${palette.softBg}CC`,
+    background: `linear-gradient(90deg, ${palette.softBg} 0%, ${palette.softBg}CC 100%)`,
     color: palette.text,
     border: `1px solid ${palette.softBorder}`,
+    boxShadow: `inset 3px 0 0 ${palette.icon}`,
   } : undefined;
   const iconStyle = palette ? {
     color: palette.icon,
@@ -46,7 +47,7 @@ function NavItem({ to, isActive, icon: Icon, label, palette }) {
         className={`
           group flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-smooth
           ${isActive
-            ? 'bg-primary/10 text-primary'
+            ? 'text-primary'
             : 'text-muted-foreground hover:bg-muted hover:text-foreground'
           }
         `}
@@ -54,6 +55,12 @@ function NavItem({ to, isActive, icon: Icon, label, palette }) {
         role="link"
         aria-current={isActive ? 'page' : undefined}
       >
+        {palette && (
+          <span
+            className="h-2.5 w-2.5 shrink-0 rounded-full"
+            style={{ backgroundColor: palette.icon }}
+          />
+        )}
         <Icon
           className={`h-[18px] w-[18px] shrink-0 transition-smooth ${isActive ? 'text-primary' : 'text-muted-foreground group-hover:text-foreground'}`}
           style={iconStyle}
