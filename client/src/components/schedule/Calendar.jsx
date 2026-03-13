@@ -77,13 +77,7 @@ export default function ScheduleCalendar({ events = [], selectedDate, onSelectDa
   };
 
   const modifiersStyles = {
-    hasEvent: {
-      fontWeight: 700,
-      backgroundColor: 'rgba(59, 130, 246, 0.10)',
-      color: '#0f172a',
-      borderRadius: '0.65rem',
-      boxShadow: 'inset 0 -2px 0 rgba(59, 130, 246, 0.18)',
-    },
+    hasEvent: {},
   };
 
   const handleSelect = (date) => {
@@ -125,16 +119,6 @@ export default function ScheduleCalendar({ events = [], selectedDate, onSelectDa
         components={{
           DayButton: EventDayButton,
         }}
-        footer={eventDateKeys.size > 0 ? (
-          <div className="mt-3 flex items-center gap-2 text-xs text-muted-foreground">
-            <span className="inline-flex items-center gap-1">
-              {Object.entries(categoryColors).slice(0, 3).map(([key, color]) => (
-                <span key={key} className="inline-block h-2.5 w-2.5 rounded-full" style={{ backgroundColor: color }} />
-              ))}
-            </span>
-            Event dates use the same colors as the schedule cards
-          </div>
-        ) : null}
         showOutsideDays
         classNames={{
           months: 'flex flex-col',
