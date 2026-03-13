@@ -27,20 +27,20 @@ const STATUS_FILTERS = ['all', 'open', 'in_progress', 'resolved', 'closed'];
 const SECTION_FILTERS = ['all', 'overview', 'schedule', 'tasks', 'chat', 'files', 'login', 'signup'];
 
 const statusColors = {
-  open: 'bg-yellow-50 text-yellow-700 border-yellow-200/60',
-  in_progress: 'bg-blue-50 text-blue-700 border-blue-200/60',
-  resolved: 'bg-green-50 text-green-700 border-green-200/60',
-  closed: 'bg-gray-50 text-gray-500 border-gray-200/60',
+  open: 'bg-yellow-100 text-yellow-800 border-yellow-200',
+  in_progress: 'bg-blue-100 text-blue-800 border-blue-200',
+  resolved: 'bg-green-100 text-green-800 border-green-200',
+  closed: 'bg-gray-100 text-gray-600 border-gray-200',
 };
 
 const sectionColors = {
-  overview: 'bg-purple-50 text-purple-700',
-  schedule: 'bg-orange-50 text-orange-700',
-  tasks: 'bg-cyan-50 text-cyan-700',
-  chat: 'bg-pink-50 text-pink-700',
-  files: 'bg-emerald-50 text-emerald-700',
-  login: 'bg-indigo-50 text-indigo-700',
-  signup: 'bg-teal-50 text-teal-700',
+  overview: 'bg-purple-100 text-purple-800',
+  schedule: 'bg-orange-100 text-orange-800',
+  tasks: 'bg-cyan-100 text-cyan-800',
+  chat: 'bg-pink-100 text-pink-800',
+  files: 'bg-emerald-100 text-emerald-800',
+  login: 'bg-indigo-100 text-indigo-800',
+  signup: 'bg-teal-100 text-teal-800',
 };
 
 function formatStatus(status) {
@@ -88,21 +88,17 @@ function ReportsTab() {
   };
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-4">
       {/* Status filter */}
-      <div className="space-y-2.5">
-        <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground/60">Status</span>
-        <div className="flex flex-wrap gap-2">
+      <div className="space-y-2">
+        <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Status</span>
+        <div className="flex flex-wrap gap-1.5">
           {STATUS_FILTERS.map((s) => (
             <Button
               key={s}
               variant={statusFilter === s ? 'default' : 'outline'}
               size="sm"
-              className={`rounded-full h-8 text-xs capitalize ${
-                statusFilter === s
-                  ? 'bg-primary text-white'
-                  : 'bg-white border-border/60 hover:bg-muted/50'
-              }`}
+              className="h-7 text-xs capitalize"
               onClick={() => setStatusFilter(s)}
             >
               {formatStatus(s)}
@@ -112,19 +108,15 @@ function ReportsTab() {
       </div>
 
       {/* Section filter */}
-      <div className="space-y-2.5">
-        <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground/60">Section</span>
-        <div className="flex flex-wrap gap-2">
+      <div className="space-y-2">
+        <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Section</span>
+        <div className="flex flex-wrap gap-1.5">
           {SECTION_FILTERS.map((s) => (
             <Button
               key={s}
               variant={sectionFilter === s ? 'default' : 'outline'}
               size="sm"
-              className={`rounded-full h-8 text-xs capitalize ${
-                sectionFilter === s
-                  ? 'bg-primary text-white'
-                  : 'bg-white border-border/60 hover:bg-muted/50'
-              }`}
+              className="h-7 text-xs capitalize"
               onClick={() => setSectionFilter(s)}
             >
               {s}
@@ -135,45 +127,41 @@ function ReportsTab() {
 
       {/* Report list */}
       {loading ? (
-        <div className="flex justify-center py-16">
+        <div className="flex justify-center py-12">
           <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
         </div>
       ) : reports.length === 0 ? (
-        <div className="flex flex-col items-center gap-3 py-16 text-muted-foreground">
-          <div className="h-12 w-12 rounded-full bg-muted/50 flex items-center justify-center">
-            <AlertCircle className="h-6 w-6" />
-          </div>
+        <div className="flex flex-col items-center gap-2 py-12 text-muted-foreground">
+          <AlertCircle className="h-8 w-8" />
           <p className="text-sm">No reports found</p>
         </div>
       ) : (
         <div className="space-y-3">
           {reports.map((report) => (
-            <Card key={report.id} className="rounded-xl border-border/40 shadow-card hover:shadow-card-hover transition-all duration-200">
-              <CardContent className="p-5">
+            <Card key={report.id}>
+              <CardContent className="p-4">
                 <div className="flex flex-wrap items-start justify-between gap-3">
-                  <div className="flex-1 min-w-0 space-y-2.5">
+                  <div className="flex-1 min-w-0 space-y-2">
                     <div className="flex flex-wrap items-center gap-2">
                       <Badge
                         variant="secondary"
-                        className={`rounded-full text-xs capitalize ${sectionColors[report.section] || ''}`}
+                        className={`text-xs capitalize ${sectionColors[report.section] || ''}`}
                       >
                         {report.section}
                       </Badge>
                       <Badge
                         variant="outline"
-                        className={`rounded-full text-xs ${statusColors[report.status] || ''}`}
+                        className={`text-xs ${statusColors[report.status] || ''}`}
                       >
                         {formatStatus(report.status)}
                       </Badge>
                     </div>
                     <h3 className="font-semibold text-sm">{report.subject}</h3>
-                    <p className="text-sm text-muted-foreground/80 whitespace-pre-wrap">
+                    <p className="text-sm text-muted-foreground whitespace-pre-wrap">
                       {report.description}
                     </p>
-                    <div className="flex items-center gap-2 text-xs text-muted-foreground/70">
-                      <div className="h-5 w-5 rounded-full bg-muted/60 flex items-center justify-center">
-                        <User className="h-3 w-3" />
-                      </div>
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <User className="h-3 w-3" />
                       <span>{report.reporter?.full_name || report.reporter?.university_email || 'Unknown'}</span>
                       <span>&middot;</span>
                       <span>
@@ -189,7 +177,7 @@ function ReportsTab() {
                       <Button
                         variant="outline"
                         size="sm"
-                        className="rounded-lg h-8 gap-1 text-xs shrink-0"
+                        className="h-8 gap-1 text-xs shrink-0"
                         disabled={updatingId === report.id}
                       >
                         {updatingId === report.id ? (
@@ -202,7 +190,7 @@ function ReportsTab() {
                         )}
                       </Button>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="rounded-lg">
+                    <DropdownMenuContent align="end">
                       {STATUS_OPTIONS.map((status) => (
                         <DropdownMenuItem
                           key={status}
@@ -277,7 +265,7 @@ function UsersTab() {
 
   if (loading) {
     return (
-      <div className="flex justify-center py-16">
+      <div className="flex justify-center py-12">
         <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
       </div>
     );
@@ -300,34 +288,32 @@ function UsersTab() {
   return (
     <div className="space-y-4">
       {/* Stats */}
-      <div className="flex gap-3">
-        <Badge variant="secondary" className="bg-muted/50 text-foreground rounded-full px-4 py-2 gap-1.5 text-sm font-medium">
-          <User className="h-3.5 w-3.5" />
+      <div className="flex items-center gap-4 text-sm">
+        <Badge variant="secondary" className="gap-1">
+          <User className="h-3 w-3" />
           {users.length} users
         </Badge>
-        <Badge variant="default" className="bg-primary/10 text-primary rounded-full px-4 py-2 gap-1.5 text-sm font-medium">
-          <Shield className="h-3.5 w-3.5" />
+        <Badge variant="default" className="gap-1">
+          <Shield className="h-3 w-3" />
           {adminCount} admins
         </Badge>
       </div>
 
       {/* Search */}
       <div className="relative">
-        <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/40" />
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
         <Input
           placeholder="Search by name, email, student ID, or major..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="pl-11 rounded-xl h-12 bg-white border-border/50 shadow-sm"
+          className="pl-9"
         />
       </div>
 
       {/* User list */}
       {filtered.length === 0 ? (
-        <div className="flex flex-col items-center gap-3 py-16 text-muted-foreground">
-          <div className="h-12 w-12 rounded-full bg-muted/50 flex items-center justify-center">
-            <User className="h-6 w-6" />
-          </div>
+        <div className="flex flex-col items-center gap-2 py-12 text-muted-foreground">
+          <User className="h-8 w-8" />
           <p className="text-sm">{search ? 'No users match your search' : 'No users found'}</p>
         </div>
       ) : (
@@ -337,17 +323,17 @@ function UsersTab() {
             const initials = name.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2);
 
             return (
-              <Card key={u.id} className="rounded-xl border-border/40 shadow-card hover:shadow-card-hover transition-all">
+              <Card key={u.id}>
                 <CardContent className="flex items-center gap-4 p-4">
-                  <Avatar className="h-11 w-11 shrink-0">
-                    <AvatarFallback className="text-xs font-semibold bg-gradient-to-br from-blue-100 to-indigo-100 text-blue-700">{initials}</AvatarFallback>
+                  <Avatar className="h-10 w-10 shrink-0">
+                    <AvatarFallback className="text-xs font-semibold bg-primary/10 text-primary">{initials}</AvatarFallback>
                   </Avatar>
 
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
-                      <span className="font-semibold text-[15px] truncate">{name}</span>
+                      <span className="font-semibold text-sm truncate">{name}</span>
                       {u.is_admin && (
-                        <Badge variant="default" className="rounded-full bg-primary/10 text-primary text-[10px] gap-1 border-0">
+                        <Badge variant="default" className="text-[10px] gap-1">
                           <Shield className="h-3 w-3" />
                           Admin
                         </Badge>
@@ -355,25 +341,25 @@ function UsersTab() {
                     </div>
                     <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-1.5">
                       {u.university_email && (
-                        <span className="flex items-center gap-1.5 text-xs text-muted-foreground/70">
+                        <span className="flex items-center gap-1 text-xs text-muted-foreground">
                           <Mail className="h-3 w-3" />
                           {u.university_email}
                         </span>
                       )}
                       {u.student_id && (
-                        <span className="flex items-center gap-1.5 text-xs text-muted-foreground/70">
+                        <span className="flex items-center gap-1 text-xs text-muted-foreground">
                           <User className="h-3 w-3" />
                           {u.student_id}
                         </span>
                       )}
                       {u.major && (
-                        <span className="flex items-center gap-1.5 text-xs text-muted-foreground/70">
+                        <span className="flex items-center gap-1 text-xs text-muted-foreground">
                           <GraduationCap className="h-3 w-3" />
                           {u.major}
                         </span>
                       )}
                       {u.created_at && (
-                        <span className="flex items-center gap-1.5 text-xs text-muted-foreground/70">
+                        <span className="flex items-center gap-1 text-xs text-muted-foreground">
                           <Calendar className="h-3 w-3" />
                           Joined {format(new Date(u.created_at), 'MMM d, yyyy')}
                         </span>
@@ -385,7 +371,7 @@ function UsersTab() {
                     <Button
                       variant={u.is_admin ? 'destructive' : 'outline'}
                       size="sm"
-                      className="rounded-lg h-9 gap-1.5 text-xs"
+                      className="h-8 gap-1.5 text-xs"
                       onClick={() => handleToggleAdmin(u.id)}
                       disabled={togglingId === u.id}
                     >
@@ -400,7 +386,7 @@ function UsersTab() {
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="rounded-lg h-9 w-9 text-muted-foreground hover:text-red-600 hover:bg-red-50"
+                      className="h-8 w-8 text-muted-foreground hover:text-red-600 hover:bg-red-50"
                       onClick={() => setConfirmDelete({ id: u.id, name })}
                     >
                       <Trash2 className="h-4 w-4" />
@@ -444,12 +430,10 @@ export default function AdminPage() {
   if (!user?.is_admin) {
     return (
       <MainLayout>
-        <div className="flex flex-col items-center justify-center gap-4 py-24 text-muted-foreground">
-          <div className="h-16 w-16 rounded-full bg-red-50 flex items-center justify-center">
-            <ShieldAlert className="h-8 w-8 text-red-500" />
-          </div>
+        <div className="flex flex-col items-center justify-center gap-4 py-20 text-muted-foreground">
+          <ShieldAlert className="h-12 w-12" />
           <h2 className="text-lg font-semibold text-foreground">Access Denied</h2>
-          <p className="text-sm text-center max-w-sm">You do not have admin privileges to view this page.</p>
+          <p className="text-sm">You do not have admin privileges to view this page.</p>
         </div>
       </MainLayout>
     );
@@ -459,28 +443,26 @@ export default function AdminPage() {
     <MainLayout>
       <div className="space-y-6">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight flex items-center gap-3">
-            <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center">
-              <Shield className="h-5 w-5 text-primary" />
-            </div>
+          <h1 className="text-2xl font-bold flex items-center gap-2">
+            <Shield className="h-6 w-6" />
             Admin Panel
           </h1>
-          <p className="text-muted-foreground mt-1">
+          <p className="mt-1 text-muted-foreground text-sm">
             Manage reports and user permissions
           </p>
         </div>
 
-        <Tabs defaultValue="reports" className="mt-6">
+        <Tabs defaultValue="reports">
           <TabsList>
             <TabsTrigger value="reports">Reports</TabsTrigger>
             <TabsTrigger value="users">Users</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="reports" className="mt-6">
+          <TabsContent value="reports" className="mt-4">
             <ReportsTab />
           </TabsContent>
 
-          <TabsContent value="users" className="mt-6">
+          <TabsContent value="users" className="mt-4">
             <UsersTab />
           </TabsContent>
         </Tabs>

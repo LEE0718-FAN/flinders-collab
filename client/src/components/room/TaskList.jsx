@@ -151,7 +151,7 @@ function TaskCreateForm({ roomId, members = [], currentUserId, onCreated, onErro
   return (
     <div className="space-y-4">
       {/* Form */}
-      <form onSubmit={handleSubmit} className="rounded-xl border-2 border-dashed border-border/40 bg-card p-5 space-y-4">
+      <form onSubmit={handleSubmit} className="rounded-xl border-2 border-dashed border-border bg-card p-5 space-y-4">
         <div className="flex items-center gap-2 mb-1">
           <Plus className="h-5 w-5 text-primary" />
           <h3 className="text-base font-semibold">New Task</h3>
@@ -163,7 +163,7 @@ function TaskCreateForm({ roomId, members = [], currentUserId, onCreated, onErro
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           disabled={submitting}
-          className="text-base h-11 font-medium rounded-xl"
+          className="text-base h-11 font-medium"
         />
 
         <div className="grid grid-cols-2 gap-3">
@@ -178,7 +178,7 @@ function TaskCreateForm({ roomId, members = [], currentUserId, onCreated, onErro
               value={dueDate}
               onChange={(e) => setDueDate(e.target.value)}
               disabled={submitting}
-              className="h-10 rounded-xl"
+              className="h-10"
             />
           </div>
 
@@ -192,7 +192,7 @@ function TaskCreateForm({ roomId, members = [], currentUserId, onCreated, onErro
               value={priority}
               onChange={(e) => setPriority(e.target.value)}
               disabled={submitting}
-              className="w-full h-10 rounded-xl border border-input bg-background px-3 text-sm"
+              className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm"
             >
               <option value="low">Low</option>
               <option value="medium">Medium</option>
@@ -207,12 +207,12 @@ function TaskCreateForm({ roomId, members = [], currentUserId, onCreated, onErro
           onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
           onDragLeave={() => setDragOver(false)}
           onDrop={handleDrop}
-          className={`rounded-xl border-2 border-dashed p-4 transition-all ${
+          className={`rounded-lg border-2 border-dashed p-4 transition-all ${
             dragOver
               ? 'border-primary bg-primary/5 scale-[1.01]'
               : assignedMembers.length > 0
                 ? 'border-green-300 bg-green-50'
-                : 'border-border/40 bg-muted/30'
+                : 'border-muted-foreground/20 bg-muted/30'
           }`}
         >
           {assignedMembers.length > 0 ? (
@@ -227,7 +227,7 @@ function TaskCreateForm({ roomId, members = [], currentUserId, onCreated, onErro
                   return (
                     <span
                       key={id}
-                      className="inline-flex items-center gap-1.5 rounded-full bg-muted/50 px-3 py-1.5 text-xs font-medium"
+                      className="inline-flex items-center gap-1.5 rounded-full bg-white border border-green-200 pl-1 pr-2 py-1 text-sm"
                     >
                       <Avatar className="h-6 w-6">
                         <AvatarFallback className="text-[9px] font-semibold bg-primary/10 text-primary">
@@ -262,7 +262,7 @@ function TaskCreateForm({ roomId, members = [], currentUserId, onCreated, onErro
 
         <Button
           type="submit"
-          className="w-full h-11 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 text-white hover:shadow-md"
+          className="w-full h-10"
           disabled={submitting || !title.trim() || assignedMembers.length === 0}
         >
           {submitting ? (
@@ -295,7 +295,7 @@ function TaskCreateForm({ roomId, members = [], currentUserId, onCreated, onErro
                   e.dataTransfer.setData('text/member-id', id);
                   e.dataTransfer.effectAllowed = 'copy';
                 }}
-                className="flex items-center gap-2 rounded-full bg-muted/50 px-3 py-1.5 text-xs font-medium cursor-grab active:cursor-grabbing hover:shadow-md hover:border-primary/30 transition-all select-none border border-border/40"
+                className="flex items-center gap-2 rounded-full border bg-card pl-1 pr-3 py-1 cursor-grab active:cursor-grabbing hover:shadow-md hover:border-primary/30 transition-all select-none"
               >
                 <Avatar className="h-7 w-7">
                   <AvatarFallback className="text-[10px] font-semibold bg-primary/10 text-primary">
@@ -332,11 +332,11 @@ function TaskCard({ task, onStatusChange, onEdit, onDelete }) {
 
   return (
     <div
-      className={`relative rounded-xl border border-border/40 bg-white shadow-sm hover:shadow-md transition-all overflow-hidden border-l-[3px] ${prio.border} ${
+      className={`relative rounded-lg border bg-card shadow-sm hover:shadow-md transition-all overflow-hidden border-l-[3px] ${prio.border} ${
         isCompleted ? 'opacity-50' : ''
       }`}
     >
-      <div className="p-4">
+      <div className="px-3.5 py-3">
         {/* Row 1: Title + actions */}
         <div className="flex items-start justify-between gap-2">
           <h3 className={`text-[15px] font-bold leading-snug flex-1 ${isCompleted ? 'line-through text-muted-foreground' : 'text-foreground'}`}>
@@ -345,7 +345,7 @@ function TaskCard({ task, onStatusChange, onEdit, onDelete }) {
           <div className="flex items-center gap-0.5 shrink-0 -mt-0.5">
             <Tooltip>
               <TooltipTrigger asChild>
-                <button onClick={() => onEdit(task)} className="p-1.5 rounded-lg hover:bg-muted/60 transition-colors">
+                <button onClick={() => onEdit(task)} className="p-1 rounded hover:bg-muted transition-colors">
                   <Pencil className="h-3 w-3 text-muted-foreground" />
                 </button>
               </TooltipTrigger>
@@ -353,7 +353,7 @@ function TaskCard({ task, onStatusChange, onEdit, onDelete }) {
             </Tooltip>
             <Tooltip>
               <TooltipTrigger asChild>
-                <button onClick={() => onDelete(task)} className="p-1.5 rounded-lg hover:bg-red-50 transition-colors">
+                <button onClick={() => onDelete(task)} className="p-1 rounded hover:bg-red-50 transition-colors">
                   <Trash2 className="h-3 w-3 text-muted-foreground hover:text-red-500" />
                 </button>
               </TooltipTrigger>
@@ -392,7 +392,7 @@ function TaskCard({ task, onStatusChange, onEdit, onDelete }) {
             <button
               ref={statusBtnRef}
               onClick={() => setStatusOpen(!statusOpen)}
-              className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-semibold transition-all hover:scale-105 active:scale-95 cursor-pointer ${status.bg}`}
+              className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold transition-all hover:scale-105 active:scale-95 cursor-pointer ${status.bg}`}
             >
               {isCompleted ? <CheckCircle2 className="h-3.5 w-3.5" /> : <Circle className="h-3.5 w-3.5" />}
               {status.label}
@@ -432,8 +432,8 @@ function TaskCard({ task, onStatusChange, onEdit, onDelete }) {
           {/* Assigned member */}
           <div className="flex items-center gap-1.5">
             <span className="text-[11px] text-muted-foreground">{assigneeName}</span>
-            <Avatar className="h-6 w-6">
-              <AvatarFallback className="text-[9px] font-semibold bg-gradient-to-br from-blue-100 to-indigo-100 text-blue-700">
+            <Avatar className="h-5 w-5">
+              <AvatarFallback className="text-[8px] font-semibold bg-muted text-muted-foreground">
                 {getInitials(assigneeName)}
               </AvatarFallback>
             </Avatar>
@@ -556,7 +556,6 @@ export default function TaskList({ tasks = [], members = [], roomId, currentUser
         <Button
           variant={showForm ? 'secondary' : 'default'}
           size="sm"
-          className={showForm ? 'rounded-xl' : 'rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 text-white hover:shadow-md'}
           onClick={() => setShowForm(!showForm)}
         >
           <Plus className="mr-2 h-4 w-4" />
@@ -609,11 +608,10 @@ export default function TaskList({ tasks = [], members = [], roomId, currentUser
           {/* Active tasks */}
           {activeTasks.length > 0 && (
             <div>
-              <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3 flex items-center gap-2">
-                <span className="h-1.5 w-1.5 rounded-full bg-blue-500" />
+              <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">
                 Active ({activeTasks.length})
               </h3>
-              <div className="grid gap-3 sm:grid-cols-2">
+              <div className="grid gap-4 sm:grid-cols-2">
                 {activeTasks.map((task) => (
                   <TaskCard
                     key={task.id}
@@ -629,12 +627,11 @@ export default function TaskList({ tasks = [], members = [], roomId, currentUser
 
           {/* Completed tasks */}
           {completedTasks.length > 0 && (
-            <div className="pt-4 border-t border-border/30">
-              <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3 flex items-center gap-2">
-                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+            <div>
+              <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">
                 Completed ({completedTasks.length})
               </h3>
-              <div className="grid gap-3 sm:grid-cols-2">
+              <div className="grid gap-4 sm:grid-cols-2">
                 {completedTasks.map((task) => (
                   <TaskCard
                     key={task.id}
@@ -656,33 +653,32 @@ export default function TaskList({ tasks = [], members = [], roomId, currentUser
           <DialogHeader>
             <DialogTitle>Edit Task</DialogTitle>
           </DialogHeader>
-          <div className="space-y-4">
+          <div className="space-y-3">
             <div className="space-y-1.5">
-              <label className="text-sm font-medium text-foreground/80">Title</label>
+              <label className="text-sm font-medium">Title</label>
               <Input
                 value={editForm.title || ''}
                 onChange={(e) => setEditForm({ ...editForm, title: e.target.value })}
                 disabled={editLoading}
-                className="text-base font-medium rounded-xl"
+                className="text-base font-medium"
               />
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
-                <label className="text-sm font-medium text-foreground/80">Due Date</label>
+                <label className="text-sm font-medium">Due Date</label>
                 <Input
                   type="date"
                   value={editForm.due_date || ''}
                   onChange={(e) => setEditForm({ ...editForm, due_date: e.target.value })}
                   disabled={editLoading}
-                  className="rounded-xl"
                 />
               </div>
               <div className="space-y-1.5">
-                <label className="text-sm font-medium text-foreground/80">Priority</label>
+                <label className="text-sm font-medium">Priority</label>
                 <select
                   value={editForm.priority || 'medium'}
                   onChange={(e) => setEditForm({ ...editForm, priority: e.target.value })}
-                  className="w-full h-10 rounded-xl border border-input bg-background px-3 text-sm"
+                  className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm"
                   disabled={editLoading}
                 >
                   <option value="low">Low</option>
@@ -693,8 +689,8 @@ export default function TaskList({ tasks = [], members = [], roomId, currentUser
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" className="rounded-xl" onClick={() => setEditTask(null)} disabled={editLoading}>Cancel</Button>
-            <Button className="rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 text-white hover:shadow-md" onClick={handleEditSave} disabled={editLoading || !editForm.title?.trim()}>
+            <Button variant="outline" onClick={() => setEditTask(null)} disabled={editLoading}>Cancel</Button>
+            <Button onClick={handleEditSave} disabled={editLoading || !editForm.title?.trim()}>
               {editLoading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Saving...</> : 'Save Changes'}
             </Button>
           </DialogFooter>

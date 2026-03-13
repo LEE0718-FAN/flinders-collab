@@ -48,23 +48,15 @@ export default function LocationMap({ members = [], center }) {
 
   if (validMembers.length === 0) {
     return (
-      <div className="flex h-[400px] flex-col items-center justify-center rounded-2xl border border-border/40 bg-muted/20 gap-3">
-        <div className="flex h-14 w-14 items-center justify-center rounded-full bg-muted/40">
-          <MapPin className="h-7 w-7 text-muted-foreground/60" />
-        </div>
-        <p className="text-sm font-medium text-muted-foreground/60">No members sharing location right now</p>
+      <div className="flex h-48 flex-col items-center justify-center rounded-lg border bg-muted/30 gap-2">
+        <MapPin className="h-6 w-6 text-muted-foreground/50" />
+        <p className="text-sm text-muted-foreground">No members sharing location right now</p>
       </div>
     );
   }
 
-  const statusBadgeClass = {
-    arrived: 'bg-emerald-100 text-emerald-700',
-    on_the_way: 'bg-amber-100 text-amber-700',
-    late: 'bg-red-100 text-red-700',
-  };
-
   return (
-    <div className="relative h-[400px] w-full overflow-hidden rounded-2xl border border-border/40 shadow-card">
+    <div className="h-80 w-full overflow-hidden rounded-lg border">
       <MapContainer center={mapCenter} zoom={15} className="h-full w-full" scrollWheelZoom>
         <TileLayer
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
@@ -73,13 +65,13 @@ export default function LocationMap({ members = [], center }) {
         {validMembers.map((member) => (
           <Marker key={member.id} position={[member.latitude, member.longitude]}>
             <Popup>
-              <div className="min-w-[140px] space-y-1.5 p-1 text-sm">
-                <p className="font-semibold tracking-tight">{member.name || 'User'}</p>
-                <span className={`inline-block rounded-full px-2.5 py-0.5 text-xs font-medium ${statusBadgeClass[member.status] || 'bg-gray-100 text-gray-600'}`}>
+              <div className="text-sm">
+                <p className="font-medium">{member.name || 'User'}</p>
+                <p style={{ color: statusColors[member.status] || '#6b7280' }}>
                   {STATUS_LABEL[member.status] || member.status?.replace('_', ' ') || 'unknown'}
-                </span>
+                </p>
                 {member.updated_at && (
-                  <p className="text-xs text-muted-foreground/70">
+                  <p className="text-xs opacity-60">
                     Updated {new Date(member.updated_at).toLocaleTimeString()}
                   </p>
                 )}
@@ -88,9 +80,6 @@ export default function LocationMap({ members = [], center }) {
           </Marker>
         ))}
       </MapContainer>
-      <div className="pointer-events-none absolute bottom-3 left-3 rounded-xl border border-white/20 bg-white/70 px-3 py-1.5 text-xs font-medium text-foreground/70 shadow-sm backdrop-blur-md">
-        {validMembers.length} member{validMembers.length !== 1 ? 's' : ''} sharing
-      </div>
     </div>
   );
 }

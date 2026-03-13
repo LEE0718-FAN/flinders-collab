@@ -7,93 +7,87 @@ import {
   AlertDialogContent, AlertDialogDescription, AlertDialogFooter,
   AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Users, Crown, Trash2, LogOut, Loader2, ArrowRight } from 'lucide-react';
+import { Users, Crown, Trash2, LogOut, Loader2 } from 'lucide-react';
 import { deleteRoom, leaveRoom } from '@/services/rooms';
 
 const roomPalettes = [
   {
-    accent: 'linear-gradient(135deg, #ec4899, #f43f5e)',
-    border: '#fecdd3',
-    glow: 'rgba(244, 63, 94, 0.12)',
-    surface: 'linear-gradient(135deg, rgba(255, 241, 246, 0.9) 0%, rgba(255, 255, 255, 0.98) 50%, rgba(255, 241, 242, 0.4) 100%)',
-    courseBg: '#ffe4e6',
-    courseText: '#9f1239',
-    roleBorder: '#fecdd3',
-    roleBg: 'rgba(255,255,255,0.9)',
-    roleText: '#be123c',
-    meta: '#9f1239',
-    divider: '#ffe4e6',
-    iconBg: 'rgba(244, 63, 94, 0.08)',
+    accent: '#f9a8d4',
+    border: '#fbcfe8',
+    glow: 'rgba(251, 207, 232, 0.45)',
+    surface: 'linear-gradient(135deg, rgba(255, 241, 246, 1) 0%, rgba(255, 255, 255, 0.98) 68%)',
+    courseBg: '#fbcfe8',
+    courseText: '#831843',
+    roleBorder: '#fbcfe8',
+    roleBg: 'rgba(255,255,255,0.82)',
+    roleText: '#9d174d',
+    meta: '#831843',
+    divider: '#fce7f3',
   },
   {
-    accent: 'linear-gradient(135deg, #3b82f6, #6366f1)',
-    border: '#bfdbfe',
-    glow: 'rgba(59, 130, 246, 0.12)',
-    surface: 'linear-gradient(135deg, rgba(239, 246, 255, 0.9) 0%, rgba(255, 255, 255, 0.98) 50%, rgba(238, 242, 255, 0.4) 100%)',
-    courseBg: '#dbeafe',
-    courseText: '#1e40af',
-    roleBorder: '#bfdbfe',
-    roleBg: 'rgba(255,255,255,0.9)',
-    roleText: '#1d4ed8',
-    meta: '#1e40af',
-    divider: '#dbeafe',
-    iconBg: 'rgba(59, 130, 246, 0.08)',
+    accent: '#7dd3fc',
+    border: '#bae6fd',
+    glow: 'rgba(186, 230, 253, 0.5)',
+    surface: 'linear-gradient(135deg, rgba(240, 249, 255, 1) 0%, rgba(255, 255, 255, 0.98) 68%)',
+    courseBg: '#bae6fd',
+    courseText: '#0c4a6e',
+    roleBorder: '#bae6fd',
+    roleBg: 'rgba(255,255,255,0.82)',
+    roleText: '#075985',
+    meta: '#0f3b53',
+    divider: '#e0f2fe',
   },
   {
-    accent: 'linear-gradient(135deg, #10b981, #059669)',
+    accent: '#86efac',
     border: '#bbf7d0',
-    glow: 'rgba(16, 185, 129, 0.12)',
-    surface: 'linear-gradient(135deg, rgba(240, 253, 244, 0.9) 0%, rgba(255, 255, 255, 0.98) 50%, rgba(236, 253, 245, 0.4) 100%)',
-    courseBg: '#d1fae5',
-    courseText: '#065f46',
-    roleBorder: '#a7f3d0',
-    roleBg: 'rgba(255,255,255,0.9)',
-    roleText: '#047857',
-    meta: '#065f46',
-    divider: '#d1fae5',
-    iconBg: 'rgba(16, 185, 129, 0.08)',
+    glow: 'rgba(187, 247, 208, 0.5)',
+    surface: 'linear-gradient(135deg, rgba(240, 253, 244, 1) 0%, rgba(255, 255, 255, 0.98) 68%)',
+    courseBg: '#bbf7d0',
+    courseText: '#14532d',
+    roleBorder: '#bbf7d0',
+    roleBg: 'rgba(255,255,255,0.82)',
+    roleText: '#166534',
+    meta: '#1f5136',
+    divider: '#dcfce7',
   },
   {
-    accent: 'linear-gradient(135deg, #f59e0b, #d97706)',
+    accent: '#fcd34d',
     border: '#fde68a',
-    glow: 'rgba(245, 158, 11, 0.12)',
-    surface: 'linear-gradient(135deg, rgba(255, 251, 235, 0.9) 0%, rgba(255, 255, 255, 0.98) 50%, rgba(254, 249, 195, 0.3) 100%)',
-    courseBg: '#fef3c7',
-    courseText: '#92400e',
+    glow: 'rgba(253, 230, 138, 0.5)',
+    surface: 'linear-gradient(135deg, rgba(255, 251, 235, 1) 0%, rgba(255, 255, 255, 0.98) 68%)',
+    courseBg: '#fde68a',
+    courseText: '#78350f',
     roleBorder: '#fde68a',
-    roleBg: 'rgba(255,255,255,0.9)',
-    roleText: '#b45309',
-    meta: '#92400e',
+    roleBg: 'rgba(255,255,255,0.82)',
+    roleText: '#92400e',
+    meta: '#6b4715',
     divider: '#fef3c7',
-    iconBg: 'rgba(245, 158, 11, 0.08)',
   },
   {
-    accent: 'linear-gradient(135deg, #8b5cf6, #7c3aed)',
+    accent: '#c4b5fd',
     border: '#ddd6fe',
-    glow: 'rgba(139, 92, 246, 0.12)',
-    surface: 'linear-gradient(135deg, rgba(245, 243, 255, 0.9) 0%, rgba(255, 255, 255, 0.98) 50%, rgba(243, 232, 255, 0.4) 100%)',
-    courseBg: '#ede9fe',
-    courseText: '#5b21b6',
-    roleBorder: '#c4b5fd',
-    roleBg: 'rgba(255,255,255,0.9)',
-    roleText: '#6d28d9',
-    meta: '#5b21b6',
+    glow: 'rgba(221, 214, 254, 0.55)',
+    surface: 'linear-gradient(135deg, rgba(245, 243, 255, 1) 0%, rgba(255, 255, 255, 0.98) 68%)',
+    courseBg: '#ddd6fe',
+    courseText: '#4c1d95',
+    roleBorder: '#ddd6fe',
+    roleBg: 'rgba(255,255,255,0.82)',
+    roleText: '#5b21b6',
+    meta: '#4b2f77',
     divider: '#ede9fe',
-    iconBg: 'rgba(139, 92, 246, 0.08)',
   },
   {
-    accent: 'linear-gradient(135deg, #14b8a6, #0d9488)',
+    accent: '#99f6e4',
     border: '#ccfbf1',
-    glow: 'rgba(20, 184, 166, 0.12)',
-    surface: 'linear-gradient(135deg, rgba(240, 253, 250, 0.9) 0%, rgba(255, 255, 255, 0.98) 50%, rgba(204, 251, 241, 0.3) 100%)',
+    glow: 'rgba(204, 251, 241, 0.55)',
+    surface: 'linear-gradient(135deg, rgba(240, 253, 250, 1) 0%, rgba(255, 255, 255, 0.98) 68%)',
     courseBg: '#ccfbf1',
-    courseText: '#115e59',
-    roleBorder: '#99f6e4',
-    roleBg: 'rgba(255,255,255,0.9)',
+    courseText: '#134e4a',
+    roleBorder: '#ccfbf1',
+    roleBg: 'rgba(255,255,255,0.82)',
     roleText: '#0f766e',
-    meta: '#115e59',
+    meta: '#195853',
     divider: '#ccfbf1',
-    iconBg: 'rgba(20, 184, 166, 0.08)',
   },
 ];
 
@@ -131,17 +125,11 @@ export default function RoomCard({ room, onDeleted, draggableProps, suppressNavi
     <div className="h-full">
       <div
         {...draggableProps}
-        className="group relative flex flex-col h-full overflow-hidden rounded-2xl border text-card-foreground cursor-grab active:cursor-grabbing transition-all duration-300 ease-out hover:-translate-y-1"
+        className="relative flex flex-col h-full overflow-hidden rounded-lg border text-card-foreground shadow-sm transition-shadow hover:shadow-md cursor-grab active:cursor-grabbing"
         style={{
           background: palette.surface,
           borderColor: palette.border,
-          boxShadow: `0 1px 3px rgba(0,0,0,0.04), 0 8px 32px -8px ${palette.glow}`,
-        }}
-        onMouseEnter={(e) => {
-          e.currentTarget.style.boxShadow = `0 4px 12px rgba(0,0,0,0.06), 0 20px 48px -12px ${palette.glow.replace('0.12', '0.25')}`;
-        }}
-        onMouseLeave={(e) => {
-          e.currentTarget.style.boxShadow = `0 1px 3px rgba(0,0,0,0.04), 0 8px 32px -8px ${palette.glow}`;
+          boxShadow: `0 12px 32px -24px ${palette.glow}`,
         }}
         onClick={() => {
           if (!suppressNavigation) {
@@ -149,17 +137,16 @@ export default function RoomCard({ room, onDeleted, draggableProps, suppressNavi
           }
         }}
       >
-        {/* Gradient accent bar */}
-        <div className="h-1 rounded-t-2xl" style={{ background: palette.accent }} />
+        <div className="absolute inset-x-0 top-0 h-1.5" style={{ backgroundColor: palette.accent }} />
 
-        {/* Top section */}
-        <div className="flex-1 p-5 pt-5 pb-0">
-          {/* Badges row */}
-          <div className="flex items-center gap-1.5 min-h-[26px]">
+        {/* Top section: badges + title + description */}
+        <div className="flex-1 p-5 pt-6 pb-0">
+          {/* Badges row — always 28px tall */}
+          <div className="flex items-center gap-1.5 h-7">
             {room.course_name && (
               <Badge
                 variant="secondary"
-                className="rounded-full text-[11px] font-semibold px-2.5 py-0.5 border-0 shadow-sm"
+                className="text-xs border-transparent"
                 style={{ backgroundColor: palette.courseBg, color: palette.courseText }}
               >
                 {room.course_name}
@@ -168,7 +155,7 @@ export default function RoomCard({ room, onDeleted, draggableProps, suppressNavi
             {isOwner && (
               <Badge
                 variant="outline"
-                className="gap-1 rounded-full text-[11px] font-semibold px-2 py-0.5 border shadow-sm"
+                className="gap-1 text-xs"
                 style={{
                   borderColor: palette.roleBorder,
                   backgroundColor: palette.roleBg,
@@ -181,59 +168,52 @@ export default function RoomCard({ room, onDeleted, draggableProps, suppressNavi
             )}
           </div>
 
-          {/* Title */}
-          <h3 className="text-[17px] font-bold leading-snug mt-2.5 truncate text-foreground/90">
+          {/* Title — single line, truncated */}
+          <h3 className="text-lg font-semibold leading-snug mt-1.5 truncate">
             {room.name}
           </h3>
 
-          {/* Description */}
-          <p className="text-[13px] text-muted-foreground/60 mt-1 truncate h-5">
+          {/* Description — always one line tall */}
+          <p className="text-sm text-muted-foreground mt-1 truncate h-5">
             {room.description || '\u00A0'}
           </p>
         </div>
 
-        {/* Footer */}
-        <div className="px-5 pb-4 pt-3">
-          <div className="flex items-center justify-between pt-3" style={{ borderTop: `1px solid ${palette.divider}` }}>
-            <div className="flex items-center gap-1.5 text-[13px]" style={{ color: palette.meta }}>
-              <div className="h-6 w-6 rounded-lg flex items-center justify-center" style={{ backgroundColor: palette.iconBg }}>
-                <Users className="h-3.5 w-3.5" style={{ color: palette.meta }} />
-              </div>
-              <span className="font-medium">
-                {room.member_count || 0}
+        {/* Footer — pinned to bottom */}
+        <div className="p-5 pt-3">
+          <div className="flex items-center justify-between border-t pt-3" style={{ borderColor: palette.divider }}>
+            <div className="flex items-center gap-3 text-sm" style={{ color: palette.meta }}>
+              <span className="flex items-center gap-1.5">
+                <Users className="h-4 w-4" />
+                {room.member_count || 0} {room.member_count === 1 ? 'Member' : 'Members'}
               </span>
             </div>
 
-            <div className="flex items-center gap-1.5">
-              <Button
-                variant="ghost"
-                size="sm"
-                className={`h-7 gap-1 text-[11px] font-medium rounded-full px-2.5 opacity-0 group-hover:opacity-100 transition-opacity duration-200 ${
-                  isOwner
-                    ? 'text-red-400 hover:text-red-600 hover:bg-red-50'
-                    : 'text-orange-400 hover:text-orange-600 hover:bg-orange-50'
-                }`}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setConfirmOpen(true);
-                }}
-              >
-                {isOwner ? (
-                  <><Trash2 className="h-3 w-3" />Delete</>
-                ) : (
-                  <><LogOut className="h-3 w-3" />Leave</>
-                )}
-              </Button>
-              <div className="h-6 w-6 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-200 group-hover:translate-x-0.5" style={{ backgroundColor: palette.iconBg }}>
-                <ArrowRight className="h-3 w-3" style={{ color: palette.meta }} />
-              </div>
-            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              className={`h-7 gap-1.5 text-xs ${
+                isOwner
+                  ? 'text-red-600 border-red-200 hover:bg-red-50 hover:text-red-700'
+                  : 'text-orange-600 border-orange-200 hover:bg-orange-50 hover:text-orange-700'
+              }`}
+              onClick={(e) => {
+                e.stopPropagation();
+                setConfirmOpen(true);
+              }}
+            >
+              {isOwner ? (
+                <><Trash2 className="h-3.5 w-3.5" />Delete</>
+              ) : (
+                <><LogOut className="h-3.5 w-3.5" />Leave</>
+              )}
+            </Button>
           </div>
         </div>
       </div>
 
       <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
-        <AlertDialogContent className="rounded-2xl">
+        <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
               {isOwner ? 'Delete Room' : 'Leave Room'}
@@ -247,13 +227,13 @@ export default function RoomCard({ room, onDeleted, draggableProps, suppressNavi
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={loading} className="rounded-xl">Cancel</AlertDialogCancel>
+            <AlertDialogCancel disabled={loading}>Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={(e) => {
                 e.preventDefault();
                 handleAction();
               }}
-              className={`rounded-xl ${isOwner ? 'bg-red-600 hover:bg-red-700 text-white' : 'bg-orange-600 hover:bg-orange-700 text-white'}`}
+              className={isOwner ? 'bg-red-600 hover:bg-red-700 text-white' : 'bg-orange-600 hover:bg-orange-700 text-white'}
               disabled={loading}
             >
               {loading ? (

@@ -52,8 +52,8 @@ export default function CreateRoomDialog({ onCreateStart, onCreated, onCreateErr
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl shadow-sm hover:shadow-md h-10 px-5 gap-2">
-          <Plus className="h-4 w-4" />
+        <Button>
+          <Plus className="mr-2 h-4 w-4" />
           Create Room
         </Button>
       </DialogTrigger>
@@ -64,19 +64,19 @@ export default function CreateRoomDialog({ onCreateStart, onCreated, onCreateErr
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <label className="text-sm font-medium text-foreground/80">Room Name</label>
-            <Input className="rounded-xl" placeholder="e.g. COMP2024 Project Team" value={name} onChange={(e) => setName(e.target.value)} required />
+            <label className="text-sm font-medium">Room Name</label>
+            <Input placeholder="e.g. COMP2024 Project Team" value={name} onChange={(e) => setName(e.target.value)} required />
           </div>
           <div className="space-y-2">
-            <label className="text-sm font-medium text-foreground/80">Course Code (optional)</label>
-            <Input className="rounded-xl" placeholder="e.g. COMP2024" value={courseCode} onChange={(e) => setCourseCode(e.target.value)} />
+            <label className="text-sm font-medium">Course Code (optional)</label>
+            <Input placeholder="e.g. COMP2024" value={courseCode} onChange={(e) => setCourseCode(e.target.value)} />
           </div>
           <div className="space-y-2">
-            <label className="text-sm font-medium text-foreground/80">Description (optional)</label>
-            <Textarea className="rounded-xl" placeholder="What is this room for?" value={description} onChange={(e) => setDescription(e.target.value)} />
+            <label className="text-sm font-medium">Description (optional)</label>
+            <Textarea placeholder="What is this room for?" value={description} onChange={(e) => setDescription(e.target.value)} />
           </div>
-          {error && <div className="rounded-xl bg-red-50 border border-red-200/60 p-3 text-sm text-destructive">{error}</div>}
-          <Button type="submit" className="w-full h-11 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 text-white hover:shadow-md" disabled={loading}>
+          {error && <p className="text-sm text-destructive">{error}</p>}
+          <Button type="submit" className="w-full" disabled={loading}>
             {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             Create Room
           </Button>

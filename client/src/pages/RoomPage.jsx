@@ -151,8 +151,8 @@ export default function RoomPage() {
   if (loading) {
     return (
       <MainLayout>
-        <div className="flex items-center justify-center py-20">
-          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground animate-pulse" />
+        <div className="flex justify-center py-12">
+          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
         </div>
       </MainLayout>
     );
@@ -160,23 +160,23 @@ export default function RoomPage() {
 
   return (
     <MainLayout>
-      <div className="space-y-8">
+      <div className="space-y-6">
         <div>
           <div className="flex items-center gap-3">
-            <h1 className="text-3xl font-bold tracking-tight">{room?.name}</h1>
-            {room?.course_code && <Badge variant="secondary" className="rounded-full bg-primary/10 text-primary px-3 py-1 text-xs font-semibold">{room.course_code}</Badge>}
+            <h1 className="text-2xl font-bold">{room?.name}</h1>
+            {room?.course_code && <Badge variant="secondary">{room.course_code}</Badge>}
           </div>
-          {room?.description && <p className="text-base text-muted-foreground/80 mt-2">{room.description}</p>}
+          {room?.description && <p className="mt-1 text-base text-muted-foreground">{room.description}</p>}
         </div>
 
         {error && (
-          <div className="rounded-xl border border-red-200/60 bg-red-50/50 p-4 text-sm text-red-600">
+          <div className="rounded-md border border-destructive/50 bg-destructive/10 p-3 text-sm text-destructive">
             {error}
           </div>
         )}
 
         <Tabs defaultValue="overview" onValueChange={setActiveTab}>
-          <TabsList className="flex-wrap gap-1">
+          <TabsList className="flex-wrap">
             <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="schedule">Schedule</TabsTrigger>
             <TabsTrigger value="tasks">Tasks</TabsTrigger>
@@ -184,52 +184,48 @@ export default function RoomPage() {
             <TabsTrigger value="files">Files</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="overview" className="space-y-5">
-            <Card className="rounded-2xl">
+          <TabsContent value="overview" className="space-y-4">
+            <Card>
               <CardHeader>
                 <div className="flex items-center justify-between">
-                  <CardTitle className="text-lg font-semibold">Room Info</CardTitle>
+                  <CardTitle className="text-lg">Room Info</CardTitle>
                   {room && <EditRoomDialog room={room} onUpdated={fetchRoom} />}
                 </div>
               </CardHeader>
-              <CardContent className="space-y-4">
+              <CardContent className="space-y-3">
                 {room?.invite_code && (
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-2">
                     <span className="text-sm text-muted-foreground">Invite Code:</span>
-                    <div className="bg-muted/50 rounded-lg px-4 py-2.5 font-mono text-sm flex items-center gap-2">
-                      <code>{room.invite_code}</code>
-                      <Button variant="ghost" size="icon" className="h-7 w-7 rounded-md hover:bg-background/80" onClick={handleCopyInviteCode}>
-                        {copied ? <Check className="h-3.5 w-3.5 text-green-500" /> : <Copy className="h-3.5 w-3.5 text-muted-foreground" />}
-                      </Button>
-                    </div>
+                    <code className="rounded bg-muted px-2 py-1 text-sm font-mono">{room.invite_code}</code>
+                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleCopyInviteCode}>
+                      {copied ? <Check className="h-3 w-3 text-green-500" /> : <Copy className="h-3 w-3" />}
+                    </Button>
                   </div>
                 )}
-                <div className="text-sm text-muted-foreground">
-                  <Badge variant="secondary" className="rounded-full text-xs font-medium">{members.length} members</Badge>
-                </div>
+                <div className="text-sm text-muted-foreground">{members.length} members</div>
               </CardContent>
             </Card>
-            <Card className="rounded-2xl">
+            <Card>
               <CardHeader>
-                <CardTitle className="text-lg font-semibold">Members ({members.length})</CardTitle>
+                <CardTitle className="text-lg">Members ({members.length})</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-1">
+              <CardContent>
                 <MemberList members={members} />
               </CardContent>
             </Card>
           </TabsContent>
 
-          <TabsContent value="schedule" className="space-y-5">
+          <TabsContent value="schedule" className="space-y-4">
             <div className="flex items-center justify-between">
-              <h2 className="text-xl font-bold tracking-tight">Schedule</h2>
+              <h2 className="text-lg font-semibold">Schedule</h2>
               <div className="flex items-center gap-2">
-                <Button size="sm" className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl shadow-sm hover:from-blue-700 hover:to-indigo-700" onClick={() => { if (!selectedDate) setSelectedDate(new Date()); setEventFormOpen(true); }}>
+                <Button size="sm" onClick={() => { if (!selectedDate) setSelectedDate(new Date()); setEventFormOpen(true); }}>
                   <Plus className="mr-2 h-4 w-4" />
                   Add Event
                 </Button>
               </div>
             </div>
-            <div className="grid gap-4 md:grid-cols-[300px_1fr]">
+            <div className="grid gap-4 md:grid-cols-[280px_1fr]">
               <ScheduleCalendar
                 events={events}
                 selectedDate={selectedDate}
@@ -249,8 +245,8 @@ export default function RoomPage() {
             />
           </TabsContent>
 
-          <TabsContent value="tasks" className="space-y-5">
-            <h2 className="text-xl font-bold tracking-tight">Tasks</h2>
+          <TabsContent value="tasks" className="space-y-4">
+            <h2 className="text-lg font-semibold">Tasks</h2>
             <TaskList
               tasks={tasks}
               members={members}
@@ -262,36 +258,36 @@ export default function RoomPage() {
           </TabsContent>
 
           <TabsContent value="chat">
-            <Card className="rounded-2xl overflow-hidden">
+            <Card>
               <CardContent className="p-0">
                 <ChatPanel roomId={roomId} />
               </CardContent>
             </Card>
           </TabsContent>
 
-          <TabsContent value="files" className="space-y-8">
+          <TabsContent value="files" className="space-y-6">
             {/* Lecture Materials */}
-            <div className="space-y-4">
+            <div className="space-y-3">
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2.5">
-                  <span className="text-xl">📖</span>
-                  <h2 className="text-lg font-bold tracking-tight">Lecture Materials</h2>
-                  <Badge variant="secondary" className="rounded-full text-xs">{files.filter(f => f.category === 'lecture').length}</Badge>
+                <div className="flex items-center gap-2">
+                  <span className="text-lg">📖</span>
+                  <h2 className="text-lg font-semibold">Lecture Materials</h2>
+                  <Badge variant="secondary" className="text-xs">{files.filter(f => f.category === 'lecture').length}</Badge>
                 </div>
                 <FileUpload roomId={roomId} onUploaded={handleFileUploaded} category="lecture" events={events} />
               </div>
               <FileList files={files} roomId={roomId} onFilesChange={setFiles} filterCategory="lecture" />
             </div>
 
-            <div className="h-px bg-gradient-to-r from-transparent via-border to-transparent" />
+            <div className="h-px bg-border" />
 
             {/* Team Submissions */}
-            <div className="space-y-4">
+            <div className="space-y-3">
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2.5">
-                  <span className="text-xl">📝</span>
-                  <h2 className="text-lg font-bold tracking-tight">Team Submissions</h2>
-                  <Badge variant="secondary" className="rounded-full text-xs">{files.filter(f => f.category === 'submission').length}</Badge>
+                <div className="flex items-center gap-2">
+                  <span className="text-lg">📝</span>
+                  <h2 className="text-lg font-semibold">Team Submissions</h2>
+                  <Badge variant="secondary" className="text-xs">{files.filter(f => f.category === 'submission').length}</Badge>
                 </div>
                 <FileUpload roomId={roomId} onUploaded={handleFileUploaded} category="submission" events={events} />
               </div>

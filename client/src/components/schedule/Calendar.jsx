@@ -54,15 +54,15 @@ export default function ScheduleCalendar({ events = [], selectedDate, onSelectDa
         {...buttonProps}
         ref={buttonRef}
         type="button"
-        className={cn(className, 'flex h-9 w-9 flex-col items-center justify-center gap-0.5 overflow-visible rounded-xl transition-all duration-150 hover:bg-muted/60')}
+        className={cn(className, 'flex h-9 w-9 flex-col items-center justify-center gap-0.5 overflow-visible')}
       >
         <span className="leading-none">{children}</span>
         {markerColors.length > 0 && (
-          <span className="flex items-center gap-[3px]" aria-hidden="true">
+          <span className="flex items-center gap-0.5" aria-hidden="true">
             {markerColors.map((color) => (
               <span
                 key={color}
-                className="h-1 w-1 rounded-full"
+                className="h-1.5 w-1.5 rounded-full"
                 style={{ backgroundColor: color }}
               />
             ))}
@@ -86,21 +86,21 @@ export default function ScheduleCalendar({ events = [], selectedDate, onSelectDa
   };
 
   return (
-    <div className="rounded-2xl border border-border/40 bg-white p-4 shadow-card">
-      <div className="mb-4 flex items-center justify-between">
+    <div className="rounded-md border p-3">
+      <div className="mb-3 flex items-center justify-between">
         <Button
-          variant="ghost"
+          variant="outline"
           size="icon"
-          className="h-8 w-8 rounded-full hover:bg-muted/70 transition-colors duration-150"
+          className="h-7 w-7"
           onClick={() => setMonth((m) => subMonths(m, 1))}
         >
           <ChevronLeft className="h-4 w-4" />
         </Button>
-        <span className="text-sm font-semibold tracking-wide">{format(month, 'MMMM yyyy')}</span>
+        <span className="text-sm font-medium">{format(month, 'MMMM yyyy')}</span>
         <Button
-          variant="ghost"
+          variant="outline"
           size="icon"
-          className="h-8 w-8 rounded-full hover:bg-muted/70 transition-colors duration-150"
+          className="h-7 w-7"
           onClick={() => setMonth((m) => addMonths(m, 1))}
         >
           <ChevronRight className="h-4 w-4" />
@@ -126,16 +126,16 @@ export default function ScheduleCalendar({ events = [], selectedDate, onSelectDa
           month_caption: 'hidden',
           month_grid: 'w-full border-collapse space-y-1',
           weekdays: 'flex',
-          weekday: 'w-9 rounded-md text-[0.75rem] font-medium uppercase tracking-wider text-muted-foreground/70',
+          weekday: 'w-9 rounded-md text-[0.8rem] font-normal text-muted-foreground',
           week: 'mt-2 flex w-full',
           day: 'relative h-9 w-9 p-0 text-center text-sm',
           day_button: cn(
             buttonVariants({ variant: 'ghost' }),
-            'h-9 w-9 p-0 font-normal rounded-xl transition-all duration-150 aria-selected:opacity-100'
+            'h-9 w-9 p-0 font-normal aria-selected:opacity-100'
           ),
-          selected: 'rounded-xl bg-primary text-white shadow-sm hover:bg-primary hover:text-white focus:bg-primary focus:text-white',
-          today: 'rounded-xl ring-1.5 ring-primary/30 text-primary font-semibold',
-          outside: 'text-muted-foreground/40 opacity-50',
+          selected: 'rounded-md bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground focus:bg-primary focus:text-primary-foreground',
+          today: 'rounded-md bg-accent text-accent-foreground',
+          outside: 'text-muted-foreground opacity-50',
           disabled: 'text-muted-foreground opacity-50',
           hidden: 'invisible',
         }}

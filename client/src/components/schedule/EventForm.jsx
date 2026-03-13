@@ -93,28 +93,28 @@ export default function EventForm({ roomId, onCreateStart, onCreated, onCreateEr
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[440px] rounded-2xl">
+      <DialogContent className="sm:max-w-[420px]">
         <DialogHeader>
-          <DialogTitle className="text-lg font-semibold">New Event</DialogTitle>
-          <DialogDescription className="text-muted-foreground/70">{displayDate}</DialogDescription>
+          <DialogTitle>New Event</DialogTitle>
+          <DialogDescription>{displayDate}</DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* Category selection */}
           <div className="space-y-2">
             <label className="text-sm font-medium">Category</label>
-            <div className="grid grid-cols-7 gap-2">
+            <div className="grid grid-cols-4 gap-1.5">
               {CATEGORIES.map((c) => (
                 <button
                   key={c.value}
                   type="button"
                   onClick={() => setCategory(c.value)}
-                  className={`flex flex-col items-center gap-1 rounded-xl border px-1.5 py-2.5 text-[10px] transition-all duration-150 ${
+                  className={`flex flex-col items-center gap-1 rounded-lg border px-2 py-2 text-xs transition-all ${
                     category === c.value
-                      ? 'ring-2 ring-primary bg-primary/5 border-primary/30 text-primary font-semibold'
-                      : 'border-border/40 hover:border-primary/30 hover:bg-muted/50 text-muted-foreground'
+                      ? 'border-primary bg-primary/10 text-primary font-medium'
+                      : 'border-border hover:border-primary/40 hover:bg-muted text-muted-foreground'
                   }`}
                 >
-                  <span className="text-lg">{c.icon}</span>
+                  <span className="text-base">{c.icon}</span>
                   <span className="truncate w-full text-center leading-tight">{c.label}</span>
                 </button>
               ))}
@@ -125,7 +125,6 @@ export default function EventForm({ roomId, onCreateStart, onCreated, onCreateEr
           <div className="space-y-2">
             <label className="text-sm font-medium">Event Title</label>
             <Input
-              className="rounded-xl"
               placeholder="e.g. Group Meeting, Final Presentation..."
               value={title}
               onChange={(e) => setTitle(e.target.value)}
@@ -137,24 +136,23 @@ export default function EventForm({ roomId, onCreateStart, onCreated, onCreateEr
           {/* Time */}
           <div className="space-y-2">
             <label className="text-sm font-medium">Time</label>
-            <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3">
-              <Input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} className="rounded-xl" />
-              <span className="text-xs font-medium text-muted-foreground/50 uppercase tracking-wider">to</span>
-              <Input type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)} className="rounded-xl" />
+            <div className="flex items-center gap-2">
+              <Input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} className="flex-1" />
+              <span className="text-sm text-muted-foreground">to</span>
+              <Input type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)} className="flex-1" />
             </div>
           </div>
 
           {/* Location */}
           <div className="space-y-2">
-            <label className="text-sm font-medium">Location <span className="text-muted-foreground/60 font-normal">(optional)</span></label>
-            <Input className="rounded-xl" placeholder="e.g. Flinders Library Room 3" value={locationName} onChange={(e) => setLocationName(e.target.value)} />
+            <label className="text-sm font-medium">Location <span className="text-muted-foreground font-normal">(optional)</span></label>
+            <Input placeholder="e.g. Flinders Library Room 3" value={locationName} onChange={(e) => setLocationName(e.target.value)} />
           </div>
 
           {/* Description */}
           <div className="space-y-2">
-            <label className="text-sm font-medium">Description <span className="text-muted-foreground/60 font-normal">(optional)</span></label>
+            <label className="text-sm font-medium">Description <span className="text-muted-foreground font-normal">(optional)</span></label>
             <Textarea
-              className="rounded-xl"
               placeholder="Add any details about this event..."
               value={description}
               onChange={(e) => setDescription(e.target.value)}
@@ -163,7 +161,7 @@ export default function EventForm({ roomId, onCreateStart, onCreated, onCreateEr
           </div>
 
           {error && <p className="text-sm text-destructive">{error}</p>}
-          <Button type="submit" className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl h-11 shadow-sm hover:from-blue-700 hover:to-indigo-700 transition-all duration-200" disabled={loading}>
+          <Button type="submit" className="w-full" disabled={loading}>
             {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             Add Event
           </Button>
