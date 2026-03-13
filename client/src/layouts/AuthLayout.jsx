@@ -36,13 +36,11 @@ export default function AuthLayout({ children }) {
         <div className="mb-8 text-center">
           {/* Flinders University logo */}
           <div className="mx-auto mb-5 flex h-20 items-center justify-center">
-            <div className="overflow-hidden rounded-xl bg-white px-4 py-2 shadow-lg">
-              <img
-                src="/images/flinders-logo.png"
-                alt="Flinders University"
-                className="h-12 object-contain"
-              />
-            </div>
+            <img
+              src="/images/flinders-logo.png"
+              alt="Flinders University"
+              className="h-14 object-contain"
+            />
           </div>
           <h1 className="text-3xl font-bold tracking-tight text-white">
             Flinders Collab
