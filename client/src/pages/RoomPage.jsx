@@ -121,7 +121,7 @@ export default function RoomPage() {
             <h1 className="text-2xl font-bold">{room?.name}</h1>
             {room?.course_code && <Badge variant="secondary">{room.course_code}</Badge>}
           </div>
-          {room?.description && <p className="mt-1 text-muted-foreground">{room.description}</p>}
+          {room?.description && <p className="mt-1 text-base text-muted-foreground">{room.description}</p>}
         </div>
 
         <Tabs defaultValue="overview" onValueChange={setActiveTab}>
@@ -193,12 +193,7 @@ export default function RoomPage() {
           </TabsContent>
 
           <TabsContent value="tasks" className="space-y-4">
-            <div className="flex items-center justify-between">
-              <h2 className="text-lg font-semibold">Tasks</h2>
-              <div className="flex items-center gap-2">
-                <TaskForm roomId={roomId} members={members} onCreated={fetchTasks} />
-              </div>
-            </div>
+            <h2 className="text-lg font-semibold">Tasks</h2>
             <TaskList
               tasks={tasks}
               members={members}

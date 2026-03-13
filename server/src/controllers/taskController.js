@@ -114,22 +114,21 @@ async function updateTask(req, res, next) {
       .eq('user_id', userId)
       .single();
 
-    const isAssignee = existing.assigned_to === userId;
-    const isAssigner = existing.assigned_by === userId;
-    const isAdmin =
-      membership && (membership.role === 'owner' || membership.role === 'admin');
-
-    if (!isAssignee && !isAssigner && !isAdmin) {
+    if (!membership) {
       return res.status(403).json({
-        error: 'Only the assignee, assigner, or room admin can update this task',
+        error: 'You must be a room member to update tasks',
       });
     }
 
-    // Assignees can only update status; admins/assigners can update everything
+    const isAssigner = existing.assigned_by === userId;
+    const isAdmin =
+      membership.role === 'owner' || membership.role === 'admin';
+
+    // Any room member can update status; admins/assigners can update all fields
     const allowedFields =
       isAdmin || isAssigner
         ? ['title', 'description', 'assigned_to', 'due_date', 'status', 'priority']
-        : ['status'];
+        : ['title', 'status', 'due_date', 'priority'];
 
     const updates = {};
     for (const field of allowedFields) {
@@ -188,13 +187,9 @@ async function deleteTask(req, res, next) {
       .eq('user_id', userId)
       .single();
 
-    const isAssigner = existing.assigned_by === userId;
-    const isAdmin =
-      membership && (membership.role === 'owner' || membership.role === 'admin');
-
-    if (!isAssigner && !isAdmin) {
+    if (!membership) {
       return res.status(403).json({
-        error: 'Only the task creator or room admin can delete this task',
+        error: 'You must be a room member to delete tasks',
       });
     }
 

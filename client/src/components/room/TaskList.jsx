@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import {
@@ -11,13 +12,22 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from '@/components/ui/dialog';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
-import { CheckCircle2, Clock, Trash2, Pencil, Plus, ChevronRight, Loader2 } from 'lucide-react';
+import {
+  CheckCircle2, Circle, Clock, Trash2, Pencil, Plus,
+  Loader2, CalendarDays, GripVertical, UserPlus, AlertCircle,
+} from 'lucide-react';
 import { updateTask, deleteTask, createTask } from '@/services/tasks';
 
-const priorityDot = {
-  low: 'bg-slate-400',
-  medium: 'bg-amber-500',
-  high: 'bg-red-500',
+const priorityConfig = {
+  low:    { dot: 'bg-slate-400', label: 'Low',    border: 'border-l-slate-400' },
+  medium: { dot: 'bg-amber-500', label: 'Medium', border: 'border-l-amber-500' },
+  high:   { dot: 'bg-red-500',   label: 'High',   border: 'border-l-red-500' },
+};
+
+const statusConfig = {
+  pending:     { label: 'Pending',     bg: 'bg-slate-100 text-slate-700' },
+  in_progress: { label: 'In Progress', bg: 'bg-blue-100 text-blue-700' },
+  completed:   { label: 'Done',        bg: 'bg-green-100 text-green-700' },
 };
 
 function formatDueDate(dateStr) {
@@ -33,29 +43,50 @@ function formatDueDate(dateStr) {
     year: date.getFullYear() !== now.getFullYear() ? 'numeric' : undefined,
   });
 
-  if (diffDays < 0) return { text: formatted, overdue: true };
-  if (diffDays === 0) return { text: 'Today', overdue: false };
-  if (diffDays === 1) return { text: 'Tomorrow', overdue: false };
-  return { text: formatted, overdue: false };
+  if (diffDays < 0) return { text: formatted, overdue: true, label: 'Overdue' };
+  if (diffDays === 0) return { text: 'Today', overdue: false, label: 'Due today' };
+  if (diffDays === 1) return { text: 'Tomorrow', overdue: false, label: 'Due tomorrow' };
+  if (diffDays <= 7) return { text: formatted, overdue: false, label: `${diffDays} days left` };
+  return { text: formatted, overdue: false, label: formatted };
 }
 
-function InlineAddTask({ roomId, memberId, onCreated }) {
+function getInitials(name) {
+  return name.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2);
+}
+
+/* ─── Task Creation Form with Drag & Drop Member Assignment ─── */
+function TaskCreateForm({ roomId, members = [], onCreated }) {
   const [title, setTitle] = useState('');
   const [dueDate, setDueDate] = useState('');
+  const [priority, setPriority] = useState('medium');
+  const [assignedMember, setAssignedMember] = useState(null);
   const [submitting, setSubmitting] = useState(false);
+  const [dragOver, setDragOver] = useState(false);
+  const dropRef = useRef(null);
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    setDragOver(false);
+    const memberId = e.dataTransfer.getData('text/member-id');
+    const member = members.find((m) => (m.user_id || m.id) === memberId);
+    if (member) setAssignedMember(member);
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!title.trim()) return;
+    if (!title.trim() || !assignedMember) return;
     setSubmitting(true);
     try {
       await createTask(roomId, {
         title: title.trim(),
-        assigned_to: memberId,
+        assigned_to: assignedMember.user_id || assignedMember.id,
         due_date: dueDate ? new Date(`${dueDate}T23:59`).toISOString() : undefined,
+        priority,
       });
       setTitle('');
       setDueDate('');
+      setPriority('medium');
+      setAssignedMember(null);
       onCreated?.();
     } catch (err) {
       console.error('Failed to create task:', err.message);
@@ -65,51 +96,262 @@ function InlineAddTask({ roomId, memberId, onCreated }) {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="flex items-center gap-2 pt-2 border-t border-border/50">
-      <Plus className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-      <input
-        type="text"
-        placeholder="What needs to be done?"
-        value={title}
-        onChange={(e) => setTitle(e.target.value)}
-        disabled={submitting}
-        className="flex-1 min-w-0 text-sm bg-transparent outline-none placeholder:text-muted-foreground/50"
-      />
-      <div className="flex items-center gap-1.5 shrink-0">
-        <span className="text-[10px] text-muted-foreground">Due:</span>
+    <div className="space-y-4">
+      {/* Form */}
+      <form onSubmit={handleSubmit} className="rounded-xl border-2 border-dashed border-border bg-card p-5 space-y-4">
+        <div className="flex items-center gap-2 mb-1">
+          <Plus className="h-5 w-5 text-primary" />
+          <h3 className="text-base font-semibold">New Task</h3>
+        </div>
+
+        {/* Title */}
         <Input
-          type="date"
-          value={dueDate}
-          onChange={(e) => setDueDate(e.target.value)}
+          placeholder="What needs to be done?"
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
           disabled={submitting}
-          className="h-7 text-xs w-[130px] px-2"
+          className="text-base h-11 font-medium"
         />
+
+        <div className="grid grid-cols-2 gap-3">
+          {/* Due Date */}
+          <div className="space-y-1.5">
+            <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
+              <CalendarDays className="h-3.5 w-3.5" />
+              Due Date
+            </label>
+            <Input
+              type="date"
+              value={dueDate}
+              onChange={(e) => setDueDate(e.target.value)}
+              disabled={submitting}
+              className="h-10"
+            />
+          </div>
+
+          {/* Priority */}
+          <div className="space-y-1.5">
+            <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
+              <AlertCircle className="h-3.5 w-3.5" />
+              Priority
+            </label>
+            <select
+              value={priority}
+              onChange={(e) => setPriority(e.target.value)}
+              disabled={submitting}
+              className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm"
+            >
+              <option value="low">Low</option>
+              <option value="medium">Medium</option>
+              <option value="high">High</option>
+            </select>
+          </div>
+        </div>
+
+        {/* Drop zone for member */}
+        <div
+          ref={dropRef}
+          onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+          onDragLeave={() => setDragOver(false)}
+          onDrop={handleDrop}
+          className={`flex items-center gap-3 rounded-lg border-2 border-dashed p-4 transition-all ${
+            dragOver
+              ? 'border-primary bg-primary/5 scale-[1.01]'
+              : assignedMember
+                ? 'border-green-300 bg-green-50'
+                : 'border-muted-foreground/20 bg-muted/30'
+          }`}
+        >
+          {assignedMember ? (
+            <>
+              <Avatar className="h-9 w-9">
+                <AvatarFallback className="text-xs font-semibold bg-primary/10 text-primary">
+                  {getInitials(assignedMember.full_name || assignedMember.university_email || 'U')}
+                </AvatarFallback>
+              </Avatar>
+              <div className="flex-1">
+                <p className="text-sm font-semibold">{assignedMember.full_name || assignedMember.university_email}</p>
+                <p className="text-xs text-green-600">Assigned</p>
+              </div>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-7 text-xs text-muted-foreground"
+                onClick={() => setAssignedMember(null)}
+              >
+                Change
+              </Button>
+            </>
+          ) : (
+            <>
+              <UserPlus className={`h-5 w-5 ${dragOver ? 'text-primary' : 'text-muted-foreground/50'}`} />
+              <p className={`text-sm ${dragOver ? 'text-primary font-medium' : 'text-muted-foreground/60'}`}>
+                Drag a member here to assign this task
+              </p>
+            </>
+          )}
+        </div>
+
+        <Button
+          type="submit"
+          className="w-full h-10"
+          disabled={submitting || !title.trim() || !assignedMember}
+        >
+          {submitting ? (
+            <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Creating...</>
+          ) : (
+            <><Plus className="mr-2 h-4 w-4" />Create Task</>
+          )}
+        </Button>
+      </form>
+
+      {/* Draggable member chips */}
+      <div className="space-y-2">
+        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+          Team Members — drag to assign
+        </p>
+        <div className="flex flex-wrap gap-2">
+          {members.map((m) => {
+            const id = m.user_id || m.id;
+            const name = m.full_name || m.university_email || 'Unknown';
+            return (
+              <div
+                key={id}
+                draggable
+                onDragStart={(e) => {
+                  e.dataTransfer.setData('text/member-id', id);
+                  e.dataTransfer.effectAllowed = 'copy';
+                }}
+                className="flex items-center gap-2 rounded-full border bg-card pl-1 pr-3 py-1 cursor-grab active:cursor-grabbing hover:shadow-md hover:border-primary/30 transition-all select-none"
+              >
+                <Avatar className="h-7 w-7">
+                  <AvatarFallback className="text-[10px] font-semibold bg-primary/10 text-primary">
+                    {getInitials(name)}
+                  </AvatarFallback>
+                </Avatar>
+                <span className="text-sm font-medium">{name}</span>
+                <GripVertical className="h-3.5 w-3.5 text-muted-foreground/40" />
+              </div>
+            );
+          })}
+        </div>
       </div>
-      <button
-        type="submit"
-        disabled={submitting || !title.trim()}
-        className="shrink-0 rounded-md bg-primary px-3 py-1 text-xs font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-40 transition-colors"
-      >
-        Add
-      </button>
-    </form>
+    </div>
   );
 }
 
+/* ─── Single Task Card ─── */
+function TaskCard({ task, onStatusChange, onEdit, onDelete }) {
+  const prio = priorityConfig[task.priority] || priorityConfig.medium;
+  const status = statusConfig[task.status] || statusConfig.pending;
+  const due = formatDueDate(task.due_date);
+  const isCompleted = task.status === 'completed';
+  const assigneeName = task.assignee?.full_name || task.assignee?.university_email || 'Unassigned';
+
+  return (
+    <div
+      className={`relative rounded-xl border bg-card shadow-sm hover:shadow-md transition-all overflow-hidden border-l-4 ${prio.border} ${
+        isCompleted ? 'opacity-60' : ''
+      }`}
+    >
+      <div className="p-5">
+        {/* Top: Status badge + Actions */}
+        <div className="flex items-center justify-between mb-3">
+          <Badge className={`text-xs font-medium ${status.bg} border-0`}>
+            {status.label}
+          </Badge>
+          <div className="flex items-center gap-1">
+            {/* Status dropdown */}
+            <select
+              value={task.status}
+              onChange={(e) => onStatusChange(task, e.target.value)}
+              className="text-xs rounded-md border border-input bg-background px-2 py-1 cursor-pointer"
+            >
+              <option value="pending">Pending</option>
+              <option value="in_progress">In Progress</option>
+              <option value="completed">Done</option>
+            </select>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button onClick={() => onEdit(task)} className="p-1.5 rounded-md hover:bg-muted transition-colors">
+                  <Pencil className="h-3.5 w-3.5 text-muted-foreground" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent><p>Edit</p></TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button onClick={() => onDelete(task)} className="p-1.5 rounded-md hover:bg-red-50 transition-colors">
+                  <Trash2 className="h-3.5 w-3.5 text-muted-foreground hover:text-red-500" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent><p>Delete</p></TooltipContent>
+            </Tooltip>
+          </div>
+        </div>
+
+        {/* Task title - BIG */}
+        <h3 className={`text-lg font-bold leading-snug mb-2 ${isCompleted ? 'line-through text-muted-foreground' : 'text-foreground'}`}>
+          {task.title}
+        </h3>
+
+        {/* Due date - PROMINENT */}
+        {due ? (
+          <div className={`inline-flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm font-semibold ${
+            due.overdue && !isCompleted
+              ? 'bg-red-100 text-red-700'
+              : isCompleted
+                ? 'bg-muted text-muted-foreground'
+                : 'bg-blue-50 text-blue-700'
+          }`}>
+            <CalendarDays className="h-4 w-4" />
+            {due.text}
+            {due.overdue && !isCompleted && (
+              <span className="text-xs font-normal ml-1">· Overdue</span>
+            )}
+          </div>
+        ) : (
+          <div className="inline-flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm text-muted-foreground/50 bg-muted/50">
+            <CalendarDays className="h-4 w-4" />
+            No due date
+          </div>
+        )}
+
+        {/* Priority */}
+        <div className="flex items-center gap-1.5 mt-3">
+          <span className={`h-2.5 w-2.5 rounded-full ${prio.dot}`} />
+          <span className="text-xs text-muted-foreground">{prio.label} priority</span>
+        </div>
+
+        {/* Assigned member - smaller, right-aligned */}
+        <div className="flex items-center justify-end gap-2 mt-4 pt-3 border-t border-border/50">
+          <span className="text-xs text-muted-foreground">{assigneeName}</span>
+          <Avatar className="h-7 w-7">
+            <AvatarFallback className="text-[10px] font-semibold bg-muted text-muted-foreground">
+              {getInitials(assigneeName)}
+            </AvatarFallback>
+          </Avatar>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ─── Main TaskList Component ─── */
 export default function TaskList({ tasks = [], members = [], roomId, currentUserId, onUpdated }) {
   const [confirmDelete, setConfirmDelete] = useState(null);
-  const [expandedId, setExpandedId] = useState(null);
   const [editTask, setEditTask] = useState(null);
   const [editForm, setEditForm] = useState({});
   const [editLoading, setEditLoading] = useState(false);
+  const [showForm, setShowForm] = useState(false);
 
-  const handleMarkComplete = async (task) => {
+  const handleStatusChange = async (task, newStatus) => {
     try {
-      const newStatus = task.status === 'completed' ? 'pending' : 'completed';
       await updateTask(roomId, task.id, { status: newStatus });
       onUpdated?.();
     } catch (err) {
-      console.error('Failed to update task:', err.message);
+      console.error('Failed to update task status:', err.message);
     }
   };
 
@@ -122,15 +364,6 @@ export default function TaskList({ tasks = [], members = [], roomId, currentUser
       console.error('Failed to delete task:', err.message);
     } finally {
       setConfirmDelete(null);
-    }
-  };
-
-  const handleStatusChange = async (task, newStatus) => {
-    try {
-      await updateTask(roomId, task.id, { status: newStatus });
-      onUpdated?.();
-    } catch (err) {
-      console.error('Failed to update task status:', err.message);
     }
   };
 
@@ -163,219 +396,88 @@ export default function TaskList({ tasks = [], members = [], roomId, currentUser
     }
   };
 
-  // Build member map
-  const memberMap = new Map();
-  members.forEach((m) => {
-    const id = m.user_id || m.id;
-    if (id) {
-      memberMap.set(id, {
-        id,
-        name: m.full_name || m.university_email || 'Unknown',
-        tasks: [],
-      });
-    }
-  });
-
-  // Group tasks by assigned_to
-  tasks.forEach((task) => {
-    const assigneeId = task.assigned_to || 'unassigned';
-    if (!memberMap.has(assigneeId)) {
-      const name = task.assignee?.full_name || task.assignee?.university_email || 'Unknown';
-      memberMap.set(assigneeId, { id: assigneeId, name, tasks: [] });
-    }
-    memberMap.get(assigneeId).tasks.push(task);
-  });
-
-  const memberEntries = Array.from(memberMap.values());
-
-  if (memberEntries.length === 0) {
-    return (
-      <div className="flex flex-col items-center justify-center py-10 text-center">
-        <div className="text-3xl mb-2">📋</div>
-        <p className="text-sm font-medium text-muted-foreground">No members yet</p>
-        <p className="text-xs text-muted-foreground/70 mt-1">Invite members to start assigning tasks</p>
-      </div>
-    );
-  }
+  // Separate active and completed
+  const activeTasks = tasks.filter((t) => t.status !== 'completed');
+  const completedTasks = tasks.filter((t) => t.status === 'completed');
 
   return (
     <>
-      <div className="space-y-2">
-        {memberEntries.map((member) => {
-          const initials = member.name
-            .split(' ')
-            .map((n) => n[0])
-            .join('')
-            .toUpperCase()
-            .slice(0, 2);
-
-          const activeTasks = member.tasks.filter((t) => t.status !== 'completed');
-          const completedTasks = member.tasks.filter((t) => t.status === 'completed');
-          const sortedTasks = [...activeTasks, ...completedTasks];
-          const completedCount = completedTasks.length;
-          const totalCount = member.tasks.length;
-          const isExpanded = expandedId === member.id;
-
-          return (
-            <div key={member.id} className="rounded-lg border border-border bg-card overflow-hidden">
-              <button
-                type="button"
-                onClick={() => setExpandedId(isExpanded ? null : member.id)}
-                className="w-full flex flex-col gap-2 px-4 py-3 hover:bg-muted/40 transition-colors text-left"
-              >
-                <div className="flex items-center gap-3">
-                  <ChevronRight className={`h-4 w-4 text-muted-foreground shrink-0 transition-transform ${isExpanded ? 'rotate-90' : ''}`} />
-                  <Avatar className="h-8 w-8 shrink-0">
-                    <AvatarFallback className="text-xs">{initials}</AvatarFallback>
-                  </Avatar>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold truncate">{member.name}</p>
-                  </div>
-                  {totalCount > 0 ? (
-                    <div className="flex items-center gap-1 shrink-0">
-                      <div className="h-1.5 w-16 rounded-full bg-muted overflow-hidden">
-                        <div
-                          className="h-full rounded-full bg-green-500 transition-all"
-                          style={{ width: `${(completedCount / totalCount) * 100}%` }}
-                        />
-                      </div>
-                      <span className="text-xs text-muted-foreground">{completedCount}/{totalCount}</span>
-                    </div>
-                  ) : (
-                    <span className="text-xs text-muted-foreground shrink-0">No tasks</span>
-                  )}
-                </div>
-
-                {!isExpanded && activeTasks.length > 0 && (
-                  <div className="ml-[52px] space-y-1">
-                    {activeTasks.slice(0, 3).map((task) => {
-                      const dotClass = priorityDot[task.priority] || priorityDot.medium;
-                      const due = formatDueDate(task.due_date);
-                      return (
-                        <div key={task.id} className="flex items-center gap-2 text-xs text-muted-foreground">
-                          <span className={`h-1.5 w-1.5 rounded-full shrink-0 ${dotClass}`} />
-                          <span className="truncate flex-1">{task.title}</span>
-                          {due && (
-                            <span className={`shrink-0 ${due.overdue ? 'text-red-500 font-medium' : ''}`}>
-                              {due.text}
-                            </span>
-                          )}
-                          <span className="shrink-0 text-[10px] px-1.5 py-0 rounded bg-muted">
-                            {task.status === 'in_progress' ? 'In Progress' : 'Pending'}
-                          </span>
-                        </div>
-                      );
-                    })}
-                    {activeTasks.length > 3 && (
-                      <p className="text-[11px] text-muted-foreground/60 ml-3.5">+{activeTasks.length - 3} more</p>
-                    )}
-                  </div>
-                )}
-              </button>
-
-              {isExpanded && (
-                <div className="px-4 pb-3 pt-1 border-t space-y-1.5">
-                  {sortedTasks.map((task) => {
-                    const dotClass = priorityDot[task.priority] || priorityDot.medium;
-                    const due = formatDueDate(task.due_date);
-                    const isCompleted = task.status === 'completed';
-                    // Allow action if user is assignee, assigner, or any room member
-                    const canAct = String(task.assigned_to) === String(currentUserId)
-                      || String(task.assigned_by) === String(currentUserId);
-
-                    return (
-                      <div
-                        key={task.id}
-                        className={`flex items-center gap-2 rounded-md px-2.5 py-2 text-sm ${
-                          isCompleted ? 'opacity-40 bg-muted/30' : 'bg-muted/50'
-                        }`}
-                      >
-                        {/* Complete toggle */}
-                        <button
-                          onClick={() => handleMarkComplete(task)}
-                          className="shrink-0"
-                          title={isCompleted ? 'Mark as pending' : 'Mark as complete'}
-                        >
-                          <CheckCircle2
-                            className={`h-4 w-4 ${
-                              isCompleted ? 'text-green-500' : 'text-muted-foreground/40 hover:text-green-500'
-                            } transition-colors`}
-                          />
-                        </button>
-
-                        <span className={`h-2 w-2 rounded-full shrink-0 ${dotClass}`} />
-
-                        <span className={`flex-1 min-w-0 truncate ${isCompleted ? 'line-through' : ''}`}>
-                          {task.title}
-                        </span>
-
-                        {due && (
-                          <span
-                            className={`text-xs shrink-0 flex items-center gap-1 ${
-                              due.overdue && !isCompleted ? 'text-red-500 font-medium' : 'text-muted-foreground'
-                            }`}
-                          >
-                            <Clock className="h-3 w-3" />
-                            {due.text}
-                          </span>
-                        )}
-                        {!due && (
-                          <span className="text-xs text-muted-foreground/50 shrink-0">No due date</span>
-                        )}
-
-                        {/* Status dropdown */}
-                        {!isCompleted && (
-                          <select
-                            value={task.status}
-                            onChange={(e) => handleStatusChange(task, e.target.value)}
-                            className="text-[10px] rounded border border-input bg-background px-1 py-0.5 shrink-0"
-                          >
-                            <option value="pending">Pending</option>
-                            <option value="in_progress">In Progress</option>
-                            <option value="completed">Done</option>
-                          </select>
-                        )}
-
-                        {/* Edit */}
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <button
-                              onClick={() => handleEditOpen(task)}
-                              className="shrink-0 text-muted-foreground hover:text-primary transition-colors"
-                            >
-                              <Pencil className="h-3.5 w-3.5" />
-                            </button>
-                          </TooltipTrigger>
-                          <TooltipContent side="top"><p>Edit task</p></TooltipContent>
-                        </Tooltip>
-
-                        {/* Delete */}
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <button
-                              onClick={() => setConfirmDelete({ id: task.id, title: task.title })}
-                              className="shrink-0 text-muted-foreground hover:text-destructive transition-colors"
-                            >
-                              <Trash2 className="h-3.5 w-3.5" />
-                            </button>
-                          </TooltipTrigger>
-                          <TooltipContent side="top"><p>Delete task</p></TooltipContent>
-                        </Tooltip>
-                      </div>
-                    );
-                  })}
-
-                  {sortedTasks.length === 0 && (
-                    <p className="text-xs text-muted-foreground italic py-1">No tasks assigned yet</p>
-                  )}
-
-                  <InlineAddTask roomId={roomId} memberId={member.id} onCreated={onUpdated} />
-                </div>
-              )}
-            </div>
-          );
-        })}
+      {/* Toggle form */}
+      <div className="flex items-center justify-between mb-4">
+        <Button
+          variant={showForm ? 'secondary' : 'default'}
+          size="sm"
+          onClick={() => setShowForm(!showForm)}
+        >
+          <Plus className="mr-2 h-4 w-4" />
+          {showForm ? 'Hide Form' : 'New Task'}
+        </Button>
+        {tasks.length > 0 && (
+          <p className="text-sm text-muted-foreground">
+            {activeTasks.length} active · {completedTasks.length} done
+          </p>
+        )}
       </div>
+
+      {/* Task creation form */}
+      {showForm && (
+        <div className="mb-6">
+          <TaskCreateForm roomId={roomId} members={members} onCreated={() => { onUpdated?.(); setShowForm(false); }} />
+        </div>
+      )}
+
+      {/* Task grid */}
+      {tasks.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-16 text-center">
+          <div className="text-5xl mb-4">📋</div>
+          <p className="text-lg font-semibold text-muted-foreground">No tasks yet</p>
+          <p className="text-sm text-muted-foreground/70 mt-1">
+            Create a task and drag a team member to assign it
+          </p>
+        </div>
+      ) : (
+        <div className="space-y-6">
+          {/* Active tasks */}
+          {activeTasks.length > 0 && (
+            <div>
+              <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">
+                Active ({activeTasks.length})
+              </h3>
+              <div className="grid gap-4 sm:grid-cols-2">
+                {activeTasks.map((task) => (
+                  <TaskCard
+                    key={task.id}
+                    task={task}
+                    onStatusChange={handleStatusChange}
+                    onEdit={handleEditOpen}
+                    onDelete={(t) => setConfirmDelete({ id: t.id, title: t.title })}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Completed tasks */}
+          {completedTasks.length > 0 && (
+            <div>
+              <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">
+                Completed ({completedTasks.length})
+              </h3>
+              <div className="grid gap-4 sm:grid-cols-2">
+                {completedTasks.map((task) => (
+                  <TaskCard
+                    key={task.id}
+                    task={task}
+                    onStatusChange={handleStatusChange}
+                    onEdit={handleEditOpen}
+                    onDelete={(t) => setConfirmDelete({ id: t.id, title: t.title })}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Edit task dialog */}
       <Dialog open={!!editTask} onOpenChange={(open) => !open && setEditTask(null)}>
@@ -390,6 +492,7 @@ export default function TaskList({ tasks = [], members = [], roomId, currentUser
                 value={editForm.title || ''}
                 onChange={(e) => setEditForm({ ...editForm, title: e.target.value })}
                 disabled={editLoading}
+                className="text-base font-medium"
               />
             </div>
             <div className="grid grid-cols-2 gap-3">
