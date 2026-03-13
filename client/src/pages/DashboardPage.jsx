@@ -88,6 +88,7 @@ export default function DashboardPage() {
   const [error, setError] = useState('');
   const [draggedRoomId, setDraggedRoomId] = useState(null);
   const [dropTargetId, setDropTargetId] = useState(null);
+  const [suppressNavigation, setSuppressNavigation] = useState(false);
 
   const fetchRooms = useCallback(async () => {
     setError('');
@@ -135,22 +136,27 @@ export default function DashboardPage() {
     setLoading(false);
   }, []);
 
-  const handleRoomReorder = useCallback((targetRoomId) => {
+  const handleDragStart = useCallback((roomId, event) => {
+    setDraggedRoomId(roomId);
+    setSuppressNavigation(false);
+    event.dataTransfer.effectAllowed = 'move';
+    event.dataTransfer.setData('text/plain', roomId);
+  }, []);
+
+  const handleDragEnter = useCallback((targetRoomId) => {
     if (!draggedRoomId || draggedRoomId === targetRoomId) {
-      setDraggedRoomId(null);
-      setDropTargetId(null);
       return;
     }
 
     setRooms((prev) => moveRoom(prev, draggedRoomId, targetRoomId));
-    setDraggedRoomId(null);
-    setDropTargetId(null);
+    setDropTargetId(targetRoomId);
   }, [draggedRoomId]);
 
-  const handleDragStart = useCallback((roomId, event) => {
-    setDraggedRoomId(roomId);
-    event.dataTransfer.effectAllowed = 'move';
-    event.dataTransfer.setData('text/plain', roomId);
+  const handleDragEnd = useCallback(() => {
+    setDraggedRoomId(null);
+    setDropTargetId(null);
+    setSuppressNavigation(true);
+    window.setTimeout(() => setSuppressNavigation(false), 150);
   }, []);
 
   return (
@@ -188,20 +194,11 @@ export default function DashboardPage() {
                 key={room.id}
                 onDragEnter={(e) => {
                   e.preventDefault();
-                  if (draggedRoomId && dropTargetId !== room.id) {
-                    setDropTargetId(room.id);
-                  }
+                  handleDragEnter(room.id);
                 }}
                 onDragOver={(e) => {
                   e.preventDefault();
                   e.dataTransfer.dropEffect = 'move';
-                  if (dropTargetId !== room.id) {
-                    setDropTargetId(room.id);
-                  }
-                }}
-                onDrop={(e) => {
-                  e.preventDefault();
-                  handleRoomReorder(room.id);
                 }}
                 className={`rounded-lg transition-transform ${
                   draggedRoomId === room.id ? 'scale-[0.98] opacity-70' : ''
@@ -214,13 +211,11 @@ export default function DashboardPage() {
                 <RoomCard
                   room={room}
                   onDeleted={fetchRooms}
-                  dragHandleProps={{
+                  suppressNavigation={suppressNavigation}
+                  draggableProps={{
                     draggable: true,
                     onDragStart: (event) => handleDragStart(room.id, event),
-                    onDragEnd: () => {
-                      setDraggedRoomId(null);
-                      setDropTargetId(null);
-                    },
+                    onDragEnd: handleDragEnd,
                   }}
                 />
               </div>

@@ -7,10 +7,10 @@ import {
   AlertDialogContent, AlertDialogDescription, AlertDialogFooter,
   AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Users, Crown, Trash2, LogOut, Loader2, GripVertical } from 'lucide-react';
+import { Users, Crown, Trash2, LogOut, Loader2 } from 'lucide-react';
 import { deleteRoom, leaveRoom } from '@/services/rooms';
 
-export default function RoomCard({ room, onDeleted, dragHandleProps }) {
+export default function RoomCard({ room, onDeleted, draggableProps, suppressNavigation = false }) {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
@@ -36,34 +36,27 @@ export default function RoomCard({ room, onDeleted, dragHandleProps }) {
   return (
     <div className="h-full">
       <div
-        className="flex flex-col h-full rounded-lg border bg-card text-card-foreground shadow-sm transition-shadow hover:shadow-md cursor-pointer"
-        onClick={() => navigate(`/rooms/${room.id}`)}
+        {...draggableProps}
+        className="flex flex-col h-full rounded-lg border bg-card text-card-foreground shadow-sm transition-shadow hover:shadow-md cursor-grab active:cursor-grabbing"
+        onClick={() => {
+          if (!suppressNavigation) {
+            navigate(`/rooms/${room.id}`);
+          }
+        }}
       >
         {/* Top section: badges + title + description */}
         <div className="flex-1 p-5 pb-0">
           {/* Badges row — always 28px tall */}
-          <div className="flex items-center justify-between gap-2 h-7">
-            <div className="flex items-center gap-1.5 min-w-0">
-              {room.course_name && (
-                <Badge variant="secondary" className="text-xs">{room.course_name}</Badge>
-              )}
-              {isOwner && (
-                <Badge variant="outline" className="gap-1 text-xs">
-                  <Crown className="h-3 w-3" />
-                  Owner
-                </Badge>
-              )}
-            </div>
-            <button
-              type="button"
-              {...dragHandleProps}
-              onClick={(e) => e.stopPropagation()}
-              className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground cursor-grab active:cursor-grabbing"
-              aria-label={`Reorder ${room.name}`}
-              title="Drag to reorder"
-            >
-              <GripVertical className="h-4 w-4" />
-            </button>
+          <div className="flex items-center gap-1.5 h-7">
+            {room.course_name && (
+              <Badge variant="secondary" className="text-xs">{room.course_name}</Badge>
+            )}
+            {isOwner && (
+              <Badge variant="outline" className="gap-1 text-xs">
+                <Crown className="h-3 w-3" />
+                Owner
+              </Badge>
+            )}
           </div>
 
           {/* Title — single line, truncated */}
