@@ -7,6 +7,8 @@ import { getRooms } from '@/services/rooms';
 import { useAuth } from '@/hooks/useAuth';
 import { Loader2, Plus, UserPlus } from 'lucide-react';
 
+const TEMP_ROOM_PREFIX = 'temp-room-';
+
 function upsertRoom(rooms, room, fallback = {}) {
   if (!room?.id) return rooms;
 
@@ -21,27 +23,92 @@ function upsertRoom(rooms, room, fallback = {}) {
   return [nextRoom, ...remaining];
 }
 
+function getRoomOrderKey(userId) {
+  return userId ? `room-order:${userId}` : null;
+}
+
+function loadRoomOrder(userId) {
+  const key = getRoomOrderKey(userId);
+  if (!key) return [];
+
+  try {
+    const stored = window.localStorage.getItem(key);
+    const parsed = stored ? JSON.parse(stored) : [];
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+function applyRoomOrder(rooms, orderedIds) {
+  if (!orderedIds.length) return rooms;
+
+  const roomMap = new Map(rooms.map((room) => [room.id, room]));
+  const orderedRooms = orderedIds
+    .map((id) => roomMap.get(id))
+    .filter(Boolean);
+  const remainingRooms = rooms.filter((room) => !orderedIds.includes(room.id));
+
+  return [...orderedRooms, ...remainingRooms];
+}
+
+function saveRoomOrder(userId, rooms) {
+  const key = getRoomOrderKey(userId);
+  if (!key) return;
+
+  const orderedIds = rooms
+    .map((room) => room.id)
+    .filter((id) => typeof id === 'string' && !id.startsWith(TEMP_ROOM_PREFIX));
+
+  window.localStorage.setItem(key, JSON.stringify(orderedIds));
+}
+
+function moveRoom(rooms, draggedId, targetId) {
+  if (!draggedId || !targetId || draggedId === targetId) {
+    return rooms;
+  }
+
+  const draggedIndex = rooms.findIndex((room) => room.id === draggedId);
+  const targetIndex = rooms.findIndex((room) => room.id === targetId);
+
+  if (draggedIndex === -1 || targetIndex === -1) {
+    return rooms;
+  }
+
+  const next = [...rooms];
+  const [draggedRoom] = next.splice(draggedIndex, 1);
+  next.splice(targetIndex, 0, draggedRoom);
+  return next;
+}
+
 export default function DashboardPage() {
   const { user } = useAuth();
   const [rooms, setRooms] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [draggedRoomId, setDraggedRoomId] = useState(null);
+  const [dropTargetId, setDropTargetId] = useState(null);
 
   const fetchRooms = useCallback(async () => {
     setError('');
     try {
       const data = await getRooms();
-      setRooms(data.rooms || data || []);
+      const nextRooms = data.rooms || data || [];
+      setRooms(applyRoomOrder(nextRooms, loadRoomOrder(user?.id)));
     } catch (err) {
       setError('Failed to load rooms. Please refresh the page.');
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [user?.id]);
 
   useEffect(() => {
     fetchRooms();
   }, [fetchRooms]);
+
+  useEffect(() => {
+    saveRoomOrder(user?.id, rooms);
+  }, [rooms, user?.id]);
 
   const displayName = user?.user_metadata?.name || user?.email?.split('@')[0] || 'Student';
   const handleCreateStart = useCallback((tempRoom) => {
@@ -67,6 +134,18 @@ export default function DashboardPage() {
     setRooms((prev) => upsertRoom(prev, room, { member_count: 1, my_role: 'member' }));
     setLoading(false);
   }, []);
+
+  const handleRoomReorder = useCallback((targetRoomId) => {
+    if (!draggedRoomId || draggedRoomId === targetRoomId) {
+      setDraggedRoomId(null);
+      setDropTargetId(null);
+      return;
+    }
+
+    setRooms((prev) => moveRoom(prev, draggedRoomId, targetRoomId));
+    setDraggedRoomId(null);
+    setDropTargetId(null);
+  }, [draggedRoomId]);
 
   return (
     <MainLayout onRoomChange={fetchRooms}>
@@ -99,7 +178,34 @@ export default function DashboardPage() {
         ) : rooms.length > 0 ? (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {rooms.map((room) => (
-              <RoomCard key={room.id} room={room} onDeleted={fetchRooms} />
+              <div
+                key={room.id}
+                draggable
+                onDragStart={() => setDraggedRoomId(room.id)}
+                onDragEnd={() => {
+                  setDraggedRoomId(null);
+                  setDropTargetId(null);
+                }}
+                onDragOver={(e) => {
+                  e.preventDefault();
+                  if (dropTargetId !== room.id) {
+                    setDropTargetId(room.id);
+                  }
+                }}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  handleRoomReorder(room.id);
+                }}
+                className={`rounded-lg transition-transform ${
+                  draggedRoomId === room.id ? 'scale-[0.98] opacity-70' : ''
+                } ${
+                  dropTargetId === room.id && draggedRoomId !== room.id
+                    ? 'ring-2 ring-primary/50 ring-offset-2'
+                    : ''
+                }`}
+              >
+                <RoomCard room={room} onDeleted={fetchRooms} />
+              </div>
             ))}
           </div>
         ) : (
