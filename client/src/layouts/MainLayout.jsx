@@ -12,35 +12,8 @@ import {
 } from '@/components/ui/alert-dialog';
 import { useAuth } from '@/hooks/useAuth';
 import { getRooms } from '@/services/rooms';
-
-function getRoomOrderKey(userId) {
-  return userId ? `room-order:${userId}` : null;
-}
-
-function loadRoomOrder(userId) {
-  const key = getRoomOrderKey(userId);
-  if (!key) return [];
-
-  try {
-    const stored = window.localStorage.getItem(key);
-    const parsed = stored ? JSON.parse(stored) : [];
-    return Array.isArray(parsed) ? parsed : [];
-  } catch {
-    return [];
-  }
-}
-
-function applyRoomOrder(rooms, orderedIds) {
-  if (!orderedIds.length) return rooms;
-
-  const roomMap = new Map(rooms.map((room) => [room.id, room]));
-  const orderedRooms = orderedIds
-    .map((id) => roomMap.get(id))
-    .filter(Boolean);
-  const remainingRooms = rooms.filter((room) => !orderedIds.includes(room.id));
-
-  return [...orderedRooms, ...remainingRooms];
-}
+import { applyRoomOrder, loadRoomOrder } from '@/lib/room-order';
+import { useRoomOrderStore } from '@/store/roomOrderStore';
 
 const roomPalettes = [
   { softBg: '#fff1f6', softBorder: '#fbcfe8', text: '#831843', icon: '#9d174d' },
@@ -59,12 +32,12 @@ function getRoomPalette(room) {
 
 function NavItem({ to, isActive, icon: Icon, label, palette }) {
   const roomStyle = palette ? {
-    backgroundColor: isActive ? palette.softBg : 'transparent',
-    color: isActive ? palette.text : undefined,
-    border: `1px solid ${isActive ? palette.softBorder : 'transparent'}`,
+    backgroundColor: isActive ? palette.softBg : `${palette.softBg}CC`,
+    color: palette.text,
+    border: `1px solid ${palette.softBorder}`,
   } : undefined;
   const iconStyle = palette ? {
-    color: isActive ? palette.icon : undefined,
+    color: palette.icon,
   } : undefined;
 
   return (
@@ -159,48 +132,42 @@ export default function MainLayout({ children }) {
   const [rooms, setRooms] = useState([]);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [logoutOpen, setLogoutOpen] = useState(false);
+  const orderedIds = useRoomOrderStore((state) => (user?.id ? state.orderedIdsByUser[user.id] || [] : []));
+  const setOrder = useRoomOrderStore((state) => state.setOrder);
 
   useEffect(() => {
     getRooms()
       .then((data) => {
         const nextRooms = data.rooms || data || [];
-        setRooms(applyRoomOrder(nextRooms, loadRoomOrder(user?.id)));
+        const nextOrder = orderedIds.length > 0 ? orderedIds : loadRoomOrder(user?.id);
+        setRooms(applyRoomOrder(nextRooms, nextOrder));
       })
       .catch(() => {});
-  }, [location.pathname, user?.id]);
+  }, [location.pathname, orderedIds, user?.id]);
 
   useEffect(() => {
-    const handleRoomOrderUpdated = (event) => {
-      const detail = event.detail || {};
-      if (detail.userId && detail.userId !== user?.id) {
-        return;
-      }
-
-      if (Array.isArray(detail.rooms) && detail.rooms.length > 0) {
-        setRooms(applyRoomOrder(detail.rooms, detail.orderedIds || loadRoomOrder(user?.id)));
-        return;
-      }
-
-      setRooms((prev) => applyRoomOrder(prev, detail.orderedIds || loadRoomOrder(user?.id)));
-    };
-
     const handleStorage = (event) => {
-      const key = getRoomOrderKey(user?.id);
+      const key = user?.id ? `room-order:${user.id}` : null;
       if (!key || event.key !== key) {
         return;
       }
 
-      setRooms((prev) => applyRoomOrder(prev, loadRoomOrder(user?.id)));
+      const nextOrder = loadRoomOrder(user?.id);
+      setOrder(user.id, nextOrder);
+      setRooms((prev) => applyRoomOrder(prev, nextOrder));
     };
 
-    window.addEventListener('room-order-updated', handleRoomOrderUpdated);
     window.addEventListener('storage', handleStorage);
 
     return () => {
-      window.removeEventListener('room-order-updated', handleRoomOrderUpdated);
       window.removeEventListener('storage', handleStorage);
     };
-  }, [user?.id]);
+  }, [setOrder, user?.id]);
+
+  useEffect(() => {
+    if (!user?.id || orderedIds.length > 0) return;
+    setOrder(user.id, loadRoomOrder(user.id));
+  }, [orderedIds.length, setOrder, user?.id]);
 
   const handleLogout = async () => {
     await logout();

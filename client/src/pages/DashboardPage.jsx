@@ -5,6 +5,8 @@ import CreateRoomDialog from '@/components/room/CreateRoomDialog';
 import JoinRoomDialog from '@/components/room/JoinRoomDialog';
 import { getRooms } from '@/services/rooms';
 import { useAuth } from '@/hooks/useAuth';
+import { applyRoomOrder, buildOrderedIds, loadRoomOrder, persistRoomOrder } from '@/lib/room-order';
+import { useRoomOrderStore } from '@/store/roomOrderStore';
 import { Loader2, Plus, UserPlus } from 'lucide-react';
 
 const TEMP_ROOM_PREFIX = 'temp-room-';
@@ -21,53 +23,6 @@ function upsertRoom(rooms, room, fallback = {}) {
 
   const remaining = rooms.filter((item) => item.id !== nextRoom.id);
   return [nextRoom, ...remaining];
-}
-
-function getRoomOrderKey(userId) {
-  return userId ? `room-order:${userId}` : null;
-}
-
-function loadRoomOrder(userId) {
-  const key = getRoomOrderKey(userId);
-  if (!key) return [];
-
-  try {
-    const stored = window.localStorage.getItem(key);
-    const parsed = stored ? JSON.parse(stored) : [];
-    return Array.isArray(parsed) ? parsed : [];
-  } catch {
-    return [];
-  }
-}
-
-function applyRoomOrder(rooms, orderedIds) {
-  if (!orderedIds.length) return rooms;
-
-  const roomMap = new Map(rooms.map((room) => [room.id, room]));
-  const orderedRooms = orderedIds
-    .map((id) => roomMap.get(id))
-    .filter(Boolean);
-  const remainingRooms = rooms.filter((room) => !orderedIds.includes(room.id));
-
-  return [...orderedRooms, ...remainingRooms];
-}
-
-function saveRoomOrder(userId, rooms) {
-  const key = getRoomOrderKey(userId);
-  if (!key) return;
-
-  const orderedIds = rooms
-    .map((room) => room.id)
-    .filter((id) => typeof id === 'string' && !id.startsWith(TEMP_ROOM_PREFIX));
-
-  window.localStorage.setItem(key, JSON.stringify(orderedIds));
-  window.dispatchEvent(new CustomEvent('room-order-updated', {
-    detail: {
-      userId,
-      orderedIds,
-      rooms,
-    },
-  }));
 }
 
 function swapRoomOrder(rooms, draggedId, targetId) {
@@ -100,27 +55,40 @@ export default function DashboardPage() {
   const previousPositionsRef = useRef(new Map());
   const swapTimerRef = useRef(null);
   const pendingSwapTargetRef = useRef(null);
+  const orderedIds = useRoomOrderStore((state) => (user?.id ? state.orderedIdsByUser[user.id] || [] : []));
+  const setOrder = useRoomOrderStore((state) => state.setOrder);
 
   const fetchRooms = useCallback(async () => {
     setError('');
     try {
       const data = await getRooms();
       const nextRooms = data.rooms || data || [];
-      setRooms(applyRoomOrder(nextRooms, loadRoomOrder(user?.id)));
+      const nextOrder = orderedIds.length > 0 ? orderedIds : loadRoomOrder(user?.id);
+      setRooms(applyRoomOrder(nextRooms, nextOrder));
     } catch (err) {
       setError('Failed to load rooms. Please refresh the page.');
     } finally {
       setLoading(false);
     }
-  }, [user?.id]);
+  }, [orderedIds, user?.id]);
 
   useEffect(() => {
     fetchRooms();
   }, [fetchRooms]);
 
   useEffect(() => {
-    saveRoomOrder(user?.id, rooms);
-  }, [rooms, user?.id]);
+    if (!user?.id) return;
+    if (orderedIds.length === 0) {
+      setOrder(user.id, loadRoomOrder(user.id));
+    }
+  }, [orderedIds.length, setOrder, user?.id]);
+
+  useEffect(() => {
+    if (!user?.id) return;
+    const nextOrderedIds = buildOrderedIds(rooms, TEMP_ROOM_PREFIX);
+    persistRoomOrder(user.id, nextOrderedIds);
+    setOrder(user.id, nextOrderedIds);
+  }, [rooms, setOrder, user?.id]);
 
   useEffect(() => () => {
     if (swapTimerRef.current) {
