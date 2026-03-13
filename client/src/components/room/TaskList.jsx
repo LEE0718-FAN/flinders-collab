@@ -241,20 +241,21 @@ function TaskCreateForm({ roomId, members = [], onCreated }) {
   );
 }
 
-/* Status cycle: click to advance */
-const STATUS_CYCLE = ['pending', 'in_progress', 'completed'];
-function nextStatus(current) {
-  const idx = STATUS_CYCLE.indexOf(current);
-  return STATUS_CYCLE[(idx + 1) % STATUS_CYCLE.length];
-}
-
 /* ─── Single Task Card (Compact) ─── */
 function TaskCard({ task, onStatusChange, onEdit, onDelete }) {
+  const [statusOpen, setStatusOpen] = useState(false);
   const prio = priorityConfig[task.priority] || priorityConfig.medium;
   const status = statusConfig[task.status] || statusConfig.pending;
   const due = formatDueDate(task.due_date);
   const isCompleted = task.status === 'completed';
   const assigneeName = task.assignee?.full_name || task.assignee?.university_email || 'Unassigned';
+
+  const handleStatusSelect = (newStatus) => {
+    setStatusOpen(false);
+    if (newStatus !== task.status) {
+      onStatusChange(task, newStatus);
+    }
+  };
 
   return (
     <div
@@ -265,7 +266,7 @@ function TaskCard({ task, onStatusChange, onEdit, onDelete }) {
       <div className="px-3.5 py-3">
         {/* Row 1: Title + actions */}
         <div className="flex items-start justify-between gap-2">
-          <h3 className={`text-sm font-semibold leading-snug flex-1 ${isCompleted ? 'line-through text-muted-foreground' : 'text-foreground'}`}>
+          <h3 className={`text-[15px] font-bold leading-snug flex-1 ${isCompleted ? 'line-through text-muted-foreground' : 'text-foreground'}`}>
             {task.title}
           </h3>
           <div className="flex items-center gap-0.5 shrink-0 -mt-0.5">
@@ -289,46 +290,63 @@ function TaskCard({ task, onStatusChange, onEdit, onDelete }) {
         </div>
 
         {/* Row 2: Due date + priority */}
-        <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+        <div className="flex items-center gap-2 mt-2 flex-wrap">
           {due ? (
-            <span className={`inline-flex items-center gap-1 text-[11px] font-medium ${
+            <span className={`inline-flex items-center gap-1 text-xs font-medium ${
               due.overdue && !isCompleted ? 'text-red-600' : 'text-muted-foreground'
             }`}>
-              <CalendarDays className="h-3 w-3" />
+              <CalendarDays className="h-3.5 w-3.5" />
               {due.text}
               {due.overdue && !isCompleted && <span>· Overdue</span>}
             </span>
           ) : (
-            <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground/40">
-              <CalendarDays className="h-3 w-3" />
+            <span className="inline-flex items-center gap-1 text-xs text-muted-foreground/40">
+              <CalendarDays className="h-3.5 w-3.5" />
               No due date
             </span>
           )}
-          <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground">
-            <span className={`h-1.5 w-1.5 rounded-full ${prio.dot}`} />
+          <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+            <span className={`h-2 w-2 rounded-full ${prio.dot}`} />
             {prio.label}
           </span>
         </div>
 
-        {/* Row 3: Status badge (clickable) + assigned member */}
+        {/* Row 3: Status badge (click to open menu) + assigned member */}
         <div className="flex items-center justify-between mt-2.5 pt-2 border-t border-border/40">
-          {/* Clickable status badge */}
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <button
-                onClick={() => onStatusChange(task, nextStatus(task.status))}
-                className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px] font-semibold transition-all hover:scale-105 active:scale-95 cursor-pointer ${status.bg}`}
-              >
-                {isCompleted ? (
-                  <CheckCircle2 className="h-3 w-3" />
-                ) : (
-                  <Circle className="h-3 w-3" />
-                )}
-                {status.label}
-              </button>
-            </TooltipTrigger>
-            <TooltipContent><p>Click to change status</p></TooltipContent>
-          </Tooltip>
+          {/* Status badge with popup menu */}
+          <div className="relative">
+            <button
+              onClick={() => setStatusOpen(!statusOpen)}
+              className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold transition-all hover:scale-105 active:scale-95 cursor-pointer ${status.bg}`}
+            >
+              {isCompleted ? <CheckCircle2 className="h-3.5 w-3.5" /> : <Circle className="h-3.5 w-3.5" />}
+              {status.label}
+            </button>
+
+            {/* Status picker popup */}
+            {statusOpen && (
+              <>
+                <div className="fixed inset-0 z-40" onClick={() => setStatusOpen(false)} />
+                <div className="absolute left-0 bottom-full mb-1 z-50 rounded-lg border bg-popover shadow-lg p-1 min-w-[140px]">
+                  {Object.entries(statusConfig).map(([key, cfg]) => (
+                    <button
+                      key={key}
+                      onClick={() => handleStatusSelect(key)}
+                      className={`w-full flex items-center gap-2 rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
+                        task.status === key ? 'bg-muted' : 'hover:bg-muted/60'
+                      }`}
+                    >
+                      <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 ${cfg.bg}`}>
+                        {key === 'completed' ? <CheckCircle2 className="h-3 w-3" /> : <Circle className="h-3 w-3" />}
+                        {cfg.label}
+                      </span>
+                      {task.status === key && <span className="text-primary ml-auto">✓</span>}
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
 
           {/* Assigned member */}
           <div className="flex items-center gap-1.5">
