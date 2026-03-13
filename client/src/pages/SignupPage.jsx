@@ -17,9 +17,7 @@ export default function SignupPage() {
   return (
     <AuthLayout>
       <SignupForm onSubmit={handleSignup} />
-      <div className="mt-4 flex justify-center">
-        <ReportButton section="signup" />
-      </div>
+      <ReportButton section="signup" floating />
     </AuthLayout>
   );
 }

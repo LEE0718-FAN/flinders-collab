@@ -17,9 +17,7 @@ export default function LoginPage() {
   return (
     <AuthLayout>
       <LoginForm onSubmit={handleLogin} />
-      <div className="mt-4 flex justify-center">
-        <ReportButton section="login" />
-      </div>
+      <ReportButton section="login" floating />
     </AuthLayout>
   );
 }

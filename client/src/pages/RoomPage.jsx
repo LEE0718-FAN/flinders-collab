@@ -35,6 +35,7 @@ export default function RoomPage() {
   const [eventFormOpen, setEventFormOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState(false);
+  const [activeTab, setActiveTab] = useState('overview');
 
   const fetchRoom = useCallback(async () => {
     try {
@@ -122,7 +123,7 @@ export default function RoomPage() {
           {room?.description && <p className="mt-1 text-muted-foreground">{room.description}</p>}
         </div>
 
-        <Tabs defaultValue="overview">
+        <Tabs defaultValue="overview" onValueChange={setActiveTab}>
           <TabsList className="flex-wrap">
             <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="schedule">Schedule</TabsTrigger>
@@ -132,9 +133,6 @@ export default function RoomPage() {
           </TabsList>
 
           <TabsContent value="overview" className="space-y-4">
-            <div className="flex justify-end">
-              <ReportButton section="overview" roomId={roomId} />
-            </div>
             <Card>
               <CardHeader>
                 <CardTitle className="text-lg">Room Info</CardTitle>
@@ -166,7 +164,6 @@ export default function RoomPage() {
             <div className="flex items-center justify-between">
               <h2 className="text-lg font-semibold">Schedule</h2>
               <div className="flex items-center gap-2">
-                <ReportButton section="schedule" roomId={roomId} />
                 <Button size="sm" onClick={() => { if (!selectedDate) setSelectedDate(new Date()); setEventFormOpen(true); }}>
                   <Plus className="mr-2 h-4 w-4" />
                   Add Event
@@ -195,7 +192,6 @@ export default function RoomPage() {
             <div className="flex items-center justify-between">
               <h2 className="text-lg font-semibold">Tasks</h2>
               <div className="flex items-center gap-2">
-                <ReportButton section="tasks" roomId={roomId} />
                 <TaskForm roomId={roomId} members={members} onCreated={fetchTasks} />
               </div>
             </div>
@@ -209,9 +205,6 @@ export default function RoomPage() {
           </TabsContent>
 
           <TabsContent value="chat">
-            <div className="flex justify-end mb-2">
-              <ReportButton section="chat" roomId={roomId} />
-            </div>
             <Card>
               <CardContent className="p-0">
                 <ChatPanel roomId={roomId} />
@@ -220,9 +213,6 @@ export default function RoomPage() {
           </TabsContent>
 
           <TabsContent value="files" className="space-y-6">
-            <div className="flex justify-end">
-              <ReportButton section="files" roomId={roomId} />
-            </div>
             {/* Lecture Materials */}
             <div className="space-y-3">
               <div className="flex items-center justify-between">
@@ -254,6 +244,7 @@ export default function RoomPage() {
 
         </Tabs>
       </div>
+      <ReportButton section={activeTab} roomId={roomId} floating />
     </MainLayout>
   );
 }
