@@ -125,7 +125,7 @@ export default function MainLayout({ children }) {
       <aside className="hidden w-64 shrink-0 flex-col border-r bg-muted/20 md:flex">
         {/* Sidebar header / brand */}
         <div className="flex h-14 items-center gap-2.5 border-b px-5 bg-primary">
-          <div className="h-8 w-8 shrink-0 rounded bg-white p-0.5 flex items-center justify-center">
+          <div className="h-8 w-8 shrink-0 overflow-hidden rounded bg-white flex items-center justify-center">
             <img
               src="/images/flinders-logo.png"
               alt="Flinders"
@@ -172,7 +172,7 @@ export default function MainLayout({ children }) {
               <SheetContent side="left" className="w-72 p-0">
                 <SheetHeader className="border-b px-5 py-4 bg-primary">
                   <SheetTitle className="flex items-center gap-2.5 text-left">
-                    <div className="h-8 w-8 shrink-0 rounded bg-white p-0.5 flex items-center justify-center">
+                    <div className="h-8 w-8 shrink-0 overflow-hidden rounded bg-white flex items-center justify-center">
                       <img
                         src="/images/flinders-logo.png"
                         alt="Flinders"
