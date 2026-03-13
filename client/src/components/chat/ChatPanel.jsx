@@ -6,6 +6,19 @@ import { useSocket } from '@/hooks/useSocket';
 import { useAuth } from '@/hooks/useAuth';
 import { Loader2 } from 'lucide-react';
 
+function normalizeMessage(message) {
+  if (!message) return message;
+  return {
+    ...message,
+    sender_name:
+      message.sender_name ||
+      message.users?.full_name ||
+      message.users?.university_email ||
+      message.user_name ||
+      'User',
+  };
+}
+
 export default function ChatPanel({ roomId }) {
   const [messages, setMessages] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -21,7 +34,8 @@ export default function ChatPanel({ roomId }) {
     const fetchMessages = async () => {
       try {
         const data = await getMessages(roomId);
-        setMessages(data.messages || data || []);
+        const nextMessages = (data.messages || data || []).map(normalizeMessage);
+        setMessages(nextMessages);
       } catch {
         // silently fail
       } finally {
@@ -39,7 +53,7 @@ export default function ChatPanel({ roomId }) {
     emit('chat:join', { roomId });
 
     const handleNewMessage = (msg) => {
-      setMessages((prev) => [...prev, msg]);
+      setMessages((prev) => [...prev, normalizeMessage(msg)]);
     };
 
     on('chat:message', handleNewMessage);
