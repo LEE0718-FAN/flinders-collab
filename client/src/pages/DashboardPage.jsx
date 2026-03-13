@@ -81,6 +81,7 @@ function swapRoomOrder(rooms, draggedId, targetId) {
 }
 
 export default function DashboardPage() {
+  const swapDelayMs = 140;
   const { user } = useAuth();
   const [rooms, setRooms] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -90,6 +91,8 @@ export default function DashboardPage() {
   const [suppressNavigation, setSuppressNavigation] = useState(false);
   const roomNodeMapRef = useRef(new Map());
   const previousPositionsRef = useRef(new Map());
+  const swapTimerRef = useRef(null);
+  const pendingSwapTargetRef = useRef(null);
 
   const fetchRooms = useCallback(async () => {
     setError('');
@@ -111,6 +114,12 @@ export default function DashboardPage() {
   useEffect(() => {
     saveRoomOrder(user?.id, rooms);
   }, [rooms, user?.id]);
+
+  useEffect(() => () => {
+    if (swapTimerRef.current) {
+      window.clearTimeout(swapTimerRef.current);
+    }
+  }, []);
 
   useLayoutEffect(() => {
     const nextPositions = new Map();
@@ -134,7 +143,7 @@ export default function DashboardPage() {
       node.style.transform = `translate(${deltaX}px, ${deltaY}px)`;
 
       requestAnimationFrame(() => {
-        node.style.transition = 'transform 220ms ease';
+        node.style.transition = 'transform 340ms cubic-bezier(0.22, 1, 0.36, 1)';
         node.style.transform = 'translate(0, 0)';
       });
     });
@@ -202,14 +211,37 @@ export default function DashboardPage() {
           : event.clientY <= targetCenterY);
 
     if (!crossedThreshold) {
+      if (pendingSwapTargetRef.current === targetRoomId && swapTimerRef.current) {
+        window.clearTimeout(swapTimerRef.current);
+        swapTimerRef.current = null;
+        pendingSwapTargetRef.current = null;
+      }
       return;
     }
 
-    setRooms((prev) => swapRoomOrder(prev, draggedRoomId, targetRoomId));
-    setDropTargetId(targetRoomId);
-  }, [draggedRoomId, dropTargetId]);
+    if (pendingSwapTargetRef.current === targetRoomId) {
+      return;
+    }
+
+    if (swapTimerRef.current) {
+      window.clearTimeout(swapTimerRef.current);
+    }
+
+    pendingSwapTargetRef.current = targetRoomId;
+    swapTimerRef.current = window.setTimeout(() => {
+      setRooms((prev) => swapRoomOrder(prev, draggedRoomId, targetRoomId));
+      setDropTargetId(targetRoomId);
+      pendingSwapTargetRef.current = null;
+      swapTimerRef.current = null;
+    }, swapDelayMs);
+  }, [draggedRoomId, dropTargetId, swapDelayMs]);
 
   const handleDragEnd = useCallback(() => {
+    if (swapTimerRef.current) {
+      window.clearTimeout(swapTimerRef.current);
+      swapTimerRef.current = null;
+    }
+    pendingSwapTargetRef.current = null;
     setDraggedRoomId(null);
     setDropTargetId(null);
     setSuppressNavigation(true);
