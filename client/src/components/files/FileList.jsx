@@ -164,7 +164,7 @@ export default function FileList({ files = [], roomId, onUpdated, filterCategory
     <>
       <div className="space-y-1.5">
         {filtered.map((file) => {
-          const isUploader = file.uploaded_by === user?.id;
+          const isUploader = String(file.uploaded_by) === String(user?.id);
           return (
             <FileRow
               key={file.id}

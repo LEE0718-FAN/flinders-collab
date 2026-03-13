@@ -1,13 +1,17 @@
 import React, { useState } from 'react';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel,
   AlertDialogContent, AlertDialogDescription, AlertDialogFooter,
   AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
+} from '@/components/ui/dialog';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
-import { CheckCircle2, Clock, Trash2, Plus, ChevronRight } from 'lucide-react';
+import { CheckCircle2, Clock, Trash2, Pencil, Plus, ChevronRight, Loader2 } from 'lucide-react';
 import { updateTask, deleteTask, createTask } from '@/services/tasks';
 
 const priorityDot = {
@@ -95,6 +99,9 @@ function InlineAddTask({ roomId, memberId, onCreated }) {
 export default function TaskList({ tasks = [], members = [], roomId, currentUserId, onUpdated }) {
   const [confirmDelete, setConfirmDelete] = useState(null);
   const [expandedId, setExpandedId] = useState(null);
+  const [editTask, setEditTask] = useState(null);
+  const [editForm, setEditForm] = useState({});
+  const [editLoading, setEditLoading] = useState(false);
 
   const handleMarkComplete = async (task) => {
     try {
@@ -124,6 +131,35 @@ export default function TaskList({ tasks = [], members = [], roomId, currentUser
       onUpdated?.();
     } catch (err) {
       console.error('Failed to update task status:', err.message);
+    }
+  };
+
+  const handleEditOpen = (task) => {
+    setEditTask(task);
+    const dueDate = task.due_date ? new Date(task.due_date).toISOString().split('T')[0] : '';
+    setEditForm({
+      title: task.title || '',
+      due_date: dueDate,
+      priority: task.priority || 'medium',
+    });
+  };
+
+  const handleEditSave = async () => {
+    if (!editTask) return;
+    setEditLoading(true);
+    try {
+      const updates = { title: editForm.title.trim() };
+      if (editForm.due_date) {
+        updates.due_date = new Date(`${editForm.due_date}T23:59`).toISOString();
+      }
+      updates.priority = editForm.priority;
+      await updateTask(roomId, editTask.id, updates);
+      setEditTask(null);
+      onUpdated?.();
+    } catch {
+      // fail silently
+    } finally {
+      setEditLoading(false);
     }
   };
 
@@ -182,7 +218,6 @@ export default function TaskList({ tasks = [], members = [], roomId, currentUser
 
           return (
             <div key={member.id} className="rounded-lg border border-border bg-card overflow-hidden">
-              {/* Member header - clickable */}
               <button
                 type="button"
                 onClick={() => setExpandedId(isExpanded ? null : member.id)}
@@ -211,7 +246,6 @@ export default function TaskList({ tasks = [], members = [], roomId, currentUser
                   )}
                 </div>
 
-                {/* Task preview - always visible when collapsed */}
                 {!isExpanded && activeTasks.length > 0 && (
                   <div className="ml-[52px] space-y-1">
                     {activeTasks.slice(0, 3).map((task) => {
@@ -239,14 +273,15 @@ export default function TaskList({ tasks = [], members = [], roomId, currentUser
                 )}
               </button>
 
-              {/* Expanded tasks */}
               {isExpanded && (
                 <div className="px-4 pb-3 pt-1 border-t space-y-1.5">
                   {sortedTasks.map((task) => {
                     const dotClass = priorityDot[task.priority] || priorityDot.medium;
                     const due = formatDueDate(task.due_date);
                     const isCompleted = task.status === 'completed';
-                    const canAct = task.assigned_to === currentUserId || task.assigned_by === currentUserId;
+                    // Allow action if user is assignee, assigner, or any room member
+                    const canAct = String(task.assigned_to) === String(currentUserId)
+                      || String(task.assigned_by) === String(currentUserId);
 
                     return (
                       <div
@@ -256,35 +291,24 @@ export default function TaskList({ tasks = [], members = [], roomId, currentUser
                         }`}
                       >
                         {/* Complete toggle */}
-                        {canAct ? (
-                          <button
-                            onClick={() => handleMarkComplete(task)}
-                            className="shrink-0"
-                            title={isCompleted ? 'Mark as pending' : 'Mark as complete'}
-                          >
-                            <CheckCircle2
-                              className={`h-4 w-4 ${
-                                isCompleted ? 'text-green-500' : 'text-muted-foreground/40 hover:text-green-500'
-                              } transition-colors`}
-                            />
-                          </button>
-                        ) : (
+                        <button
+                          onClick={() => handleMarkComplete(task)}
+                          className="shrink-0"
+                          title={isCompleted ? 'Mark as pending' : 'Mark as complete'}
+                        >
                           <CheckCircle2
-                            className={`h-4 w-4 shrink-0 ${
-                              isCompleted ? 'text-green-500' : 'text-muted-foreground/20'
-                            }`}
+                            className={`h-4 w-4 ${
+                              isCompleted ? 'text-green-500' : 'text-muted-foreground/40 hover:text-green-500'
+                            } transition-colors`}
                           />
-                        )}
+                        </button>
 
-                        {/* Priority dot */}
                         <span className={`h-2 w-2 rounded-full shrink-0 ${dotClass}`} />
 
-                        {/* Title */}
                         <span className={`flex-1 min-w-0 truncate ${isCompleted ? 'line-through' : ''}`}>
                           {task.title}
                         </span>
 
-                        {/* Due date */}
                         {due && (
                           <span
                             className={`text-xs shrink-0 flex items-center gap-1 ${
@@ -300,7 +324,7 @@ export default function TaskList({ tasks = [], members = [], roomId, currentUser
                         )}
 
                         {/* Status dropdown */}
-                        {canAct && !isCompleted && (
+                        {!isCompleted && (
                           <select
                             value={task.status}
                             onChange={(e) => handleStatusChange(task, e.target.value)}
@@ -312,20 +336,31 @@ export default function TaskList({ tasks = [], members = [], roomId, currentUser
                           </select>
                         )}
 
+                        {/* Edit */}
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <button
+                              onClick={() => handleEditOpen(task)}
+                              className="shrink-0 text-muted-foreground hover:text-primary transition-colors"
+                            >
+                              <Pencil className="h-3.5 w-3.5" />
+                            </button>
+                          </TooltipTrigger>
+                          <TooltipContent side="top"><p>Edit task</p></TooltipContent>
+                        </Tooltip>
+
                         {/* Delete */}
-                        {(task.assigned_by === currentUserId) && (
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <button
-                                onClick={() => setConfirmDelete({ id: task.id, title: task.title })}
-                                className="shrink-0 text-muted-foreground hover:text-destructive transition-colors"
-                              >
-                                <Trash2 className="h-3.5 w-3.5" />
-                              </button>
-                            </TooltipTrigger>
-                            <TooltipContent side="top"><p>Delete task</p></TooltipContent>
-                          </Tooltip>
-                        )}
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <button
+                              onClick={() => setConfirmDelete({ id: task.id, title: task.title })}
+                              className="shrink-0 text-muted-foreground hover:text-destructive transition-colors"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </button>
+                          </TooltipTrigger>
+                          <TooltipContent side="top"><p>Delete task</p></TooltipContent>
+                        </Tooltip>
                       </div>
                     );
                   })}
@@ -334,7 +369,6 @@ export default function TaskList({ tasks = [], members = [], roomId, currentUser
                     <p className="text-xs text-muted-foreground italic py-1">No tasks assigned yet</p>
                   )}
 
-                  {/* Inline add task */}
                   <InlineAddTask roomId={roomId} memberId={member.id} onCreated={onUpdated} />
                 </div>
               )}
@@ -342,6 +376,55 @@ export default function TaskList({ tasks = [], members = [], roomId, currentUser
           );
         })}
       </div>
+
+      {/* Edit task dialog */}
+      <Dialog open={!!editTask} onOpenChange={(open) => !open && setEditTask(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Edit Task</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium">Title</label>
+              <Input
+                value={editForm.title || ''}
+                onChange={(e) => setEditForm({ ...editForm, title: e.target.value })}
+                disabled={editLoading}
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium">Due Date</label>
+                <Input
+                  type="date"
+                  value={editForm.due_date || ''}
+                  onChange={(e) => setEditForm({ ...editForm, due_date: e.target.value })}
+                  disabled={editLoading}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium">Priority</label>
+                <select
+                  value={editForm.priority || 'medium'}
+                  onChange={(e) => setEditForm({ ...editForm, priority: e.target.value })}
+                  className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm"
+                  disabled={editLoading}
+                >
+                  <option value="low">Low</option>
+                  <option value="medium">Medium</option>
+                  <option value="high">High</option>
+                </select>
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditTask(null)} disabled={editLoading}>Cancel</Button>
+            <Button onClick={handleEditSave} disabled={editLoading || !editForm.title?.trim()}>
+              {editLoading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Saving...</> : 'Save Changes'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Delete confirmation */}
       <AlertDialog open={!!confirmDelete} onOpenChange={(open) => !open && setConfirmDelete(null)}>
