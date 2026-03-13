@@ -10,7 +10,9 @@ const locationHandler = require('./locationHandler');
 function initSockets(httpServer) {
   const io = new Server(httpServer, {
     cors: {
-      origin: config.clientUrl,
+      origin: config.clientUrl.includes(',')
+        ? config.clientUrl.split(',').map(url => url.trim())
+        : config.clientUrl,
       methods: ['GET', 'POST'],
       credentials: true,
     },
@@ -47,8 +49,18 @@ function initSockets(httpServer) {
     locationHandler(io, socket);
 
     // Handle disconnection
-    socket.on('disconnect', (reason) => {
+    socket.on('disconnect', async (reason) => {
       console.log(`User disconnected: ${socket.userId} (${reason})`);
+      try {
+        // Mark any active location sessions as stopped
+        await supabaseAdmin
+          .from('location_sessions')
+          .update({ status: 'stopped', updated_at: new Date().toISOString() })
+          .eq('user_id', socket.userId)
+          .in('status', ['sharing', 'on_the_way', 'arrived', 'late']);
+      } catch (err) {
+        console.error('Disconnect cleanup error:', err.message);
+      }
     });
   });
 

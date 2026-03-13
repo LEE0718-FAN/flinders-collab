@@ -1,15 +1,32 @@
 const express = require('express');
+const rateLimit = require('express-rate-limit');
 const router = express.Router();
 const authController = require('../controllers/authController');
 const { authenticate } = require('../middleware/auth');
 const { validate } = require('../middleware/validate');
 const { signupValidation, loginValidation } = require('../utils/validators');
 
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many login attempts. Please try again in 15 minutes.' },
+});
+
+const signupLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 5,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many signup attempts. Please try again in 15 minutes.' },
+});
+
 // POST /auth/signup - Register a new user
-router.post('/signup', signupValidation, validate, authController.signup);
+router.post('/signup', signupLimiter, signupValidation, validate, authController.signup);
 
 // POST /auth/login - Sign in
-router.post('/login', loginValidation, validate, authController.login);
+router.post('/login', loginLimiter, loginValidation, validate, authController.login);
 
 // POST /auth/logout - Sign out (requires auth)
 router.post('/logout', authenticate, authController.logout);

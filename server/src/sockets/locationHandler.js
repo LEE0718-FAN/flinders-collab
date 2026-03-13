@@ -1,3 +1,5 @@
+const { supabaseAdmin } = require('../services/supabase');
+
 /**
  * Handle location-sharing socket events for real-time updates.
  */
@@ -28,8 +30,25 @@ function locationHandler(io, socket) {
    * Client emits: 'location:update' { eventId, latitude, longitude, status }
    * Server broadcasts to event channel: 'location:update' { userId, latitude, longitude, status }
    */
-  socket.on('location:update', ({ eventId, latitude, longitude, status }) => {
+  socket.on('location:update', async ({ eventId, latitude, longitude, status }) => {
     if (!eventId || latitude == null || longitude == null) return;
+
+    try {
+      // Verify user is a participant of the event
+      const { data: participant } = await supabaseAdmin
+        .from('event_participants')
+        .select('id')
+        .eq('event_id', eventId)
+        .eq('user_id', userId)
+        .single();
+
+      if (!participant) {
+        return socket.emit('location:error', { error: 'Not an event participant' });
+      }
+    } catch (err) {
+      console.error('Error verifying event participation:', err.message);
+      return socket.emit('location:error', { error: 'Failed to verify participation' });
+    }
 
     // Broadcast to all users watching this event's locations
     io.to(`event-location:${eventId}`).emit('location:update', {

@@ -37,6 +37,7 @@ export default function RoomPage() {
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState(false);
   const [activeTab, setActiveTab] = useState('overview');
+  const [error, setError] = useState('');
 
   const fetchRoom = useCallback(async () => {
     try {
@@ -85,7 +86,11 @@ export default function RoomPage() {
 
   useEffect(() => {
     const init = async () => {
-      await Promise.all([fetchRoom(), fetchMembers(), fetchEvents(), fetchFiles(), fetchTasks()]);
+      try {
+        await Promise.all([fetchRoom(), fetchMembers(), fetchEvents(), fetchFiles(), fetchTasks()]);
+      } catch {
+        setError('Failed to load some data. Please refresh.');
+      }
       setLoading(false);
     };
     init();
@@ -123,6 +128,12 @@ export default function RoomPage() {
           </div>
           {room?.description && <p className="mt-1 text-base text-muted-foreground">{room.description}</p>}
         </div>
+
+        {error && (
+          <div className="rounded-md border border-destructive/50 bg-destructive/10 p-3 text-sm text-destructive">
+            {error}
+          </div>
+        )}
 
         <Tabs defaultValue="overview" onValueChange={setActiveTab}>
           <TabsList className="flex-wrap">

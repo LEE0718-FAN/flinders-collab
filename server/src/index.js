@@ -30,7 +30,9 @@ app.set('io', io);
 // Global middleware
 app.use(helmet());
 app.use(cors({
-  origin: config.clientUrl,
+  origin: config.clientUrl.includes(',')
+    ? config.clientUrl.split(',').map(url => url.trim())
+    : config.clientUrl,
   credentials: true,
 }));
 app.use(express.json({ limit: '1mb' }));

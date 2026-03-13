@@ -229,6 +229,11 @@ function TaskCreateForm({ roomId, members = [], onCreated }) {
             <><Plus className="mr-2 h-4 w-4" />Create Task</>
           )}
         </Button>
+        {title.trim() && assignedMembers.length === 0 && (
+          <p className="text-xs text-muted-foreground text-center -mt-2">
+            Drag a team member above to assign this task
+          </p>
+        )}
       </form>
 
       {/* Draggable member chips */}

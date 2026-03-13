@@ -193,6 +193,16 @@ async function deleteTask(req, res, next) {
       });
     }
 
+    const isAssigner = existing.assigned_by === userId;
+    const isAssignee = existing.assigned_to === userId;
+    const isAdmin = membership.role === 'owner' || membership.role === 'admin';
+
+    if (!isAssigner && !isAssignee && !isAdmin) {
+      return res.status(403).json({
+        error: 'Only the task creator, assignee, or room admin can delete tasks',
+      });
+    }
+
     const { error } = await supabaseAdmin
       .from('tasks')
       .delete()

@@ -1,4 +1,5 @@
 const { saveMessage } = require('../controllers/messageController');
+const { supabaseAdmin } = require('../services/supabase');
 
 /**
  * Handle chat-related socket events for a connected user.
@@ -35,6 +36,18 @@ function chatHandler(io, socket) {
     if (!roomId || !content) return;
 
     try {
+      // Verify user is a member of the room
+      const { data: membership } = await supabaseAdmin
+        .from('room_members')
+        .select('id')
+        .eq('room_id', roomId)
+        .eq('user_id', socket.userId)
+        .single();
+
+      if (!membership) {
+        return socket.emit('chat:error', { error: 'Not a room member' });
+      }
+
       const message = await saveMessage({
         room_id: roomId,
         user_id: userId,
