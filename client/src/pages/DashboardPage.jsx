@@ -63,7 +63,7 @@ function saveRoomOrder(userId, rooms) {
   window.localStorage.setItem(key, JSON.stringify(orderedIds));
 }
 
-function moveRoom(rooms, draggedId, targetId) {
+function swapRoomOrder(rooms, draggedId, targetId) {
   if (!draggedId || !targetId || draggedId === targetId) {
     return rooms;
   }
@@ -76,8 +76,7 @@ function moveRoom(rooms, draggedId, targetId) {
   }
 
   const next = [...rooms];
-  const [draggedRoom] = next.splice(draggedIndex, 1);
-  next.splice(targetIndex, 0, draggedRoom);
+  [next[draggedIndex], next[targetIndex]] = [next[targetIndex], next[draggedIndex]];
   return next;
 }
 
@@ -143,14 +142,14 @@ export default function DashboardPage() {
     event.dataTransfer.setData('text/plain', roomId);
   }, []);
 
-  const handleDragEnter = useCallback((targetRoomId) => {
-    if (!draggedRoomId || draggedRoomId === targetRoomId) {
+  const handleDragOverRoom = useCallback((targetRoomId) => {
+    if (!draggedRoomId || draggedRoomId === targetRoomId || dropTargetId === targetRoomId) {
       return;
     }
 
-    setRooms((prev) => moveRoom(prev, draggedRoomId, targetRoomId));
+    setRooms((prev) => swapRoomOrder(prev, draggedRoomId, targetRoomId));
     setDropTargetId(targetRoomId);
-  }, [draggedRoomId]);
+  }, [draggedRoomId, dropTargetId]);
 
   const handleDragEnd = useCallback(() => {
     setDraggedRoomId(null);
@@ -194,11 +193,12 @@ export default function DashboardPage() {
                 key={room.id}
                 onDragEnter={(e) => {
                   e.preventDefault();
-                  handleDragEnter(room.id);
+                  handleDragOverRoom(room.id);
                 }}
                 onDragOver={(e) => {
                   e.preventDefault();
                   e.dataTransfer.dropEffect = 'move';
+                  handleDragOverRoom(room.id);
                 }}
                 className={`rounded-lg transition-transform ${
                   draggedRoomId === room.id ? 'scale-[0.98] opacity-70' : ''
