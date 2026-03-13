@@ -46,7 +46,7 @@ export default function EditRoomDialog({ room, onUpdated }) {
 
   return (
     <>
-      <Button variant="outline" size="sm" className="gap-1.5" onClick={handleOpen}>
+      <Button variant="ghost" size="sm" className="gap-1.5 rounded-lg" onClick={handleOpen}>
         <Pencil className="h-3.5 w-3.5" />
         Edit Room
       </Button>
@@ -58,21 +58,21 @@ export default function EditRoomDialog({ room, onUpdated }) {
           </DialogHeader>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-1.5">
-              <label className="text-sm font-medium">Room Name <span className="text-red-500">*</span></label>
-              <Input value={name} onChange={(e) => setName(e.target.value)} required disabled={loading} />
+              <label className="text-sm font-medium text-foreground/80">Room Name <span className="text-red-500">*</span></label>
+              <Input className="rounded-xl" value={name} onChange={(e) => setName(e.target.value)} required disabled={loading} />
             </div>
             <div className="space-y-1.5">
-              <label className="text-sm font-medium">Course Code</label>
-              <Input value={courseName} onChange={(e) => setCourseName(e.target.value)} placeholder="e.g. COMP3000" disabled={loading} />
+              <label className="text-sm font-medium text-foreground/80">Course Code</label>
+              <Input className="rounded-xl" value={courseName} onChange={(e) => setCourseName(e.target.value)} placeholder="e.g. COMP3000" disabled={loading} />
             </div>
             <div className="space-y-1.5">
-              <label className="text-sm font-medium">Description</label>
-              <Textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={3} disabled={loading} />
+              <label className="text-sm font-medium text-foreground/80">Description</label>
+              <Textarea className="rounded-xl" value={description} onChange={(e) => setDescription(e.target.value)} rows={3} disabled={loading} />
             </div>
-            {error && <p className="text-sm text-red-600">{error}</p>}
+            {error && <div className="rounded-xl bg-red-50 border border-red-200/60 p-3 text-sm text-red-600">{error}</div>}
             <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setOpen(false)} disabled={loading}>Cancel</Button>
-              <Button type="submit" disabled={loading || !name.trim()}>
+              <Button type="button" variant="outline" className="rounded-xl" onClick={() => setOpen(false)} disabled={loading}>Cancel</Button>
+              <Button type="submit" className="rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 text-white hover:shadow-md" disabled={loading || !name.trim()}>
                 {loading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Saving...</> : 'Save Changes'}
               </Button>
             </DialogFooter>

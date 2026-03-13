@@ -10,7 +10,7 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from '@/components/ui/dialog';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
-import { Download, Trash2, Pencil, CalendarDays, Loader2 } from 'lucide-react';
+import { Download, Trash2, Pencil, CalendarDays, Loader2, FileText, FolderOpen } from 'lucide-react';
 import { format } from 'date-fns';
 import { deleteFile, getFileDownloadUrl, updateFile } from '@/services/files';
 import { useAuth } from '@/hooks/useAuth';
@@ -44,59 +44,60 @@ function FileRow({ file, canEdit, onDelete, onEdit, onDownload, deleting, downlo
   const uploaderName = file.users?.full_name || file.uploader_name || 'Unknown';
 
   return (
-    <div className="flex items-center gap-4 rounded-md border px-3 py-2.5 bg-card hover:bg-muted/40 transition-colors">
+    <div className="flex items-center gap-4 rounded-xl border border-border/40 bg-white shadow-card hover:shadow-card-hover transition-all duration-200 p-4">
+      <div className="h-10 w-10 rounded-xl bg-primary/5 flex items-center justify-center shrink-0">
+        <FileText className="h-5 w-5 text-primary/60" />
+      </div>
       <div className="flex-1 min-w-0">
+        <p className="font-semibold text-sm truncate">{fileName}</p>
         {file.file_description ? (
-          <p className="text-sm text-foreground leading-snug line-clamp-2">{file.file_description}</p>
+          <p className="text-xs text-muted-foreground/80 italic leading-snug line-clamp-2 mt-0.5">{file.file_description}</p>
         ) : (
-          <p className="text-sm text-muted-foreground italic">No description</p>
+          <p className="text-xs text-muted-foreground/50 italic mt-0.5">No description</p>
         )}
+        <p className="text-xs text-muted-foreground/60 mt-1">
+          {uploaderName} <span className="mx-1">&middot;</span> {file.created_at ? format(new Date(file.created_at), 'MMM d, h:mm a') : ''}
+          {file.file_size > 0 && <><span className="mx-1">&middot;</span>{formatSize(file.file_size)}</>}
+        </p>
         {file.event && (
-          <div className="flex items-center gap-1 mt-1 text-xs text-primary/80">
-            <CalendarDays className="h-3 w-3 shrink-0" />
-            <span className="truncate">{file.event.title}</span>
+          <div className="flex items-center gap-1.5 mt-1.5">
+            <span className="inline-flex items-center gap-1 rounded-full bg-muted/50 text-xs px-2.5 py-0.5 text-muted-foreground">
+              <CalendarDays className="h-3 w-3 shrink-0" />
+              <span className="truncate">{file.event.title}</span>
+            </span>
           </div>
         )}
       </div>
 
-      <div className="flex items-center gap-3 shrink-0">
-        <div className="text-right">
-          <p className="text-xs font-medium text-muted-foreground truncate max-w-[180px]">{fileName}</p>
-          <p className="text-[11px] text-muted-foreground/70 mt-0.5">
-            {uploaderName} · {file.created_at ? format(new Date(file.created_at), 'MMM d, h:mm a') : ''}
-            {file.file_size > 0 && ` · ${formatSize(file.file_size)}`}
-          </p>
-        </div>
-        <div className="flex items-center gap-0.5">
+      <div className="flex items-center gap-1 shrink-0">
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button variant="ghost" size="sm" className="rounded-lg bg-primary/10 text-primary hover:bg-primary/15 h-9 px-3" onClick={() => onDownload(file)} disabled={downloading}>
+              {downloading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="top"><p>Download</p></TooltipContent>
+        </Tooltip>
+        {canEdit && (
           <Tooltip>
             <TooltipTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => onDownload(file)} disabled={downloading}>
-                {downloading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
+              <Button variant="ghost" size="icon" className="h-9 w-9 rounded-lg" onClick={() => onEdit(file)}>
+                <Pencil className="h-3.5 w-3.5 text-muted-foreground" />
               </Button>
             </TooltipTrigger>
-            <TooltipContent side="top"><p>Download</p></TooltipContent>
+            <TooltipContent side="top"><p>Edit description</p></TooltipContent>
           </Tooltip>
-          {canEdit && (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => onEdit(file)}>
-                  <Pencil className="h-3.5 w-3.5 text-muted-foreground hover:text-primary transition-colors" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent side="top"><p>Edit description</p></TooltipContent>
-            </Tooltip>
-          )}
-          {canEdit && (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => onDelete(file.id, fileName)} disabled={deleting}>
-                  <Trash2 className="h-3.5 w-3.5 text-muted-foreground hover:text-destructive transition-colors" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent side="top"><p>Delete file</p></TooltipContent>
-            </Tooltip>
-          )}
-        </div>
+        )}
+        {canEdit && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button variant="ghost" size="icon" className="h-9 w-9 rounded-lg hover:bg-red-50 hover:text-red-600" onClick={() => onDelete(file.id, fileName)} disabled={deleting}>
+                <Trash2 className="h-3.5 w-3.5" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="top"><p>Delete file</p></TooltipContent>
+          </Tooltip>
+        )}
       </div>
     </div>
   );
@@ -171,16 +172,19 @@ export default function FileList({ files = [], roomId, onFilesChange, filterCate
 
   if (filtered.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center py-8 text-center">
-        <div className="text-2xl mb-1.5">{filterCategory === 'submission' ? '📝' : '📖'}</div>
-        <p className="text-sm text-muted-foreground">No files yet</p>
+      <div className="flex flex-col items-center justify-center py-12 text-center">
+        <div className="h-12 w-12 rounded-xl bg-muted/40 flex items-center justify-center mb-3">
+          <FolderOpen className="h-6 w-6 text-muted-foreground/40" />
+        </div>
+        <p className="text-sm font-medium text-muted-foreground">No files yet</p>
+        <p className="text-xs text-muted-foreground/50 mt-0.5">Upload a file to get started</p>
       </div>
     );
   }
 
   return (
     <>
-      <div className="space-y-1.5">
+      <div className="space-y-2">
         {filtered.map((file) => {
           const isUploader = String(file.uploaded_by) === String(user?.id);
           return (

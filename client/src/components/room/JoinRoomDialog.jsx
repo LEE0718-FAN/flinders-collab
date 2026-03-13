@@ -52,8 +52,8 @@ export default function JoinRoomDialog({ onJoined }) {
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
-        <Button variant="outline">
-          <UserPlus className="mr-2 h-4 w-4" />
+        <Button variant="outline" className="bg-white border border-border/60 text-foreground hover:bg-muted/50 rounded-xl shadow-sm h-10 px-5 gap-2">
+          <UserPlus className="h-4 w-4" />
           Join Room
         </Button>
       </DialogTrigger>
@@ -64,7 +64,7 @@ export default function JoinRoomDialog({ onJoined }) {
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <label htmlFor="invite-code-input" className="text-sm font-medium">Invite Code</label>
+            <label htmlFor="invite-code-input" className="text-sm font-medium text-foreground/80">Invite Code</label>
             <Input
               id="invite-code-input"
               placeholder="e.g. A1B2C3D4"
@@ -75,18 +75,19 @@ export default function JoinRoomDialog({ onJoined }) {
               }}
               autoComplete="off"
               required
+              className="text-center font-mono text-lg tracking-widest h-14 rounded-xl uppercase"
             />
           </div>
           {error && (
-            <p className="text-sm text-destructive" role="alert">{error}</p>
+            <div className="rounded-xl bg-red-50 border border-red-200/60 p-3 text-sm text-destructive" role="alert">{error}</div>
           )}
           {success && (
-            <p className="flex items-center gap-1 text-sm text-green-600" role="status">
-              <CheckCircle2 className="h-4 w-4" />
-              {success}
-            </p>
+            <div className="bg-emerald-50 rounded-xl p-4 text-center" role="status">
+              <CheckCircle2 className="h-6 w-6 text-emerald-500 mx-auto mb-1.5" />
+              <p className="text-sm font-medium text-emerald-700">{success}</p>
+            </div>
           )}
-          <Button type="submit" className="w-full" disabled={loading || !!success}>
+          <Button type="submit" className="w-full h-11 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 text-white hover:shadow-md" disabled={loading || !!success}>
             {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             Join Room
           </Button>

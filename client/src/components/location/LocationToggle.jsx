@@ -92,9 +92,22 @@ export default function LocationToggle({ roomId, eventId, isSharing, onToggle })
 
   if (isSharing) {
     return (
-      <div className="space-y-1">
-        <Button variant="outline" size="sm" onClick={handleStop} disabled={loading}>
-          {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <MapPinOff className="mr-2 h-4 w-4" />}
+      <div className="space-y-2">
+        <div className="flex items-center gap-3">
+          <span className="relative flex h-2.5 w-2.5">
+            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+            <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-500" />
+          </span>
+          <span className="text-sm font-medium text-emerald-600">Sharing location</span>
+        </div>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={handleStop}
+          disabled={loading}
+          className="rounded-xl bg-red-500/10 text-red-600 border border-red-200/60 hover:bg-red-500/15 h-10 px-5 gap-2 transition-all duration-200"
+        >
+          {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <MapPinOff className="h-4 w-4" />}
           Stop Sharing
         </Button>
         {error && <p className="text-xs text-destructive">{error}</p>}
@@ -102,25 +115,41 @@ export default function LocationToggle({ roomId, eventId, isSharing, onToggle })
     );
   }
 
+  if (loading) {
+    return (
+      <div className="flex items-center gap-2.5 py-2">
+        <Loader2 className="h-4 w-4 animate-spin text-emerald-600" />
+        <span className="text-sm text-muted-foreground">Requesting permission…</span>
+      </div>
+    );
+  }
+
   return (
-    <div className="space-y-1">
+    <div className="space-y-2">
       <AlertDialog>
         <AlertDialogTrigger asChild>
-          <Button size="sm" disabled={loading}>
-            {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <MapPin className="mr-2 h-4 w-4" />}
+          <Button
+            size="sm"
+            disabled={loading}
+            className="rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-sm hover:shadow-md h-10 px-5 gap-2 transition-all duration-200"
+          >
+            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <MapPin className="h-4 w-4" />}
             Share My Location
           </Button>
         </AlertDialogTrigger>
-        <AlertDialogContent>
+        <AlertDialogContent className="rounded-2xl border border-border/40 shadow-lg">
           <AlertDialogHeader>
-            <AlertDialogTitle>Share Your Location?</AlertDialogTitle>
-            <AlertDialogDescription>
+            <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-emerald-100">
+              <MapPin className="h-6 w-6 text-emerald-600" />
+            </div>
+            <AlertDialogTitle className="text-center">Share Your Location?</AlertDialogTitle>
+            <AlertDialogDescription className="text-center">
               Your location will be visible to other room members for this event. You can stop sharing at any time.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleStart}>Share Location</AlertDialogAction>
+            <AlertDialogCancel className="rounded-xl">Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleStart} className="rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 text-white hover:shadow-md transition-all duration-200">Share Location</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

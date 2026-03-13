@@ -63,15 +63,14 @@ export default function ReportButton({ section, roomId, floating = false }) {
       {floating ? (
         <button
           onClick={() => setOpen(true)}
-          className="fixed bottom-6 right-6 z-50 flex items-center gap-2 rounded-full bg-red-600 px-4 py-2.5 text-white shadow-lg shadow-red-600/30 hover:bg-red-700 transition-all hover:scale-105 active:scale-95"
+          className="fixed bottom-6 right-6 z-50 rounded-full h-12 w-12 flex items-center justify-center bg-red-500 hover:bg-red-600 text-white shadow-lg transition-all hover:scale-105 active:scale-95"
         >
-          <Flag className="h-4 w-4" />
-          <span className="text-sm font-semibold">Report</span>
+          <Flag className="h-5 w-5" />
         </button>
       ) : (
         <button
           onClick={() => setOpen(true)}
-          className="inline-flex items-center gap-1.5 rounded-md bg-red-600 px-3 py-1.5 text-white text-xs font-semibold hover:bg-red-700 transition-colors"
+          className="inline-flex items-center gap-1.5 rounded-full bg-red-500 hover:bg-red-600 px-3 py-1.5 text-white text-xs font-semibold transition-colors shadow-sm"
         >
           <Flag className="h-3.5 w-3.5" />
           Report
@@ -82,30 +81,31 @@ export default function ReportButton({ section, roomId, floating = false }) {
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <Flag className="h-5 w-5 text-red-600" />
+              <Flag className="h-5 w-5 text-red-500" />
               Report an Issue
             </DialogTitle>
           </DialogHeader>
 
           {success ? (
-            <div className="flex flex-col items-center gap-3 py-6">
-              <CheckCircle className="h-10 w-10 text-green-500" />
-              <p className="text-sm font-medium text-green-700">Report submitted successfully!</p>
+            <div className="rounded-xl bg-emerald-50 border border-emerald-200/60 p-6 flex flex-col items-center gap-3">
+              <CheckCircle className="h-10 w-10 text-emerald-500" />
+              <p className="text-sm font-medium text-emerald-700">Report submitted successfully!</p>
             </div>
           ) : (
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-1.5">
-                <span className="text-sm font-medium">Section</span>
+                <span className="text-sm font-medium text-foreground/80">Section</span>
                 <div>
-                  <Badge className="bg-red-100 text-red-700 capitalize">{section}</Badge>
+                  <Badge className="rounded-full bg-red-50 text-red-600 border border-red-200/60 capitalize">{section}</Badge>
                 </div>
               </div>
 
               <div className="space-y-1.5">
-                <span className="text-sm font-medium">
+                <span className="text-sm font-medium text-foreground/80">
                   Subject <span className="text-red-500">*</span>
                 </span>
                 <Input
+                  className="rounded-xl"
                   placeholder="Brief summary of the issue"
                   value={subject}
                   onChange={(e) => setSubject(e.target.value)}
@@ -115,10 +115,11 @@ export default function ReportButton({ section, roomId, floating = false }) {
               </div>
 
               <div className="space-y-1.5">
-                <span className="text-sm font-medium">
+                <span className="text-sm font-medium text-foreground/80">
                   Description <span className="text-red-500">*</span>
                 </span>
                 <Textarea
+                  className="rounded-xl"
                   placeholder="Describe the issue in detail..."
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
@@ -128,15 +129,15 @@ export default function ReportButton({ section, roomId, floating = false }) {
                 />
               </div>
 
-              {error && <p className="text-sm text-red-600">{error}</p>}
+              {error && <div className="rounded-xl bg-red-50 border border-red-200/60 p-3 text-sm text-red-600">{error}</div>}
 
               <DialogFooter>
-                <Button type="button" variant="outline" onClick={() => setOpen(false)} disabled={submitting}>
+                <Button type="button" variant="outline" className="rounded-xl" onClick={() => setOpen(false)} disabled={submitting}>
                   Cancel
                 </Button>
                 <Button
                   type="submit"
-                  className="bg-red-600 hover:bg-red-700 text-white"
+                  className="rounded-xl bg-red-500 hover:bg-red-600 text-white"
                   disabled={submitting || !subject.trim() || !description.trim()}
                 >
                   {submitting ? (

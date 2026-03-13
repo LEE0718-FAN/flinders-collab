@@ -136,7 +136,7 @@ export default function FileUpload({ roomId, onUploaded, category: initialCatego
                     key={c.value}
                     type="button"
                     onClick={() => { setCategory(c.value); if (c.value !== 'submission') setEventId(''); }}
-                    className={`flex items-center gap-2 rounded-lg border px-3 py-2.5 text-sm transition-all ${
+                    className={`flex items-center gap-2 rounded-full border px-4 py-2.5 text-sm transition-all ${
                       category === c.value
                         ? 'border-primary bg-primary/10 text-primary font-medium'
                         : 'border-border hover:border-primary/40 hover:bg-muted text-muted-foreground'
@@ -156,7 +156,7 @@ export default function FileUpload({ roomId, onUploaded, category: initialCatego
                 <select
                   value={eventId}
                   onChange={(e) => setEventId(e.target.value)}
-                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                  className="w-full rounded-xl border border-input bg-background px-3 py-2 text-sm"
                 >
                   <option value="">No event (general submission)</option>
                   {sortedEvents.map((ev) => (
@@ -172,8 +172,8 @@ export default function FileUpload({ roomId, onUploaded, category: initialCatego
             <div className="space-y-2">
               <label className="text-sm font-medium">File</label>
               {file ? (
-                <div className="flex items-center gap-3 rounded-lg border bg-muted/50 p-3">
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-background border">
+                <div className="flex items-center gap-3 rounded-xl border border-border/40 bg-white shadow-sm p-4">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/5">
                     {getFileIcon(file.type)}
                   </div>
                   <div className="flex-1 min-w-0">
@@ -186,17 +186,17 @@ export default function FileUpload({ roomId, onUploaded, category: initialCatego
                 </div>
               ) : (
                 <div
-                  className={`flex flex-col items-center justify-center rounded-lg border-2 border-dashed p-6 transition-colors cursor-pointer ${
-                    dragActive ? 'border-primary bg-primary/5' : 'border-muted-foreground/25 hover:border-primary/40'
+                  className={`flex flex-col items-center justify-center rounded-2xl border-2 border-dashed p-8 transition-all duration-200 cursor-pointer ${
+                    dragActive ? 'border-primary bg-primary/5' : 'border-border/50 bg-muted/20 hover:bg-muted/30 hover:border-primary/30'
                   }`}
                   onDragOver={(e) => { e.preventDefault(); setDragActive(true); }}
                   onDragLeave={() => setDragActive(false)}
                   onDrop={handleDrop}
                   onClick={() => inputRef.current?.click()}
                 >
-                  <Upload className="mb-2 h-6 w-6 text-muted-foreground" />
-                  <p className="text-sm text-muted-foreground">Drag & drop or click to browse</p>
-                  <p className="mt-1 text-xs text-muted-foreground/70">PDF, PPTX, DOCX, PNG, JPG, ZIP, TXT (max 10MB)</p>
+                  <Upload className="mb-3 h-8 w-8 text-muted-foreground/40" />
+                  <p className="text-sm font-medium text-muted-foreground">Drop files here or click to browse</p>
+                  <p className="mt-1 text-xs text-muted-foreground/50">PDF, PPTX, DOCX, PNG, JPG, ZIP, TXT (max 10MB)</p>
                   <input ref={inputRef} type="file" className="hidden" onChange={(e) => e.target.files?.[0] && selectFile(e.target.files[0])} accept=".pdf,.pptx,.docx,.png,.jpg,.jpeg,.zip,.txt" />
                 </div>
               )}
@@ -215,7 +215,7 @@ export default function FileUpload({ roomId, onUploaded, category: initialCatego
 
             {error && <p className="text-sm text-destructive">{error}</p>}
 
-            <Button type="submit" className="w-full" disabled={loading || !file}>
+            <Button type="submit" className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl shadow-sm hover:from-blue-700 hover:to-indigo-700" disabled={loading || !file}>
               {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               {category === 'submission' && eventId ? 'Submit' : 'Upload'}
             </Button>

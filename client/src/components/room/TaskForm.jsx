@@ -64,8 +64,8 @@ export default function TaskForm({ roomId, members = [], onCreated }) {
   return (
     <Dialog open={open} onOpenChange={(val) => { setOpen(val); if (val) setError(''); }}>
       <DialogTrigger asChild>
-        <Button size="sm">
-          <Plus className="mr-2 h-4 w-4" />
+        <Button size="sm" className="rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 text-white hover:shadow-md gap-2">
+          <Plus className="h-4 w-4" />
           Assign Task
         </Button>
       </DialogTrigger>
@@ -76,8 +76,9 @@ export default function TaskForm({ roomId, members = [], onCreated }) {
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <label className="text-sm font-medium">Title</label>
+            <label className="text-sm font-medium text-foreground/80">Title</label>
             <Input
+              className="rounded-xl"
               placeholder="Task title"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
@@ -86,11 +87,11 @@ export default function TaskForm({ roomId, members = [], onCreated }) {
           </div>
 
           <div className="space-y-2">
-            <label className="text-sm font-medium">Assign To</label>
+            <label className="text-sm font-medium text-foreground/80">Assign To</label>
             <select
               value={assignedTo}
               onChange={(e) => setAssignedTo(e.target.value)}
-              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+              className="w-full rounded-xl border border-input bg-background px-3 py-2 text-sm"
               required
             >
               <option value="">Select a member...</option>
@@ -103,14 +104,16 @@ export default function TaskForm({ roomId, members = [], onCreated }) {
           </div>
 
           <div className="space-y-2">
-            <label className="text-sm font-medium">Due Date (optional)</label>
+            <label className="text-sm font-medium text-foreground/80">Due Date (optional)</label>
             <div className="grid grid-cols-2 gap-2">
               <Input
+                className="rounded-xl"
                 type="date"
                 value={dueDate}
                 onChange={(e) => setDueDate(e.target.value)}
               />
               <Input
+                className="rounded-xl"
                 type="time"
                 value={dueTime}
                 onChange={(e) => setDueTime(e.target.value)}
@@ -119,11 +122,11 @@ export default function TaskForm({ roomId, members = [], onCreated }) {
           </div>
 
           <div className="space-y-2">
-            <label className="text-sm font-medium">Priority</label>
+            <label className="text-sm font-medium text-foreground/80">Priority</label>
             <select
               value={priority}
               onChange={(e) => setPriority(e.target.value)}
-              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+              className="w-full rounded-xl border border-input bg-background px-3 py-2 text-sm"
             >
               <option value="low">Low</option>
               <option value="medium">Medium</option>
@@ -132,16 +135,17 @@ export default function TaskForm({ roomId, members = [], onCreated }) {
           </div>
 
           <div className="space-y-2">
-            <label className="text-sm font-medium">Description (optional)</label>
+            <label className="text-sm font-medium text-foreground/80">Description (optional)</label>
             <Textarea
+              className="rounded-xl"
               placeholder="Task details"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
             />
           </div>
 
-          {error && <p className="text-sm text-destructive">{error}</p>}
-          <Button type="submit" className="w-full" disabled={loading}>
+          {error && <div className="rounded-xl bg-red-50 border border-red-200/60 p-3 text-sm text-destructive">{error}</div>}
+          <Button type="submit" className="w-full h-11 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 text-white hover:shadow-md" disabled={loading}>
             {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             Create Task
           </Button>
