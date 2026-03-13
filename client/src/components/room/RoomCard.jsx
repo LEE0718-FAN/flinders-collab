@@ -68,8 +68,11 @@ export default function RoomCard({ room, onDeleted }) {
         {/* Footer — pinned to bottom */}
         <div className="p-5 pt-3">
           <div className="flex items-center justify-between border-t pt-3">
-            <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
-              <Users className="h-4 w-4" />
+            <div className="flex items-center gap-3 text-sm text-muted-foreground">
+              <span className="flex items-center gap-1.5">
+                <Users className="h-4 w-4" />
+                {room.member_count || 0} {room.member_count === 1 ? 'Member' : 'Members'}
+              </span>
               <span className="capitalize">{room.my_role || 'member'}</span>
             </div>
 

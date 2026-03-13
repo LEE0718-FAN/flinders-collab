@@ -113,10 +113,25 @@ async function getRooms(req, res, next) {
       return res.status(400).json({ error: error.message });
     }
 
+    // Get member counts for all rooms in one query
+    const roomIds = data.map((entry) => entry.rooms.id);
+    const { data: counts } = roomIds.length > 0
+      ? await supabaseAdmin
+          .from('room_members')
+          .select('room_id')
+          .in('room_id', roomIds)
+      : { data: [] };
+
+    const countMap = {};
+    (counts || []).forEach((c) => {
+      countMap[c.room_id] = (countMap[c.room_id] || 0) + 1;
+    });
+
     const rooms = data.map((entry) => ({
       ...entry.rooms,
       my_role: entry.role,
       joined_at: entry.joined_at,
+      member_count: countMap[entry.rooms.id] || 0,
     }));
 
     res.json(rooms);

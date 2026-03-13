@@ -59,7 +59,7 @@ function TaskCreateForm({ roomId, members = [], onCreated }) {
   const [title, setTitle] = useState('');
   const [dueDate, setDueDate] = useState('');
   const [priority, setPriority] = useState('medium');
-  const [assignedMember, setAssignedMember] = useState(null);
+  const [assignedMembers, setAssignedMembers] = useState([]);
   const [submitting, setSubmitting] = useState(false);
   const [dragOver, setDragOver] = useState(false);
   const dropRef = useRef(null);
@@ -69,24 +69,35 @@ function TaskCreateForm({ roomId, members = [], onCreated }) {
     setDragOver(false);
     const memberId = e.dataTransfer.getData('text/member-id');
     const member = members.find((m) => (m.user_id || m.id) === memberId);
-    if (member) setAssignedMember(member);
+    if (member && !assignedMembers.find((m) => (m.user_id || m.id) === memberId)) {
+      setAssignedMembers((prev) => [...prev, member]);
+    }
+  };
+
+  const removeMember = (memberId) => {
+    setAssignedMembers((prev) => prev.filter((m) => (m.user_id || m.id) !== memberId));
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!title.trim() || !assignedMember) return;
+    if (!title.trim() || assignedMembers.length === 0) return;
     setSubmitting(true);
     try {
-      await createTask(roomId, {
-        title: title.trim(),
-        assigned_to: assignedMember.user_id || assignedMember.id,
-        due_date: dueDate ? new Date(`${dueDate}T23:59`).toISOString() : undefined,
-        priority,
-      });
+      // Create one task per assigned member
+      await Promise.all(
+        assignedMembers.map((member) =>
+          createTask(roomId, {
+            title: title.trim(),
+            assigned_to: member.user_id || member.id,
+            due_date: dueDate ? new Date(`${dueDate}T23:59`).toISOString() : undefined,
+            priority,
+          })
+        )
+      );
       setTitle('');
       setDueDate('');
       setPriority('medium');
-      setAssignedMember(null);
+      setAssignedMembers([]);
       onCreated?.();
     } catch (err) {
       console.error('Failed to create task:', err.message);
@@ -148,55 +159,69 @@ function TaskCreateForm({ roomId, members = [], onCreated }) {
           </div>
         </div>
 
-        {/* Drop zone for member */}
+        {/* Drop zone for members */}
         <div
           ref={dropRef}
           onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
           onDragLeave={() => setDragOver(false)}
           onDrop={handleDrop}
-          className={`flex items-center gap-3 rounded-lg border-2 border-dashed p-4 transition-all ${
+          className={`rounded-lg border-2 border-dashed p-4 transition-all ${
             dragOver
               ? 'border-primary bg-primary/5 scale-[1.01]'
-              : assignedMember
+              : assignedMembers.length > 0
                 ? 'border-green-300 bg-green-50'
                 : 'border-muted-foreground/20 bg-muted/30'
           }`}
         >
-          {assignedMember ? (
-            <>
-              <Avatar className="h-9 w-9">
-                <AvatarFallback className="text-xs font-semibold bg-primary/10 text-primary">
-                  {getInitials(assignedMember.full_name || assignedMember.university_email || 'U')}
-                </AvatarFallback>
-              </Avatar>
-              <div className="flex-1">
-                <p className="text-sm font-semibold">{assignedMember.full_name || assignedMember.university_email}</p>
-                <p className="text-xs text-green-600">Assigned</p>
+          {assignedMembers.length > 0 ? (
+            <div className="space-y-2">
+              <p className="text-xs font-semibold text-green-600 uppercase tracking-wider">
+                Assigned to ({assignedMembers.length})
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {assignedMembers.map((m) => {
+                  const id = m.user_id || m.id;
+                  const name = m.full_name || m.university_email || 'Unknown';
+                  return (
+                    <span
+                      key={id}
+                      className="inline-flex items-center gap-1.5 rounded-full bg-white border border-green-200 pl-1 pr-2 py-1 text-sm"
+                    >
+                      <Avatar className="h-6 w-6">
+                        <AvatarFallback className="text-[9px] font-semibold bg-primary/10 text-primary">
+                          {getInitials(name)}
+                        </AvatarFallback>
+                      </Avatar>
+                      <span className="font-medium">{name}</span>
+                      <button
+                        type="button"
+                        onClick={() => removeMember(id)}
+                        className="ml-0.5 text-muted-foreground hover:text-red-500 transition-colors text-xs font-bold"
+                      >
+                        ✕
+                      </button>
+                    </span>
+                  );
+                })}
               </div>
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                className="h-7 text-xs text-muted-foreground"
-                onClick={() => setAssignedMember(null)}
-              >
-                Change
-              </Button>
-            </>
+              <p className="text-xs text-muted-foreground/60">
+                Drag more members to assign them too
+              </p>
+            </div>
           ) : (
-            <>
+            <div className="flex items-center gap-3">
               <UserPlus className={`h-5 w-5 ${dragOver ? 'text-primary' : 'text-muted-foreground/50'}`} />
               <p className={`text-sm ${dragOver ? 'text-primary font-medium' : 'text-muted-foreground/60'}`}>
                 Drag a member here to assign this task
               </p>
-            </>
+            </div>
           )}
         </div>
 
         <Button
           type="submit"
           className="w-full h-10"
-          disabled={submitting || !title.trim() || !assignedMember}
+          disabled={submitting || !title.trim() || assignedMembers.length === 0}
         >
           {submitting ? (
             <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Creating...</>
