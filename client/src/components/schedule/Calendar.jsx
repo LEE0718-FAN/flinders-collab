@@ -54,7 +54,7 @@ export default function ScheduleCalendar({ events = [], selectedDate, onSelectDa
         {...buttonProps}
         ref={buttonRef}
         type="button"
-        className={cn(className, 'flex h-9 w-9 flex-col items-center justify-center gap-0.5 overflow-visible')}
+        className={cn(className, 'flex h-9 w-9 flex-col items-center justify-center gap-0.5 overflow-visible rounded-xl transition-all duration-150 hover:bg-blue-50')}
       >
         <span className="leading-none">{children}</span>
         {markerColors.length > 0 && (
@@ -86,27 +86,30 @@ export default function ScheduleCalendar({ events = [], selectedDate, onSelectDa
   };
 
   return (
-    <div className="rounded-md border p-3">
-      <div className="mb-3 flex items-center justify-between">
+    <div className="rounded-2xl border border-slate-200/60 bg-white shadow-xl shadow-blue-500/5 overflow-hidden">
+      {/* Gradient header */}
+      <div className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-t-2xl p-4 flex items-center justify-between">
         <Button
-          variant="outline"
+          variant="ghost"
           size="icon"
-          className="h-7 w-7"
+          className="h-8 w-8 rounded-full text-white hover:bg-white/20 transition-colors duration-150"
           onClick={() => setMonth((m) => subMonths(m, 1))}
         >
           <ChevronLeft className="h-4 w-4" />
         </Button>
-        <span className="text-sm font-medium">{format(month, 'MMMM yyyy')}</span>
+        <span className="text-base font-bold tracking-wide text-white">{format(month, 'MMMM yyyy')}</span>
         <Button
-          variant="outline"
+          variant="ghost"
           size="icon"
-          className="h-7 w-7"
+          className="h-8 w-8 rounded-full text-white hover:bg-white/20 transition-colors duration-150"
           onClick={() => setMonth((m) => addMonths(m, 1))}
         >
           <ChevronRight className="h-4 w-4" />
         </Button>
       </div>
 
+      {/* Calendar body */}
+      <div className="bg-white rounded-b-2xl p-4">
       <DayPicker
         mode="single"
         selected={selectedDate}
@@ -126,20 +129,21 @@ export default function ScheduleCalendar({ events = [], selectedDate, onSelectDa
           month_caption: 'hidden',
           month_grid: 'w-full border-collapse space-y-1',
           weekdays: 'flex',
-          weekday: 'w-9 rounded-md text-[0.8rem] font-normal text-muted-foreground',
+          weekday: 'w-9 rounded-md text-[0.75rem] font-bold uppercase tracking-wider text-blue-600/60',
           week: 'mt-2 flex w-full',
           day: 'relative h-9 w-9 p-0 text-center text-sm',
           day_button: cn(
             buttonVariants({ variant: 'ghost' }),
-            'h-9 w-9 p-0 font-normal aria-selected:opacity-100'
+            'h-9 w-9 p-0 font-normal rounded-xl transition-all duration-150 aria-selected:opacity-100'
           ),
-          selected: 'rounded-md bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground focus:bg-primary focus:text-primary-foreground',
-          today: 'rounded-md bg-accent text-accent-foreground',
-          outside: 'text-muted-foreground opacity-50',
+          selected: 'rounded-xl bg-blue-600 text-white shadow-lg shadow-blue-500/30 hover:bg-blue-600 hover:text-white focus:bg-blue-600 focus:text-white font-bold',
+          today: 'rounded-xl bg-blue-50 text-blue-700 font-bold ring-2 ring-blue-200',
+          outside: 'text-slate-300 opacity-50',
           disabled: 'text-muted-foreground opacity-50',
           hidden: 'invisible',
         }}
       />
+      </div>
     </div>
   );
 }

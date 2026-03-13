@@ -93,38 +93,42 @@ export default function EventForm({ roomId, onCreateStart, onCreated, onCreateEr
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[420px]">
+      <DialogContent className="sm:max-w-[440px] rounded-2xl">
         <DialogHeader>
-          <DialogTitle>New Event</DialogTitle>
-          <DialogDescription>{displayDate}</DialogDescription>
+          <DialogTitle className="text-lg font-bold">New Event</DialogTitle>
+          <DialogDescription className="text-slate-500">{displayDate}</DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* Category selection */}
           <div className="space-y-2">
-            <label className="text-sm font-medium">Category</label>
-            <div className="grid grid-cols-4 gap-1.5">
-              {CATEGORIES.map((c) => (
-                <button
-                  key={c.value}
-                  type="button"
-                  onClick={() => setCategory(c.value)}
-                  className={`flex flex-col items-center gap-1 rounded-lg border px-2 py-2 text-xs transition-all ${
-                    category === c.value
-                      ? 'border-primary bg-primary/10 text-primary font-medium'
-                      : 'border-border hover:border-primary/40 hover:bg-muted text-muted-foreground'
-                  }`}
-                >
-                  <span className="text-base">{c.icon}</span>
-                  <span className="truncate w-full text-center leading-tight">{c.label}</span>
-                </button>
-              ))}
+            <label className="text-sm font-semibold text-slate-700">Category</label>
+            <div className="grid grid-cols-4 gap-2">
+              {CATEGORIES.map((c) => {
+                const isSelected = category === c.value;
+                return (
+                  <button
+                    key={c.value}
+                    type="button"
+                    onClick={() => setCategory(c.value)}
+                    className={`flex flex-col items-center gap-1.5 rounded-xl border-2 px-2 py-3 text-xs transition-all duration-200 ${
+                      isSelected
+                        ? 'border-blue-500 ring-2 ring-offset-1 ring-blue-500/30 bg-blue-50 text-blue-700 font-bold shadow-md'
+                        : 'border-slate-200 hover:border-blue-300 hover:bg-blue-50/50 text-slate-500'
+                    }`}
+                  >
+                    <span className={`text-lg flex items-center justify-center h-8 w-8 rounded-full ${isSelected ? 'bg-blue-100' : 'bg-slate-100'}`}>{c.icon}</span>
+                    <span className="truncate w-full text-center leading-tight">{c.label}</span>
+                  </button>
+                );
+              })}
             </div>
           </div>
 
           {/* Title */}
           <div className="space-y-2">
-            <label className="text-sm font-medium">Event Title</label>
+            <label className="text-sm font-semibold text-slate-700">Event Title</label>
             <Input
+              className="rounded-xl border-slate-200 focus:border-blue-400"
               placeholder="e.g. Group Meeting, Final Presentation..."
               value={title}
               onChange={(e) => setTitle(e.target.value)}
@@ -135,24 +139,25 @@ export default function EventForm({ roomId, onCreateStart, onCreated, onCreateEr
 
           {/* Time */}
           <div className="space-y-2">
-            <label className="text-sm font-medium">Time</label>
-            <div className="flex items-center gap-2">
-              <Input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} className="flex-1" />
-              <span className="text-sm text-muted-foreground">to</span>
-              <Input type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)} className="flex-1" />
+            <label className="text-sm font-semibold text-slate-700">Time</label>
+            <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3">
+              <Input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} className="rounded-xl border-slate-200" />
+              <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">to</span>
+              <Input type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)} className="rounded-xl border-slate-200" />
             </div>
           </div>
 
           {/* Location */}
           <div className="space-y-2">
-            <label className="text-sm font-medium">Location <span className="text-muted-foreground font-normal">(optional)</span></label>
-            <Input placeholder="e.g. Flinders Library Room 3" value={locationName} onChange={(e) => setLocationName(e.target.value)} />
+            <label className="text-sm font-semibold text-slate-700">Location <span className="text-slate-400 font-normal">(optional)</span></label>
+            <Input className="rounded-xl border-slate-200" placeholder="e.g. Flinders Library Room 3" value={locationName} onChange={(e) => setLocationName(e.target.value)} />
           </div>
 
           {/* Description */}
           <div className="space-y-2">
-            <label className="text-sm font-medium">Description <span className="text-muted-foreground font-normal">(optional)</span></label>
+            <label className="text-sm font-semibold text-slate-700">Description <span className="text-slate-400 font-normal">(optional)</span></label>
             <Textarea
+              className="rounded-xl border-slate-200"
               placeholder="Add any details about this event..."
               value={description}
               onChange={(e) => setDescription(e.target.value)}
@@ -160,8 +165,8 @@ export default function EventForm({ roomId, onCreateStart, onCreated, onCreateEr
             />
           </div>
 
-          {error && <p className="text-sm text-destructive">{error}</p>}
-          <Button type="submit" className="w-full" disabled={loading}>
+          {error && <p className="text-sm text-destructive font-medium">{error}</p>}
+          <Button type="submit" className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl h-12 shadow-lg shadow-blue-500/25 hover:shadow-xl hover:shadow-blue-500/30 hover:from-blue-700 hover:to-indigo-700 transition-all duration-200 font-semibold" disabled={loading}>
             {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             Add Event
           </Button>

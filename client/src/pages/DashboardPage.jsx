@@ -6,7 +6,7 @@ import JoinRoomDialog from '@/components/room/JoinRoomDialog';
 import { getRooms } from '@/services/rooms';
 import { useAuth } from '@/hooks/useAuth';
 import { applyRoomOrder, buildOrderedIds, loadRoomOrder, persistRoomOrder } from '@/lib/room-order';
-import { Loader2, Plus, UserPlus } from 'lucide-react';
+import { Loader2, Plus, UserPlus, LayoutGrid } from 'lucide-react';
 
 const TEMP_ROOM_PREFIX = 'temp-room-';
 
@@ -229,19 +229,27 @@ export default function DashboardPage() {
 
   return (
     <MainLayout onRoomChange={fetchRooms}>
-      <div className="space-y-6">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight">Welcome back, {displayName}!</h1>
-            <p className="text-muted-foreground">Manage your team rooms and collaborate.</p>
+      <div className="space-y-8">
+        {/* Hero Banner */}
+        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-blue-600 via-indigo-600 to-violet-700 px-8 py-10 text-white shadow-xl">
+          {/* Shimmer overlay */}
+          <div className="absolute inset-0 overflow-hidden">
+            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent animate-shimmer" />
           </div>
-          <div className="flex gap-2">
-            <CreateRoomDialog
-              onCreateStart={handleCreateStart}
-              onCreated={handleRoomCreated}
-              onCreateError={handleCreateError}
-            />
-            <JoinRoomDialog onJoined={handleRoomJoined} />
+          {/* Decorative circles */}
+          <div className="absolute -right-12 -top-12 h-48 w-48 rounded-full bg-white/10 blur-2xl" />
+          <div className="absolute -left-8 -bottom-8 h-32 w-32 rounded-full bg-indigo-400/20 blur-xl" />
+          <div className="relative">
+            <h1 className="text-3xl sm:text-4xl font-black tracking-tight">Welcome back, {displayName}!</h1>
+            <p className="mt-2 text-white/70 text-base">Manage your team rooms and collaborate.</p>
+            <div className="flex gap-2 mt-6">
+              <CreateRoomDialog
+                onCreateStart={handleCreateStart}
+                onCreated={handleRoomCreated}
+                onCreateError={handleCreateError}
+              />
+              <JoinRoomDialog onJoined={handleRoomJoined} />
+            </div>
           </div>
         </div>
 
@@ -251,9 +259,18 @@ export default function DashboardPage() {
           </div>
         )}
 
+        {/* Section header */}
+        <div className="flex items-center gap-3">
+          <h2 className="text-lg font-bold text-foreground">Your Rooms</h2>
+          {!loading && <span className="text-xs font-semibold bg-indigo-100 text-indigo-700 px-2.5 py-0.5 rounded-full">{rooms.length}</span>}
+        </div>
+
         {loading ? (
-          <div className="flex justify-center py-12">
-            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+          <div className="flex justify-center py-16">
+            <div className="rounded-2xl bg-white shadow-card p-10 flex flex-col items-center gap-3">
+              <Loader2 className="h-8 w-8 animate-spin text-indigo-500" />
+              <p className="text-sm text-muted-foreground">Loading your rooms...</p>
+            </div>
           </div>
         ) : rooms.length > 0 ? (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -297,9 +314,10 @@ export default function DashboardPage() {
             ))}
           </div>
         ) : (
-          <div className="rounded-lg border border-dashed p-12 text-center">
-            <h3 className="text-lg font-semibold">No rooms yet</h3>
-            <p className="mx-auto mt-1 max-w-sm text-sm text-muted-foreground">
+          <div className="rounded-2xl border-2 border-dashed border-indigo-200 p-16 text-center">
+            <LayoutGrid className="h-12 w-12 mx-auto text-indigo-300 mb-4" />
+            <h3 className="text-lg font-semibold text-foreground">No rooms yet</h3>
+            <p className="mx-auto mt-2 max-w-sm text-sm text-muted-foreground">
               Create a room to start collaborating with your team, or join an existing room with an invite code.
             </p>
           </div>

@@ -114,32 +114,32 @@ export default function FileUpload({ roomId, onUploaded, category: initialCatego
 
   return (
     <>
-      <Button size="sm" onClick={() => { setCategory(initialCategory || 'lecture'); setOpen(true); }}>
+      <Button size="sm" className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-full shadow-md shadow-blue-500/20 hover:shadow-lg hover:shadow-blue-500/30 transition-all" onClick={() => { setCategory(initialCategory || 'lecture'); setOpen(true); }}>
         <Upload className="mr-2 h-4 w-4" />
         Upload File
       </Button>
 
       <Dialog open={open} onOpenChange={handleOpenChange}>
-        <DialogContent className="sm:max-w-[440px]">
+        <DialogContent className="sm:max-w-[440px] rounded-2xl">
           <DialogHeader>
-            <DialogTitle>Upload File</DialogTitle>
-            <DialogDescription>Upload a file to share with your team</DialogDescription>
+            <DialogTitle className="font-bold text-lg">Upload File</DialogTitle>
+            <DialogDescription className="text-slate-500">Upload a file to share with your team</DialogDescription>
           </DialogHeader>
 
           <form onSubmit={handleSubmit} className="space-y-4">
             {/* Category */}
             <div className="space-y-2">
-              <label className="text-sm font-medium">Category</label>
+              <label className="text-sm font-semibold text-slate-700">Category</label>
               <div className="grid grid-cols-2 gap-2">
                 {CATEGORIES.map((c) => (
                   <button
                     key={c.value}
                     type="button"
                     onClick={() => { setCategory(c.value); if (c.value !== 'submission') setEventId(''); }}
-                    className={`flex items-center gap-2 rounded-lg border px-3 py-2.5 text-sm transition-all ${
+                    className={`flex items-center gap-2.5 rounded-xl border-2 px-4 py-3 text-sm transition-all duration-200 ${
                       category === c.value
-                        ? 'border-primary bg-primary/10 text-primary font-medium'
-                        : 'border-border hover:border-primary/40 hover:bg-muted text-muted-foreground'
+                        ? 'border-blue-500 bg-gradient-to-r from-blue-50 to-indigo-50 text-blue-700 font-semibold shadow-md shadow-blue-500/10'
+                        : 'border-slate-200 hover:border-blue-300 hover:bg-blue-50/50 text-slate-500'
                     }`}
                   >
                     <span className="text-lg">{c.icon}</span>
@@ -152,11 +152,11 @@ export default function FileUpload({ roomId, onUploaded, category: initialCatego
             {/* Event selector - only for submissions */}
             {category === 'submission' && sortedEvents.length > 0 && (
               <div className="space-y-2">
-                <label className="text-sm font-medium">Submit for Event <span className="text-muted-foreground font-normal">(optional)</span></label>
+                <label className="text-sm font-semibold text-slate-700">Submit for Event <span className="text-slate-400 font-normal">(optional)</span></label>
                 <select
                   value={eventId}
                   onChange={(e) => setEventId(e.target.value)}
-                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                  className="w-full rounded-xl border-2 border-slate-200 bg-white px-3 py-2 text-sm focus:border-blue-400 transition-colors"
                 >
                   <option value="">No event (general submission)</option>
                   {sortedEvents.map((ev) => (
@@ -170,33 +170,41 @@ export default function FileUpload({ roomId, onUploaded, category: initialCatego
 
             {/* File Drop Zone */}
             <div className="space-y-2">
-              <label className="text-sm font-medium">File</label>
+              <label className="text-sm font-semibold text-slate-700">File</label>
               {file ? (
-                <div className="flex items-center gap-3 rounded-lg border bg-muted/50 p-3">
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-background border">
-                    {getFileIcon(file.type)}
+                <div className="flex items-center gap-3 rounded-xl border-2 border-blue-200 bg-blue-50/50 shadow-sm p-4">
+                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-indigo-500 shadow-md">
+                    <span className="text-white">{getFileIcon(file.type)}</span>
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium truncate">{file.name}</p>
-                    <p className="text-xs text-muted-foreground">{formatSize(file.size)}</p>
+                    <p className="text-sm font-semibold truncate text-slate-800">{file.name}</p>
+                    <p className="text-xs text-slate-500">{formatSize(file.size)}</p>
                   </div>
-                  <Button type="button" variant="ghost" size="sm" onClick={() => setFile(null)}>
+                  <Button type="button" variant="ghost" size="sm" className="text-blue-600 hover:text-blue-700 hover:bg-blue-100 rounded-lg" onClick={() => setFile(null)}>
                     Change
                   </Button>
                 </div>
               ) : (
                 <div
-                  className={`flex flex-col items-center justify-center rounded-lg border-2 border-dashed p-6 transition-colors cursor-pointer ${
-                    dragActive ? 'border-primary bg-primary/5' : 'border-muted-foreground/25 hover:border-primary/40'
+                  className={`flex flex-col items-center justify-center rounded-2xl border-2 border-dashed p-10 transition-all duration-300 cursor-pointer ${
+                    dragActive
+                      ? 'border-blue-500 bg-gradient-to-br from-blue-50 to-indigo-50 shadow-lg shadow-blue-500/10 scale-[1.02]'
+                      : 'border-slate-300 bg-gradient-to-br from-slate-50 to-slate-100/50 hover:from-blue-50/50 hover:to-indigo-50/50 hover:border-blue-400'
                   }`}
                   onDragOver={(e) => { e.preventDefault(); setDragActive(true); }}
                   onDragLeave={() => setDragActive(false)}
                   onDrop={handleDrop}
                   onClick={() => inputRef.current?.click()}
                 >
-                  <Upload className="mb-2 h-6 w-6 text-muted-foreground" />
-                  <p className="text-sm text-muted-foreground">Drag & drop or click to browse</p>
-                  <p className="mt-1 text-xs text-muted-foreground/70">PDF, PPTX, DOCX, PNG, JPG, ZIP, TXT (max 10MB)</p>
+                  <div className={`mb-4 flex h-16 w-16 items-center justify-center rounded-2xl transition-all duration-300 ${
+                    dragActive
+                      ? 'bg-gradient-to-br from-blue-500 to-indigo-500 shadow-lg shadow-blue-500/30 scale-110'
+                      : 'bg-gradient-to-br from-blue-100 to-indigo-100'
+                  }`}>
+                    <Upload className={`h-8 w-8 transition-colors duration-300 ${dragActive ? 'text-white' : 'text-blue-500'}`} />
+                  </div>
+                  <p className="text-sm font-semibold text-slate-600">Drop files here or click to browse</p>
+                  <p className="mt-1.5 text-xs text-slate-400">PDF, PPTX, DOCX, PNG, JPG, ZIP, TXT (max 10MB)</p>
                   <input ref={inputRef} type="file" className="hidden" onChange={(e) => e.target.files?.[0] && selectFile(e.target.files[0])} accept=".pdf,.pptx,.docx,.png,.jpg,.jpeg,.zip,.txt" />
                 </div>
               )}
@@ -204,8 +212,9 @@ export default function FileUpload({ roomId, onUploaded, category: initialCatego
 
             {/* Description */}
             <div className="space-y-2">
-              <label className="text-sm font-medium">Description <span className="text-muted-foreground font-normal">(optional)</span></label>
+              <label className="text-sm font-semibold text-slate-700">Description <span className="text-slate-400 font-normal">(optional)</span></label>
               <Textarea
+                className="rounded-xl border-slate-200"
                 placeholder="Brief description of this file..."
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
@@ -213,9 +222,9 @@ export default function FileUpload({ roomId, onUploaded, category: initialCatego
               />
             </div>
 
-            {error && <p className="text-sm text-destructive">{error}</p>}
+            {error && <p className="text-sm text-destructive font-medium">{error}</p>}
 
-            <Button type="submit" className="w-full" disabled={loading || !file}>
+            <Button type="submit" className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl h-12 shadow-lg shadow-blue-500/25 hover:shadow-xl hover:shadow-blue-500/30 hover:from-blue-700 hover:to-indigo-700 transition-all font-semibold" disabled={loading || !file}>
               {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               {category === 'submission' && eventId ? 'Submit' : 'Upload'}
             </Button>

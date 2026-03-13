@@ -98,7 +98,7 @@ function ReportsTab() {
               key={s}
               variant={statusFilter === s ? 'default' : 'outline'}
               size="sm"
-              className="h-7 text-xs capitalize"
+              className={`h-7 text-xs capitalize rounded-full ${statusFilter === s ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md border-0' : 'bg-white border border-slate-200 text-slate-600 hover:border-blue-300'}`}
               onClick={() => setStatusFilter(s)}
             >
               {formatStatus(s)}
@@ -116,7 +116,7 @@ function ReportsTab() {
               key={s}
               variant={sectionFilter === s ? 'default' : 'outline'}
               size="sm"
-              className="h-7 text-xs capitalize"
+              className={`h-7 text-xs capitalize rounded-full ${sectionFilter === s ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md border-0' : 'bg-white border border-slate-200 text-slate-600 hover:border-blue-300'}`}
               onClick={() => setSectionFilter(s)}
             >
               {s}
@@ -137,8 +137,10 @@ function ReportsTab() {
         </div>
       ) : (
         <div className="space-y-3">
-          {reports.map((report) => (
-            <Card key={report.id}>
+          {reports.map((report) => {
+            const borderColor = report.status === 'open' ? 'border-l-4 border-l-amber-400' : report.status === 'in_progress' ? 'border-l-4 border-l-blue-400' : report.status === 'resolved' ? 'border-l-4 border-l-emerald-400' : 'border-l-4 border-l-slate-300';
+            return (
+            <Card key={report.id} className={`shadow-sm hover:shadow-md transition-shadow ${borderColor}`}>
               <CardContent className="p-4">
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div className="flex-1 min-w-0 space-y-2">
@@ -205,7 +207,8 @@ function ReportsTab() {
                 </div>
               </CardContent>
             </Card>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>
@@ -288,15 +291,29 @@ function UsersTab() {
   return (
     <div className="space-y-4">
       {/* Stats */}
-      <div className="flex items-center gap-4 text-sm">
-        <Badge variant="secondary" className="gap-1">
-          <User className="h-3 w-3" />
-          {users.length} users
-        </Badge>
-        <Badge variant="default" className="gap-1">
-          <Shield className="h-3 w-3" />
-          {adminCount} admins
-        </Badge>
+      <div className="grid grid-cols-2 gap-4">
+        <div className="rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 p-4 text-white shadow-lg">
+          <div className="flex items-center gap-3">
+            <div className="h-10 w-10 rounded-xl bg-white/20 flex items-center justify-center">
+              <User className="h-5 w-5" />
+            </div>
+            <div>
+              <p className="text-2xl font-black">{users.length}</p>
+              <p className="text-xs text-white/70">Total Users</p>
+            </div>
+          </div>
+        </div>
+        <div className="rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 p-4 text-white shadow-lg">
+          <div className="flex items-center gap-3">
+            <div className="h-10 w-10 rounded-xl bg-white/20 flex items-center justify-center">
+              <Shield className="h-5 w-5" />
+            </div>
+            <div>
+              <p className="text-2xl font-black">{adminCount}</p>
+              <p className="text-xs text-white/70">Admins</p>
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Search */}
@@ -323,10 +340,10 @@ function UsersTab() {
             const initials = name.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2);
 
             return (
-              <Card key={u.id}>
+              <Card key={u.id} className="shadow-sm hover:shadow-md transition-all">
                 <CardContent className="flex items-center gap-4 p-4">
-                  <Avatar className="h-10 w-10 shrink-0">
-                    <AvatarFallback className="text-xs font-semibold bg-primary/10 text-primary">{initials}</AvatarFallback>
+                  <Avatar className="h-12 w-12 shrink-0">
+                    <AvatarFallback className="text-sm font-semibold bg-gradient-to-br from-indigo-500 to-purple-600 text-white">{initials}</AvatarFallback>
                   </Avatar>
 
                   <div className="flex-1 min-w-0">
@@ -430,10 +447,14 @@ export default function AdminPage() {
   if (!user?.is_admin) {
     return (
       <MainLayout>
-        <div className="flex flex-col items-center justify-center gap-4 py-20 text-muted-foreground">
-          <ShieldAlert className="h-12 w-12" />
-          <h2 className="text-lg font-semibold text-foreground">Access Denied</h2>
-          <p className="text-sm">You do not have admin privileges to view this page.</p>
+        <div className="flex items-center justify-center py-20">
+          <div className="bg-gradient-to-r from-red-50 via-rose-50 to-orange-50 rounded-2xl p-12 shadow-lg flex flex-col items-center gap-4 text-center">
+            <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-red-500 to-rose-600 shadow-lg">
+              <ShieldAlert className="h-8 w-8 text-white" />
+            </div>
+            <h2 className="text-lg font-semibold text-foreground">Access Denied</h2>
+            <p className="text-sm text-muted-foreground">You do not have admin privileges to view this page.</p>
+          </div>
         </div>
       </MainLayout>
     );
@@ -442,20 +463,23 @@ export default function AdminPage() {
   return (
     <MainLayout>
       <div className="space-y-6">
-        <div>
-          <h1 className="text-2xl font-bold flex items-center gap-2">
-            <Shield className="h-6 w-6" />
-            Admin Panel
-          </h1>
-          <p className="mt-1 text-muted-foreground text-sm">
-            Manage reports and user permissions
-          </p>
+        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-slate-900 via-slate-800 to-indigo-900 px-8 py-8 text-white shadow-xl">
+          <div className="absolute -right-12 -top-12 h-40 w-40 rounded-full bg-indigo-500/20 blur-2xl" />
+          <div className="relative flex items-center gap-4">
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white/10 backdrop-blur-sm">
+              <Shield className="h-6 w-6 text-white" />
+            </div>
+            <div>
+              <h1 className="text-2xl font-black tracking-tight">Admin Panel</h1>
+              <p className="mt-1 text-slate-300 text-sm">Manage reports and user permissions</p>
+            </div>
+          </div>
         </div>
 
         <Tabs defaultValue="reports">
-          <TabsList>
-            <TabsTrigger value="reports">Reports</TabsTrigger>
-            <TabsTrigger value="users">Users</TabsTrigger>
+          <TabsList className="bg-white rounded-2xl p-2 shadow-lg border">
+            <TabsTrigger value="reports" className="rounded-xl data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-600 data-[state=active]:to-indigo-600 data-[state=active]:text-white data-[state=active]:shadow-md text-slate-500">Reports</TabsTrigger>
+            <TabsTrigger value="users" className="rounded-xl data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-600 data-[state=active]:to-indigo-600 data-[state=active]:text-white data-[state=active]:shadow-md text-slate-500">Users</TabsTrigger>
           </TabsList>
 
           <TabsContent value="reports" className="mt-4">

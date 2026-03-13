@@ -7,7 +7,7 @@ import {
   AlertDialogContent, AlertDialogDescription, AlertDialogFooter,
   AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Users, Crown, Trash2, LogOut, Loader2 } from 'lucide-react';
+import { Users, Crown, Trash2, LogOut, Loader2, ArrowRight } from 'lucide-react';
 import { deleteRoom, leaveRoom } from '@/services/rooms';
 
 const roomPalettes = [
@@ -16,6 +16,9 @@ const roomPalettes = [
     border: '#fbcfe8',
     glow: 'rgba(251, 207, 232, 0.45)',
     surface: 'linear-gradient(135deg, rgba(255, 241, 246, 1) 0%, rgba(255, 255, 255, 0.98) 68%)',
+    headerGradient: 'linear-gradient(135deg, #ec4899 0%, #f43f5e 50%, #fb7185 100%)',
+    pillBg: 'rgba(244, 63, 94, 0.10)',
+    pillText: '#be123c',
     courseBg: '#fbcfe8',
     courseText: '#831843',
     roleBorder: '#fbcfe8',
@@ -29,6 +32,9 @@ const roomPalettes = [
     border: '#bae6fd',
     glow: 'rgba(186, 230, 253, 0.5)',
     surface: 'linear-gradient(135deg, rgba(240, 249, 255, 1) 0%, rgba(255, 255, 255, 0.98) 68%)',
+    headerGradient: 'linear-gradient(135deg, #0ea5e9 0%, #38bdf8 50%, #7dd3fc 100%)',
+    pillBg: 'rgba(14, 165, 233, 0.10)',
+    pillText: '#0369a1',
     courseBg: '#bae6fd',
     courseText: '#0c4a6e',
     roleBorder: '#bae6fd',
@@ -42,6 +48,9 @@ const roomPalettes = [
     border: '#bbf7d0',
     glow: 'rgba(187, 247, 208, 0.5)',
     surface: 'linear-gradient(135deg, rgba(240, 253, 244, 1) 0%, rgba(255, 255, 255, 0.98) 68%)',
+    headerGradient: 'linear-gradient(135deg, #22c55e 0%, #4ade80 50%, #86efac 100%)',
+    pillBg: 'rgba(34, 197, 94, 0.10)',
+    pillText: '#15803d',
     courseBg: '#bbf7d0',
     courseText: '#14532d',
     roleBorder: '#bbf7d0',
@@ -55,6 +64,9 @@ const roomPalettes = [
     border: '#fde68a',
     glow: 'rgba(253, 230, 138, 0.5)',
     surface: 'linear-gradient(135deg, rgba(255, 251, 235, 1) 0%, rgba(255, 255, 255, 0.98) 68%)',
+    headerGradient: 'linear-gradient(135deg, #f59e0b 0%, #fbbf24 50%, #fcd34d 100%)',
+    pillBg: 'rgba(245, 158, 11, 0.10)',
+    pillText: '#b45309',
     courseBg: '#fde68a',
     courseText: '#78350f',
     roleBorder: '#fde68a',
@@ -68,6 +80,9 @@ const roomPalettes = [
     border: '#ddd6fe',
     glow: 'rgba(221, 214, 254, 0.55)',
     surface: 'linear-gradient(135deg, rgba(245, 243, 255, 1) 0%, rgba(255, 255, 255, 0.98) 68%)',
+    headerGradient: 'linear-gradient(135deg, #8b5cf6 0%, #a78bfa 50%, #c4b5fd 100%)',
+    pillBg: 'rgba(139, 92, 246, 0.10)',
+    pillText: '#6d28d9',
     courseBg: '#ddd6fe',
     courseText: '#4c1d95',
     roleBorder: '#ddd6fe',
@@ -81,6 +96,9 @@ const roomPalettes = [
     border: '#ccfbf1',
     glow: 'rgba(204, 251, 241, 0.55)',
     surface: 'linear-gradient(135deg, rgba(240, 253, 250, 1) 0%, rgba(255, 255, 255, 0.98) 68%)',
+    headerGradient: 'linear-gradient(135deg, #14b8a6 0%, #2dd4bf 50%, #99f6e4 100%)',
+    pillBg: 'rgba(20, 184, 166, 0.10)',
+    pillText: '#0f766e',
     courseBg: '#ccfbf1',
     courseText: '#134e4a',
     roleBorder: '#ccfbf1',
@@ -101,6 +119,7 @@ export default function RoomCard({ room, onDeleted, draggableProps, suppressNavi
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [hovered, setHovered] = useState(false);
   const isOwner = room.my_role === 'owner';
   const palette = getRoomPalette(room);
 
@@ -125,29 +144,35 @@ export default function RoomCard({ room, onDeleted, draggableProps, suppressNavi
     <div className="h-full">
       <div
         {...draggableProps}
-        className="relative flex flex-col h-full overflow-hidden rounded-lg border text-card-foreground shadow-sm transition-shadow hover:shadow-md cursor-grab active:cursor-grabbing"
+        className="relative flex flex-col h-full overflow-hidden rounded-2xl border-2 text-card-foreground transition-all duration-300 ease-out hover:-translate-y-1.5 hover:scale-[1.01] cursor-grab active:cursor-grabbing"
         style={{
-          background: palette.surface,
+          background: '#ffffff',
           borderColor: palette.border,
-          boxShadow: `0 12px 32px -24px ${palette.glow}`,
+          boxShadow: hovered
+            ? `0 20px 40px -12px ${palette.glow}, 0 8px 20px -8px rgba(0,0,0,0.08)`
+            : `0 12px 32px -24px ${palette.glow}`,
         }}
+        onMouseEnter={() => setHovered(true)}
+        onMouseLeave={() => setHovered(false)}
         onClick={() => {
           if (!suppressNavigation) {
             navigate(`/rooms/${room.id}`);
           }
         }}
       >
-        <div className="absolute inset-x-0 top-0 h-1.5" style={{ backgroundColor: palette.accent }} />
+        {/* Gradient accent bar */}
+        <div className="h-1.5 rounded-t-2xl" style={{ background: palette.accent }} />
 
-        {/* Top section: badges + title + description */}
-        <div className="flex-1 p-5 pt-6 pb-0">
-          {/* Badges row — always 28px tall */}
+        {/* Gradient header area */}
+        <div className="relative h-14" style={{ background: palette.headerGradient }} />
+
+        {/* Badges — overlapping gradient/white boundary */}
+        <div className="relative px-5" style={{ marginTop: '-12px', zIndex: 1 }}>
           <div className="flex items-center gap-1.5 h-7">
             {room.course_name && (
               <Badge
                 variant="secondary"
-                className="text-xs border-transparent"
-                style={{ backgroundColor: palette.courseBg, color: palette.courseText }}
+                className="text-xs bg-white/90 text-foreground shadow-sm border-0 rounded-full"
               >
                 {room.course_name}
               </Badge>
@@ -155,21 +180,19 @@ export default function RoomCard({ room, onDeleted, draggableProps, suppressNavi
             {isOwner && (
               <Badge
                 variant="outline"
-                className="gap-1 text-xs"
-                style={{
-                  borderColor: palette.roleBorder,
-                  backgroundColor: palette.roleBg,
-                  color: palette.roleText,
-                }}
+                className="gap-1 text-xs bg-white/90 text-foreground shadow-sm border-0 rounded-full"
               >
                 <Crown className="h-3 w-3" />
                 Owner
               </Badge>
             )}
           </div>
+        </div>
 
+        {/* Top section: title + description */}
+        <div className="flex-1 px-5 pt-2 pb-0">
           {/* Title — single line, truncated */}
-          <h3 className="text-lg font-semibold leading-snug mt-1.5 truncate">
+          <h3 className="text-base font-bold leading-snug truncate">
             {room.name}
           </h3>
 
@@ -182,32 +205,38 @@ export default function RoomCard({ room, onDeleted, draggableProps, suppressNavi
         {/* Footer — pinned to bottom */}
         <div className="p-5 pt-3">
           <div className="flex items-center justify-between border-t pt-3" style={{ borderColor: palette.divider }}>
-            <div className="flex items-center gap-3 text-sm" style={{ color: palette.meta }}>
-              <span className="flex items-center gap-1.5">
-                <Users className="h-4 w-4" />
+            <div className="flex items-center gap-3 text-sm">
+              <span
+                className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold"
+                style={{ backgroundColor: palette.pillBg, color: palette.pillText }}
+              >
+                <Users className="h-3.5 w-3.5" />
                 {room.member_count || 0} {room.member_count === 1 ? 'Member' : 'Members'}
               </span>
             </div>
 
-            <Button
-              variant="outline"
-              size="sm"
-              className={`h-7 gap-1.5 text-xs ${
-                isOwner
-                  ? 'text-red-600 border-red-200 hover:bg-red-50 hover:text-red-700'
-                  : 'text-orange-600 border-orange-200 hover:bg-orange-50 hover:text-orange-700'
-              }`}
-              onClick={(e) => {
-                e.stopPropagation();
-                setConfirmOpen(true);
-              }}
-            >
-              {isOwner ? (
-                <><Trash2 className="h-3.5 w-3.5" />Delete</>
-              ) : (
-                <><LogOut className="h-3.5 w-3.5" />Leave</>
-              )}
-            </Button>
+            <div className="flex items-center gap-1.5">
+              <Button
+                variant="outline"
+                size="sm"
+                className={`h-7 gap-1.5 text-xs opacity-50 hover:opacity-100 transition-opacity ${
+                  isOwner
+                    ? 'text-red-600 border-red-200 hover:bg-red-50 hover:text-red-700'
+                    : 'text-orange-600 border-orange-200 hover:bg-orange-50 hover:text-orange-700'
+                }`}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setConfirmOpen(true);
+                }}
+              >
+                {isOwner ? (
+                  <><Trash2 className="h-3.5 w-3.5" />Delete</>
+                ) : (
+                  <><LogOut className="h-3.5 w-3.5" />Leave</>
+                )}
+              </Button>
+              <ArrowRight className="h-4 w-4 text-muted-foreground transition-transform duration-200" style={{ transform: hovered ? 'translateX(2px)' : 'none' }} />
+            </div>
           </div>
         </div>
       </div>

@@ -10,7 +10,7 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from '@/components/ui/dialog';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
-import { Download, Trash2, Pencil, CalendarDays, Loader2 } from 'lucide-react';
+import { Download, Trash2, Pencil, CalendarDays, Loader2, FileText, FolderOpen } from 'lucide-react';
 import { format } from 'date-fns';
 import { deleteFile, getFileDownloadUrl, updateFile } from '@/services/files';
 import { useAuth } from '@/hooks/useAuth';
@@ -39,64 +39,77 @@ async function forceDownload(url, fileName) {
   }
 }
 
+function getFileTypeStyle(fileName) {
+  const ext = (fileName || '').split('.').pop()?.toLowerCase();
+  if (['pdf'].includes(ext)) return { border: 'border-l-red-500', gradient: 'from-red-500 to-rose-500' };
+  if (['pptx', 'ppt'].includes(ext)) return { border: 'border-l-orange-500', gradient: 'from-orange-500 to-amber-500' };
+  if (['docx', 'doc'].includes(ext)) return { border: 'border-l-blue-500', gradient: 'from-blue-500 to-blue-600' };
+  if (['png', 'jpg', 'jpeg'].includes(ext)) return { border: 'border-l-emerald-500', gradient: 'from-emerald-500 to-teal-500' };
+  if (['zip'].includes(ext)) return { border: 'border-l-purple-500', gradient: 'from-purple-500 to-violet-500' };
+  if (['txt'].includes(ext)) return { border: 'border-l-slate-500', gradient: 'from-slate-500 to-slate-600' };
+  return { border: 'border-l-indigo-500', gradient: 'from-indigo-500 to-indigo-600' };
+}
+
 function FileRow({ file, canEdit, onDelete, onEdit, onDownload, deleting, downloading }) {
   const fileName = file.file_name || file.name;
   const uploaderName = file.users?.full_name || file.uploader_name || 'Unknown';
+  const typeStyle = getFileTypeStyle(fileName);
 
   return (
-    <div className="flex items-center gap-4 rounded-md border px-3 py-2.5 bg-card hover:bg-muted/40 transition-colors">
+    <div className={`flex items-center gap-4 rounded-xl border border-slate-200/60 border-l-4 ${typeStyle.border} bg-white shadow-md shadow-slate-200/50 hover:shadow-lg hover:shadow-slate-200/70 hover:-translate-y-0.5 transition-all duration-200 p-4`}>
+      <div className={`h-12 w-12 rounded-xl bg-gradient-to-br ${typeStyle.gradient} flex items-center justify-center shrink-0 shadow-md`}>
+        <FileText className="h-6 w-6 text-white" />
+      </div>
       <div className="flex-1 min-w-0">
+        <p className="font-bold text-sm truncate text-slate-800">{fileName}</p>
         {file.file_description ? (
-          <p className="text-sm text-foreground leading-snug line-clamp-2">{file.file_description}</p>
+          <p className="text-xs text-slate-500 italic leading-snug line-clamp-2 mt-0.5">{file.file_description}</p>
         ) : (
-          <p className="text-sm text-muted-foreground italic">No description</p>
+          <p className="text-xs text-slate-400 italic mt-0.5">No description</p>
         )}
+        <p className="text-xs text-slate-500 mt-1">
+          {uploaderName} <span className="mx-1">&middot;</span> {file.created_at ? format(new Date(file.created_at), 'MMM d, h:mm a') : ''}
+          {file.file_size > 0 && <><span className="mx-1">&middot;</span>{formatSize(file.file_size)}</>}
+        </p>
         {file.event && (
-          <div className="flex items-center gap-1 mt-1 text-xs text-primary/80">
-            <CalendarDays className="h-3 w-3 shrink-0" />
-            <span className="truncate">{file.event.title}</span>
+          <div className="flex items-center gap-1.5 mt-1.5">
+            <span className="inline-flex items-center gap-1 rounded-full bg-blue-50 text-xs px-2.5 py-0.5 text-blue-600 font-medium">
+              <CalendarDays className="h-3 w-3 shrink-0" />
+              <span className="truncate">{file.event.title}</span>
+            </span>
           </div>
         )}
       </div>
 
-      <div className="flex items-center gap-3 shrink-0">
-        <div className="text-right">
-          <p className="text-xs font-medium text-muted-foreground truncate max-w-[180px]">{fileName}</p>
-          <p className="text-[11px] text-muted-foreground/70 mt-0.5">
-            {uploaderName} · {file.created_at ? format(new Date(file.created_at), 'MMM d, h:mm a') : ''}
-            {file.file_size > 0 && ` · ${formatSize(file.file_size)}`}
-          </p>
-        </div>
-        <div className="flex items-center gap-0.5">
+      <div className="flex items-center gap-1.5 shrink-0">
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button variant="ghost" size="sm" className="rounded-full bg-gradient-to-r from-blue-500 to-indigo-500 text-white hover:from-blue-600 hover:to-indigo-600 h-9 px-4 shadow-md shadow-blue-500/20 hover:shadow-lg" onClick={() => onDownload(file)} disabled={downloading}>
+              {downloading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="top"><p>Download</p></TooltipContent>
+        </Tooltip>
+        {canEdit && (
           <Tooltip>
             <TooltipTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => onDownload(file)} disabled={downloading}>
-                {downloading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
+              <Button variant="ghost" size="icon" className="h-9 w-9 rounded-lg hover:bg-blue-50" onClick={() => onEdit(file)}>
+                <Pencil className="h-3.5 w-3.5 text-slate-400 hover:text-blue-500" />
               </Button>
             </TooltipTrigger>
-            <TooltipContent side="top"><p>Download</p></TooltipContent>
+            <TooltipContent side="top"><p>Edit description</p></TooltipContent>
           </Tooltip>
-          {canEdit && (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => onEdit(file)}>
-                  <Pencil className="h-3.5 w-3.5 text-muted-foreground hover:text-primary transition-colors" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent side="top"><p>Edit description</p></TooltipContent>
-            </Tooltip>
-          )}
-          {canEdit && (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => onDelete(file.id, fileName)} disabled={deleting}>
-                  <Trash2 className="h-3.5 w-3.5 text-muted-foreground hover:text-destructive transition-colors" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent side="top"><p>Delete file</p></TooltipContent>
-            </Tooltip>
-          )}
-        </div>
+        )}
+        {canEdit && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button variant="ghost" size="icon" className="h-9 w-9 rounded-lg hover:bg-red-50 hover:text-red-600" onClick={() => onDelete(file.id, fileName)} disabled={deleting}>
+                <Trash2 className="h-3.5 w-3.5" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="top"><p>Delete file</p></TooltipContent>
+          </Tooltip>
+        )}
       </div>
     </div>
   );
@@ -171,16 +184,19 @@ export default function FileList({ files = [], roomId, onFilesChange, filterCate
 
   if (filtered.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center py-8 text-center">
-        <div className="text-2xl mb-1.5">{filterCategory === 'submission' ? '📝' : '📖'}</div>
-        <p className="text-sm text-muted-foreground">No files yet</p>
+      <div className="flex flex-col items-center justify-center py-16 text-center">
+        <div className="h-16 w-16 rounded-2xl bg-gradient-to-br from-blue-100 to-indigo-100 flex items-center justify-center mb-4 shadow-lg shadow-blue-500/10">
+          <FolderOpen className="h-8 w-8 text-blue-500" />
+        </div>
+        <p className="text-sm font-bold text-slate-500">No files yet</p>
+        <p className="text-xs text-slate-400 mt-1">Upload a file to get started</p>
       </div>
     );
   }
 
   return (
     <>
-      <div className="space-y-1.5">
+      <div className="space-y-3">
         {filtered.map((file) => {
           const isUploader = String(file.uploaded_by) === String(user?.id);
           return (
@@ -200,22 +216,23 @@ export default function FileList({ files = [], roomId, onFilesChange, filterCate
 
       {/* Edit description dialog */}
       <Dialog open={!!editFile} onOpenChange={(open) => !open && setEditFile(null)}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-md rounded-2xl">
           <DialogHeader>
-            <DialogTitle>Edit File Description</DialogTitle>
+            <DialogTitle className="font-bold">Edit File Description</DialogTitle>
           </DialogHeader>
           <div className="space-y-3">
-            <p className="text-xs text-muted-foreground">File: {editFile?.file_name}</p>
+            <p className="text-xs text-slate-500">File: {editFile?.file_name}</p>
             <Input
               placeholder="Enter description..."
               value={editDesc}
               onChange={(e) => setEditDesc(e.target.value)}
               disabled={editLoading}
+              className="rounded-xl border-slate-200"
             />
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setEditFile(null)} disabled={editLoading}>Cancel</Button>
-            <Button onClick={handleEditSave} disabled={editLoading}>
+            <Button variant="outline" className="rounded-xl" onClick={() => setEditFile(null)} disabled={editLoading}>Cancel</Button>
+            <Button className="rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg shadow-blue-500/25" onClick={handleEditSave} disabled={editLoading}>
               {editLoading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Saving...</> : 'Save'}
             </Button>
           </DialogFooter>

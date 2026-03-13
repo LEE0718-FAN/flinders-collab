@@ -5,7 +5,7 @@ export default function AuthLayout({ children }) {
   return (
     <div className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden p-4">
       {/* Background */}
-      <div className="absolute inset-0 bg-gradient-to-br from-[#001a3a] via-[#002F60] to-[#003d7a]" />
+      <div className="absolute inset-0 bg-gradient-to-br from-[#0a0118] via-[#1a0a3e] to-[#0d1b3e]" />
 
       {/* Subtle pattern overlay */}
       <div
@@ -16,19 +16,11 @@ export default function AuthLayout({ children }) {
         }}
       />
 
-      {/* Gold accent shapes */}
-      <div
-        className="absolute -top-24 -right-24 h-96 w-96 rounded-full opacity-[0.08]"
-        style={{ background: 'radial-gradient(circle, #FFD300, transparent 70%)' }}
-      />
-      <div
-        className="absolute -bottom-32 -left-32 h-[28rem] w-[28rem] rounded-full opacity-[0.06]"
-        style={{ background: 'radial-gradient(circle, #FFD300, transparent 70%)' }}
-      />
-      <div
-        className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 h-[500px] w-[500px] rounded-full opacity-[0.04]"
-        style={{ background: 'radial-gradient(circle, #ffffff, transparent 60%)' }}
-      />
+      {/* Floating animated orbs */}
+      <div className="absolute top-1/4 left-1/4 h-[400px] w-[400px] rounded-full bg-indigo-600/20 blur-[100px] animate-float" />
+      <div className="absolute bottom-1/4 right-1/4 h-[300px] w-[300px] rounded-full bg-violet-500/15 blur-[100px] animate-float" style={{ animationDelay: '2s' }} />
+      <div className="absolute top-1/2 right-1/3 h-[250px] w-[250px] rounded-full bg-blue-500/15 blur-[80px] animate-float" style={{ animationDelay: '4s' }} />
+      <div className="absolute bottom-1/3 left-1/3 h-[200px] w-[200px] rounded-full bg-purple-500/10 blur-[80px] animate-float" style={{ animationDelay: '6s' }} />
 
       {/* Main content */}
       <div className="relative z-10 w-full max-w-md animate-slide-up">
@@ -43,21 +35,24 @@ export default function AuthLayout({ children }) {
             />
           </div>
           <h1 className="text-3xl font-bold tracking-tight text-white">
-            Flinders Collab
+            Flinders <span className="bg-gradient-to-r from-blue-400 to-violet-400 bg-clip-text text-transparent">Collab</span>
           </h1>
-          <p className="mt-2 text-sm text-white/50">
+          <p className="mt-2 text-sm text-white/40">
             Team collaboration for Flinders University students
           </p>
-          <div className="mx-auto mt-4 h-0.5 w-16 rounded-full bg-gradient-to-r from-transparent via-[#FFD300]/60 to-transparent" />
+          <div className="mx-auto mt-4 h-0.5 w-16 rounded-full bg-gradient-to-r from-transparent via-indigo-400/60 to-transparent" />
         </div>
 
+        {/* Subtle glow behind card */}
+        <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 h-[300px] w-[400px] rounded-full bg-indigo-500/10 blur-[80px] pointer-events-none" />
+
         {/* Auth card */}
-        <Card className="border-0 shadow-2xl shadow-black/30 bg-white/[0.97] backdrop-blur-md">
+        <Card className="relative border-0 shadow-2xl shadow-black/40 bg-white/[0.95] backdrop-blur-xl rounded-2xl">
           <CardContent className="p-6 sm:p-8">{children}</CardContent>
         </Card>
 
         {/* Footer - university info */}
-        <p className="mt-6 text-center text-xs text-white/30">
+        <p className="mt-6 text-center text-xs text-white/25">
           Flinders University &middot; Adelaide, South Australia
         </p>
       </div>

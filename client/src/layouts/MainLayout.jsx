@@ -30,43 +30,53 @@ function getRoomPalette(room) {
 }
 
 function NavItem({ to, isActive, icon: Icon, label, palette }) {
-  const roomStyle = palette ? {
-    background: `linear-gradient(90deg, ${palette.softBg} 0%, ${palette.softBg}CC 100%)`,
-    color: palette.text,
-    border: `1px solid ${palette.softBorder}`,
-    boxShadow: `inset 3px 0 0 ${palette.icon}`,
-  } : undefined;
-  const iconStyle = palette ? {
-    color: palette.icon,
-  } : undefined;
+  const roomStyle = palette
+    ? isActive
+      ? { background: palette.icon + '22' }
+      : undefined
+    : undefined;
+
+  const activeAccentColor = palette ? palette.icon : '#818cf8';
 
   return (
     <Link to={to}>
       <button
         className={`
-          group flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-smooth
+          group relative flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-smooth
           ${isActive
-            ? 'text-primary'
-            : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+            ? 'bg-white/15 text-white font-semibold'
+            : 'text-slate-400 hover:text-white hover:bg-white/10'
           }
         `}
         style={roomStyle}
         role="link"
         aria-current={isActive ? 'page' : undefined}
       >
+        {isActive && (
+          <span
+            className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 rounded-r-full"
+            style={{ backgroundColor: activeAccentColor }}
+          />
+        )}
         {palette && (
           <span
-            className="h-2.5 w-2.5 shrink-0 rounded-full"
-            style={{ backgroundColor: palette.icon }}
+            className="h-2 w-2 shrink-0 rounded-full"
+            style={{
+              backgroundColor: palette.icon,
+              boxShadow: isActive ? `0 0 8px ${palette.icon}88` : undefined,
+            }}
           />
         )}
         <Icon
-          className={`h-[18px] w-[18px] shrink-0 transition-smooth ${isActive ? 'text-primary' : 'text-muted-foreground group-hover:text-foreground'}`}
-          style={iconStyle}
+          className={`h-[18px] w-[18px] shrink-0 transition-smooth ${
+            isActive
+              ? palette ? 'text-white' : 'text-indigo-400'
+              : 'text-slate-500 group-hover:text-slate-300'
+          }`}
         />
         <span className="truncate">{label}</span>
         {isActive && (
-          <ChevronRight className="ml-auto h-3.5 w-3.5" style={{ color: palette?.icon || 'rgb(59 130 246 / 0.5)' }} />
+          <ChevronRight className="ml-auto h-3.5 w-3.5 opacity-40 text-slate-400" />
         )}
       </button>
     </Link>
@@ -85,12 +95,12 @@ function SidebarContent({ rooms, location, isAdmin }) {
 
       {/* Room section divider */}
       <div className="mt-5 mb-1 flex items-center gap-2 px-3">
-        <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/70">
+        <span className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-500">
           Your Rooms
         </span>
-        <div className="h-px flex-1 bg-border/60" />
+        <div className="h-px flex-1 bg-white/5" />
         {rooms.length > 0 && (
-          <span className="text-[10px] tabular-nums text-muted-foreground/50">
+          <span className="text-[10px] tabular-nums text-slate-500 bg-white/10 px-1.5 py-0.5 rounded-md">
             {rooms.length}
           </span>
         )}
@@ -111,9 +121,10 @@ function SidebarContent({ rooms, location, isAdmin }) {
       </div>
 
       {rooms.length === 0 && (
-        <div className="mx-3 mt-1 rounded-lg border border-dashed border-border/60 px-3 py-4 text-center">
-          <p className="text-xs text-muted-foreground/70">No rooms yet</p>
-          <p className="mt-0.5 text-[11px] text-muted-foreground/50">Create or join a room to start</p>
+        <div className="mx-3 mt-1 rounded-lg border border-dashed border-white/10 px-4 py-5 text-center">
+          <Users className="mx-auto h-5 w-5 text-slate-500 mb-1.5 opacity-50" />
+          <p className="text-xs text-slate-400">No rooms yet</p>
+          <p className="mt-0.5 text-[11px] text-slate-500">Create or join a room to start</p>
         </div>
       )}
 
@@ -121,8 +132,8 @@ function SidebarContent({ rooms, location, isAdmin }) {
       {isAdmin && (
         <>
           <div className="mt-5 mb-1 flex items-center gap-2 px-3">
-            <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/70">Admin</span>
-            <div className="h-px flex-1 bg-border/60" />
+            <span className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-500">Admin</span>
+            <div className="h-px flex-1 bg-white/5" />
           </div>
           <NavItem to="/admin" isActive={location.pathname === '/admin'} icon={Shield} label="Admin Panel" />
         </>
@@ -191,21 +202,22 @@ export default function MainLayout({ children }) {
   return (
     <div className="flex h-screen bg-background">
       {/* Desktop Sidebar */}
-      <aside className="hidden w-64 shrink-0 flex-col border-r bg-muted/20 md:flex">
+      <aside className="hidden w-64 shrink-0 flex-col bg-gradient-to-b from-slate-900 via-slate-900 to-indigo-950 md:flex">
         {/* Sidebar header / brand */}
-        <div className="flex h-14 items-center gap-2.5 border-b px-5 bg-primary">
-          <div className="h-8 w-8 shrink-0 overflow-hidden rounded bg-white flex items-center justify-center">
+        <div className="flex h-16 items-center gap-3 px-5">
+          <div className="h-10 w-10 shrink-0 overflow-hidden rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 p-1.5 shadow-lg shadow-indigo-500/30 flex items-center justify-center">
             <img
               src="/images/flinders-logo.png"
               alt="Flinders"
-              className="h-full w-full object-contain"
+              className="h-full w-full object-contain brightness-0 invert"
               onError={(e) => { e.target.parentElement.style.display = 'none'; }}
             />
           </div>
-          <span className="text-[15px] font-bold tracking-tight text-primary-foreground">
+          <span className="text-[15px] font-bold tracking-tight text-white">
             Flinders Collab
           </span>
         </div>
+        <div className="h-px bg-gradient-to-r from-white/10 via-white/5 to-transparent mx-3" />
 
         {/* Sidebar navigation */}
         <div className="flex-1 overflow-y-auto px-3 py-4 custom-scrollbar">
@@ -213,16 +225,16 @@ export default function MainLayout({ children }) {
         </div>
 
         {/* Sidebar footer / user info */}
-        <div className="border-t px-3 py-3">
-          <div className="flex items-center gap-3 rounded-lg px-2 py-2">
-            <Avatar className="h-8 w-8 ring-2 ring-background shadow-sm">
-              <AvatarFallback className="bg-primary/10 text-xs font-semibold text-primary">
+        <div className="px-3 py-3">
+          <div className="flex items-center gap-3 bg-white/5 border border-white/5 rounded-xl px-3 py-3">
+            <Avatar className="h-8 w-8 ring-2 ring-indigo-500/50 shadow-lg shadow-indigo-500/20">
+              <AvatarFallback className="bg-gradient-to-br from-blue-500 to-indigo-600 text-[11px] font-bold text-white">
                 {initials}
               </AvatarFallback>
             </Avatar>
             <div className="flex-1 overflow-hidden">
-              <p className="truncate text-sm font-medium leading-tight">{user?.user_metadata?.name || 'Student'}</p>
-              <p className="truncate text-[11px] text-muted-foreground">{user?.email}</p>
+              <p className="truncate text-[13px] font-semibold leading-tight text-white">{user?.user_metadata?.name || 'Student'}</p>
+              <p className="truncate text-[11px] text-slate-400">{user?.email}</p>
             </div>
           </div>
         </div>
@@ -230,7 +242,7 @@ export default function MainLayout({ children }) {
 
       <div className="flex flex-1 flex-col overflow-hidden">
         {/* Top Bar */}
-        <header className="flex h-14 items-center justify-between border-b bg-background/80 px-4 backdrop-blur-sm">
+        <header className="flex h-16 items-center justify-between border-b-2 border-slate-200 bg-white/90 px-4 backdrop-blur-xl">
           <div className="flex items-center gap-2">
             <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
               <SheetTrigger asChild>
@@ -238,19 +250,20 @@ export default function MainLayout({ children }) {
                   <Menu className="h-5 w-5" />
                 </Button>
               </SheetTrigger>
-              <SheetContent side="left" className="w-72 p-0">
-                <SheetHeader className="border-b px-5 py-4 bg-primary">
+              <SheetContent side="left" className="w-72 p-0 bg-gradient-to-b from-slate-900 via-slate-900 to-indigo-950 border-r-0">
+                <SheetHeader className="px-5 py-4">
                   <SheetTitle className="flex items-center gap-2.5 text-left">
-                    <div className="h-8 w-8 shrink-0 overflow-hidden rounded bg-white flex items-center justify-center">
+                    <div className="h-10 w-10 shrink-0 overflow-hidden rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 p-1.5 shadow-lg shadow-indigo-500/30 flex items-center justify-center">
                       <img
                         src="/images/flinders-logo.png"
                         alt="Flinders"
-                        className="h-full w-full object-contain"
+                        className="h-full w-full object-contain brightness-0 invert"
                       />
                     </div>
-                    <span className="text-[15px] font-bold tracking-tight text-primary-foreground">Flinders Collab</span>
+                    <span className="text-[15px] font-bold tracking-tight text-white">Flinders Collab</span>
                   </SheetTitle>
                 </SheetHeader>
+                <div className="h-px bg-gradient-to-r from-white/10 via-white/5 to-transparent mx-3" />
                 <div className="px-3 py-4">
                   <SidebarContent rooms={rooms} location={location} isAdmin={user?.is_admin} />
                 </div>
@@ -262,15 +275,15 @@ export default function MainLayout({ children }) {
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className="gap-2.5 rounded-full px-2 pr-3 hover:bg-muted" aria-label="User menu">
-                <Avatar className="h-8 w-8 ring-2 ring-background">
-                  <AvatarFallback className="bg-primary/10 text-xs font-semibold text-primary">
+                <Avatar className="h-8 w-8 ring-2 ring-white shadow-sm">
+                  <AvatarFallback className="bg-gradient-to-br from-blue-500 to-indigo-600 text-[10px] font-bold text-white">
                     {initials}
                   </AvatarFallback>
                 </Avatar>
                 <span className="hidden text-sm font-medium sm:inline">{displayName}</span>
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-56">
+            <DropdownMenuContent align="end" className="w-60 rounded-xl shadow-xl border-border/40 p-1.5">
               <div className="px-3 py-2">
                 <p className="text-sm font-medium">{user?.user_metadata?.name || 'Student'}</p>
                 <p className="text-xs text-muted-foreground">{user?.email}</p>
@@ -285,8 +298,16 @@ export default function MainLayout({ children }) {
         </header>
 
         {/* Main Content */}
-        <main className="flex-1 overflow-y-auto p-4 md:p-6 custom-scrollbar animate-fade-in">
-          {children}
+        <main className="relative flex-1 overflow-y-auto bg-slate-50 p-4 md:p-6 custom-scrollbar animate-fade-in">
+          <div
+            className="pointer-events-none absolute inset-0 opacity-30"
+            style={{
+              background: 'radial-gradient(ellipse at 20% 0%, rgba(99,102,241,0.08) 0%, transparent 50%), radial-gradient(ellipse at 80% 100%, rgba(59,130,246,0.06) 0%, transparent 50%)',
+            }}
+          />
+          <div className="relative">
+            {children}
+          </div>
         </main>
       </div>
 
