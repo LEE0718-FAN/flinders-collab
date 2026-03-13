@@ -1,10 +1,9 @@
-import React, { useState } from 'react';
-import { DayButton, DayPicker } from 'react-day-picker';
+import React, { useEffect, useRef, useState } from 'react';
+import { DayPicker } from 'react-day-picker';
 import { addMonths, subMonths, format } from 'date-fns';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { Button, buttonVariants } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { buttonVariants } from '@/components/ui/button';
 
 const categoryColors = {
   meeting: '#3b82f6',
@@ -19,12 +18,6 @@ const categoryColors = {
 export default function ScheduleCalendar({ events = [], selectedDate, onSelectDate, onDateClick }) {
   const [month, setMonth] = useState(new Date());
 
-  const eventDateKeys = new Set(
-    events
-      .map((event) => event.date || event.start_time)
-      .filter(Boolean)
-      .map((value) => format(new Date(value), 'yyyy-MM-dd'))
-  );
   const eventMarkersByDate = events.reduce((map, event) => {
     const rawDate = event.date || event.start_time;
     if (!rawDate) return map;
@@ -41,35 +34,41 @@ export default function ScheduleCalendar({ events = [], selectedDate, onSelectDa
     return map;
   }, new Map());
 
+  const eventDateKeys = new Set(eventMarkersByDate.keys());
   const hasEvent = (date) => eventDateKeys.has(format(date, 'yyyy-MM-dd'));
 
   const EventDayButton = (props) => {
     const { modifiers, day, className, children, ...buttonProps } = props;
     const dateKey = format(day.date, 'yyyy-MM-dd');
     const markerColors = eventMarkersByDate.get(dateKey) || [];
+    const buttonRef = useRef(null);
+
+    useEffect(() => {
+      if (modifiers.focused) {
+        buttonRef.current?.focus();
+      }
+    }, [modifiers.focused]);
 
     return (
-      <DayButton
+      <button
         {...buttonProps}
-        day={day}
-        modifiers={modifiers}
-        className={cn(className, 'relative flex h-9 w-9 items-center justify-center')}
+        ref={buttonRef}
+        type="button"
+        className={cn(className, 'flex h-9 w-9 flex-col items-center justify-center gap-0.5 overflow-visible')}
       >
-        <span className="relative inline-flex items-center justify-center">
-          <span>{children}</span>
-          {markerColors.length > 0 && (
-            <span className="absolute left-1/2 top-[1.5rem] flex -translate-x-1/2 items-center gap-0.5" aria-hidden="true">
-              {markerColors.map((color) => (
-                <span
-                  key={color}
-                  className="h-1.5 w-1.5 rounded-full"
-                  style={{ backgroundColor: color }}
-                />
-              ))}
-            </span>
-          )}
-        </span>
-      </DayButton>
+        <span className="leading-none">{children}</span>
+        {markerColors.length > 0 && (
+          <span className="flex items-center gap-0.5" aria-hidden="true">
+            {markerColors.map((color) => (
+              <span
+                key={color}
+                className="h-1.5 w-1.5 rounded-full"
+                style={{ backgroundColor: color }}
+              />
+            ))}
+          </span>
+        )}
+      </button>
     );
   };
 
@@ -94,8 +93,7 @@ export default function ScheduleCalendar({ events = [], selectedDate, onSelectDa
 
   return (
     <div className="rounded-md border p-3">
-      {/* Custom month navigation */}
-      <div className="flex items-center justify-between mb-3">
+      <div className="mb-3 flex items-center justify-between">
         <Button
           variant="outline"
           size="icon"
@@ -115,7 +113,6 @@ export default function ScheduleCalendar({ events = [], selectedDate, onSelectDa
         </Button>
       </div>
 
-      {/* Calendar grid - hide built-in nav */}
       <DayPicker
         mode="single"
         selected={selectedDate}
@@ -145,15 +142,15 @@ export default function ScheduleCalendar({ events = [], selectedDate, onSelectDa
           month_caption: 'hidden',
           month_grid: 'w-full border-collapse space-y-1',
           weekdays: 'flex',
-          weekday: 'text-muted-foreground rounded-md w-9 font-normal text-[0.8rem]',
-          week: 'flex w-full mt-2',
-          day: 'h-9 w-9 text-center text-sm p-0 relative',
+          weekday: 'w-9 rounded-md text-[0.8rem] font-normal text-muted-foreground',
+          week: 'mt-2 flex w-full',
+          day: 'relative h-9 w-9 p-0 text-center text-sm',
           day_button: cn(
             buttonVariants({ variant: 'ghost' }),
             'h-9 w-9 p-0 font-normal aria-selected:opacity-100'
           ),
-          selected: 'bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground focus:bg-primary focus:text-primary-foreground rounded-md',
-          today: 'bg-accent text-accent-foreground rounded-md',
+          selected: 'rounded-md bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground focus:bg-primary focus:text-primary-foreground',
+          today: 'rounded-md bg-accent text-accent-foreground',
           outside: 'text-muted-foreground opacity-50',
           disabled: 'text-muted-foreground opacity-50',
           hidden: 'invisible',
