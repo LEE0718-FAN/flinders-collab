@@ -5,6 +5,7 @@ import {
   AlertDialogContent, AlertDialogDescription, AlertDialogFooter,
   AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { FileText, Image, FileArchive, File, Download, Trash2, CalendarDays } from 'lucide-react';
 import { format } from 'date-fns';
 import { deleteFile } from '@/services/files';
@@ -76,25 +77,35 @@ function FileRow({ file, canDelete, onDelete, deleting }) {
         </div>
         <div className="flex items-center gap-0.5">
           {fileUrl && (
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-7 w-7"
-              onClick={() => forceDownload(fileUrl, fileName)}
-            >
-              <Download className="h-3.5 w-3.5" />
-            </Button>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7"
+                  onClick={() => forceDownload(fileUrl, fileName)}
+                >
+                  <Download className="h-3.5 w-3.5" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="top"><p>Download file</p></TooltipContent>
+            </Tooltip>
           )}
           {canDelete && (
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-7 w-7"
-              onClick={() => onDelete(file.id, fileName)}
-              disabled={deleting}
-            >
-              <Trash2 className="h-3.5 w-3.5 text-muted-foreground hover:text-destructive transition-colors" />
-            </Button>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7"
+                  onClick={() => onDelete(file.id, fileName)}
+                  disabled={deleting}
+                >
+                  <Trash2 className="h-3.5 w-3.5 text-muted-foreground hover:text-destructive transition-colors" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="top"><p>Delete file</p></TooltipContent>
+            </Tooltip>
           )}
         </div>
       </div>
@@ -163,7 +174,7 @@ export default function FileList({ files = [], roomId, onUpdated, filterCategory
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-              Delete
+              Yes, Delete
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

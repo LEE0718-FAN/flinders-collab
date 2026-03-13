@@ -6,6 +6,7 @@ import {
   AlertDialogContent, AlertDialogDescription, AlertDialogFooter,
   AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { CheckCircle2, Clock, Trash2, Plus, ChevronRight } from 'lucide-react';
 import { updateTask, deleteTask, createTask } from '@/services/tasks';
 
@@ -313,13 +314,17 @@ export default function TaskList({ tasks = [], members = [], roomId, currentUser
 
                         {/* Delete */}
                         {(task.assigned_by === currentUserId) && (
-                          <button
-                            onClick={() => setConfirmDelete({ id: task.id, title: task.title })}
-                            className="shrink-0 text-muted-foreground hover:text-destructive transition-colors"
-                            title="Delete task"
-                          >
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </button>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <button
+                                onClick={() => setConfirmDelete({ id: task.id, title: task.title })}
+                                className="shrink-0 text-muted-foreground hover:text-destructive transition-colors"
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </button>
+                            </TooltipTrigger>
+                            <TooltipContent side="top"><p>Delete task</p></TooltipContent>
+                          </Tooltip>
                         )}
                       </div>
                     );
@@ -350,7 +355,7 @@ export default function TaskList({ tasks = [], members = [], roomId, currentUser
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-              Delete
+              Yes, Delete
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

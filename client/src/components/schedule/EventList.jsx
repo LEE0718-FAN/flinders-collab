@@ -6,6 +6,7 @@ import {
   AlertDialogContent, AlertDialogDescription, AlertDialogFooter,
   AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { MapPin, Clock, Trash2, ChevronDown, ChevronUp } from 'lucide-react';
 import { format } from 'date-fns';
 import { deleteEvent } from '@/services/events';
@@ -145,15 +146,20 @@ export default function EventList({ events = [], roomId, onUpdated }) {
                           </div>
 
                           {/* Delete button */}
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-7 w-7 shrink-0"
-                            onClick={() => setConfirmDelete({ id: event.id, title: event.title })}
-                            disabled={deletingId === event.id}
-                          >
-                            <Trash2 className="h-3.5 w-3.5 text-muted-foreground hover:text-destructive transition-colors" />
-                          </Button>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-7 w-7 shrink-0"
+                                onClick={() => setConfirmDelete({ id: event.id, title: event.title })}
+                                disabled={deletingId === event.id}
+                              >
+                                <Trash2 className="h-3.5 w-3.5 text-muted-foreground hover:text-destructive transition-colors" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent side="top"><p>Delete event</p></TooltipContent>
+                          </Tooltip>
                         </div>
                       </div>
                     </div>
@@ -177,7 +183,7 @@ export default function EventList({ events = [], roomId, onUpdated }) {
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-              Delete
+              Yes, Delete
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

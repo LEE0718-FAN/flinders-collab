@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -77,20 +78,27 @@ export default function RoomCard({ room, onDeleted }) {
             </div>
 
             <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className={`h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity ${
-                    isOwner
-                      ? 'text-muted-foreground hover:text-red-600 hover:bg-red-50'
-                      : 'text-muted-foreground hover:text-orange-600 hover:bg-orange-50'
-                  }`}
-                  onClick={(e) => e.preventDefault()}
-                >
-                  {isOwner ? <Trash2 className="h-4 w-4" /> : <LogOut className="h-4 w-4" />}
-                </Button>
-              </AlertDialogTrigger>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <AlertDialogTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className={`h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity ${
+                        isOwner
+                          ? 'text-muted-foreground hover:text-red-600 hover:bg-red-50'
+                          : 'text-muted-foreground hover:text-orange-600 hover:bg-orange-50'
+                      }`}
+                      onClick={(e) => e.preventDefault()}
+                    >
+                      {isOwner ? <Trash2 className="h-4 w-4" /> : <LogOut className="h-4 w-4" />}
+                    </Button>
+                  </AlertDialogTrigger>
+                </TooltipTrigger>
+                <TooltipContent side="top">
+                  <p>{isOwner ? 'Delete this room' : 'Leave this room'}</p>
+                </TooltipContent>
+              </Tooltip>
               <AlertDialogContent onClick={(e) => e.stopPropagation()}>
                 <AlertDialogHeader>
                   <AlertDialogTitle>
@@ -98,9 +106,9 @@ export default function RoomCard({ room, onDeleted }) {
                   </AlertDialogTitle>
                   <AlertDialogDescription>
                     {isOwner ? (
-                      <>Are you sure you want to delete <strong>{room.name}</strong>? This will permanently remove all messages, files, events, and tasks in this room.</>
+                      <>Are you sure you want to delete <strong>{room.name}</strong>? This will permanently remove all messages, files, events, and tasks in this room. This action cannot be undone.</>
                     ) : (
-                      <>Are you sure you want to leave <strong>{room.name}</strong>? You can rejoin later with an invite code.</>
+                      <>Are you sure you want to leave <strong>{room.name}</strong>? You will lose access to all messages and files. You can rejoin later with an invite code.</>
                     )}
                   </AlertDialogDescription>
                 </AlertDialogHeader>
@@ -114,7 +122,7 @@ export default function RoomCard({ room, onDeleted }) {
                     {loading ? (
                       <><Loader2 className="mr-2 h-4 w-4 animate-spin" />{isOwner ? 'Deleting...' : 'Leaving...'}</>
                     ) : (
-                      isOwner ? 'Delete Room' : 'Leave Room'
+                      isOwner ? 'Yes, Delete Room' : 'Yes, Leave Room'
                     )}
                   </AlertDialogAction>
                 </AlertDialogFooter>
