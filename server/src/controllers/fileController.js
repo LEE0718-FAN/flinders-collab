@@ -215,8 +215,64 @@ async function deleteFile(req, res, next) {
   }
 }
 
+/**
+ * PATCH /files/:fileId
+ * Update file metadata (description). Only the uploader or room admin can edit.
+ */
+async function updateFile(req, res, next) {
+  try {
+    const { fileId } = req.params;
+    const userId = req.user.id;
+
+    const { data: file } = await supabaseAdmin
+      .from('files')
+      .select('*')
+      .eq('id', fileId)
+      .single();
+
+    if (!file) return res.status(404).json({ error: 'File not found' });
+
+    const { data: membership } = await supabaseAdmin
+      .from('room_members')
+      .select('role')
+      .eq('room_id', file.room_id)
+      .eq('user_id', userId)
+      .single();
+
+    if (!membership) return res.status(403).json({ error: 'Not a room member' });
+
+    const isUploader = file.uploaded_by === userId;
+    const isAdmin = membership.role === 'owner' || membership.role === 'admin';
+    if (!isUploader && !isAdmin) {
+      return res.status(403).json({ error: 'Only the uploader or admin can edit this file' });
+    }
+
+    const { file_description } = req.body;
+    const updates = {};
+    if (file_description !== undefined) updates.file_description = file_description;
+
+    if (Object.keys(updates).length === 0) {
+      return res.status(400).json({ error: 'No fields to update' });
+    }
+
+    const { data, error } = await supabaseAdmin
+      .from('files')
+      .update(updates)
+      .eq('id', fileId)
+      .select()
+      .single();
+
+    if (error) return res.status(400).json({ error: error.message });
+
+    res.json(data);
+  } catch (err) {
+    next(err);
+  }
+}
+
 module.exports = {
   uploadFile,
   getFiles,
   deleteFile,
+  updateFile,
 };

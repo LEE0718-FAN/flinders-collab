@@ -36,16 +36,13 @@ export default function AuthLayout({ children }) {
         <div className="mb-8 text-center">
           {/* Flinders University logo */}
           <div className="mx-auto mb-5 flex h-20 items-center justify-center">
-            <img
-              src="/images/flinders-logo.png"
-              alt="Flinders University"
-              className="h-16 object-contain brightness-0 invert"
-              onError={(e) => {
-                e.target.onerror = null;
-                e.target.src = 'https://upload.wikimedia.org/wikipedia/commons/0/0e/Flinders-logo-stand-alone.svg';
-                e.target.className = 'h-12 w-12';
-              }}
-            />
+            <div className="rounded-xl bg-white/95 px-4 py-2 shadow-lg">
+              <img
+                src="/images/flinders-logo.png"
+                alt="Flinders University"
+                className="h-12 object-contain"
+              />
+            </div>
           </div>
           <h1 className="text-3xl font-bold tracking-tight text-white">
             Flinders Collab

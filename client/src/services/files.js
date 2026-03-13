@@ -17,6 +17,12 @@ export async function getFiles(roomId) {
   return parseResponse(res);
 }
 
+export async function updateFile(fileId, data) {
+  const headers = getAuthHeaders();
+  const res = await fetch(`/api/files/${fileId}`, { method: 'PATCH', headers, body: JSON.stringify(data) });
+  return parseResponse(res);
+}
+
 export async function deleteFile(roomId, fileId) {
   const headers = getAuthHeaders();
   const res = await fetch(`/api/files/${fileId}`, { method: 'DELETE', headers });

@@ -360,6 +360,49 @@ async function deleteRoom(req, res, next) {
 }
 
 /**
+ * PATCH /rooms/:roomId
+ * Update room details. Only owner can update.
+ */
+async function updateRoom(req, res, next) {
+  try {
+    const { roomId } = req.params;
+    const userId = req.user.id;
+
+    const { data: room } = await supabaseAdmin
+      .from('rooms')
+      .select('owner_id')
+      .eq('id', roomId)
+      .single();
+
+    if (!room) return res.status(404).json({ error: 'Room not found' });
+    if (room.owner_id !== userId) return res.status(403).json({ error: 'Only the room owner can edit this room' });
+
+    const { name, description, course_name } = req.body;
+    const updates = {};
+    if (name !== undefined) updates.name = name;
+    if (description !== undefined) updates.description = description;
+    if (course_name !== undefined) updates.course_name = course_name;
+
+    if (Object.keys(updates).length === 0) {
+      return res.status(400).json({ error: 'No fields to update' });
+    }
+
+    const { data, error } = await supabaseAdmin
+      .from('rooms')
+      .update(updates)
+      .eq('id', roomId)
+      .select()
+      .single();
+
+    if (error) return res.status(400).json({ error: error.message });
+
+    res.json(data);
+  } catch (err) {
+    next(err);
+  }
+}
+
+/**
  * POST /rooms/:roomId/leave
  * Leave a room. Owners cannot leave (must delete or transfer ownership).
  */
@@ -400,6 +443,7 @@ module.exports = {
   createRoom,
   getRooms,
   getRoom,
+  updateRoom,
   joinRoom,
   joinRoomByCode,
   getMembers,

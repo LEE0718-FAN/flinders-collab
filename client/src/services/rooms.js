@@ -30,6 +30,12 @@ export async function getMembers(roomId) {
   return parseResponse(res);
 }
 
+export async function updateRoom(roomId, data) {
+  const headers = getAuthHeaders();
+  const res = await fetch(`/api/rooms/${roomId}`, { method: 'PATCH', headers, body: JSON.stringify(data) });
+  return parseResponse(res);
+}
+
 export async function deleteRoom(roomId) {
   const headers = getAuthHeaders();
   const res = await fetch(`/api/rooms/${roomId}`, { method: 'DELETE', headers });

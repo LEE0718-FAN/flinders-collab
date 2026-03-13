@@ -37,6 +37,14 @@ router.get(
   fileController.getFiles
 );
 
+// PATCH /files/:fileId - Update file metadata
+router.patch(
+  '/files/:fileId',
+  fileIdParam,
+  validate,
+  fileController.updateFile
+);
+
 // DELETE /files/:fileId - Delete a file
 router.delete(
   '/files/:fileId',

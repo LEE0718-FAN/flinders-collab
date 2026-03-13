@@ -48,6 +48,14 @@ router.get(
   roomController.getMembers
 );
 
+// PATCH /rooms/:roomId - Update room (owner only)
+router.patch(
+  '/:roomId',
+  roomIdParam,
+  validate,
+  roomController.updateRoom
+);
+
 // POST /rooms/:roomId/leave - Leave a room (non-owners only)
 router.post(
   '/:roomId/leave',

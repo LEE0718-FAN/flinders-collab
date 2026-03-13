@@ -22,6 +22,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { Loader2, Copy, Check, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import ReportButton from '@/components/ReportButton';
+import EditRoomDialog from '@/components/room/EditRoomDialog';
 
 export default function RoomPage() {
   const { roomId } = useParams();
@@ -135,7 +136,10 @@ export default function RoomPage() {
           <TabsContent value="overview" className="space-y-4">
             <Card>
               <CardHeader>
-                <CardTitle className="text-lg">Room Info</CardTitle>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-lg">Room Info</CardTitle>
+                  {room && <EditRoomDialog room={room} onUpdated={fetchRoom} />}
+                </div>
               </CardHeader>
               <CardContent className="space-y-3">
                 {room?.invite_code && (

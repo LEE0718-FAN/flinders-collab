@@ -3,16 +3,10 @@ import { useNavigate } from 'react-router-dom';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
+  AlertDialog, AlertDialogAction, AlertDialogCancel,
+  AlertDialogContent, AlertDialogDescription, AlertDialogFooter,
+  AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Users, Crown, Trash2, LogOut, Loader2 } from 'lucide-react';
 import { deleteRoom, leaveRoom } from '@/services/rooms';
@@ -23,10 +17,6 @@ export default function RoomCard({ room, onDeleted }) {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const isOwner = room.my_role === 'owner';
 
-  const handleCardClick = () => {
-    navigate(`/rooms/${room.id}`);
-  };
-
   const handleAction = async () => {
     setLoading(true);
     try {
@@ -35,20 +25,20 @@ export default function RoomCard({ room, onDeleted }) {
       } else {
         await leaveRoom(room.id);
       }
+      setConfirmOpen(false);
       onDeleted?.();
     } catch {
       // silently fail
     } finally {
       setLoading(false);
-      setConfirmOpen(false);
     }
   };
 
   return (
     <>
       <Card
-        className="transition-shadow hover:shadow-md group relative cursor-pointer"
-        onClick={handleCardClick}
+        className="transition-shadow hover:shadow-md cursor-pointer"
+        onClick={() => navigate(`/rooms/${room.id}`)}
       >
         <CardHeader className="pb-3">
           <div className="flex items-start justify-between gap-2">
@@ -74,28 +64,25 @@ export default function RoomCard({ room, onDeleted }) {
               <span>{room.my_role || 'member'}</span>
             </div>
 
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className={`h-8 w-8 opacity-0 group-hover:opacity-100 transition-all ${
-                    isOwner
-                      ? 'text-muted-foreground hover:text-red-600 hover:bg-red-50'
-                      : 'text-muted-foreground hover:text-orange-600 hover:bg-orange-50'
-                  }`}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setConfirmOpen(true);
-                  }}
-                >
-                  {isOwner ? <Trash2 className="h-4 w-4" /> : <LogOut className="h-4 w-4" />}
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent side="top">
-                <p>{isOwner ? 'Delete this room' : 'Leave this room'}</p>
-              </TooltipContent>
-            </Tooltip>
+            <Button
+              variant="outline"
+              size="sm"
+              className={`h-7 gap-1.5 text-xs ${
+                isOwner
+                  ? 'text-red-600 border-red-200 hover:bg-red-50 hover:text-red-700'
+                  : 'text-orange-600 border-orange-200 hover:bg-orange-50 hover:text-orange-700'
+              }`}
+              onClick={(e) => {
+                e.stopPropagation();
+                setConfirmOpen(true);
+              }}
+            >
+              {isOwner ? (
+                <><Trash2 className="h-3.5 w-3.5" />Delete</>
+              ) : (
+                <><LogOut className="h-3.5 w-3.5" />Leave</>
+              )}
+            </Button>
           </div>
         </CardContent>
       </Card>
@@ -108,7 +95,7 @@ export default function RoomCard({ room, onDeleted }) {
             </AlertDialogTitle>
             <AlertDialogDescription>
               {isOwner ? (
-                <>Are you sure you want to delete <strong>{room.name}</strong>? This will permanently remove all messages, files, events, and tasks in this room. This action cannot be undone.</>
+                <>Are you sure you want to delete <strong>{room.name}</strong>? This will permanently remove all messages, files, events, and tasks. This action cannot be undone.</>
               ) : (
                 <>Are you sure you want to leave <strong>{room.name}</strong>? You will lose access to all messages and files. You can rejoin later with an invite code.</>
               )}
@@ -117,7 +104,10 @@ export default function RoomCard({ room, onDeleted }) {
           <AlertDialogFooter>
             <AlertDialogCancel disabled={loading}>Cancel</AlertDialogCancel>
             <AlertDialogAction
-              onClick={handleAction}
+              onClick={(e) => {
+                e.preventDefault();
+                handleAction();
+              }}
               className={isOwner ? 'bg-red-600 hover:bg-red-700 text-white' : 'bg-orange-600 hover:bg-orange-700 text-white'}
               disabled={loading}
             >

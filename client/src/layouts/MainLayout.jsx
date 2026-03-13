@@ -125,12 +125,14 @@ export default function MainLayout({ children }) {
       <aside className="hidden w-64 shrink-0 flex-col border-r bg-muted/20 md:flex">
         {/* Sidebar header / brand */}
         <div className="flex h-14 items-center gap-2.5 border-b px-5 bg-primary">
-          <img
-            src="/images/flinders-logo.png"
-            alt="Flinders"
-            className="h-8 object-contain brightness-0 invert"
-            onError={(e) => { e.target.style.display = 'none'; }}
-          />
+          <div className="h-8 w-8 shrink-0 rounded bg-white p-0.5 flex items-center justify-center">
+            <img
+              src="/images/flinders-logo.png"
+              alt="Flinders"
+              className="h-full w-full object-contain"
+              onError={(e) => { e.target.parentElement.style.display = 'none'; }}
+            />
+          </div>
           <span className="text-[15px] font-bold tracking-tight text-primary-foreground">
             Flinders Collab
           </span>
@@ -170,11 +172,13 @@ export default function MainLayout({ children }) {
               <SheetContent side="left" className="w-72 p-0">
                 <SheetHeader className="border-b px-5 py-4 bg-primary">
                   <SheetTitle className="flex items-center gap-2.5 text-left">
-                    <img
-                      src="/images/flinders-logo.png"
-                      alt="Flinders"
-                      className="h-8 object-contain brightness-0 invert"
-                    />
+                    <div className="h-8 w-8 shrink-0 rounded bg-white p-0.5 flex items-center justify-center">
+                      <img
+                        src="/images/flinders-logo.png"
+                        alt="Flinders"
+                        className="h-full w-full object-contain"
+                      />
+                    </div>
                     <span className="text-[15px] font-bold tracking-tight text-primary-foreground">Flinders Collab</span>
                   </SheetTitle>
                 </SheetHeader>
