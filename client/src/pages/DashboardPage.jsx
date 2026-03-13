@@ -147,6 +147,12 @@ export default function DashboardPage() {
     setDropTargetId(null);
   }, [draggedRoomId]);
 
+  const handleDragStart = useCallback((roomId, event) => {
+    setDraggedRoomId(roomId);
+    event.dataTransfer.effectAllowed = 'move';
+    event.dataTransfer.setData('text/plain', roomId);
+  }, []);
+
   return (
     <MainLayout onRoomChange={fetchRooms}>
       <div className="space-y-6">
@@ -180,14 +186,15 @@ export default function DashboardPage() {
             {rooms.map((room) => (
               <div
                 key={room.id}
-                draggable
-                onDragStart={() => setDraggedRoomId(room.id)}
-                onDragEnd={() => {
-                  setDraggedRoomId(null);
-                  setDropTargetId(null);
+                onDragEnter={(e) => {
+                  e.preventDefault();
+                  if (draggedRoomId && dropTargetId !== room.id) {
+                    setDropTargetId(room.id);
+                  }
                 }}
                 onDragOver={(e) => {
                   e.preventDefault();
+                  e.dataTransfer.dropEffect = 'move';
                   if (dropTargetId !== room.id) {
                     setDropTargetId(room.id);
                   }
@@ -204,7 +211,18 @@ export default function DashboardPage() {
                     : ''
                 }`}
               >
-                <RoomCard room={room} onDeleted={fetchRooms} />
+                <RoomCard
+                  room={room}
+                  onDeleted={fetchRooms}
+                  dragHandleProps={{
+                    draggable: true,
+                    onDragStart: (event) => handleDragStart(room.id, event),
+                    onDragEnd: () => {
+                      setDraggedRoomId(null);
+                      setDropTargetId(null);
+                    },
+                  }}
+                />
               </div>
             ))}
           </div>
