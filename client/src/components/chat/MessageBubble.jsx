@@ -4,7 +4,7 @@ import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 
 export default function MessageBubble({ message, isOwn }) {
-  const name = message.sender_name || message.user_name || 'User';
+  const name = message.users?.full_name || message.sender_name || message.user_name || 'User';
   const initials = name.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2);
   const time = message.created_at ? format(new Date(message.created_at), 'h:mm a') : '';
 
