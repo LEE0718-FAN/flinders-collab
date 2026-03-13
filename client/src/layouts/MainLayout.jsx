@@ -32,7 +32,7 @@ function NavItem({ to, isActive, icon: Icon, label }) {
   );
 }
 
-function SidebarContent({ rooms, location }) {
+function SidebarContent({ rooms, location, isAdmin }) {
   return (
     <nav className="flex flex-col gap-1" role="navigation" aria-label="Main navigation">
       <NavItem
@@ -75,12 +75,16 @@ function SidebarContent({ rooms, location }) {
         </div>
       )}
 
-      {/* Admin */}
-      <div className="mt-5 mb-1 flex items-center gap-2 px-3">
-        <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/70">Admin</span>
-        <div className="h-px flex-1 bg-border/60" />
-      </div>
-      <NavItem to="/admin" isActive={location.pathname === '/admin'} icon={Shield} label="Admin Panel" />
+      {/* Admin - only visible to admins */}
+      {isAdmin && (
+        <>
+          <div className="mt-5 mb-1 flex items-center gap-2 px-3">
+            <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/70">Admin</span>
+            <div className="h-px flex-1 bg-border/60" />
+          </div>
+          <NavItem to="/admin" isActive={location.pathname === '/admin'} icon={Shield} label="Admin Panel" />
+        </>
+      )}
     </nav>
   );
 }
@@ -128,7 +132,7 @@ export default function MainLayout({ children }) {
 
         {/* Sidebar navigation */}
         <div className="flex-1 overflow-y-auto px-3 py-4 custom-scrollbar">
-          <SidebarContent rooms={rooms} location={location} />
+          <SidebarContent rooms={rooms} location={location} isAdmin={user?.is_admin} />
         </div>
 
         {/* Sidebar footer / user info */}
@@ -169,7 +173,7 @@ export default function MainLayout({ children }) {
                   </SheetTitle>
                 </SheetHeader>
                 <div className="px-3 py-4">
-                  <SidebarContent rooms={rooms} location={location} />
+                  <SidebarContent rooms={rooms} location={location} isAdmin={user?.is_admin} />
                 </div>
               </SheetContent>
             </Sheet>

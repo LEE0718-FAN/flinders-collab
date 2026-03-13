@@ -30,6 +30,7 @@ export function useAuth() {
       user: {
         id: result.user.id,
         email: result.user.email,
+        is_admin: result.user.is_admin || false,
         user_metadata: {
           name: result.user.full_name,
           full_name: result.user.full_name,
@@ -68,6 +69,7 @@ export function useAuth() {
       user: {
         id: result.user.id,
         email: result.user.email,
+        is_admin: result.user.is_admin || false,
         user_metadata: {
           name: result.user.full_name,
           full_name: result.user.full_name,

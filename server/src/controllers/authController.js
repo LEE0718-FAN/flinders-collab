@@ -74,6 +74,13 @@ async function login(req, res, next) {
       return res.status(401).json({ error: 'Invalid email or password' });
     }
 
+    // Check admin status from users table
+    const { data: profile } = await supabaseAdmin
+      .from('users')
+      .select('is_admin')
+      .eq('id', data.user.id)
+      .single();
+
     res.json({
       message: 'Login successful',
       session: {
@@ -85,6 +92,7 @@ async function login(req, res, next) {
         id: data.user.id,
         email: data.user.email,
         full_name: data.user.user_metadata?.full_name,
+        is_admin: profile?.is_admin || false,
       },
     });
   } catch (err) {

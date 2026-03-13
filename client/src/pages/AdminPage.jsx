@@ -11,7 +11,8 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { getReports, updateReport, getAdminUsers, toggleUserAdmin } from '@/services/reports';
-import { Loader2, ChevronDown, Shield, ShieldOff, AlertCircle, User } from 'lucide-react';
+import { useAuth } from '@/hooks/useAuth';
+import { Loader2, ChevronDown, Shield, ShieldOff, AlertCircle, User, ShieldAlert } from 'lucide-react';
 import { format } from 'date-fns';
 
 const STATUS_OPTIONS = ['open', 'in_progress', 'resolved', 'closed'];
@@ -307,6 +308,20 @@ function UsersTab() {
 }
 
 export default function AdminPage() {
+  const { user } = useAuth();
+
+  if (!user?.is_admin) {
+    return (
+      <MainLayout>
+        <div className="flex flex-col items-center justify-center gap-4 py-20 text-muted-foreground">
+          <ShieldAlert className="h-12 w-12" />
+          <h2 className="text-lg font-semibold text-foreground">Access Denied</h2>
+          <p className="text-sm">You do not have admin privileges to view this page.</p>
+        </div>
+      </MainLayout>
+    );
+  }
+
   return (
     <MainLayout>
       <div className="space-y-6">
