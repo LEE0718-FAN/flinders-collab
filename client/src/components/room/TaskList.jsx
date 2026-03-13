@@ -241,7 +241,14 @@ function TaskCreateForm({ roomId, members = [], onCreated }) {
   );
 }
 
-/* ─── Single Task Card ─── */
+/* Status cycle: click to advance */
+const STATUS_CYCLE = ['pending', 'in_progress', 'completed'];
+function nextStatus(current) {
+  const idx = STATUS_CYCLE.indexOf(current);
+  return STATUS_CYCLE[(idx + 1) % STATUS_CYCLE.length];
+}
+
+/* ─── Single Task Card (Compact) ─── */
 function TaskCard({ task, onStatusChange, onEdit, onDelete }) {
   const prio = priorityConfig[task.priority] || priorityConfig.medium;
   const status = statusConfig[task.status] || statusConfig.pending;
@@ -251,79 +258,87 @@ function TaskCard({ task, onStatusChange, onEdit, onDelete }) {
 
   return (
     <div
-      className={`relative rounded-lg border bg-card shadow-sm hover:shadow-md transition-all overflow-hidden border-l-4 ${prio.border} ${
-        isCompleted ? 'opacity-60' : ''
+      className={`relative rounded-lg border bg-card shadow-sm hover:shadow-md transition-all overflow-hidden border-l-[3px] ${prio.border} ${
+        isCompleted ? 'opacity-50' : ''
       }`}
     >
-      <div className="p-4">
-        {/* Top row: Actions */}
-        <div className="flex items-center justify-end gap-1 mb-2">
-          <select
-            value={task.status}
-            onChange={(e) => onStatusChange(task, e.target.value)}
-            className={`text-xs rounded-md border px-2 py-1 cursor-pointer font-medium ${status.bg}`}
-          >
-            <option value="pending">Pending</option>
-            <option value="in_progress">In Progress</option>
-            <option value="completed">Done</option>
-          </select>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <button onClick={() => onEdit(task)} className="p-1 rounded-md hover:bg-muted transition-colors">
-                <Pencil className="h-3.5 w-3.5 text-muted-foreground" />
-              </button>
-            </TooltipTrigger>
-            <TooltipContent><p>Edit</p></TooltipContent>
-          </Tooltip>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <button onClick={() => onDelete(task)} className="p-1 rounded-md hover:bg-red-50 transition-colors">
-                <Trash2 className="h-3.5 w-3.5 text-muted-foreground hover:text-red-500" />
-              </button>
-            </TooltipTrigger>
-            <TooltipContent><p>Delete</p></TooltipContent>
-          </Tooltip>
-        </div>
-
-        {/* Task title */}
-        <h3 className={`text-base font-bold leading-snug mb-2 ${isCompleted ? 'line-through text-muted-foreground' : 'text-foreground'}`}>
-          {task.title}
-        </h3>
-
-        {/* Due date + Priority inline */}
-        <div className="flex items-center gap-2 flex-wrap">
-          {due ? (
-            <div className={`inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-semibold ${
-              due.overdue && !isCompleted
-                ? 'bg-red-100 text-red-700'
-                : isCompleted
-                  ? 'bg-muted text-muted-foreground'
-                  : 'bg-blue-50 text-blue-700'
-            }`}>
-              <CalendarDays className="h-3.5 w-3.5" />
-              {due.text}
-              {due.overdue && !isCompleted && <span className="font-normal">· Overdue</span>}
-            </div>
-          ) : (
-            <div className="inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs text-muted-foreground/50 bg-muted/50">
-              <CalendarDays className="h-3.5 w-3.5" />
-              No due date
-            </div>
-          )}
-          <div className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
-            <span className={`h-2 w-2 rounded-full ${prio.dot}`} />
-            {prio.label}
+      <div className="px-3.5 py-3">
+        {/* Row 1: Title + actions */}
+        <div className="flex items-start justify-between gap-2">
+          <h3 className={`text-sm font-semibold leading-snug flex-1 ${isCompleted ? 'line-through text-muted-foreground' : 'text-foreground'}`}>
+            {task.title}
+          </h3>
+          <div className="flex items-center gap-0.5 shrink-0 -mt-0.5">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button onClick={() => onEdit(task)} className="p-1 rounded hover:bg-muted transition-colors">
+                  <Pencil className="h-3 w-3 text-muted-foreground" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent><p>Edit</p></TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button onClick={() => onDelete(task)} className="p-1 rounded hover:bg-red-50 transition-colors">
+                  <Trash2 className="h-3 w-3 text-muted-foreground hover:text-red-500" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent><p>Delete</p></TooltipContent>
+            </Tooltip>
           </div>
         </div>
 
-        {/* Assigned member - smaller, right-aligned */}
-        <div className="flex items-center justify-end gap-2 mt-3 pt-2.5 border-t border-border/50">
-          <span className="text-xs text-muted-foreground">{assigneeName}</span>
-          <Avatar className="h-6 w-6">
-            <AvatarFallback className="text-[9px] font-semibold bg-muted text-muted-foreground">
-              {getInitials(assigneeName)}
-            </AvatarFallback>
-          </Avatar>
+        {/* Row 2: Due date + priority */}
+        <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+          {due ? (
+            <span className={`inline-flex items-center gap-1 text-[11px] font-medium ${
+              due.overdue && !isCompleted ? 'text-red-600' : 'text-muted-foreground'
+            }`}>
+              <CalendarDays className="h-3 w-3" />
+              {due.text}
+              {due.overdue && !isCompleted && <span>· Overdue</span>}
+            </span>
+          ) : (
+            <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground/40">
+              <CalendarDays className="h-3 w-3" />
+              No due date
+            </span>
+          )}
+          <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground">
+            <span className={`h-1.5 w-1.5 rounded-full ${prio.dot}`} />
+            {prio.label}
+          </span>
+        </div>
+
+        {/* Row 3: Status badge (clickable) + assigned member */}
+        <div className="flex items-center justify-between mt-2.5 pt-2 border-t border-border/40">
+          {/* Clickable status badge */}
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                onClick={() => onStatusChange(task, nextStatus(task.status))}
+                className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px] font-semibold transition-all hover:scale-105 active:scale-95 cursor-pointer ${status.bg}`}
+              >
+                {isCompleted ? (
+                  <CheckCircle2 className="h-3 w-3" />
+                ) : (
+                  <Circle className="h-3 w-3" />
+                )}
+                {status.label}
+              </button>
+            </TooltipTrigger>
+            <TooltipContent><p>Click to change status</p></TooltipContent>
+          </Tooltip>
+
+          {/* Assigned member */}
+          <div className="flex items-center gap-1.5">
+            <span className="text-[11px] text-muted-foreground">{assigneeName}</span>
+            <Avatar className="h-5 w-5">
+              <AvatarFallback className="text-[8px] font-semibold bg-muted text-muted-foreground">
+                {getInitials(assigneeName)}
+              </AvatarFallback>
+            </Avatar>
+          </div>
         </div>
       </div>
     </div>
