@@ -81,7 +81,7 @@ function swapRoomOrder(rooms, draggedId, targetId) {
 }
 
 export default function DashboardPage() {
-  const swapDelayMs = 140;
+  const swapDelayMs = 110;
   const { user } = useAuth();
   const [rooms, setRooms] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -143,7 +143,7 @@ export default function DashboardPage() {
       node.style.transform = `translate(${deltaX}px, ${deltaY}px)`;
 
       requestAnimationFrame(() => {
-        node.style.transition = 'transform 340ms cubic-bezier(0.22, 1, 0.36, 1)';
+        node.style.transition = 'transform 420ms cubic-bezier(0.22, 1, 0.36, 1)';
         node.style.transform = 'translate(0, 0)';
       });
     });
@@ -202,13 +202,15 @@ export default function DashboardPage() {
     const draggedCenterY = draggedRect.top + (draggedRect.height / 2);
     const horizontalMove = Math.abs(targetCenterX - draggedCenterX) >= Math.abs(targetCenterY - draggedCenterY);
 
+    const forwardThreshold = 0.35;
+    const backwardThreshold = 0.65;
     const crossedThreshold = horizontalMove
       ? (targetCenterX > draggedCenterX
-          ? event.clientX >= targetCenterX
-          : event.clientX <= targetCenterX)
+          ? event.clientX >= targetRect.left + (targetRect.width * forwardThreshold)
+          : event.clientX <= targetRect.left + (targetRect.width * backwardThreshold))
       : (targetCenterY > draggedCenterY
-          ? event.clientY >= targetCenterY
-          : event.clientY <= targetCenterY);
+          ? event.clientY >= targetRect.top + (targetRect.height * forwardThreshold)
+          : event.clientY <= targetRect.top + (targetRect.height * backwardThreshold));
 
     if (!crossedThreshold) {
       if (pendingSwapTargetRef.current === targetRoomId && swapTimerRef.current) {

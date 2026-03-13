@@ -12,52 +12,82 @@ import { deleteRoom, leaveRoom } from '@/services/rooms';
 
 const roomPalettes = [
   {
-    card: 'border-rose-200 bg-gradient-to-br from-rose-50 via-white to-white',
-    accent: 'bg-rose-300',
-    courseBadge: 'bg-rose-200 text-rose-900 hover:bg-rose-200',
-    roleBadge: 'border-rose-200 bg-white/80 text-rose-900',
-    meta: 'text-rose-950/70',
-    divider: 'border-rose-100',
+    accent: '#f9a8d4',
+    border: '#fbcfe8',
+    glow: 'rgba(251, 207, 232, 0.45)',
+    surface: 'linear-gradient(135deg, rgba(255, 241, 246, 1) 0%, rgba(255, 255, 255, 0.98) 68%)',
+    courseBg: '#fbcfe8',
+    courseText: '#831843',
+    roleBorder: '#fbcfe8',
+    roleBg: 'rgba(255,255,255,0.82)',
+    roleText: '#9d174d',
+    meta: '#831843',
+    divider: '#fce7f3',
   },
   {
-    card: 'border-sky-200 bg-gradient-to-br from-sky-50 via-white to-white',
-    accent: 'bg-sky-300',
-    courseBadge: 'bg-sky-200 text-sky-900 hover:bg-sky-200',
-    roleBadge: 'border-sky-200 bg-white/80 text-sky-900',
-    meta: 'text-sky-950/70',
-    divider: 'border-sky-100',
+    accent: '#7dd3fc',
+    border: '#bae6fd',
+    glow: 'rgba(186, 230, 253, 0.5)',
+    surface: 'linear-gradient(135deg, rgba(240, 249, 255, 1) 0%, rgba(255, 255, 255, 0.98) 68%)',
+    courseBg: '#bae6fd',
+    courseText: '#0c4a6e',
+    roleBorder: '#bae6fd',
+    roleBg: 'rgba(255,255,255,0.82)',
+    roleText: '#075985',
+    meta: '#0f3b53',
+    divider: '#e0f2fe',
   },
   {
-    card: 'border-emerald-200 bg-gradient-to-br from-emerald-50 via-white to-white',
-    accent: 'bg-emerald-300',
-    courseBadge: 'bg-emerald-200 text-emerald-900 hover:bg-emerald-200',
-    roleBadge: 'border-emerald-200 bg-white/80 text-emerald-900',
-    meta: 'text-emerald-950/70',
-    divider: 'border-emerald-100',
+    accent: '#86efac',
+    border: '#bbf7d0',
+    glow: 'rgba(187, 247, 208, 0.5)',
+    surface: 'linear-gradient(135deg, rgba(240, 253, 244, 1) 0%, rgba(255, 255, 255, 0.98) 68%)',
+    courseBg: '#bbf7d0',
+    courseText: '#14532d',
+    roleBorder: '#bbf7d0',
+    roleBg: 'rgba(255,255,255,0.82)',
+    roleText: '#166534',
+    meta: '#1f5136',
+    divider: '#dcfce7',
   },
   {
-    card: 'border-amber-200 bg-gradient-to-br from-amber-50 via-white to-white',
-    accent: 'bg-amber-300',
-    courseBadge: 'bg-amber-200 text-amber-900 hover:bg-amber-200',
-    roleBadge: 'border-amber-200 bg-white/80 text-amber-900',
-    meta: 'text-amber-950/70',
-    divider: 'border-amber-100',
+    accent: '#fcd34d',
+    border: '#fde68a',
+    glow: 'rgba(253, 230, 138, 0.5)',
+    surface: 'linear-gradient(135deg, rgba(255, 251, 235, 1) 0%, rgba(255, 255, 255, 0.98) 68%)',
+    courseBg: '#fde68a',
+    courseText: '#78350f',
+    roleBorder: '#fde68a',
+    roleBg: 'rgba(255,255,255,0.82)',
+    roleText: '#92400e',
+    meta: '#6b4715',
+    divider: '#fef3c7',
   },
   {
-    card: 'border-violet-200 bg-gradient-to-br from-violet-50 via-white to-white',
-    accent: 'bg-violet-300',
-    courseBadge: 'bg-violet-200 text-violet-900 hover:bg-violet-200',
-    roleBadge: 'border-violet-200 bg-white/80 text-violet-900',
-    meta: 'text-violet-950/70',
-    divider: 'border-violet-100',
+    accent: '#c4b5fd',
+    border: '#ddd6fe',
+    glow: 'rgba(221, 214, 254, 0.55)',
+    surface: 'linear-gradient(135deg, rgba(245, 243, 255, 1) 0%, rgba(255, 255, 255, 0.98) 68%)',
+    courseBg: '#ddd6fe',
+    courseText: '#4c1d95',
+    roleBorder: '#ddd6fe',
+    roleBg: 'rgba(255,255,255,0.82)',
+    roleText: '#5b21b6',
+    meta: '#4b2f77',
+    divider: '#ede9fe',
   },
   {
-    card: 'border-teal-200 bg-gradient-to-br from-teal-50 via-white to-white',
-    accent: 'bg-teal-300',
-    courseBadge: 'bg-teal-200 text-teal-900 hover:bg-teal-200',
-    roleBadge: 'border-teal-200 bg-white/80 text-teal-900',
-    meta: 'text-teal-950/70',
-    divider: 'border-teal-100',
+    accent: '#99f6e4',
+    border: '#ccfbf1',
+    glow: 'rgba(204, 251, 241, 0.55)',
+    surface: 'linear-gradient(135deg, rgba(240, 253, 250, 1) 0%, rgba(255, 255, 255, 0.98) 68%)',
+    courseBg: '#ccfbf1',
+    courseText: '#134e4a',
+    roleBorder: '#ccfbf1',
+    roleBg: 'rgba(255,255,255,0.82)',
+    roleText: '#0f766e',
+    meta: '#195853',
+    divider: '#ccfbf1',
   },
 ];
 
@@ -95,24 +125,43 @@ export default function RoomCard({ room, onDeleted, draggableProps, suppressNavi
     <div className="h-full">
       <div
         {...draggableProps}
-        className={`relative flex flex-col h-full overflow-hidden rounded-lg border text-card-foreground shadow-sm transition-shadow hover:shadow-md cursor-grab active:cursor-grabbing ${palette.card}`}
+        className="relative flex flex-col h-full overflow-hidden rounded-lg border text-card-foreground shadow-sm transition-shadow hover:shadow-md cursor-grab active:cursor-grabbing"
+        style={{
+          background: palette.surface,
+          borderColor: palette.border,
+          boxShadow: `0 12px 32px -24px ${palette.glow}`,
+        }}
         onClick={() => {
           if (!suppressNavigation) {
             navigate(`/rooms/${room.id}`);
           }
         }}
       >
-        <div className={`absolute inset-x-0 top-0 h-1.5 ${palette.accent}`} />
+        <div className="absolute inset-x-0 top-0 h-1.5" style={{ backgroundColor: palette.accent }} />
 
         {/* Top section: badges + title + description */}
         <div className="flex-1 p-5 pt-6 pb-0">
           {/* Badges row — always 28px tall */}
           <div className="flex items-center gap-1.5 h-7">
             {room.course_name && (
-              <Badge variant="secondary" className={`text-xs border-transparent ${palette.courseBadge}`}>{room.course_name}</Badge>
+              <Badge
+                variant="secondary"
+                className="text-xs border-transparent"
+                style={{ backgroundColor: palette.courseBg, color: palette.courseText }}
+              >
+                {room.course_name}
+              </Badge>
             )}
             {isOwner && (
-              <Badge variant="outline" className={`gap-1 text-xs ${palette.roleBadge}`}>
+              <Badge
+                variant="outline"
+                className="gap-1 text-xs"
+                style={{
+                  borderColor: palette.roleBorder,
+                  backgroundColor: palette.roleBg,
+                  color: palette.roleText,
+                }}
+              >
                 <Crown className="h-3 w-3" />
                 Owner
               </Badge>
@@ -132,8 +181,8 @@ export default function RoomCard({ room, onDeleted, draggableProps, suppressNavi
 
         {/* Footer — pinned to bottom */}
         <div className="p-5 pt-3">
-          <div className={`flex items-center justify-between border-t pt-3 ${palette.divider}`}>
-            <div className={`flex items-center gap-3 text-sm ${palette.meta}`}>
+          <div className="flex items-center justify-between border-t pt-3" style={{ borderColor: palette.divider }}>
+            <div className="flex items-center gap-3 text-sm" style={{ color: palette.meta }}>
               <span className="flex items-center gap-1.5">
                 <Users className="h-4 w-4" />
                 {room.member_count || 0} {room.member_count === 1 ? 'Member' : 'Members'}
