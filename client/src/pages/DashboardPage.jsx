@@ -63,14 +63,14 @@ export default function DashboardPage() {
     try {
       const data = await getRooms();
       const nextRooms = data.rooms || data || [];
-      const nextOrder = orderedIds.length > 0 ? orderedIds : loadRoomOrder(user?.id);
+      const nextOrder = loadRoomOrder(user?.id);
       setRooms(applyRoomOrder(nextRooms, nextOrder));
     } catch (err) {
       setError('Failed to load rooms. Please refresh the page.');
     } finally {
       setLoading(false);
     }
-  }, [orderedIds, user?.id]);
+  }, [user?.id]);
 
   useEffect(() => {
     fetchRooms();
@@ -84,11 +84,9 @@ export default function DashboardPage() {
   }, [orderedIds.length, setOrder, user?.id]);
 
   useEffect(() => {
-    if (!user?.id) return;
-    const nextOrderedIds = buildOrderedIds(rooms, TEMP_ROOM_PREFIX);
-    persistRoomOrder(user.id, nextOrderedIds);
-    setOrder(user.id, nextOrderedIds);
-  }, [rooms, setOrder, user?.id]);
+    if (!user?.id || draggedRoomId || orderedIds.length === 0) return;
+    setRooms((prev) => applyRoomOrder(prev, orderedIds));
+  }, [draggedRoomId, orderedIds, user?.id]);
 
   useEffect(() => () => {
     if (swapTimerRef.current) {
@@ -214,6 +212,11 @@ export default function DashboardPage() {
   }, [draggedRoomId, dropTargetId, swapDelayMs]);
 
   const handleDragEnd = useCallback(() => {
+    const nextOrderedIds = buildOrderedIds(rooms, TEMP_ROOM_PREFIX);
+    if (user?.id) {
+      persistRoomOrder(user.id, nextOrderedIds);
+      setOrder(user.id, nextOrderedIds);
+    }
     if (swapTimerRef.current) {
       window.clearTimeout(swapTimerRef.current);
       swapTimerRef.current = null;
@@ -223,7 +226,7 @@ export default function DashboardPage() {
     setDropTargetId(null);
     setSuppressNavigation(true);
     window.setTimeout(() => setSuppressNavigation(false), 150);
-  }, []);
+  }, [rooms, setOrder, user?.id]);
 
   return (
     <MainLayout onRoomChange={fetchRooms}>

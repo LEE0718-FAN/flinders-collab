@@ -187,7 +187,6 @@ export default function RoomCard({ room, onDeleted, draggableProps, suppressNavi
                 <Users className="h-4 w-4" />
                 {room.member_count || 0} {room.member_count === 1 ? 'Member' : 'Members'}
               </span>
-              <span className="capitalize">{room.my_role || 'member'}</span>
             </div>
 
             <Button

@@ -150,7 +150,12 @@ export default function MainLayout({ children }) {
         setRooms(applyRoomOrder(nextRooms, nextOrder));
       })
       .catch(() => {});
-  }, [location.pathname, orderedIds, user?.id]);
+  }, [location.pathname, user?.id]);
+
+  useEffect(() => {
+    if (!user?.id || orderedIds.length === 0) return;
+    setRooms((prev) => applyRoomOrder(prev, orderedIds));
+  }, [orderedIds, user?.id]);
 
   useEffect(() => {
     const handleStorage = (event) => {
