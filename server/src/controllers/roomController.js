@@ -359,6 +359,43 @@ async function deleteRoom(req, res, next) {
   }
 }
 
+/**
+ * POST /rooms/:roomId/leave
+ * Leave a room. Owners cannot leave (must delete or transfer ownership).
+ */
+async function leaveRoom(req, res, next) {
+  try {
+    const { roomId } = req.params;
+    const userId = req.user.id;
+
+    // Check if user is the owner
+    const { data: room } = await supabaseAdmin
+      .from('rooms')
+      .select('owner_id')
+      .eq('id', roomId)
+      .single();
+
+    if (room && room.owner_id === userId) {
+      return res.status(400).json({ error: 'Room owner cannot leave. Delete the room instead.' });
+    }
+
+    // Remove membership
+    const { error } = await supabaseAdmin
+      .from('room_members')
+      .delete()
+      .eq('room_id', roomId)
+      .eq('user_id', userId);
+
+    if (error) {
+      return res.status(400).json({ error: error.message });
+    }
+
+    res.json({ message: 'Left room successfully' });
+  } catch (err) {
+    next(err);
+  }
+}
+
 module.exports = {
   createRoom,
   getRooms,
@@ -367,4 +404,5 @@ module.exports = {
   joinRoomByCode,
   getMembers,
   deleteRoom,
+  leaveRoom,
 };

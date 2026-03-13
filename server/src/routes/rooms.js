@@ -48,6 +48,14 @@ router.get(
   roomController.getMembers
 );
 
+// POST /rooms/:roomId/leave - Leave a room (non-owners only)
+router.post(
+  '/:roomId/leave',
+  roomIdParam,
+  validate,
+  roomController.leaveRoom
+);
+
 // DELETE /rooms/:roomId - Delete a room (owner only)
 router.delete(
   '/:roomId',

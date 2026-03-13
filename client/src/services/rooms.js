@@ -35,3 +35,9 @@ export async function deleteRoom(roomId) {
   const res = await fetch(`/api/rooms/${roomId}`, { method: 'DELETE', headers });
   return parseResponse(res);
 }
+
+export async function leaveRoom(roomId) {
+  const headers = getAuthHeaders();
+  const res = await fetch(`/api/rooms/${roomId}/leave`, { method: 'POST', headers });
+  return parseResponse(res);
+}
