@@ -73,7 +73,7 @@ function AcademicInfoGate({ onSaved }) {
             </div>
           </div>
           <p className="text-sm text-slate-500 mt-3 mb-5">
-            Your year and semester will be shown on your posts and comments so others know who they're connecting with.
+            Select your year and semester to continue.
           </p>
           <form onSubmit={handleSave} className="space-y-4">
             <div className="grid grid-cols-2 gap-3">
