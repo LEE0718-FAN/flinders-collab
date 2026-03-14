@@ -26,11 +26,14 @@ import static org.junit.Assert.*;
 @RunWith(AndroidJUnit4.class)
 public class ExampleInstrumentedTest {
 
+    /** The Capacitor appId defined in capacitor.config.json and build.gradle. */
+    private static final String EXPECTED_APP_ID = "au.edu.flinders.collab";
+
     /** Verify the app's package name matches the expected Capacitor appId. */
     @Test
     public void useAppContext_packageNameIsCorrect() {
         Context appContext = InstrumentationRegistry.getInstrumentation().getTargetContext();
-        assertEquals("com.getcapacitor.myapp", appContext.getPackageName());
+        assertEquals(EXPECTED_APP_ID, appContext.getPackageName());
     }
 
     /** Verify the app can be resolved by the PackageManager (i.e. it is installed). */
@@ -38,7 +41,7 @@ public class ExampleInstrumentedTest {
     public void app_isInstalled() throws PackageManager.NameNotFoundException {
         Context appContext = InstrumentationRegistry.getInstrumentation().getTargetContext();
         PackageManager pm = appContext.getPackageManager();
-        PackageInfo info = pm.getPackageInfo("com.getcapacitor.myapp", 0);
+        PackageInfo info = pm.getPackageInfo(EXPECTED_APP_ID, 0);
         assertNotNull("PackageInfo should not be null for installed app", info);
         assertNotNull("Version name should be set", info.versionName);
     }
@@ -56,5 +59,25 @@ public class ExampleInstrumentedTest {
         Context appContext = InstrumentationRegistry.getInstrumentation().getTargetContext();
         assertNotNull("ApplicationInfo must not be null", appContext.getApplicationInfo());
         assertNotNull("Source dir must be set", appContext.getApplicationInfo().sourceDir);
+    }
+
+    /** Verify the app name is set correctly for user-visible contexts. */
+    @Test
+    public void appLabel_isFlindersCollab() {
+        Context appContext = InstrumentationRegistry.getInstrumentation().getTargetContext();
+        PackageManager pm = appContext.getPackageManager();
+        CharSequence label = appContext.getApplicationInfo().loadLabel(pm);
+        assertNotNull("App label must not be null", label);
+        assertTrue("App label should contain 'Flinders'",
+                label.toString().contains("Flinders"));
+    }
+
+    /** Verify the app's version code is a positive integer. */
+    @Test
+    public void versionCode_isPositive() throws PackageManager.NameNotFoundException {
+        Context appContext = InstrumentationRegistry.getInstrumentation().getTargetContext();
+        PackageManager pm = appContext.getPackageManager();
+        PackageInfo info = pm.getPackageInfo(EXPECTED_APP_ID, 0);
+        assertTrue("versionCode must be > 0", info.versionCode > 0);
     }
 }

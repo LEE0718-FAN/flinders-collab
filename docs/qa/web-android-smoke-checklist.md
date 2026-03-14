@@ -75,7 +75,7 @@
 | 5.2 | Create a new event with title, date, and time | Event appears in the event list | API error or event not shown |
 | 5.3 | Verify event persists after page reload | Event still listed after refresh | Event disappears (not persisted) |
 
-**Route:** `POST /events` (via `server/src/routes/events.js`)
+**Route:** `POST /rooms/:roomId/events` (via `server/src/routes/events.js`)
 
 ---
 
@@ -87,7 +87,7 @@
 | 6.2 | Enable location sharing | Browser requests geolocation permission; on grant, location is broadcast to room members via Socket.IO | Permission not requested or location not sent |
 | 6.3 | Verify other room members see the shared location on the map | Map component shows pin/marker for sharing user | Map blank or marker missing |
 
-**Route:** `POST /location/share` (via `server/src/routes/location.js`)
+**Route:** `POST /events/:eventId/location/start` (via `server/src/routes/location.js`)
 
 ---
 
@@ -98,7 +98,7 @@
 | 7.1 | Toggle location sharing off | Location updates stop; marker removed for other members | Updates keep sending or marker persists |
 | 7.2 | Verify geolocation watch is cleared | No further `watchPosition` callbacks fire (check browser devtools) | Continued GPS polling (battery drain) |
 
-**Route:** `POST /location/stop` (via `server/src/routes/location.js`)
+**Route:** `POST /events/:eventId/location/stop` (via `server/src/routes/location.js`)
 
 ---
 
@@ -110,7 +110,7 @@
 | 8.2 | Select a file and upload | Progress indicator shown; file appears in list on completion | Upload hangs or error toast |
 | 8.3 | Upload a file exceeding size limit (if configured) | Descriptive error before or during upload | Silent failure or server 500 |
 
-**Route:** `POST /files/upload` (via `server/src/routes/files.js`)
+**Route:** `POST /rooms/:roomId/files` (via `server/src/routes/files.js`)
 
 ---
 
@@ -144,7 +144,7 @@
 | 11.2 | Send a message | Message appears instantly for sender via Socket.IO; persists on reload | Message not shown or lost on refresh |
 | 11.3 | Receive a message from another member | Message appears in real time without page refresh | Requires manual refresh to see new messages |
 
-**Route:** `GET /rooms/:roomId/messages` (via `server/src/routes/messages.js`), Socket.IO for real-time
+**Route:** `GET /rooms/:roomId/messages` (via `server/src/routes/messages.js`); Socket.IO for real-time delivery
 
 ---
 
