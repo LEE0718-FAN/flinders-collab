@@ -166,11 +166,11 @@ export default function RoomCard({ room, onDeleted, draggableProps, suppressNavi
         <div className="h-1.5 rounded-t-2xl" style={{ background: palette.accent }} />
 
         {/* Gradient header area */}
-        <div className="relative h-14" style={{ background: palette.headerGradient }} />
+        <div className="relative h-10" style={{ background: palette.headerGradient }} />
 
         {/* Badges — overlapping gradient/white boundary */}
-        <div className="relative px-5" style={{ marginTop: '-12px', zIndex: 1 }}>
-          <div className="flex items-center gap-1.5 h-7">
+        <div className="relative px-4" style={{ marginTop: '-10px', zIndex: 1 }}>
+          <div className="flex items-center gap-1.5 h-6">
             {courseLabel && (
               <Badge
                 variant="secondary"
@@ -192,42 +192,20 @@ export default function RoomCard({ room, onDeleted, draggableProps, suppressNavi
         </div>
 
         {/* Top section: title + description */}
-        <div className="flex-1 px-5 pt-2 pb-0">
+        <div className="flex-1 px-4 pt-2 pb-0">
           {/* Title — single line, truncated */}
-          <h3 className="text-base font-bold leading-snug truncate">
+          <h3 className="text-sm font-bold leading-snug truncate">
             {room.name}
           </h3>
 
-          {/* Description — always one line tall */}
-          <p className="mt-1 min-h-[2.5rem] text-sm text-muted-foreground">
+          {/* Description — single line */}
+          <p className="mt-0.5 truncate text-xs text-muted-foreground">
             {room.description || '\u00A0'}
           </p>
         </div>
 
         {/* Footer — pinned to bottom */}
-        <div className="p-5 pt-3">
-          <div className="mb-3 flex flex-wrap items-center gap-2 text-[11px] font-medium">
-            {room.invite_code && (
-              <span
-                className="rounded-full px-2.5 py-1 tracking-[0.18em]"
-                style={{ backgroundColor: palette.pillBg, color: palette.meta }}
-              >
-                {room.invite_code}
-              </span>
-            )}
-            {room.my_role && (
-              <span
-                className="rounded-full border px-2.5 py-1 capitalize"
-                style={{
-                  borderColor: palette.roleBorder,
-                  backgroundColor: palette.roleBg,
-                  color: palette.roleText,
-                }}
-              >
-                {room.my_role}
-              </span>
-            )}
-          </div>
+        <div className="px-4 pb-4 pt-2">
           <div className="flex items-center justify-between border-t pt-3" style={{ borderColor: palette.divider }}>
             <div className="flex items-center gap-3 text-sm">
               <span
