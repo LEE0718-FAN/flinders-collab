@@ -191,17 +191,19 @@ export default function RoomPage() {
               <div className="absolute -right-12 -top-12 h-40 w-40 rounded-full bg-white/10 blur-2xl" />
               <div className="relative flex items-center justify-between gap-4">
                 <div className="flex-1 min-w-0">
-                  <h1 className="text-2xl font-black text-white tracking-tight">{room?.name}</h1>
+                  <div className="flex items-center gap-3 flex-wrap">
+                    <h1 className="text-2xl font-black text-white tracking-tight">{room?.name}</h1>
+                    {room?.course_name && (
+                      <Badge className="bg-white/20 text-white border-0 rounded-full text-xs">{room.course_name}</Badge>
+                    )}
+                  </div>
                   {room?.description && <p className="mt-1 text-white/70 text-sm">{room.description}</p>}
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
-                  <span className="flex items-center gap-1.5 bg-white/20 rounded-full px-3 py-1.5 text-xs font-medium">
-                    <Users className="h-3.5 w-3.5" />{members.length}
-                  </span>
                   {room?.invite_code && (
                     <button onClick={handleCopyInviteCode} className="flex items-center gap-1.5 bg-white/20 rounded-full px-3 py-1.5 text-xs font-medium hover:bg-white/30 transition-colors">
                       {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
-                      {copied ? 'Copied!' : 'Invite'}
+                      <code className="font-mono">{copied ? 'Copied!' : room.invite_code}</code>
                     </button>
                   )}
                 </div>
@@ -216,9 +218,9 @@ export default function RoomPage() {
           </div>
         )}
 
-        <Tabs defaultValue="overview" onValueChange={setActiveTab}>
+        <Tabs defaultValue="members" onValueChange={setActiveTab}>
           <TabsList className="flex-wrap bg-white rounded-xl p-1.5 shadow-sm border">
-            <TabsTrigger value="overview" className="data-[state=active]:bg-indigo-50 data-[state=active]:text-indigo-700 data-[state=active]:font-semibold">Overview</TabsTrigger>
+            <TabsTrigger value="members" className="data-[state=active]:bg-indigo-50 data-[state=active]:text-indigo-700 data-[state=active]:font-semibold">Members</TabsTrigger>
             <TabsTrigger value="schedule" className="data-[state=active]:bg-indigo-50 data-[state=active]:text-indigo-700 data-[state=active]:font-semibold">Schedule</TabsTrigger>
             <TabsTrigger value="tasks" className="data-[state=active]:bg-indigo-50 data-[state=active]:text-indigo-700 data-[state=active]:font-semibold">Tasks</TabsTrigger>
             <TabsTrigger value="chat" className="data-[state=active]:bg-indigo-50 data-[state=active]:text-indigo-700 data-[state=active]:font-semibold">Chat</TabsTrigger>
@@ -228,30 +230,8 @@ export default function RoomPage() {
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="overview" className="space-y-4">
-            <Card className="border-t-4 border-t-indigo-500">
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-lg">Room Info</CardTitle>
-                  {room && <EditRoomDialog room={room} onUpdated={fetchRoom} />}
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                {room?.invite_code && (
-                  <div className="bg-gradient-to-r from-slate-50 to-indigo-50 rounded-xl p-4">
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm text-muted-foreground">Invite Code:</span>
-                      <code className="rounded bg-muted px-2 py-1 text-sm font-mono">{room.invite_code}</code>
-                      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleCopyInviteCode}>
-                        {copied ? <Check className="h-3 w-3 text-green-500" /> : <Copy className="h-3 w-3" />}
-                      </Button>
-                    </div>
-                  </div>
-                )}
-                <div className="text-sm text-muted-foreground">{members.length} members</div>
-              </CardContent>
-            </Card>
-            <Card className="border-t-4 border-t-blue-500">
+          <TabsContent value="members" className="space-y-4">
+            <Card>
               <CardHeader>
                 <CardTitle className="text-lg">Members ({members.length})</CardTitle>
               </CardHeader>
