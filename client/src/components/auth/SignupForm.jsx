@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Loader2, User, Mail, Hash, GraduationCap, Lock } from 'lucide-react';
+import { FLINDERS_PROGRAMS } from '@/lib/flinders-programs';
 
 export default function SignupForm({ onSubmit }) {
   const [name, setName] = useState('');
@@ -11,8 +12,51 @@ export default function SignupForm({ onSubmit }) {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [studentId, setStudentId] = useState('');
   const [major, setMajor] = useState('');
+  const [majorQuery, setMajorQuery] = useState('');
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [highlightIndex, setHighlightIndex] = useState(-1);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const suggestionsRef = useRef(null);
+  const majorInputRef = useRef(null);
+
+  const filtered = majorQuery.length > 0
+    ? FLINDERS_PROGRAMS.filter((p) =>
+        p.toLowerCase().includes(majorQuery.toLowerCase())
+      ).slice(0, 8)
+    : [];
+
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (suggestionsRef.current && !suggestionsRef.current.contains(e.target) &&
+          majorInputRef.current && !majorInputRef.current.contains(e.target)) {
+        setShowSuggestions(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const selectProgram = (program) => {
+    setMajor(program);
+    setMajorQuery(program);
+    setShowSuggestions(false);
+    setHighlightIndex(-1);
+  };
+
+  const handleMajorKeyDown = (e) => {
+    if (!showSuggestions || filtered.length === 0) return;
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      setHighlightIndex((prev) => (prev + 1) % filtered.length);
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setHighlightIndex((prev) => (prev <= 0 ? filtered.length - 1 : prev - 1));
+    } else if (e.key === 'Enter' && highlightIndex >= 0) {
+      e.preventDefault();
+      selectProgram(filtered[highlightIndex]);
+    }
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -30,6 +74,11 @@ export default function SignupForm({ onSubmit }) {
 
     if (password !== confirmPassword) {
       setError('Passwords do not match');
+      return;
+    }
+
+    if (!major) {
+      setError('Please select your degree program');
       return;
     }
 
@@ -71,6 +120,7 @@ export default function SignupForm({ onSubmit }) {
           <Input id="name" placeholder="Jane Smith" value={name} onChange={(e) => setName(e.target.value)} required className="h-12 rounded-xl pl-10 bg-muted/30 border-border/40 focus:bg-white" />
         </div>
       </div>
+
       <div className="space-y-2">
         <label htmlFor="email" className="text-[13px] font-semibold text-foreground/70">Email</label>
         <div className="relative">
@@ -79,20 +129,63 @@ export default function SignupForm({ onSubmit }) {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
-        <div className="space-y-2">
-          <label htmlFor="studentId" className="text-[13px] font-semibold text-foreground/70">FAN ID</label>
-          <div className="relative">
-            <Hash className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/40" />
-            <Input id="studentId" placeholder="e.g. lee2086" value={studentId} onChange={(e) => setStudentId(e.target.value)} required className="h-12 rounded-xl pl-10 bg-muted/30 border-border/40 focus:bg-white" />
-          </div>
+      <div className="space-y-2">
+        <label htmlFor="studentId" className="text-[13px] font-semibold text-foreground/70">FAN ID</label>
+        <div className="relative">
+          <Hash className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/40" />
+          <Input id="studentId" placeholder="e.g. lee2086" value={studentId} onChange={(e) => setStudentId(e.target.value)} required className="h-12 rounded-xl pl-10 bg-muted/30 border-border/40 focus:bg-white" />
         </div>
-        <div className="space-y-2">
-          <label htmlFor="major" className="text-[13px] font-semibold text-foreground/70">Major</label>
-          <div className="relative">
-            <GraduationCap className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/40" />
-            <Input id="major" placeholder="e.g. Computer Science" value={major} onChange={(e) => setMajor(e.target.value)} required className="h-12 rounded-xl pl-10 bg-muted/30 border-border/40 focus:bg-white" />
-          </div>
+      </div>
+
+      <div className="space-y-2">
+        <label htmlFor="major" className="text-[13px] font-semibold text-foreground/70">Degree Program</label>
+        <div className="relative">
+          <GraduationCap className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/40 z-10" />
+          <Input
+            ref={majorInputRef}
+            id="major"
+            placeholder="Search your degree (e.g. Information Technology)"
+            value={majorQuery}
+            onChange={(e) => {
+              setMajorQuery(e.target.value);
+              setMajor('');
+              setShowSuggestions(true);
+              setHighlightIndex(-1);
+            }}
+            onFocus={() => { if (majorQuery.length > 0) setShowSuggestions(true); }}
+            onKeyDown={handleMajorKeyDown}
+            autoComplete="off"
+            required
+            className="h-12 rounded-xl pl-10 bg-muted/30 border-border/40 focus:bg-white"
+          />
+          {showSuggestions && filtered.length > 0 && (
+            <div
+              ref={suggestionsRef}
+              className="absolute left-0 right-0 top-full mt-1 z-50 max-h-52 overflow-y-auto rounded-xl bg-white border shadow-lg"
+            >
+              {filtered.map((program, i) => (
+                <button
+                  key={program}
+                  type="button"
+                  className={`w-full text-left px-4 py-2.5 text-sm transition-colors ${
+                    i === highlightIndex
+                      ? 'bg-indigo-50 text-indigo-700 font-medium'
+                      : 'hover:bg-slate-50 text-foreground'
+                  }`}
+                  onMouseEnter={() => setHighlightIndex(i)}
+                  onClick={() => selectProgram(program)}
+                >
+                  {program}
+                </button>
+              ))}
+            </div>
+          )}
+          {major && (
+            <div className="mt-1.5 flex items-center gap-1.5">
+              <span className="text-[11px] text-emerald-600 font-medium">Selected:</span>
+              <span className="text-[11px] font-semibold text-foreground">{major}</span>
+            </div>
+          )}
         </div>
       </div>
 
