@@ -1,5 +1,44 @@
 const { supabaseAdmin } = require('../services/supabase');
 
+function normalizeOptionalText(value) {
+  if (value === undefined) return undefined;
+  if (value === null) return null;
+
+  const normalized = String(value).trim();
+  return normalized || null;
+}
+
+function normalizeOptionalBoolean(value) {
+  if (value === undefined) return undefined;
+  if (typeof value === 'boolean') return value;
+  if (value === 'true') return true;
+  if (value === 'false') return false;
+  return null;
+}
+
+function validateEventPayload({ startTime, endTime, enableLocationSharing, locationName }) {
+  const start = new Date(startTime);
+  const end = new Date(endTime);
+
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
+    return 'Valid start and end times are required';
+  }
+
+  if (end <= start) {
+    return 'End time must be after start time';
+  }
+
+  if (enableLocationSharing === null) {
+    return 'enable_location_sharing must be true or false';
+  }
+
+  if (enableLocationSharing && !locationName) {
+    return 'Location name is required when location sharing is enabled';
+  }
+
+  return null;
+}
+
 /**
  * POST /rooms/:roomId/events
  * Create a new event in a room.
@@ -18,31 +57,34 @@ async function createEvent(req, res, next) {
       enable_location_sharing,
     } = req.body;
 
-    // Validate time range
-    if (new Date(end_time) <= new Date(start_time)) {
-      return res.status(400).json({
-        error: 'End time must be after start time',
-      });
-    }
+    const normalizedLocationName = normalizeOptionalText(location_name);
+    const normalizedDescription = normalizeOptionalText(description);
+    const normalizedCategory = normalizeOptionalText(category);
+    const normalizedLocationSharing = normalizeOptionalBoolean(enable_location_sharing);
+    const validationError = validateEventPayload({
+      startTime: start_time,
+      endTime: end_time,
+      enableLocationSharing: normalizedLocationSharing === undefined ? false : normalizedLocationSharing,
+      locationName: normalizedLocationName,
+    });
 
-    // Location sharing requires a location name
-    if (enable_location_sharing && !location_name) {
-      return res.status(400).json({
-        error: 'Location name is required when location sharing is enabled',
-      });
+    if (validationError) {
+      return res.status(400).json({ error: validationError });
     }
 
     const insertObj = {
       room_id: roomId,
       title,
-      description: description || null,
-      location_name: location_name || null,
+      description: normalizedDescription || null,
+      location_name: normalizedLocationName || null,
       start_time,
       end_time,
       created_by: userId,
-      enable_location_sharing: enable_location_sharing || false,
+      enable_location_sharing: normalizedLocationSharing === undefined
+        ? false
+        : normalizedLocationSharing,
     };
-    if (category) insertObj.category = category;
+    if (normalizedCategory) insertObj.category = normalizedCategory;
 
     let { data, error } = await supabaseAdmin
       .from('events')
@@ -60,7 +102,7 @@ async function createEvent(req, res, next) {
         .single();
       data = retry.data;
       error = retry.error;
-      if (data) data.category = category || 'other';
+      if (data) data.category = normalizedCategory || 'other';
     }
 
     if (error) {
@@ -146,32 +188,32 @@ async function updateEvent(req, res, next) {
     }
 
     // Build update object from allowed fields
-    const allowedFields = [
-      'title',
-      'description',
-      'category',
-      'location_name',
-      'start_time',
-      'end_time',
-      'enable_location_sharing',
-    ];
     const updates = {};
-    for (const field of allowedFields) {
-      if (req.body[field] !== undefined) {
-        updates[field] = req.body[field];
-      }
+    const normalizedBoolean = normalizeOptionalBoolean(req.body.enable_location_sharing);
+    if (req.body.title !== undefined) updates.title = req.body.title;
+    if (req.body.description !== undefined) {
+      updates.description = normalizeOptionalText(req.body.description);
+    }
+    if (req.body.category !== undefined) {
+      updates.category = normalizeOptionalText(req.body.category);
+    }
+    if (req.body.location_name !== undefined) {
+      updates.location_name = normalizeOptionalText(req.body.location_name);
+    }
+    if (req.body.start_time !== undefined) updates.start_time = req.body.start_time;
+    if (req.body.end_time !== undefined) updates.end_time = req.body.end_time;
+    if (req.body.enable_location_sharing !== undefined) {
+      updates.enable_location_sharing = normalizedBoolean;
     }
 
-    // Validate time range: use provided values or fall back to existing
-    const effectiveStart = updates.start_time || existing.start_time;
-    const effectiveEnd = updates.end_time || existing.end_time;
-    if (new Date(effectiveEnd) <= new Date(effectiveStart)) {
+    if (Object.keys(updates).length === 0) {
       return res.status(400).json({
-        error: 'End time must be after start time',
+        error: 'No valid event fields were provided for update',
       });
     }
 
-    // If enabling location sharing, ensure location name exists
+    const effectiveStart = updates.start_time || existing.start_time;
+    const effectiveEnd = updates.end_time || existing.end_time;
     const effectiveLocationSharing =
       updates.enable_location_sharing !== undefined
         ? updates.enable_location_sharing
@@ -180,10 +222,15 @@ async function updateEvent(req, res, next) {
       updates.location_name !== undefined
         ? updates.location_name
         : existing.location_name;
-    if (effectiveLocationSharing && !effectiveLocationName) {
-      return res.status(400).json({
-        error: 'Location name is required when location sharing is enabled',
-      });
+    const validationError = validateEventPayload({
+      startTime: effectiveStart,
+      endTime: effectiveEnd,
+      enableLocationSharing: effectiveLocationSharing,
+      locationName: effectiveLocationName,
+    });
+
+    if (validationError) {
+      return res.status(400).json({ error: validationError });
     }
 
     let { data, error } = await supabaseAdmin

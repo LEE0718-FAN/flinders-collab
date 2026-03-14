@@ -27,10 +27,12 @@ const config = {
       'text/plain',
     ],
     storageBucket: 'room-files',
+    backupBucket: 'room-files-backup',
   },
   location: {
     // Sessions older than this (in minutes) are considered stale
     staleSessionMinutes: 30,
+    defaultStatus: 'on_the_way',
   },
 };
 
