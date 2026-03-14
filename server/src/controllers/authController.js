@@ -147,9 +147,82 @@ async function getMe(req, res, next) {
   }
 }
 
+/**
+ * PATCH /auth/me
+ * Update the current user's profile (name and/or avatar).
+ */
+async function updateProfile(req, res, next) {
+  try {
+    const userId = req.user.id;
+    const { full_name } = req.body;
+    const updates = {};
+
+    // Update name if provided
+    if (full_name && full_name.trim()) {
+      updates.full_name = full_name.trim();
+
+      // Also update Supabase auth metadata
+      await supabaseAdmin.auth.admin.updateUserById(userId, {
+        user_metadata: {
+          ...req.user.user_metadata,
+          full_name: updates.full_name,
+        },
+      });
+    }
+
+    // Handle avatar upload
+    if (req.file) {
+      const fileExt = req.file.originalname.split('.').pop();
+      const filePath = `${userId}/avatar.${fileExt}`;
+
+      // Upload to avatars bucket
+      const { error: uploadError } = await supabaseAdmin.storage
+        .from('avatars')
+        .upload(filePath, req.file.buffer, {
+          contentType: req.file.mimetype,
+          upsert: true,
+        });
+
+      if (uploadError) {
+        console.error('Avatar upload error:', uploadError.message);
+        return res.status(500).json({ error: 'Failed to upload avatar' });
+      }
+
+      // Get public URL
+      const { data: urlData } = supabaseAdmin.storage
+        .from('avatars')
+        .getPublicUrl(filePath);
+
+      updates.avatar_url = urlData.publicUrl;
+    }
+
+    if (Object.keys(updates).length === 0) {
+      return res.status(400).json({ error: 'No updates provided' });
+    }
+
+    // Update users table
+    const { data, error } = await supabaseAdmin
+      .from('users')
+      .update(updates)
+      .eq('id', userId)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Profile update error:', error.message);
+      return res.status(500).json({ error: 'Failed to update profile' });
+    }
+
+    res.json(data);
+  } catch (err) {
+    next(err);
+  }
+}
+
 module.exports = {
   signup,
   login,
   logout,
   getMe,
+  updateProfile,
 };

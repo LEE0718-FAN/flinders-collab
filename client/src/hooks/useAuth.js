@@ -1,6 +1,6 @@
 import { useEffect, useCallback } from 'react';
 import { useAuthStore } from '@/store/authStore';
-import { apiSignup, apiLogin, apiLogout } from '@/services/auth';
+import { apiSignup, apiLogin, apiLogout, apiUpdateProfile } from '@/services/auth';
 import { saveSession, loadSession, clearSession } from '@/lib/auth-token';
 
 export function useAuth() {
@@ -82,6 +82,30 @@ export function useAuth() {
     return sessionData;
   }, [setSession, setUser]);
 
+  const updateUser = useCallback(async (formData) => {
+    const updated = await apiUpdateProfile(formData);
+
+    // Update local session with new data
+    const currentSession = loadSession();
+    if (currentSession) {
+      const newUser = {
+        ...currentSession.user,
+        user_metadata: {
+          ...currentSession.user.user_metadata,
+          name: updated.full_name || currentSession.user.user_metadata?.name,
+          full_name: updated.full_name || currentSession.user.user_metadata?.full_name,
+          avatar_url: updated.avatar_url || currentSession.user.user_metadata?.avatar_url,
+        },
+      };
+      const newSession = { ...currentSession, user: newUser };
+      saveSession(newSession);
+      setSession(newSession);
+      setUser(newUser);
+    }
+
+    return updated;
+  }, [setSession, setUser]);
+
   const logout = useCallback(async () => {
     try {
       await apiLogout();
@@ -93,5 +117,5 @@ export function useAuth() {
     }
   }, [clearAuth]);
 
-  return { user, session, isLoading, login, signup, logout };
+  return { user, session, isLoading, login, signup, logout, updateUser };
 }

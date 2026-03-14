@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { LayoutDashboard, LogOut, Menu, Users, ChevronRight, Shield } from 'lucide-react';
+import { LayoutDashboard, LogOut, Menu, Users, ChevronRight, Shield, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import {
@@ -11,6 +11,7 @@ import {
   AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { useAuth } from '@/hooks/useAuth';
+import ProfileDialog from '@/components/ProfileDialog';
 import { getRooms } from '@/services/rooms';
 import { applyRoomOrder, loadRoomOrder } from '@/lib/room-order';
 
@@ -149,6 +150,7 @@ export default function MainLayout({ children }) {
   const [rooms, setRooms] = useState([]);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [logoutOpen, setLogoutOpen] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
 
   useEffect(() => {
     getRooms()
@@ -228,6 +230,9 @@ export default function MainLayout({ children }) {
         <div className="px-3 py-3">
           <div className="flex items-center gap-3 bg-white/5 border border-white/5 rounded-xl px-3 py-3">
             <Avatar className="h-8 w-8 ring-2 ring-indigo-500/50 shadow-lg shadow-indigo-500/20">
+              {user?.user_metadata?.avatar_url && (
+                <AvatarImage src={user.user_metadata.avatar_url} alt="Profile" className="object-cover" />
+              )}
               <AvatarFallback className="bg-gradient-to-br from-blue-500 to-indigo-600 text-[11px] font-bold text-white">
                 {initials}
               </AvatarFallback>
@@ -276,6 +281,9 @@ export default function MainLayout({ children }) {
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className="gap-2.5 rounded-full px-2 pr-3 hover:bg-muted" aria-label="User menu">
                 <Avatar className="h-8 w-8 ring-2 ring-white shadow-sm">
+                  {user?.user_metadata?.avatar_url && (
+                    <AvatarImage src={user.user_metadata.avatar_url} alt="Profile" className="object-cover" />
+                  )}
                   <AvatarFallback className="bg-gradient-to-br from-blue-500 to-indigo-600 text-[10px] font-bold text-white">
                     {initials}
                   </AvatarFallback>
@@ -288,6 +296,11 @@ export default function MainLayout({ children }) {
                 <p className="text-sm font-medium">{user?.user_metadata?.name || 'Student'}</p>
                 <p className="text-xs text-muted-foreground">{user?.email}</p>
               </div>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={() => setProfileOpen(true)}>
+                <User className="mr-2 h-4 w-4" />
+                Profile
+              </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={() => setLogoutOpen(true)} className="text-destructive focus:text-destructive">
                 <LogOut className="mr-2 h-4 w-4" />
@@ -310,6 +323,8 @@ export default function MainLayout({ children }) {
           </div>
         </main>
       </div>
+
+      <ProfileDialog open={profileOpen} onOpenChange={setProfileOpen} />
 
       {/* Logout confirmation */}
       <AlertDialog open={logoutOpen} onOpenChange={setLogoutOpen}>

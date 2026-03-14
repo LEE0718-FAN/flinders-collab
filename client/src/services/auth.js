@@ -26,3 +26,13 @@ export async function apiLogout() {
   });
   return parseResponse(res);
 }
+
+export async function apiUpdateProfile(formData) {
+  const headers = getAuthHeaders(false); // Don't set Content-Type for FormData
+  const res = await fetch(apiUrl('/api/auth/me'), {
+    method: 'PATCH',
+    headers,
+    body: formData,
+  });
+  return parseResponse(res);
+}
