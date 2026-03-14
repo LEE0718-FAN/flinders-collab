@@ -3,7 +3,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Loader2 } from 'lucide-react';
+import { Loader2, MapPin } from 'lucide-react';
 import { createEvent } from '@/services/events';
 import { format } from 'date-fns';
 
@@ -24,6 +24,7 @@ export default function EventForm({ roomId, onCreateStart, onCreated, onCreateEr
   const [startTime, setStartTime] = useState('09:00');
   const [endTime, setEndTime] = useState('10:00');
   const [locationName, setLocationName] = useState('');
+  const [enableLocationSharing, setEnableLocationSharing] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -35,6 +36,7 @@ export default function EventForm({ roomId, onCreateStart, onCreated, onCreateEr
       setStartTime('09:00');
       setEndTime('10:00');
       setLocationName('');
+      setEnableLocationSharing(false);
       setError('');
     }
   }, [open]);
@@ -63,6 +65,11 @@ export default function EventForm({ roomId, onCreateStart, onCreated, onCreateEr
       return;
     }
 
+    if (enableLocationSharing && !locationName.trim()) {
+      setError('Location name is required when location sharing is enabled.');
+      return;
+    }
+
     setLoading(true);
     const tempEventId = `temp-event-${Date.now()}`;
     const payload = {
@@ -72,6 +79,7 @@ export default function EventForm({ roomId, onCreateStart, onCreated, onCreateEr
       start_time: start,
       end_time: end,
       location_name: locationName.trim() || undefined,
+      enable_location_sharing: enableLocationSharing,
     };
     try {
       onCreateStart?.({
@@ -152,6 +160,22 @@ export default function EventForm({ roomId, onCreateStart, onCreated, onCreateEr
             <label className="text-sm font-semibold text-slate-700">Location <span className="text-slate-400 font-normal">(optional)</span></label>
             <Input className="rounded-xl border-slate-200" placeholder="e.g. Flinders Library Room 3" value={locationName} onChange={(e) => setLocationName(e.target.value)} />
           </div>
+
+          {/* Location Sharing Toggle */}
+          {locationName.trim() && (
+            <button
+              type="button"
+              onClick={() => setEnableLocationSharing((v) => !v)}
+              className={`flex items-center gap-2.5 w-full rounded-xl border-2 px-4 py-3 text-sm transition-all duration-200 ${
+                enableLocationSharing
+                  ? 'border-blue-500 bg-gradient-to-r from-blue-50 to-indigo-50 text-blue-700 font-semibold shadow-md shadow-blue-500/10'
+                  : 'border-slate-200 hover:border-blue-300 hover:bg-blue-50/50 text-slate-500'
+              }`}
+            >
+              <MapPin className={`h-4 w-4 ${enableLocationSharing ? 'text-blue-600' : 'text-slate-400'}`} />
+              Enable live location sharing for this event
+            </button>
+          )}
 
           {/* Description */}
           <div className="space-y-2">

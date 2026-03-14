@@ -91,9 +91,38 @@ export async function getCurrentPosition(options = {}) {
 
 /**
  * Watch position continuously. Returns a watchId that can be passed to clearLocationWatch().
+ * On Capacitor native, uses the Geolocation plugin callback if available.
  */
 export function watchPosition(onUpdate, onError, options = {}) {
   const opts = { enableHighAccuracy: true, timeout: 30000, maximumAge: 5000, ...options };
+
+  const geo = getCapPlugin('Geolocation');
+  if (geo && typeof geo.watchPosition === 'function') {
+    // Capacitor watchPosition returns a callback ID string
+    let callbackId = null;
+    geo
+      .watchPosition(opts, (pos, err) => {
+        if (err) {
+          onError?.(new Error(err.message || 'Location watch failed.'));
+          return;
+        }
+        if (pos) {
+          onUpdate({
+            latitude: pos.coords.latitude,
+            longitude: pos.coords.longitude,
+            accuracy: pos.coords.accuracy,
+          });
+        }
+      })
+      .then((id) => {
+        callbackId = id;
+      })
+      .catch(() => {
+        // plugin error — fall through handled by web below
+      });
+    // Return a wrapper object so clearLocationWatch can handle both types
+    return { _capacitor: true, _geoPlugin: geo, get id() { return callbackId; } };
+  }
 
   if (!navigator.geolocation) {
     onError?.(new Error('Geolocation is not supported by this browser.'));
@@ -123,9 +152,19 @@ export function watchPosition(onUpdate, onError, options = {}) {
 
 /**
  * Clear a location watch by its id.
+ * Accepts either a numeric web watchId or a Capacitor wrapper object.
  */
 export function clearLocationWatch(watchId) {
-  if (watchId != null && navigator.geolocation) {
+  if (watchId == null) return;
+  if (typeof watchId === 'object' && watchId._capacitor) {
+    // Capacitor plugin clearWatch
+    const plugin = watchId._geoPlugin;
+    if (plugin && watchId.id != null) {
+      plugin.clearWatch({ id: watchId.id }).catch(() => {});
+    }
+    return;
+  }
+  if (navigator.geolocation) {
     navigator.geolocation.clearWatch(watchId);
   }
 }

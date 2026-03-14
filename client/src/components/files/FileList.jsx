@@ -115,25 +115,31 @@ function FileRow({ file, canEdit, onDelete, onEdit, onDownload, deleting, downlo
   );
 }
 
-export default function FileList({ files = [], roomId, onFilesChange, filterCategory }) {
+export default function FileList({ files = [], roomId, onFilesChange, filterCategory, members = [] }) {
   const { user } = useAuth();
+
+  // Determine if current user is admin/owner for delete/edit affordance
+  const currentMember = members.find((m) => String(m.user_id) === String(user?.id));
+  const isAdmin = currentMember?.role === 'owner' || currentMember?.role === 'admin';
   const [deletingId, setDeletingId] = useState(null);
   const [downloadingId, setDownloadingId] = useState(null);
   const [confirmDelete, setConfirmDelete] = useState(null);
   const [editFile, setEditFile] = useState(null);
   const [editDesc, setEditDesc] = useState('');
   const [editLoading, setEditLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState('');
 
   const handleDelete = async () => {
     if (!confirmDelete) return;
     const fileId = confirmDelete.id;
     setConfirmDelete(null);
     setDeletingId(fileId);
+    setErrorMsg('');
     try {
       await deleteFile(roomId, fileId);
       onFilesChange?.((prev) => prev.filter((file) => file.id !== fileId));
-    } catch {
-      // fail silently
+    } catch (err) {
+      setErrorMsg(err.message || 'Failed to delete file.');
     } finally {
       setDeletingId(null);
     }
@@ -147,6 +153,7 @@ export default function FileList({ files = [], roomId, onFilesChange, filterCate
   const handleEditSave = async () => {
     if (!editFile) return;
     setEditLoading(true);
+    setErrorMsg('');
     try {
       const updatedFile = await updateFile(editFile.id, { file_description: editDesc.trim() });
       onFilesChange?.((prev) =>
@@ -157,8 +164,8 @@ export default function FileList({ files = [], roomId, onFilesChange, filterCate
         ))
       );
       setEditFile(null);
-    } catch {
-      // fail silently
+    } catch (err) {
+      setErrorMsg(err.message || 'Failed to update file.');
     } finally {
       setEditLoading(false);
     }
@@ -166,13 +173,22 @@ export default function FileList({ files = [], roomId, onFilesChange, filterCate
 
   const handleDownload = async (file) => {
     setDownloadingId(file.id);
+    setErrorMsg('');
     try {
-      const data = await getFileDownloadUrl(file.id);
-      if (data?.download_url) {
-        await forceDownload(data.download_url, file.file_name || file.name);
+      // Prefer pre-signed URL from list response; fall back to dedicated endpoint
+      const url = file.download_url;
+      if (url) {
+        await forceDownload(url, file.file_name || file.name);
+      } else {
+        const data = await getFileDownloadUrl(file.id);
+        if (data?.download_url) {
+          await forceDownload(data.download_url, file.file_name || file.name);
+        } else {
+          setErrorMsg('Download link unavailable. Please try again.');
+        }
       }
-    } catch {
-      // fail silently
+    } catch (err) {
+      setErrorMsg(err.message || 'Failed to download file.');
     } finally {
       setDownloadingId(null);
     }
@@ -196,6 +212,11 @@ export default function FileList({ files = [], roomId, onFilesChange, filterCate
 
   return (
     <>
+      {errorMsg && (
+        <div className="rounded-md border border-destructive/50 bg-destructive/10 p-2.5 text-xs text-destructive mb-3">
+          {errorMsg}
+        </div>
+      )}
       <div className="space-y-3">
         {filtered.map((file) => {
           const isUploader = String(file.uploaded_by) === String(user?.id);
@@ -203,7 +224,7 @@ export default function FileList({ files = [], roomId, onFilesChange, filterCate
             <FileRow
               key={file.id}
               file={file}
-              canEdit={isUploader}
+              canEdit={isUploader || isAdmin}
               onDownload={handleDownload}
               onDelete={(id, name) => setConfirmDelete({ id, name })}
               onEdit={handleEditOpen}

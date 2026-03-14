@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -12,9 +12,13 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from '@/components/ui/dialog';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
-import { MapPin, Clock, Trash2, Pencil, ChevronDown, ChevronUp, Loader2 } from 'lucide-react';
+import { MapPin, Clock, Trash2, Pencil, ChevronDown, ChevronUp, Loader2, Navigation } from 'lucide-react';
 import { format } from 'date-fns';
 import { deleteEvent, updateEvent } from '@/services/events';
+import { getLocationStatus } from '@/services/location';
+import { useAuth } from '@/hooks/useAuth';
+import LocationToggle from '@/components/location/LocationToggle';
+import LocationMap from '@/components/location/LocationMap';
 
 const categoryConfig = {
   meeting:      { label: 'Meeting',       icon: '👥', color: 'bg-blue-500',    badgeBg: 'bg-blue-50 text-blue-700 border-blue-200/60', borderColor: 'border-l-blue-500' },
@@ -27,12 +31,64 @@ const categoryConfig = {
 };
 
 export default function EventList({ events = [], roomId, onEventsChange }) {
+  const { user } = useAuth();
   const [expandedId, setExpandedId] = useState(null);
   const [deletingId, setDeletingId] = useState(null);
   const [confirmDelete, setConfirmDelete] = useState(null);
   const [editEvent, setEditEvent] = useState(null);
   const [editForm, setEditForm] = useState({});
   const [editLoading, setEditLoading] = useState(false);
+  const [activeMapEventId, setActiveMapEventId] = useState(null);
+  const [locationMembers, setLocationMembers] = useState({});
+  const [sharingEventIds, setSharingEventIds] = useState(new Set());
+
+  // Fetch location status for events that have location sharing enabled
+  const fetchLocationStatus = useCallback(async (eventId) => {
+    try {
+      const data = await getLocationStatus(eventId);
+      const members = Array.isArray(data) ? data : [];
+      setLocationMembers((prev) => ({ ...prev, [eventId]: members }));
+      // Check if current user is sharing
+      const userSession = members.find(
+        (m) => String(m.user_id) === String(user?.id) && m.status !== 'stopped'
+      );
+      setSharingEventIds((prev) => {
+        const next = new Set(prev);
+        if (userSession) next.add(eventId);
+        else next.delete(eventId);
+        return next;
+      });
+    } catch {
+      // non-critical
+    }
+  }, [user?.id]);
+
+  // Load location status for location-enabled events
+  useEffect(() => {
+    const locationEvents = events.filter((e) => e.enable_location_sharing);
+    locationEvents.forEach((e) => fetchLocationStatus(e.id));
+  }, [events, fetchLocationStatus]);
+
+  // Auto-refresh location data for the active map event
+  useEffect(() => {
+    if (!activeMapEventId) return;
+    const interval = setInterval(() => fetchLocationStatus(activeMapEventId), 15000);
+    return () => clearInterval(interval);
+  }, [activeMapEventId, fetchLocationStatus]);
+
+  const handleLocationToggle = useCallback(
+    (eventId, sharing) => {
+      setSharingEventIds((prev) => {
+        const next = new Set(prev);
+        if (sharing) next.add(eventId);
+        else next.delete(eventId);
+        return next;
+      });
+      // Refresh location data after toggle
+      setTimeout(() => fetchLocationStatus(eventId), 500);
+    },
+    [fetchLocationStatus],
+  );
 
   const sorted = [...events].sort((a, b) => new Date(a.start_time) - new Date(b.start_time));
 
@@ -62,6 +118,7 @@ export default function EventList({ events = [], roomId, onEventsChange }) {
       start_date: format(start, 'yyyy-MM-dd'),
       start_time: format(start, 'HH:mm'),
       end_time: end ? format(end, 'HH:mm') : '',
+      enable_location_sharing: event.enable_location_sharing || false,
     });
   };
 
@@ -75,6 +132,7 @@ export default function EventList({ events = [], roomId, onEventsChange }) {
         description: editForm.description.trim(),
         location_name: editForm.location_name.trim() || null,
         start_time: startDt.toISOString(),
+        enable_location_sharing: editForm.enable_location_sharing || false,
       };
       if (editForm.end_time) {
         updates.end_time = new Date(`${editForm.start_date}T${editForm.end_time}`).toISOString();
@@ -180,6 +238,33 @@ export default function EventList({ events = [], roomId, onEventsChange }) {
                                 )}
                               </>
                             )}
+                            {/* Location sharing controls */}
+                            {event.enable_location_sharing && (
+                              <div className="mt-3 space-y-2">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <LocationToggle
+                                    roomId={roomId}
+                                    eventId={event.id}
+                                    isSharing={sharingEventIds.has(event.id)}
+                                    onToggle={(sharing) => handleLocationToggle(event.id, sharing)}
+                                  />
+                                  {(locationMembers[event.id]?.length || 0) > 0 && (
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      className="text-xs"
+                                      onClick={() => setActiveMapEventId(activeMapEventId === event.id ? null : event.id)}
+                                    >
+                                      <Navigation className="mr-1.5 h-3 w-3" />
+                                      {activeMapEventId === event.id ? 'Hide Map' : `Map (${locationMembers[event.id].length})`}
+                                    </Button>
+                                  )}
+                                </div>
+                                {activeMapEventId === event.id && (
+                                  <LocationMap members={locationMembers[event.id] || []} />
+                                )}
+                              </div>
+                            )}
                           </div>
 
                           <div className="flex items-center gap-0.5 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity duration-150">
@@ -250,6 +335,21 @@ export default function EventList({ events = [], roomId, onEventsChange }) {
               <label className="text-sm font-semibold text-slate-700">Description</label>
               <Textarea className="rounded-xl border-slate-200" value={editForm.description || ''} onChange={(e) => setEditForm({ ...editForm, description: e.target.value })} rows={3} disabled={editLoading} />
             </div>
+            {editForm.location_name?.trim() && (
+              <button
+                type="button"
+                onClick={() => setEditForm({ ...editForm, enable_location_sharing: !editForm.enable_location_sharing })}
+                disabled={editLoading}
+                className={`flex items-center gap-2.5 w-full rounded-xl border-2 px-4 py-3 text-sm transition-all duration-200 ${
+                  editForm.enable_location_sharing
+                    ? 'border-blue-500 bg-gradient-to-r from-blue-50 to-indigo-50 text-blue-700 font-semibold'
+                    : 'border-slate-200 hover:border-blue-300 hover:bg-blue-50/50 text-slate-500'
+                }`}
+              >
+                <MapPin className={`h-4 w-4 ${editForm.enable_location_sharing ? 'text-blue-600' : 'text-slate-400'}`} />
+                Enable live location sharing
+              </button>
+            )}
           </div>
           <DialogFooter>
             <Button variant="outline" className="rounded-xl" onClick={() => setEditEvent(null)} disabled={editLoading}>Cancel</Button>
