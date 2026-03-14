@@ -619,6 +619,37 @@ function MonitoringTab() {
               <span>{formatBytes(stats.memory?.heapUsed || 0)} used</span>
               <span>{formatBytes(stats.memory?.heapTotal || 0)} total</span>
             </div>
+
+            {/* Memory breakdown */}
+            <div className="mt-4 space-y-1.5">
+              {(() => {
+                const mem = stats.memory || {};
+                const rss = mem.rss || 0;
+                const items = [
+                  { label: 'Heap Used', value: mem.heapUsed || 0, color: 'bg-indigo-500' },
+                  { label: 'Heap Free', value: (mem.heapTotal || 0) - (mem.heapUsed || 0), color: 'bg-slate-300' },
+                  { label: 'External (C++)', value: mem.external || 0, color: 'bg-violet-500' },
+                  { label: 'Array Buffers', value: mem.arrayBuffers || 0, color: 'bg-cyan-500' },
+                ];
+                return items.map(({ label, value, color }) => {
+                  const pct = rss > 0 ? ((value / rss) * 100).toFixed(1) : 0;
+                  return (
+                    <div key={label} className="flex items-center gap-2 text-[11px]">
+                      <div className={`h-2 w-2 rounded-full ${color} shrink-0`} />
+                      <span className="text-slate-500 flex-1">{label}</span>
+                      <span className="text-slate-600 font-medium w-16 text-right">{formatBytes(value)}</span>
+                      <span className="text-slate-400 w-10 text-right">{pct}%</span>
+                    </div>
+                  );
+                });
+              })()}
+              <div className="flex items-center gap-2 text-[11px] border-t border-slate-100 pt-1.5 mt-1.5">
+                <div className="h-2 w-2 rounded-full bg-slate-700 shrink-0" />
+                <span className="text-slate-600 font-semibold flex-1">RSS (Total)</span>
+                <span className="text-slate-700 font-bold w-16 text-right">{formatBytes(stats.memory?.rss || 0)}</span>
+                <span className="text-slate-500 font-medium w-10 text-right">100%</span>
+              </div>
+            </div>
           </CardContent>
         </Card>
 

@@ -249,6 +249,7 @@ class ServerMonitor {
         heapTotal: mem.heapTotal,
         heapUsed: mem.heapUsed,
         external: mem.external,
+        arrayBuffers: mem.arrayBuffers || 0,
         heapUsedPercent: ((mem.heapUsed / mem.heapTotal) * 100).toFixed(1),
       },
       totalRequests: this.totalRequests,
