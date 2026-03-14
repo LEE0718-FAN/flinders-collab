@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { UserPlus, Loader2, CheckCircle2 } from 'lucide-react';
+import { UserPlus, Loader2, CheckCircle2, AlertCircle } from 'lucide-react';
 import { joinRoom } from '@/services/rooms';
 
 export default function JoinRoomDialog({ onJoined }) {
@@ -11,6 +11,18 @@ export default function JoinRoomDialog({ onJoined }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+
+  const getJoinErrorMessage = (err) => {
+    if (err?.status === 404) {
+      return 'This invite code is invalid or has expired. Check the code and try again.';
+    }
+
+    if (err?.status === 409) {
+      return 'You already joined this room with this invite code.';
+    }
+
+    return err?.message || 'Failed to join room. Please try again.';
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -34,7 +46,10 @@ export default function JoinRoomDialog({ onJoined }) {
         setSuccess('');
       }, 1200);
     } catch (err) {
-      setError(err.message || 'Failed to join room. Please try again.');
+      if (err?.status === 409 && err?.room) {
+        onJoined?.(err.room);
+      }
+      setError(getJoinErrorMessage(err));
     } finally {
       setLoading(false);
     }
@@ -57,31 +72,40 @@ export default function JoinRoomDialog({ onJoined }) {
           Join Room
         </Button>
       </DialogTrigger>
-      <DialogContent>
+      <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Join a Room</DialogTitle>
-          <DialogDescription>Enter the invite code shared by your team.</DialogDescription>
+          <DialogDescription>Enter the invite code shared by your team. You only need the code, not a room ID.</DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
             <label htmlFor="invite-code-input" className="text-sm font-medium">Invite Code</label>
             <Input
               id="invite-code-input"
-              placeholder="e.g. A1B2C3D4"
+              placeholder="e.g. Q7K9LM"
               value={inviteCode}
               onChange={(e) => {
                 setInviteCode(e.target.value);
                 if (error) setError('');
               }}
+              className="h-11 text-center text-base font-semibold uppercase tracking-[0.28em]"
+              inputMode="text"
+              maxLength={6}
               autoComplete="off"
               required
             />
+            <p className="text-xs text-muted-foreground">
+              Invite codes are usually 6 letters and numbers. We ignore lowercase and extra spaces.
+            </p>
           </div>
           {error && (
-            <p className="text-sm text-destructive" role="alert">{error}</p>
+            <p className="flex items-start gap-2 rounded-lg border border-destructive/25 bg-destructive/5 px-3 py-2 text-sm text-destructive" role="alert">
+              <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+              <span>{error}</span>
+            </p>
           )}
           {success && (
-            <p className="flex items-center gap-1 text-sm text-green-600" role="status">
+            <p className="flex items-center gap-1 rounded-lg border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-700" role="status">
               <CheckCircle2 className="h-4 w-4" />
               {success}
             </p>
