@@ -13,16 +13,18 @@ import EventList from '@/components/schedule/EventList';
 import ChatPanel from '@/components/chat/ChatPanel';
 import FileList from '@/components/files/FileList';
 import FileUpload from '@/components/files/FileUpload';
-import { getRoom, getMembers } from '@/services/rooms';
+import { getRoom, getMembers, getRoomActivity } from '@/services/rooms';
 import { getEvents } from '@/services/events';
 import { getFiles } from '@/services/files';
 import { getTasks } from '@/services/tasks';
 import { copyToClipboard } from '@/lib/native';
 import { useAuth } from '@/hooks/useAuth';
-import { Loader2, Copy, Check, Plus } from 'lucide-react';
+import { Loader2, Copy, Check, Plus, MessageSquare, FileUp, CalendarPlus, CheckSquare, Activity } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import ReportButton from '@/components/ReportButton';
 import EditRoomDialog from '@/components/room/EditRoomDialog';
+import QuickLinks from '@/components/room/QuickLinks';
+import { formatDistanceToNow } from 'date-fns';
 
 function sortEvents(items) {
   return [...items].sort((a, b) => new Date(a.start_time) - new Date(b.start_time));
@@ -48,6 +50,8 @@ export default function RoomPage() {
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState(false);
   const [activeTab, setActiveTab] = useState('overview');
+  const [activities, setActivities] = useState([]);
+  const [quickLinks, setQuickLinks] = useState([]);
   const [error, setError] = useState('');
 
   const fetchRoom = useCallback(async () => {
@@ -95,17 +99,35 @@ export default function RoomPage() {
     }
   }, [roomId]);
 
+  const fetchActivity = useCallback(async () => {
+    try {
+      const data = await getRoomActivity(roomId);
+      setActivities(Array.isArray(data) ? data : []);
+    } catch {
+      // non-critical
+    }
+  }, [roomId]);
+
   useEffect(() => {
     const init = async () => {
       try {
-        await Promise.all([fetchRoom(), fetchMembers(), fetchEvents(), fetchFiles(), fetchTasks()]);
+        await Promise.all([fetchRoom(), fetchMembers(), fetchEvents(), fetchFiles(), fetchTasks(), fetchActivity()]);
       } catch {
         setError('Failed to load some data. Please refresh.');
       }
       setLoading(false);
     };
     init();
-  }, [fetchRoom, fetchMembers, fetchEvents, fetchFiles, fetchTasks]);
+  }, [fetchRoom, fetchMembers, fetchEvents, fetchFiles, fetchTasks, fetchActivity]);
+
+  useEffect(() => {
+    try {
+      const saved = JSON.parse(localStorage.getItem(`quick-links:${roomId}`) || '[]');
+      setQuickLinks(saved);
+    } catch {
+      // ignore
+    }
+  }, [roomId]);
 
   const handleCopyInviteCode = async () => {
     if (room?.invite_code) {
@@ -216,6 +238,55 @@ export default function RoomPage() {
               </CardHeader>
               <CardContent>
                 <MemberList members={members} />
+              </CardContent>
+            </Card>
+
+            {/* Quick Links */}
+            <Card>
+              <CardContent className="p-5">
+                <QuickLinks roomId={roomId} links={quickLinks} onLinksChange={setQuickLinks} />
+              </CardContent>
+            </Card>
+
+            {/* Recent Activity */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <Activity className="h-5 w-5 text-indigo-500" />
+                  Recent Activity
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {activities.length === 0 ? (
+                  <p className="text-sm text-muted-foreground text-center py-4">No activity yet</p>
+                ) : (
+                  <div className="space-y-3">
+                    {activities.slice(0, 10).map((activity) => {
+                      const iconMap = {
+                        message: <MessageSquare className="h-4 w-4 text-blue-500" />,
+                        file: <FileUp className="h-4 w-4 text-emerald-500" />,
+                        event: <CalendarPlus className="h-4 w-4 text-orange-500" />,
+                        task: <CheckSquare className="h-4 w-4 text-violet-500" />,
+                      };
+                      return (
+                        <div key={activity.id} className="flex items-start gap-3">
+                          <div className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-muted/60">
+                            {iconMap[activity.type] || <Activity className="h-4 w-4" />}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm">
+                              <span className="font-semibold">{activity.user_name}</span>{' '}
+                              <span className="text-muted-foreground">{activity.description}</span>
+                            </p>
+                            <p className="text-xs text-muted-foreground/60 mt-0.5">
+                              {activity.created_at ? formatDistanceToNow(new Date(activity.created_at), { addSuffix: true }) : ''}
+                            </p>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>

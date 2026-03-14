@@ -4,9 +4,12 @@ import RoomCard from '@/components/room/RoomCard';
 import CreateRoomDialog from '@/components/room/CreateRoomDialog';
 import JoinRoomDialog from '@/components/room/JoinRoomDialog';
 import { getRooms } from '@/services/rooms';
+import { getEvents } from '@/services/events';
 import { useAuth } from '@/hooks/useAuth';
 import { applyRoomOrder, buildOrderedIds, loadRoomOrder, persistRoomOrder } from '@/lib/room-order';
-import { Loader2, Plus, UserPlus, LayoutGrid } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { format, formatDistanceToNow } from 'date-fns';
+import { Loader2, Plus, UserPlus, LayoutGrid, Clock, CalendarDays } from 'lucide-react';
 
 const TEMP_ROOM_PREFIX = 'temp-room-';
 
@@ -46,7 +49,9 @@ export default function DashboardPage() {
   const swapCooldownMs = 260;
   const sidebarSyncDelayMs = 220;
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [rooms, setRooms] = useState([]);
+  const [upcomingEvents, setUpcomingEvents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [draggedRoomId, setDraggedRoomId] = useState(null);
@@ -80,6 +85,36 @@ export default function DashboardPage() {
       window.clearTimeout(swapTimerRef.current);
     }
   }, []);
+
+  useEffect(() => {
+    if (rooms.length === 0) return;
+
+    const fetchAllEvents = async () => {
+      try {
+        const allEvents = [];
+        const results = await Promise.allSettled(
+          rooms.filter(r => !String(r.id).startsWith(TEMP_ROOM_PREFIX)).map(async (room) => {
+            const data = await getEvents(room.id);
+            const events = Array.isArray(data) ? data : data.events || [];
+            return events.map(e => ({ ...e, room_name: room.name, room_id: room.id }));
+          })
+        );
+        results.forEach(r => { if (r.status === 'fulfilled') allEvents.push(...r.value); });
+
+        const now = new Date();
+        const future = allEvents
+          .filter(e => new Date(e.start_time) > now)
+          .sort((a, b) => new Date(a.start_time) - new Date(b.start_time))
+          .slice(0, 5);
+
+        setUpcomingEvents(future);
+      } catch {
+        // silently fail
+      }
+    };
+
+    fetchAllEvents();
+  }, [rooms]);
 
   useLayoutEffect(() => {
     const nextPositions = new Map();
@@ -256,6 +291,64 @@ export default function DashboardPage() {
         {error && (
           <div className="rounded-md border border-destructive/50 bg-destructive/10 p-3 text-sm text-destructive">
             {error}
+          </div>
+        )}
+
+        {/* Upcoming Deadlines */}
+        {upcomingEvents.length > 0 && (
+          <div className="space-y-3">
+            <div className="flex items-center gap-2">
+              <Clock className="h-5 w-5 text-orange-500" />
+              <h2 className="text-lg font-bold text-foreground">Upcoming Deadlines</h2>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {upcomingEvents.map((event) => {
+                const startDate = new Date(event.start_time);
+                const now = new Date();
+                const diffMs = startDate - now;
+                const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+
+                let urgencyColor = 'border-l-emerald-400 bg-emerald-50/50';
+                let badgeColor = 'bg-emerald-100 text-emerald-700';
+                let badgeText = `D-${diffDays}`;
+
+                if (diffDays <= 1) {
+                  urgencyColor = 'border-l-red-400 bg-red-50/50';
+                  badgeColor = 'bg-red-100 text-red-700';
+                  badgeText = diffDays <= 0 ? 'TODAY' : 'D-1';
+                } else if (diffDays <= 3) {
+                  urgencyColor = 'border-l-orange-400 bg-orange-50/50';
+                  badgeColor = 'bg-orange-100 text-orange-700';
+                } else if (diffDays <= 7) {
+                  urgencyColor = 'border-l-yellow-400 bg-yellow-50/50';
+                  badgeColor = 'bg-yellow-100 text-yellow-700';
+                }
+
+                return (
+                  <div
+                    key={event.id}
+                    className={`rounded-xl border border-border/50 border-l-4 p-4 shadow-sm hover:shadow-md transition-shadow cursor-pointer ${urgencyColor}`}
+                    onClick={() => navigate(`/rooms/${event.room_id}`)}
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold truncate">{event.title}</p>
+                        <p className="text-xs text-muted-foreground mt-0.5 truncate">{event.room_name}</p>
+                      </div>
+                      <span className={`shrink-0 text-xs font-bold px-2 py-0.5 rounded-full ${badgeColor}`}>
+                        {badgeText}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1.5 mt-2.5 text-xs text-muted-foreground">
+                      <CalendarDays className="h-3 w-3" />
+                      <span>{format(startDate, 'MMM d, h:mm a')}</span>
+                      <span className="text-muted-foreground/50">&middot;</span>
+                      <span>{formatDistanceToNow(startDate, { addSuffix: true })}</span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </div>
         )}
 

@@ -175,6 +175,15 @@ async function updateProfile(req, res, next) {
       const fileExt = req.file.originalname.split('.').pop();
       const filePath = `${userId}/avatar.${fileExt}`;
 
+      // Ensure avatars bucket exists
+      const { data: buckets } = await supabaseAdmin.storage.listBuckets();
+      if (!buckets?.find((b) => b.name === 'avatars')) {
+        await supabaseAdmin.storage.createBucket('avatars', {
+          public: true,
+          fileSizeLimit: 5 * 1024 * 1024,
+        });
+      }
+
       // Upload to avatars bucket
       const { error: uploadError } = await supabaseAdmin.storage
         .from('avatars')

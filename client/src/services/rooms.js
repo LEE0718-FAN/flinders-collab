@@ -47,3 +47,9 @@ export async function leaveRoom(roomId) {
   const res = await fetch(`/api/rooms/${roomId}/leave`, { method: 'POST', headers });
   return parseResponse(res);
 }
+
+export async function getRoomActivity(roomId) {
+  const headers = getAuthHeaders();
+  const res = await fetch(`/api/rooms/${roomId}/activity`, { headers });
+  return parseResponse(res);
+}

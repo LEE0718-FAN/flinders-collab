@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const roomController = require('../controllers/roomController');
+const activityController = require('../controllers/activityController');
 const { authenticate, requireRoomMember } = require('../middleware/auth');
 const { validate } = require('../middleware/validate');
 const {
@@ -62,6 +63,15 @@ router.post(
   roomIdParam,
   validate,
   roomController.leaveRoom
+);
+
+// GET /rooms/:roomId/activity - Get recent activity (requires membership)
+router.get(
+  '/:roomId/activity',
+  roomIdParam,
+  validate,
+  requireRoomMember,
+  activityController.getRoomActivity
 );
 
 // DELETE /rooms/:roomId - Delete a room (owner only)
