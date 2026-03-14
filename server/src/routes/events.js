@@ -6,6 +6,7 @@ const { validate } = require('../middleware/validate');
 const {
   createEventValidation,
   updateEventValidation,
+  eventsQueryValidation,
   roomIdParam,
   eventIdParam,
 } = require('../utils/validators');
@@ -27,6 +28,7 @@ router.post(
 router.get(
   '/rooms/:roomId/events',
   roomIdParam,
+  eventsQueryValidation,
   validate,
   requireRoomMember,
   eventController.getEvents

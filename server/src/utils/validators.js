@@ -84,6 +84,11 @@ const createEventValidation = [
     .optional()
     .trim()
     .isLength({ max: 1000 }),
+  body('category')
+    .optional()
+    .trim()
+    .isLength({ max: 50 })
+    .withMessage('Category must be under 50 characters'),
   body('location_name')
     .optional()
     .trim(),
@@ -101,7 +106,16 @@ const createEventValidation = [
     }),
   body('enable_location_sharing')
     .optional()
-    .isBoolean(),
+    .isBoolean()
+    .withMessage('enable_location_sharing must be true or false')
+    .toBoolean(),
+  body('location_name')
+    .custom((value, { req }) => {
+      if (req.body.enable_location_sharing === true && !String(value || '').trim()) {
+        throw new Error('Location name is required when location sharing is enabled');
+      }
+      return true;
+    }),
 ];
 
 const updateEventValidation = [
@@ -113,6 +127,11 @@ const updateEventValidation = [
     .optional()
     .trim()
     .isLength({ max: 1000 }),
+  body('category')
+    .optional()
+    .trim()
+    .isLength({ max: 50 })
+    .withMessage('Category must be under 50 characters'),
   body('location_name')
     .optional()
     .trim(),
@@ -132,7 +151,9 @@ const updateEventValidation = [
     }),
   body('enable_location_sharing')
     .optional()
-    .isBoolean(),
+    .isBoolean()
+    .withMessage('enable_location_sharing must be true or false')
+    .toBoolean(),
 ];
 
 // Message validators
@@ -152,9 +173,13 @@ const sendMessageValidation = [
 // Location validators
 const updateLocationValidation = [
   body('latitude')
+    .exists()
+    .withMessage('Latitude is required')
     .isFloat({ min: -90, max: 90 })
     .withMessage('Valid latitude is required'),
   body('longitude')
+    .exists()
+    .withMessage('Longitude is required')
     .isFloat({ min: -180, max: 180 })
     .withMessage('Valid longitude is required'),
   body('status')
@@ -225,6 +250,17 @@ const taskIdParam = [
   param('taskId').isUUID().withMessage('Invalid task ID'),
 ];
 
+const eventsQueryValidation = [
+  query('from')
+    .optional()
+    .isISO8601()
+    .withMessage('from must be a valid ISO 8601 date'),
+  query('to')
+    .optional()
+    .isISO8601()
+    .withMessage('to must be a valid ISO 8601 date'),
+];
+
 module.exports = {
   isUniversityEmail,
   ALLOWED_DOMAINS,
@@ -242,4 +278,5 @@ module.exports = {
   eventIdParam,
   fileIdParam,
   taskIdParam,
+  eventsQueryValidation,
 };

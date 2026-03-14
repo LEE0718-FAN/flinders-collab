@@ -1,28 +1,75 @@
 const { supabaseAdmin } = require('../services/supabase');
 const config = require('../config');
 const path = require('path');
-const { v4: uuidv4 } = require('uuid');
+const { v4: uuidv4, validate: isUuid } = require('uuid');
 
-const BACKUP_BUCKET = 'room-files-backup';
 const SIGNED_URL_TTL_SECONDS = 60 * 5;
+
+function escapeRegex(value) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
 
 function extractStoragePath(rawValue, bucket) {
   if (!rawValue) return null;
 
-  if (!/^https?:\/\//i.test(rawValue)) {
-    return rawValue;
+  const value = String(rawValue).trim();
+  if (!value) return null;
+
+  const candidates = [value];
+
+  if (/^https?:\/\//i.test(value)) {
+    try {
+      const url = new URL(value);
+      const pathParam = url.searchParams.get('path');
+
+      if (pathParam) {
+        candidates.unshift(pathParam);
+      }
+
+      candidates.push(url.pathname);
+    } catch {
+      return null;
+    }
   }
 
-  try {
-    const url = new URL(rawValue);
-    const bucketPattern = new RegExp(
-      `/(?:object/(?:public|sign)/)?${bucket}/(.+?)(?:\\?.*)?$`
+  const bucketPattern = new RegExp(
+    `(?:^|/)${escapeRegex(bucket)}/(.+)$`
+  );
+
+  for (const candidate of candidates) {
+    let decodedValue;
+
+    try {
+      decodedValue = decodeURIComponent(candidate);
+    } catch {
+      decodedValue = candidate;
+    }
+
+    decodedValue = decodedValue
+      .split('?')[0]
+      .split('#')[0]
+      .replace(/^\/+/, '');
+    const storageMatch = decodedValue.match(
+      new RegExp(
+        `(?:^|/)object/(?:public|sign|authenticated)/${escapeRegex(bucket)}/(.+)$`
+      )
     );
-    const match = url.pathname.match(bucketPattern);
-    return match ? decodeURIComponent(match[1]) : null;
-  } catch {
-    return null;
+
+    if (storageMatch) {
+      return storageMatch[1];
+    }
+
+    const bucketMatch = decodedValue.match(bucketPattern);
+    if (bucketMatch) {
+      return bucketMatch[1];
+    }
+
+    if (!/^https?:\/\//i.test(candidate)) {
+      return decodedValue;
+    }
   }
+
+  return null;
 }
 
 async function getMembershipRole(roomId, userId) {
@@ -34,6 +81,20 @@ async function getMembershipRole(roomId, userId) {
     .maybeSingle();
 
   return data?.role || null;
+}
+
+async function getEventContext(eventId) {
+  const { data, error } = await supabaseAdmin
+    .from('events')
+    .select('id, room_id')
+    .eq('id', eventId)
+    .maybeSingle();
+
+  if (error) {
+    throw error;
+  }
+
+  return data;
 }
 
 async function buildSignedDownloadUrl(storagePath) {
@@ -55,6 +116,16 @@ async function buildSignedDownloadUrl(storagePath) {
   }
 
   return data.signedUrl;
+}
+
+async function removeStorageObject(bucket, storagePath) {
+  const { error } = await supabaseAdmin.storage
+    .from(bucket)
+    .remove([storagePath]);
+
+  if (error) {
+    throw error;
+  }
 }
 
 /**
@@ -88,8 +159,26 @@ async function uploadFile(req, res, next) {
     }
 
     const bucket = config.upload.storageBucket;
+    const backupBucket = config.upload.backupBucket;
 
-    // Generate a unique storage path
+    if (req.body.event_id) {
+      if (!isUuid(req.body.event_id)) {
+        return res.status(400).json({ error: 'Invalid event ID' });
+      }
+
+      const event = await getEventContext(req.body.event_id);
+
+      if (!event) {
+        return res.status(400).json({ error: 'Event not found' });
+      }
+
+      if (event.room_id !== roomId) {
+        return res.status(400).json({
+          error: 'File event_id must belong to the same room',
+        });
+      }
+    }
+
     const ext = path.extname(file.originalname);
     const fileUuid = uuidv4();
     const storagePath = `rooms/${roomId}/${fileUuid}${ext}`;
@@ -110,7 +199,7 @@ async function uploadFile(req, res, next) {
     // Upload backup copy as part of the write path so every stored file
     // has a deterministic recovery target in the backup bucket.
     const { error: backupError } = await supabaseAdmin.storage
-      .from(BACKUP_BUCKET)
+      .from(backupBucket)
       .upload(backupPath, file.buffer, {
         contentType: file.mimetype,
         upsert: false,
@@ -145,6 +234,7 @@ async function uploadFile(req, res, next) {
 
     if (dbError) {
       await supabaseAdmin.storage.from(bucket).remove([storagePath]).catch(() => {});
+      await supabaseAdmin.storage.from(backupBucket).remove([backupPath]).catch(() => {});
       return res.status(400).json({ error: dbError.message });
     }
 
@@ -245,14 +335,13 @@ async function deleteFile(req, res, next) {
     const { fileId } = req.params;
     const userId = req.user.id;
 
-    // Fetch file metadata
     const { data: file, error: fetchError } = await supabaseAdmin
       .from('files')
       .select('*')
       .eq('id', fileId)
-      .single();
+      .maybeSingle();
 
-    if (fetchError || !file) {
+    if (fetchError || !file || file.deleted_at) {
       return res.status(404).json({ error: 'File not found' });
     }
 
@@ -273,23 +362,36 @@ async function deleteFile(req, res, next) {
       });
     }
 
-    // Soft-delete: mark as deleted in DB, remove from main bucket only.
-    // Backup bucket retains the file for recovery.
+    const bucket = config.upload.storageBucket;
+    const storagePath = extractStoragePath(file.file_url, bucket);
+
+    if (!storagePath) {
+      return res.status(500).json({
+        error: 'Stored file path is invalid and could not be deleted',
+      });
+    }
+
+    const deletedAt = new Date().toISOString();
     const { error: updateError } = await supabaseAdmin
       .from('files')
-      .update({ deleted_at: new Date().toISOString() })
+      .update({ deleted_at: deletedAt })
       .eq('id', fileId);
 
     if (updateError) {
       return res.status(400).json({ error: updateError.message });
     }
 
-    // Remove from main bucket (backup stays)
-    const bucket = config.upload.storageBucket;
-    const storagePath = extractStoragePath(file.file_url, bucket);
+    try {
+      await removeStorageObject(bucket, storagePath);
+    } catch (storageError) {
+      await supabaseAdmin
+        .from('files')
+        .update({ deleted_at: null })
+        .eq('id', fileId);
 
-    if (storagePath) {
-      await supabaseAdmin.storage.from(bucket).remove([storagePath]);
+      return res.status(500).json({
+        error: 'Failed to remove file from storage',
+      });
     }
 
     res.json({ message: 'File deleted successfully' });
@@ -311,9 +413,9 @@ async function updateFile(req, res, next) {
       .from('files')
       .select('*')
       .eq('id', fileId)
-      .single();
+      .maybeSingle();
 
-    if (!file) return res.status(404).json({ error: 'File not found' });
+    if (!file || file.deleted_at) return res.status(404).json({ error: 'File not found' });
 
     const role = await getMembershipRole(file.room_id, userId);
     if (!role) return res.status(403).json({ error: 'Not a room member' });
