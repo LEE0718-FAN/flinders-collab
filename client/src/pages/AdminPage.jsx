@@ -17,10 +17,13 @@ import {
   AlertDialogContent, AlertDialogDescription, AlertDialogFooter,
   AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { getReports, updateReport, getAdminUsers, toggleUserAdmin, deleteAdminUser } from '@/services/reports';
+import { getReports, updateReport, getAdminUsers, toggleUserAdmin, deleteAdminUser, getMonitorStats, resolveAlert, triggerHealthCheck } from '@/services/reports';
 import { useAuth } from '@/hooks/useAuth';
-import { Loader2, ChevronDown, Shield, ShieldOff, AlertCircle, User, ShieldAlert, Search, Trash2, Mail, GraduationCap, Calendar } from 'lucide-react';
-import { format } from 'date-fns';
+import {
+  Loader2, ChevronDown, Shield, ShieldOff, AlertCircle, User, ShieldAlert, Search, Trash2, Mail, GraduationCap, Calendar,
+  Activity, Server, Database, Clock, Zap, AlertTriangle, CheckCircle2, XCircle, RefreshCw, Cpu, HardDrive, TrendingUp, Eye, Bell,
+} from 'lucide-react';
+import { format, formatDistanceToNow } from 'date-fns';
 
 const STATUS_OPTIONS = ['open', 'in_progress', 'resolved', 'closed'];
 const STATUS_FILTERS = ['all', 'open', 'in_progress', 'resolved', 'closed'];
@@ -441,6 +444,362 @@ function UsersTab() {
   );
 }
 
+function formatUptime(seconds) {
+  const d = Math.floor(seconds / 86400);
+  const h = Math.floor((seconds % 86400) / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  if (d > 0) return `${d}d ${h}h ${m}m`;
+  if (h > 0) return `${h}h ${m}m`;
+  return `${m}m`;
+}
+
+function formatBytes(bytes) {
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function MonitoringTab() {
+  const [stats, setStats] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [checkingHealth, setCheckingHealth] = useState(false);
+
+  const fetchStats = async (isRefresh = false) => {
+    if (isRefresh) setRefreshing(true);
+    try {
+      const data = await getMonitorStats();
+      setStats(data);
+    } catch { /* silent */ } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchStats();
+    const interval = setInterval(() => fetchStats(), 30000); // auto refresh every 30s
+    return () => clearInterval(interval);
+  }, []);
+
+  const handleHealthCheck = async () => {
+    setCheckingHealth(true);
+    try {
+      await triggerHealthCheck();
+      await fetchStats(true);
+    } catch { /* silent */ } finally {
+      setCheckingHealth(false);
+    }
+  };
+
+  const handleResolveAlert = async (alertId) => {
+    try {
+      await resolveAlert(alertId);
+      setStats((prev) => prev ? { ...prev, alerts: prev.alerts.filter((a) => a.id !== alertId) } : prev);
+    } catch { /* silent */ }
+  };
+
+  if (loading) {
+    return <div className="flex justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>;
+  }
+
+  if (!stats) {
+    return <div className="text-center py-12 text-muted-foreground">Failed to load monitoring data</div>;
+  }
+
+  const memPercent = stats.memory ? ((stats.memory.heapUsed / stats.memory.heapTotal) * 100).toFixed(1) : 0;
+  const isHealthy = stats.health?.supabase?.status === 'healthy';
+  const hasAlerts = stats.alerts && stats.alerts.length > 0;
+
+  return (
+    <div className="space-y-5">
+      {/* Quick Actions */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <div className={`h-2.5 w-2.5 rounded-full animate-pulse ${isHealthy ? 'bg-green-500' : 'bg-red-500'}`} />
+          <span className="text-sm font-medium text-slate-600">
+            {isHealthy ? 'All systems operational' : 'Issues detected'}
+          </span>
+        </div>
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm" onClick={handleHealthCheck} disabled={checkingHealth} className="h-8 gap-1.5 text-xs rounded-full">
+            {checkingHealth ? <Loader2 className="h-3 w-3 animate-spin" /> : <Activity className="h-3 w-3" />}
+            Health Check
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => fetchStats(true)} disabled={refreshing} className="h-8 gap-1.5 text-xs rounded-full">
+            <RefreshCw className={`h-3 w-3 ${refreshing ? 'animate-spin' : ''}`} />
+            Refresh
+          </Button>
+        </div>
+      </div>
+
+      {/* Alerts */}
+      {hasAlerts && (
+        <div className="space-y-2">
+          {stats.alerts.map((alert) => (
+            <div
+              key={alert.id}
+              className={`flex items-center justify-between rounded-xl border px-4 py-3 ${
+                alert.severity === 'critical' ? 'bg-red-50 border-red-200' :
+                alert.severity === 'warning' ? 'bg-amber-50 border-amber-200' :
+                'bg-blue-50 border-blue-200'
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                {alert.severity === 'critical' ? <XCircle className="h-4 w-4 text-red-500 shrink-0" /> :
+                 alert.severity === 'warning' ? <AlertTriangle className="h-4 w-4 text-amber-500 shrink-0" /> :
+                 <Bell className="h-4 w-4 text-blue-500 shrink-0" />}
+                <div>
+                  <p className="text-sm font-medium text-slate-800">{alert.message}</p>
+                  <p className="text-[11px] text-slate-500">
+                    {alert.timestamp ? formatDistanceToNow(new Date(alert.timestamp), { addSuffix: true }) : ''}
+                  </p>
+                </div>
+              </div>
+              <Button variant="ghost" size="sm" onClick={() => handleResolveAlert(alert.id)} className="h-7 text-xs text-slate-500 hover:text-slate-800">
+                Dismiss
+              </Button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Stats Grid */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div className="rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 p-4 text-white shadow-lg">
+          <div className="flex items-center gap-2 mb-2">
+            <Clock className="h-4 w-4 text-white/70" />
+            <span className="text-xs text-white/70 font-medium">Uptime</span>
+          </div>
+          <p className="text-xl font-black">{formatUptime(stats.uptime)}</p>
+        </div>
+        <div className="rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 p-4 text-white shadow-lg">
+          <div className="flex items-center gap-2 mb-2">
+            <Zap className="h-4 w-4 text-white/70" />
+            <span className="text-xs text-white/70 font-medium">Requests</span>
+          </div>
+          <p className="text-xl font-black">{stats.totalRequests?.toLocaleString()}</p>
+        </div>
+        <div className="rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 p-4 text-white shadow-lg">
+          <div className="flex items-center gap-2 mb-2">
+            <TrendingUp className="h-4 w-4 text-white/70" />
+            <span className="text-xs text-white/70 font-medium">Avg Response</span>
+          </div>
+          <p className="text-xl font-black">{stats.avgResponseTime?.toFixed(0) || 0}<span className="text-sm font-normal">ms</span></p>
+        </div>
+        <div className={`rounded-xl p-4 text-white shadow-lg ${stats.errorRate > 5 ? 'bg-gradient-to-br from-red-500 to-rose-600' : 'bg-gradient-to-br from-slate-600 to-slate-700'}`}>
+          <div className="flex items-center gap-2 mb-2">
+            <AlertCircle className="h-4 w-4 text-white/70" />
+            <span className="text-xs text-white/70 font-medium">Error Rate</span>
+          </div>
+          <p className="text-xl font-black">{stats.errorRate?.toFixed(1) || 0}<span className="text-sm font-normal">%</span></p>
+        </div>
+      </div>
+
+      {/* System Health */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        {/* Memory */}
+        <Card className="shadow-sm">
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <Cpu className="h-4 w-4 text-slate-500" />
+                <span className="text-sm font-semibold text-slate-700">Memory Usage</span>
+              </div>
+              <span className={`text-sm font-bold ${memPercent > 80 ? 'text-red-600' : memPercent > 60 ? 'text-amber-600' : 'text-emerald-600'}`}>
+                {memPercent}%
+              </span>
+            </div>
+            <div className="w-full h-2.5 bg-slate-100 rounded-full overflow-hidden">
+              <div
+                className={`h-full rounded-full transition-all duration-500 ${memPercent > 80 ? 'bg-red-500' : memPercent > 60 ? 'bg-amber-500' : 'bg-emerald-500'}`}
+                style={{ width: `${Math.min(memPercent, 100)}%` }}
+              />
+            </div>
+            <div className="flex justify-between mt-2 text-[11px] text-slate-400">
+              <span>{formatBytes(stats.memory?.heapUsed || 0)} used</span>
+              <span>{formatBytes(stats.memory?.heapTotal || 0)} total</span>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Database Health */}
+        <Card className="shadow-sm">
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <Database className="h-4 w-4 text-slate-500" />
+                <span className="text-sm font-semibold text-slate-700">Database</span>
+              </div>
+              <Badge className={`rounded-full text-[10px] ${isHealthy ? 'bg-emerald-100 text-emerald-700 border-emerald-200' : 'bg-red-100 text-red-700 border-red-200'}`}>
+                {isHealthy ? <><CheckCircle2 className="h-3 w-3 mr-1" />Healthy</> : <><XCircle className="h-3 w-3 mr-1" />Down</>}
+              </Badge>
+            </div>
+            <div className="space-y-1.5 text-xs text-slate-500">
+              <div className="flex justify-between">
+                <span>Supabase</span>
+                <span className={isHealthy ? 'text-emerald-600 font-medium' : 'text-red-600 font-medium'}>
+                  {isHealthy ? 'Connected' : stats.health?.supabase?.error || 'Disconnected'}
+                </span>
+              </div>
+              {stats.health?.lastCheck && (
+                <div className="flex justify-between">
+                  <span>Last checked</span>
+                  <span>{formatDistanceToNow(new Date(stats.health.lastCheck), { addSuffix: true })}</span>
+                </div>
+              )}
+              {stats.health?.supabase?.responseTime && (
+                <div className="flex justify-between">
+                  <span>Response time</span>
+                  <span>{stats.health.supabase.responseTime}ms</span>
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Status Codes + RPM */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        {/* Status Codes */}
+        <Card className="shadow-sm">
+          <CardContent className="p-4">
+            <h4 className="text-sm font-semibold text-slate-700 mb-3 flex items-center gap-2">
+              <Server className="h-4 w-4 text-slate-500" />
+              Response Status
+            </h4>
+            <div className="space-y-2">
+              {[
+                { key: '2xx', label: 'Success', color: 'bg-emerald-500' },
+                { key: '3xx', label: 'Redirect', color: 'bg-blue-500' },
+                { key: '4xx', label: 'Client Error', color: 'bg-amber-500' },
+                { key: '5xx', label: 'Server Error', color: 'bg-red-500' },
+              ].map(({ key, label, color }) => {
+                const count = stats.statusCodes?.[key] || 0;
+                const total = stats.totalRequests || 1;
+                const pct = ((count / total) * 100).toFixed(1);
+                return (
+                  <div key={key} className="flex items-center gap-3">
+                    <div className={`h-2 w-2 rounded-full ${color}`} />
+                    <span className="text-xs text-slate-600 w-24">{label}</span>
+                    <div className="flex-1 h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                      <div className={`h-full rounded-full ${color}`} style={{ width: `${Math.min(pct, 100)}%` }} />
+                    </div>
+                    <span className="text-[11px] text-slate-500 w-12 text-right">{count}</span>
+                  </div>
+                );
+              })}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Requests Per Minute */}
+        <Card className="shadow-sm">
+          <CardContent className="p-4">
+            <h4 className="text-sm font-semibold text-slate-700 mb-3 flex items-center gap-2">
+              <Activity className="h-4 w-4 text-slate-500" />
+              Traffic (last 10 min)
+            </h4>
+            {stats.requestsPerMinute && stats.requestsPerMinute.length > 0 ? (
+              <div className="flex items-end gap-1 h-20">
+                {stats.requestsPerMinute.map((rpm, i) => {
+                  const maxRpm = Math.max(...stats.requestsPerMinute.map((r) => r.count || 0), 1);
+                  const height = ((rpm.count || 0) / maxRpm) * 100;
+                  return (
+                    <div key={i} className="flex-1 flex flex-col items-center gap-1">
+                      <div
+                        className="w-full bg-gradient-to-t from-indigo-500 to-blue-400 rounded-t transition-all duration-300"
+                        style={{ height: `${Math.max(height, 4)}%` }}
+                        title={`${rpm.count || 0} req/min`}
+                      />
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <p className="text-xs text-slate-400 text-center py-4">No traffic data yet</p>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Recent Errors */}
+      {stats.recentErrors && stats.recentErrors.length > 0 && (
+        <Card className="shadow-sm border-red-100">
+          <CardContent className="p-4">
+            <h4 className="text-sm font-semibold text-slate-700 mb-3 flex items-center gap-2">
+              <AlertTriangle className="h-4 w-4 text-red-500" />
+              Recent Errors
+              <Badge variant="destructive" className="rounded-full text-[10px]">{stats.recentErrors.length}</Badge>
+            </h4>
+            <div className="space-y-2 max-h-64 overflow-y-auto">
+              {stats.recentErrors.map((err, i) => (
+                <div key={i} className="rounded-lg bg-red-50/50 border border-red-100 px-3 py-2">
+                  <div className="flex items-center justify-between mb-1">
+                    <code className="text-[11px] font-mono text-red-600 bg-red-100 px-1.5 py-0.5 rounded">
+                      {err.method} {err.path}
+                    </code>
+                    <span className="text-[10px] text-slate-400">
+                      {err.timestamp ? formatDistanceToNow(new Date(err.timestamp), { addSuffix: true }) : ''}
+                    </span>
+                  </div>
+                  <p className="text-xs text-red-700 font-medium">{err.message}</p>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Slow Requests */}
+      {stats.slowRequests && stats.slowRequests.length > 0 && (
+        <Card className="shadow-sm border-amber-100">
+          <CardContent className="p-4">
+            <h4 className="text-sm font-semibold text-slate-700 mb-3 flex items-center gap-2">
+              <Clock className="h-4 w-4 text-amber-500" />
+              Slow Requests (&gt;2s)
+              <Badge className="rounded-full text-[10px] bg-amber-100 text-amber-700 border-amber-200">{stats.slowRequests.length}</Badge>
+            </h4>
+            <div className="space-y-1.5 max-h-40 overflow-y-auto">
+              {stats.slowRequests.map((req, i) => (
+                <div key={i} className="flex items-center justify-between text-xs py-1 border-b border-slate-50 last:border-0">
+                  <code className="text-slate-600 font-mono">{req.method} {req.path}</code>
+                  <span className="text-amber-600 font-bold">{req.duration}ms</span>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Live Activity Feed */}
+      {stats.requestLog && stats.requestLog.length > 0 && (
+        <Card className="shadow-sm">
+          <CardContent className="p-4">
+            <h4 className="text-sm font-semibold text-slate-700 mb-3 flex items-center gap-2">
+              <Eye className="h-4 w-4 text-slate-500" />
+              Recent Activity
+            </h4>
+            <div className="space-y-1 max-h-48 overflow-y-auto">
+              {stats.requestLog.slice(0, 30).map((req, i) => (
+                <div key={i} className="flex items-center gap-2 text-[11px] py-1 border-b border-slate-50 last:border-0">
+                  <span className={`font-mono font-bold w-8 ${
+                    req.status < 300 ? 'text-emerald-600' : req.status < 400 ? 'text-blue-600' : req.status < 500 ? 'text-amber-600' : 'text-red-600'
+                  }`}>{req.status}</span>
+                  <span className="text-slate-400 font-mono w-10">{req.method}</span>
+                  <span className="text-slate-600 font-mono flex-1 truncate">{req.path}</span>
+                  <span className="text-slate-400 w-12 text-right">{req.duration}ms</span>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      <p className="text-[11px] text-slate-400 text-center">Auto-refreshes every 30 seconds</p>
+    </div>
+  );
+}
+
 export default function AdminPage() {
   const { user } = useAuth();
 
@@ -471,16 +830,24 @@ export default function AdminPage() {
             </div>
             <div>
               <h1 className="text-2xl font-black tracking-tight">Admin Panel</h1>
-              <p className="mt-1 text-slate-300 text-sm">Manage reports and user permissions</p>
+              <p className="mt-1 text-slate-300 text-sm">Monitor, manage reports, and control users</p>
             </div>
           </div>
         </div>
 
-        <Tabs defaultValue="reports">
+        <Tabs defaultValue="monitoring">
           <TabsList className="bg-white rounded-2xl p-2 shadow-lg border">
+            <TabsTrigger value="monitoring" className="rounded-xl data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-600 data-[state=active]:to-indigo-600 data-[state=active]:text-white data-[state=active]:shadow-md text-slate-500 gap-1.5">
+              <Activity className="h-3.5 w-3.5" />
+              Monitoring
+            </TabsTrigger>
             <TabsTrigger value="reports" className="rounded-xl data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-600 data-[state=active]:to-indigo-600 data-[state=active]:text-white data-[state=active]:shadow-md text-slate-500">Reports</TabsTrigger>
             <TabsTrigger value="users" className="rounded-xl data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-600 data-[state=active]:to-indigo-600 data-[state=active]:text-white data-[state=active]:shadow-md text-slate-500">Users</TabsTrigger>
           </TabsList>
+
+          <TabsContent value="monitoring" className="mt-4">
+            <MonitoringTab />
+          </TabsContent>
 
           <TabsContent value="reports" className="mt-4">
             <ReportsTab />

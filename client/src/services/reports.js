@@ -36,3 +36,21 @@ export async function deleteAdminUser(userId) {
   const res = await fetch(`/api/admin/users/${userId}`, { method: 'DELETE', headers });
   return parseResponse(res);
 }
+
+export async function getMonitorStats() {
+  const headers = getAuthHeaders();
+  const res = await fetch('/api/admin/monitor', { headers });
+  return parseResponse(res);
+}
+
+export async function resolveAlert(alertId) {
+  const headers = getAuthHeaders();
+  const res = await fetch(`/api/admin/alerts/${alertId}/resolve`, { method: 'POST', headers });
+  return parseResponse(res);
+}
+
+export async function triggerHealthCheck() {
+  const headers = getAuthHeaders();
+  const res = await fetch('/api/admin/health', { headers });
+  return parseResponse(res);
+}

@@ -1,9 +1,14 @@
+const monitor = require('../utils/monitor');
+
 /**
  * Global error handler middleware.
  * Catches unhandled errors and returns a consistent JSON response.
  */
 function errorHandler(err, req, res, _next) {
   console.error('Unhandled error:', err);
+
+  // Record error in the server monitor
+  monitor.recordError(err, req);
 
   const statusCode = err.statusCode || 500;
   const message =

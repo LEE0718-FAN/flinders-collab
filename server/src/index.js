@@ -6,6 +6,8 @@ const morgan = require('morgan');
 const config = require('./config');
 const { initSockets } = require('./sockets');
 const { errorHandler, notFoundHandler } = require('./middleware/errorHandler');
+const monitorMiddleware = require('./middleware/monitorMiddleware');
+const monitor = require('./utils/monitor');
 
 // Import routes
 const authRoutes = require('./routes/auth');
@@ -17,6 +19,7 @@ const messageRoutes = require('./routes/messages');
 const taskRoutes = require('./routes/tasks');
 const reportRoutes = require('./routes/reports');
 const boardRoutes = require('./routes/board');
+const adminRoutes = require('./routes/admin');
 
 // Create Express app and HTTP server
 const app = express();
@@ -43,6 +46,9 @@ if (config.nodeEnv !== 'test') {
   app.use(morgan('dev'));
 }
 
+// Monitor middleware — must be before route handlers
+app.use(monitorMiddleware);
+
 // Health check
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
@@ -58,6 +64,7 @@ app.use('/api', messageRoutes);
 app.use('/api', taskRoutes);
 app.use('/api', reportRoutes);
 app.use('/api', boardRoutes);
+app.use('/api/admin', adminRoutes);
 
 // Serve built client in production
 const path = require('path');
@@ -83,6 +90,9 @@ const PORT = config.port;
 server.listen(PORT, () => {
   console.log(`Server running on port ${PORT} in ${config.nodeEnv} mode`);
   console.log(`Health check: http://localhost:${PORT}/api/health`);
+
+  // Start 24/7 server monitoring (health checks, memory alerts, error rate tracking)
+  monitor.startHealthChecks();
 
   // Keep-alive ping to prevent Render free tier from sleeping
   if (config.nodeEnv === 'production') {
