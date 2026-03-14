@@ -15,6 +15,8 @@ import ProfileDialog from '@/components/ProfileDialog';
 import { getRooms } from '@/services/rooms';
 import { applyRoomOrder, loadRoomOrder } from '@/lib/room-order';
 
+const ROOM_NAVIGATION_UPDATED_EVENT = 'rooms-updated';
+
 const roomPalettes = [
   { softBg: '#fff1f6', softBorder: '#fbcfe8', text: '#831843', icon: '#9d174d' },
   { softBg: '#f0f9ff', softBorder: '#bae6fd', text: '#0c4a6e', icon: '#075985' },
@@ -158,14 +160,15 @@ export default function MainLayout({ children }) {
   const [logoutOpen, setLogoutOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
 
+  const refreshRooms = async () => {
+    const data = await getRooms();
+    const nextRooms = data.rooms || data || [];
+    setRooms(applyRoomOrder(nextRooms, loadRoomOrder(user?.id)));
+  };
+
   useEffect(() => {
-    getRooms()
-      .then((data) => {
-        const nextRooms = data.rooms || data || [];
-        setRooms(applyRoomOrder(nextRooms, loadRoomOrder(user?.id)));
-      })
-      .catch(() => {});
-  }, [location.pathname, user?.id]);
+    refreshRooms().catch(() => {});
+  }, [user?.id]);
 
   useEffect(() => {
     const handleRoomOrderUpdated = (event) => {
@@ -187,12 +190,36 @@ export default function MainLayout({ children }) {
       setRooms((prev) => applyRoomOrder(prev, loadRoomOrder(user?.id)));
     };
 
+    const handleRoomsUpdated = (event) => {
+      const detail = event.detail || {};
+      if (detail.userId && detail.userId !== user?.id) {
+        return;
+      }
+
+      if (Array.isArray(detail.rooms)) {
+        setRooms(applyRoomOrder(detail.rooms, loadRoomOrder(user?.id)));
+        return;
+      }
+
+      refreshRooms().catch(() => {});
+    };
+
+    const handleWindowFocus = () => {
+      refreshRooms().catch(() => {});
+    };
+
     window.addEventListener('room-order-updated', handleRoomOrderUpdated);
     window.addEventListener('storage', handleStorage);
+    window.addEventListener(ROOM_NAVIGATION_UPDATED_EVENT, handleRoomsUpdated);
+    window.addEventListener('focus', handleWindowFocus);
+    document.addEventListener('visibilitychange', handleWindowFocus);
 
     return () => {
       window.removeEventListener('room-order-updated', handleRoomOrderUpdated);
       window.removeEventListener('storage', handleStorage);
+      window.removeEventListener(ROOM_NAVIGATION_UPDATED_EVENT, handleRoomsUpdated);
+      window.removeEventListener('focus', handleWindowFocus);
+      document.removeEventListener('visibilitychange', handleWindowFocus);
     };
   }, [user?.id]);
 
@@ -208,7 +235,7 @@ export default function MainLayout({ children }) {
   const displayName = user?.user_metadata?.name || user?.email;
 
   return (
-    <div className="flex h-screen bg-background">
+    <div className="flex min-h-screen bg-background">
       {/* Desktop Sidebar */}
       <aside className="hidden w-64 shrink-0 flex-col bg-gradient-to-b from-slate-900 via-slate-900 to-indigo-950 md:flex">
         {/* Sidebar header / brand */}
@@ -251,17 +278,17 @@ export default function MainLayout({ children }) {
         </div>
       </aside>
 
-      <div className="flex flex-1 flex-col overflow-hidden">
+      <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
         {/* Top Bar */}
-        <header className="flex h-16 items-center justify-between border-b-2 border-slate-200 bg-white/90 px-4 backdrop-blur-xl">
-          <div className="flex items-center gap-2">
+        <header className="flex h-16 items-center justify-between gap-3 border-b-2 border-slate-200 bg-white/90 px-3 backdrop-blur-xl sm:px-4">
+          <div className="flex min-w-0 items-center gap-2">
             <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
               <SheetTrigger asChild>
                 <Button variant="ghost" size="icon" className="md:hidden" aria-label="Open navigation menu">
                   <Menu className="h-5 w-5" />
                 </Button>
               </SheetTrigger>
-              <SheetContent side="left" className="w-72 p-0 bg-gradient-to-b from-slate-900 via-slate-900 to-indigo-950 border-r-0">
+              <SheetContent side="left" className="w-[88vw] max-w-72 border-r-0 bg-gradient-to-b from-slate-900 via-slate-900 to-indigo-950 p-0">
                 <SheetHeader className="px-5 py-4">
                   <SheetTitle className="flex items-center gap-2.5 text-left">
                     <div className="h-10 w-10 shrink-0 overflow-hidden rounded-xl bg-white p-1 shadow-lg flex items-center justify-center">
@@ -280,12 +307,17 @@ export default function MainLayout({ children }) {
                 </div>
               </SheetContent>
             </Sheet>
-            <span className="text-sm font-semibold md:hidden">Flinders Collab</span>
+            <div className="min-w-0 md:hidden">
+              <span className="block truncate text-sm font-semibold">Flinders Collab</span>
+              <span className="block truncate text-[11px] text-muted-foreground">
+                {location.pathname === '/dashboard' ? 'Dashboard' : displayName}
+              </span>
+            </div>
           </div>
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="gap-2.5 rounded-full px-2 pr-3 hover:bg-muted" aria-label="User menu">
+              <Button variant="ghost" className="gap-2 rounded-full px-2 sm:gap-2.5 sm:pr-3 hover:bg-muted" aria-label="User menu">
                 <Avatar className="h-8 w-8 ring-2 ring-white shadow-sm">
                   {user?.user_metadata?.avatar_url && (
                     <AvatarImage src={user.user_metadata.avatar_url} alt="Profile" className="object-cover" />
@@ -294,7 +326,7 @@ export default function MainLayout({ children }) {
                     {initials}
                   </AvatarFallback>
                 </Avatar>
-                <span className="hidden text-sm font-medium sm:inline">{displayName}</span>
+                <span className="hidden max-w-[160px] truncate text-sm font-medium sm:inline">{displayName}</span>
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-60 rounded-xl shadow-xl border-border/40 p-1.5">
@@ -317,7 +349,7 @@ export default function MainLayout({ children }) {
         </header>
 
         {/* Main Content */}
-        <main className="relative flex-1 overflow-y-auto bg-slate-50 p-4 md:p-6 custom-scrollbar animate-fade-in">
+        <main className="relative flex-1 overflow-y-auto bg-slate-50 p-3 sm:p-4 md:p-6 custom-scrollbar animate-fade-in">
           <div
             className="pointer-events-none absolute inset-0 opacity-30"
             style={{

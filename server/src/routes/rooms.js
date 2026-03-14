@@ -19,7 +19,7 @@ router.post('/', createRoomValidation, validate, roomController.createRoom);
 // GET /rooms - List my rooms
 router.get('/', roomController.getRooms);
 
-// POST /rooms/join - Join a room by invite code (no roomId needed)
+// POST /rooms/join - Primary join flow from the dashboard using only an invite code
 router.post('/join', joinRoomValidation, validate, roomController.joinRoomByCode);
 
 // GET /rooms/:roomId - Get room details (requires membership)
@@ -31,7 +31,7 @@ router.get(
   roomController.getRoom
 );
 
-// POST /rooms/:roomId/join - Join a room with invite code
+// POST /rooms/:roomId/join - Legacy invite-code join route kept for compatibility
 router.post(
   '/:roomId/join',
   roomIdParam,

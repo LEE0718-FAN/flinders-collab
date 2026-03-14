@@ -1,5 +1,31 @@
 const { supabaseAdmin } = require('../services/supabase');
 
+function normalizeInviteCode(inviteCode) {
+  return String(inviteCode || '').trim().toUpperCase();
+}
+
+async function getRoomMemberCount(roomId) {
+  const { count } = await supabaseAdmin
+    .from('room_members')
+    .select('id', { count: 'exact', head: true })
+    .eq('room_id', roomId);
+
+  return count || 0;
+}
+
+async function buildRoomResponse(room, userId, membership = null) {
+  const memberCount = await getRoomMemberCount(room.id);
+  const role = membership?.role || (room.owner_id === userId ? 'owner' : 'member');
+  const joinedAt = membership?.joined_at || room.created_at;
+
+  return {
+    ...room,
+    my_role: role,
+    joined_at: joinedAt,
+    member_count: memberCount,
+  };
+}
+
 /**
  * Generate a short invite code for room joining.
  * Uses an alphanumeric charset excluding visually ambiguous characters (0, O, 1, I).
@@ -77,7 +103,10 @@ async function createRoom(req, res, next) {
       console.error('Failed to add owner as member:', memberError.message);
     }
 
-    res.status(201).json(room);
+    res.status(201).json(await buildRoomResponse(room, userId, {
+      role: 'owner',
+      joined_at: room.created_at,
+    }));
   } catch (err) {
     next(err);
   }
@@ -158,7 +187,8 @@ async function getRoom(req, res, next) {
       return res.status(404).json({ error: 'Room not found' });
     }
 
-    res.json({ ...data, my_role: req.memberRole });
+    const memberCount = await getRoomMemberCount(roomId);
+    res.json({ ...data, my_role: req.memberRole, member_count: memberCount });
   } catch (err) {
     next(err);
   }
@@ -170,30 +200,33 @@ async function getRoom(req, res, next) {
  */
 async function joinRoomByCode(req, res, next) {
   try {
-    const { invite_code } = req.body;
+    const inviteCode = normalizeInviteCode(req.body.invite_code);
     const userId = req.user.id;
 
     // Look up room by invite code
     const { data: room, error: roomError } = await supabaseAdmin
       .from('rooms')
       .select('id, name, course_name, description, owner_id, invite_code, created_at')
-      .eq('invite_code', invite_code)
-      .single();
+      .eq('invite_code', inviteCode)
+      .maybeSingle();
 
     if (roomError || !room) {
-      return res.status(404).json({ error: 'Invalid invite code. Please check and try again.' });
+      return res.status(404).json({ error: 'This invite code is invalid or has expired.' });
     }
 
     // Check if already a member
     const { data: existing } = await supabaseAdmin
       .from('room_members')
-      .select('id')
+      .select('id, role, joined_at')
       .eq('room_id', room.id)
       .eq('user_id', userId)
-      .single();
+      .maybeSingle();
 
     if (existing) {
-      return res.status(400).json({ error: 'You are already a member of this room' });
+      return res.status(409).json({
+        error: 'You have already used this invite and are already in the room.',
+        room: await buildRoomResponse(room, userId, existing),
+      });
     }
 
     // Add as member
@@ -213,7 +246,7 @@ async function joinRoomByCode(req, res, next) {
 
     res.status(201).json({
       message: 'Joined room successfully',
-      room,
+      room: await buildRoomResponse(room, userId, membership),
       membership,
     });
   } catch (err) {
@@ -228,7 +261,7 @@ async function joinRoomByCode(req, res, next) {
 async function joinRoom(req, res, next) {
   try {
     const { roomId } = req.params;
-    const { invite_code } = req.body;
+    const inviteCode = normalizeInviteCode(req.body.invite_code);
     const userId = req.user.id;
 
     // Verify invite code
@@ -242,20 +275,22 @@ async function joinRoom(req, res, next) {
       return res.status(404).json({ error: 'Room not found' });
     }
 
-    if (room.invite_code !== invite_code) {
-      return res.status(400).json({ error: 'Invalid invite code' });
+    if (room.invite_code !== inviteCode) {
+      return res.status(400).json({ error: 'This invite code is invalid or has expired.' });
     }
 
     // Check if already a member
     const { data: existing } = await supabaseAdmin
       .from('room_members')
-      .select('id')
+      .select('id, role, joined_at')
       .eq('room_id', roomId)
       .eq('user_id', userId)
-      .single();
+      .maybeSingle();
 
     if (existing) {
-      return res.status(400).json({ error: 'You are already a member of this room' });
+      return res.status(409).json({
+        error: 'You have already used this invite and are already in the room.',
+      });
     }
 
     // Add as member
@@ -273,8 +308,15 @@ async function joinRoom(req, res, next) {
       return res.status(400).json({ error: joinError.message });
     }
 
+    const { data: joinedRoom } = await supabaseAdmin
+      .from('rooms')
+      .select('id, name, course_name, description, owner_id, invite_code, created_at')
+      .eq('id', roomId)
+      .maybeSingle();
+
     res.status(201).json({
       message: 'Joined room successfully',
+      room: joinedRoom ? await buildRoomResponse(joinedRoom, userId, membership) : null,
       membership,
     });
   } catch (err) {

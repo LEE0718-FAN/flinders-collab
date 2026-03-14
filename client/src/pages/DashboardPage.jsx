@@ -9,9 +9,10 @@ import { useAuth } from '@/hooks/useAuth';
 import { applyRoomOrder, buildOrderedIds, loadRoomOrder, persistRoomOrder } from '@/lib/room-order';
 import { useNavigate } from 'react-router-dom';
 import { format, formatDistanceToNow } from 'date-fns';
-import { Loader2, Plus, UserPlus, LayoutGrid } from 'lucide-react';
+import { Loader2, LayoutGrid } from 'lucide-react';
 
 const TEMP_ROOM_PREFIX = 'temp-room-';
+const ROOM_NAVIGATION_UPDATED_EVENT = 'rooms-updated';
 
 function upsertRoom(rooms, room, fallback = {}) {
   if (!room?.id) return rooms;
@@ -63,18 +64,29 @@ export default function DashboardPage() {
   const pendingSwapTargetRef = useRef(null);
   const lastSwapAtRef = useRef(0);
 
+  const broadcastRoomUpdate = useCallback((nextRooms) => {
+    window.dispatchEvent(new CustomEvent(ROOM_NAVIGATION_UPDATED_EVENT, {
+      detail: {
+        userId: user?.id,
+        rooms: nextRooms,
+      },
+    }));
+  }, [user?.id]);
+
   const fetchRooms = useCallback(async () => {
     setError('');
     try {
       const data = await getRooms();
       const nextRooms = data.rooms || data || [];
-      setRooms(applyRoomOrder(nextRooms, loadRoomOrder(user?.id)));
+      const orderedRooms = applyRoomOrder(nextRooms, loadRoomOrder(user?.id));
+      setRooms(orderedRooms);
+      broadcastRoomUpdate(orderedRooms);
     } catch (err) {
       setError('Failed to load rooms. Please refresh the page.');
     } finally {
       setLoading(false);
     }
-  }, [user?.id]);
+  }, [broadcastRoomUpdate, user?.id]);
 
   useEffect(() => {
     fetchRooms();
@@ -157,19 +169,25 @@ export default function DashboardPage() {
       const withoutTemp = tempRoomId
         ? prev.filter((item) => item.id !== tempRoomId)
         : prev;
-      return upsertRoom(withoutTemp, room, { member_count: 1, my_role: 'owner' });
+      const nextRooms = upsertRoom(withoutTemp, room, { member_count: 1, my_role: 'owner' });
+      broadcastRoomUpdate(nextRooms);
+      return nextRooms;
     });
     setLoading(false);
-  }, []);
+  }, [broadcastRoomUpdate]);
 
   const handleCreateError = useCallback((tempRoomId) => {
     setRooms((prev) => prev.filter((item) => item.id !== tempRoomId));
   }, []);
 
   const handleRoomJoined = useCallback((room) => {
-    setRooms((prev) => upsertRoom(prev, room, { member_count: 1, my_role: 'member' }));
+    setRooms((prev) => {
+      const nextRooms = upsertRoom(prev, room, { member_count: 1, my_role: 'member' });
+      broadcastRoomUpdate(nextRooms);
+      return nextRooms;
+    });
     setLoading(false);
-  }, []);
+  }, [broadcastRoomUpdate]);
 
   const handleDragStart = useCallback((roomId, event) => {
     setDraggedRoomId(roomId);
@@ -275,9 +293,28 @@ export default function DashboardPage() {
           <div className="absolute -right-12 -top-12 h-48 w-48 rounded-full bg-white/10 blur-2xl" />
           <div className="absolute -left-8 -bottom-8 h-32 w-32 rounded-full bg-indigo-400/20 blur-xl" />
           <div className="relative">
-            <h1 className="text-3xl sm:text-4xl font-black tracking-tight">Welcome back, {displayName}!</h1>
-            <p className="mt-2 text-white/70 text-base">Manage your team rooms and collaborate.</p>
-            <div className="flex gap-2 mt-6">
+            <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+              <div>
+                <p className="inline-flex items-center rounded-full border border-white/15 bg-white/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.22em] text-white/80">
+                  Room hub
+                </p>
+                <h1 className="mt-3 text-3xl font-black tracking-tight sm:text-4xl">Welcome back, {displayName}!</h1>
+                <p className="mt-2 max-w-2xl text-sm text-white/75 sm:text-base">
+                  Create a fresh room, join with an invite code, and keep your latest study spaces within easy reach on web and Android.
+                </p>
+              </div>
+              <div className="grid grid-cols-2 gap-3 self-start lg:min-w-[240px]">
+                <div className="rounded-2xl border border-white/10 bg-white/10 px-4 py-3 backdrop-blur-sm">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-white/60">Rooms</p>
+                  <p className="mt-2 text-2xl font-black">{rooms.length}</p>
+                </div>
+                <div className="rounded-2xl border border-white/10 bg-white/10 px-4 py-3 backdrop-blur-sm">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-white/60">Meetings</p>
+                  <p className="mt-2 text-2xl font-black">{upcomingEvents.length}</p>
+                </div>
+              </div>
+            </div>
+            <div className="mt-6 flex flex-col gap-2 sm:flex-row">
               <CreateRoomDialog
                 onCreateStart={handleCreateStart}
                 onCreated={handleRoomCreated}
@@ -297,6 +334,12 @@ export default function DashboardPage() {
         {/* Upcoming Meetings */}
         {upcomingEvents.length > 0 && (
           <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-bold text-foreground">Upcoming Meetings</h2>
+              <span className="rounded-full bg-white px-2.5 py-1 text-xs font-semibold text-slate-500 shadow-sm">
+                Next {upcomingEvents.length}
+              </span>
+            </div>
             {upcomingEvents.map((event) => {
               const startDate = new Date(event.start_time);
               const now = new Date();
@@ -342,9 +385,9 @@ export default function DashboardPage() {
         )}
 
         {/* Section header */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center justify-between gap-3">
           <h2 className="text-lg font-bold text-foreground">Your Rooms</h2>
-          {!loading && <span className="text-xs font-semibold bg-indigo-100 text-indigo-700 px-2.5 py-0.5 rounded-full">{rooms.length}</span>}
+          {!loading && <span className="rounded-full bg-indigo-100 px-2.5 py-1 text-xs font-semibold text-indigo-700">{rooms.length} total</span>}
         </div>
 
         {loading ? (

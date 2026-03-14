@@ -122,6 +122,8 @@ export default function RoomCard({ room, onDeleted, draggableProps, suppressNavi
   const [hovered, setHovered] = useState(false);
   const isOwner = room.my_role === 'owner';
   const palette = getRoomPalette(room);
+  const courseLabel = room.course_name || room.course_code || '';
+  const memberCount = Number(room.member_count || 0);
 
   const handleAction = async () => {
     setLoading(true);
@@ -144,7 +146,7 @@ export default function RoomCard({ room, onDeleted, draggableProps, suppressNavi
     <div className="h-full">
       <div
         {...draggableProps}
-        className="relative flex flex-col h-full overflow-hidden rounded-2xl border-2 text-card-foreground transition-all duration-300 ease-out hover:-translate-y-1.5 hover:scale-[1.01] cursor-grab active:cursor-grabbing"
+        className="relative flex h-full cursor-grab flex-col overflow-hidden rounded-2xl border-2 text-card-foreground transition-all duration-300 ease-out hover:-translate-y-1.5 hover:scale-[1.01] active:cursor-grabbing"
         style={{
           background: '#ffffff',
           borderColor: palette.border,
@@ -169,12 +171,12 @@ export default function RoomCard({ room, onDeleted, draggableProps, suppressNavi
         {/* Badges — overlapping gradient/white boundary */}
         <div className="relative px-5" style={{ marginTop: '-12px', zIndex: 1 }}>
           <div className="flex items-center gap-1.5 h-7">
-            {room.course_name && (
+            {courseLabel && (
               <Badge
                 variant="secondary"
-                className="text-xs bg-white/90 text-foreground shadow-sm border-0 rounded-full"
+                className="max-w-[11rem] truncate rounded-full border-0 bg-white/90 text-xs text-foreground shadow-sm"
               >
-                {room.course_name}
+                {courseLabel}
               </Badge>
             )}
             {isOwner && (
@@ -197,13 +199,35 @@ export default function RoomCard({ room, onDeleted, draggableProps, suppressNavi
           </h3>
 
           {/* Description — always one line tall */}
-          <p className="text-sm text-muted-foreground mt-1 truncate h-5">
+          <p className="mt-1 min-h-[2.5rem] text-sm text-muted-foreground">
             {room.description || '\u00A0'}
           </p>
         </div>
 
         {/* Footer — pinned to bottom */}
         <div className="p-5 pt-3">
+          <div className="mb-3 flex flex-wrap items-center gap-2 text-[11px] font-medium">
+            {room.invite_code && (
+              <span
+                className="rounded-full px-2.5 py-1 tracking-[0.18em]"
+                style={{ backgroundColor: palette.pillBg, color: palette.meta }}
+              >
+                {room.invite_code}
+              </span>
+            )}
+            {room.my_role && (
+              <span
+                className="rounded-full border px-2.5 py-1 capitalize"
+                style={{
+                  borderColor: palette.roleBorder,
+                  backgroundColor: palette.roleBg,
+                  color: palette.roleText,
+                }}
+              >
+                {room.my_role}
+              </span>
+            )}
+          </div>
           <div className="flex items-center justify-between border-t pt-3" style={{ borderColor: palette.divider }}>
             <div className="flex items-center gap-3 text-sm">
               <span
@@ -211,7 +235,7 @@ export default function RoomCard({ room, onDeleted, draggableProps, suppressNavi
                 style={{ backgroundColor: palette.pillBg, color: palette.pillText }}
               >
                 <Users className="h-3.5 w-3.5" />
-                {room.member_count || 0} {room.member_count === 1 ? 'Member' : 'Members'}
+                {memberCount} {memberCount === 1 ? 'Member' : 'Members'}
               </span>
             </div>
 

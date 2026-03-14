@@ -20,8 +20,28 @@ export async function getRoom(roomId) {
 
 export async function joinRoom(inviteCode) {
   const headers = getAuthHeaders();
-  const res = await fetch('/api/rooms/join', { method: 'POST', headers, body: JSON.stringify({ invite_code: inviteCode }) });
-  return parseResponse(res);
+  const normalizedCode = String(inviteCode || '').trim().toUpperCase();
+  const res = await fetch('/api/rooms/join', {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ invite_code: normalizedCode }),
+  });
+
+  let body;
+  try {
+    body = await res.json();
+  } catch {
+    body = null;
+  }
+
+  if (!res.ok) {
+    const error = new Error(body?.error || `Request failed (${res.status})`);
+    error.status = res.status;
+    error.room = body?.room || null;
+    throw error;
+  }
+
+  return body;
 }
 
 export async function getMembers(roomId) {
