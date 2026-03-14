@@ -52,7 +52,7 @@ export default function CreateRoomDialog({ onCreateStart, onCreated, onCreateErr
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button>
+        <Button className="bg-white text-indigo-700 hover:bg-white/90 shadow-md">
           <Plus className="mr-2 h-4 w-4" />
           Create Room
         </Button>

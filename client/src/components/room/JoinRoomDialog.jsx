@@ -52,7 +52,7 @@ export default function JoinRoomDialog({ onJoined }) {
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
-        <Button variant="outline">
+        <Button variant="outline" className="border-white/30 bg-white/10 text-white hover:bg-white/20 hover:text-white">
           <UserPlus className="mr-2 h-4 w-4" />
           Join Room
         </Button>
