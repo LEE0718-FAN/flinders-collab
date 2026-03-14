@@ -135,6 +135,16 @@ IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'poll_votes_update')
   CREATE POLICY "poll_votes_update" ON poll_votes FOR UPDATE USING (auth.uid() = user_id);
 END IF;
 END $$;
+
+-- Add FK to public.users for PostgREST joins (auth.users FK is not visible to PostgREST)
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM information_schema.table_constraints WHERE constraint_name = 'board_posts_author_users_fkey' AND table_name = 'board_posts') THEN
+    ALTER TABLE board_posts ADD CONSTRAINT board_posts_author_users_fkey FOREIGN KEY (author_id) REFERENCES users(id) ON DELETE CASCADE;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.table_constraints WHERE constraint_name = 'comments_author_users_fkey' AND table_name = 'comments') THEN
+    ALTER TABLE comments ADD CONSTRAINT comments_author_users_fkey FOREIGN KEY (author_id) REFERENCES users(id) ON DELETE CASCADE;
+  END IF;
+END $$;
 `;
 
 async function runMigration() {

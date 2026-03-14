@@ -8,7 +8,7 @@ async function getPosts(req, res, next) {
     const { category } = req.query;
     let query = supabaseAdmin
       .from('board_posts')
-      .select('*, users!board_posts_author_id_fkey(full_name, avatar_url, major, year_level, semester)')
+      .select('*, users!board_posts_author_users_fkey(full_name, avatar_url, major, year_level, semester)')
       .order('created_at', { ascending: false });
 
     if (category && category !== 'all') {
@@ -141,7 +141,7 @@ async function createPost(req, res, next) {
     const { data, error } = await supabaseAdmin
       .from('board_posts')
       .insert(insertData)
-      .select('*, users!board_posts_author_id_fkey(full_name, avatar_url, major, year_level, semester)')
+      .select('*, users!board_posts_author_users_fkey(full_name, avatar_url, major, year_level, semester)')
       .single();
 
     if (error) return res.status(400).json({ error: error.message });
@@ -258,7 +258,7 @@ async function getComments(req, res, next) {
 
     const { data, error } = await supabaseAdmin
       .from('comments')
-      .select('*, users!comments_author_id_fkey(full_name, avatar_url, major, year_level, semester)')
+      .select('*, users!comments_author_users_fkey(full_name, avatar_url, major, year_level, semester)')
       .eq('target_type', targetType)
       .eq('target_id', targetId)
       .order('created_at', { ascending: true });
@@ -284,7 +284,7 @@ async function createComment(req, res, next) {
         author_id: userId,
         content: content.trim(),
       })
-      .select('*, users!comments_author_id_fkey(full_name, avatar_url, major, year_level, semester)')
+      .select('*, users!comments_author_users_fkey(full_name, avatar_url, major, year_level, semester)')
       .single();
 
     if (error) return res.status(400).json({ error: error.message });

@@ -19,7 +19,7 @@ import { getFiles } from '@/services/files';
 import { getTasks } from '@/services/tasks';
 import { copyToClipboard } from '@/lib/native';
 import { useAuth } from '@/hooks/useAuth';
-import { Loader2, Copy, Check, Plus, MessageSquare, FileUp, CalendarPlus, CheckSquare, Activity, Link2 } from 'lucide-react';
+import { Loader2, Copy, Check, Plus, MessageSquare, FileUp, CalendarPlus, CheckSquare, Activity, Link2, Users, Calendar, FolderOpen, ListTodo } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import ReportButton from '@/components/ReportButton';
 import EditRoomDialog from '@/components/room/EditRoomDialog';
@@ -183,14 +183,54 @@ export default function RoomPage() {
   return (
     <MainLayout>
       <div className="space-y-6">
-        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-blue-600 via-indigo-600 to-violet-600 px-8 py-8 text-white shadow-xl mb-6">
-          <div className="absolute -right-12 -top-12 h-40 w-40 rounded-full bg-white/10 blur-2xl" />
+        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-blue-600 via-indigo-600 to-violet-600 px-6 sm:px-8 py-6 sm:py-8 text-white shadow-xl mb-6">
+          <div className="absolute -right-16 -top-16 h-56 w-56 rounded-full bg-white/10 blur-3xl" />
+          <div className="absolute -left-8 -bottom-8 h-32 w-32 rounded-full bg-violet-400/20 blur-2xl" />
           <div className="relative">
-            <div className="flex items-center gap-3">
-              <h1 className="text-2xl font-black text-white">{room?.name}</h1>
-              {room?.course_code && <Badge className="bg-white/20 text-white border-white/30 hover:bg-white/30">{room.course_code}</Badge>}
+            {/* Top row: title + actions */}
+            <div className="flex items-start justify-between gap-4">
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-3 flex-wrap">
+                  <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight">{room?.name}</h1>
+                  {room?.course_name && (
+                    <Badge className="bg-white/20 text-white border-white/30 hover:bg-white/30 rounded-full text-xs">{room.course_name}</Badge>
+                  )}
+                </div>
+                {room?.description && <p className="mt-2 text-white/70 text-sm max-w-xl">{room.description}</p>}
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                {room && <EditRoomDialog room={room} onUpdated={fetchRoom} />}
+              </div>
             </div>
-            {room?.description && <p className="mt-2 text-white/70">{room.description}</p>}
+
+            {/* Stats row */}
+            <div className="mt-5 flex items-center gap-3 flex-wrap">
+              <div className="flex items-center gap-1.5 bg-white/15 backdrop-blur-sm rounded-full px-3 py-1.5 text-xs font-medium">
+                <Users className="h-3.5 w-3.5" />
+                {members.length} Members
+              </div>
+              <div className="flex items-center gap-1.5 bg-white/15 backdrop-blur-sm rounded-full px-3 py-1.5 text-xs font-medium">
+                <Calendar className="h-3.5 w-3.5" />
+                {events.length} Events
+              </div>
+              <div className="flex items-center gap-1.5 bg-white/15 backdrop-blur-sm rounded-full px-3 py-1.5 text-xs font-medium">
+                <FolderOpen className="h-3.5 w-3.5" />
+                {files.length} Files
+              </div>
+              <div className="flex items-center gap-1.5 bg-white/15 backdrop-blur-sm rounded-full px-3 py-1.5 text-xs font-medium">
+                <ListTodo className="h-3.5 w-3.5" />
+                {tasks.length} Tasks
+              </div>
+              {room?.invite_code && (
+                <button
+                  onClick={handleCopyInviteCode}
+                  className="flex items-center gap-1.5 bg-white/15 backdrop-blur-sm rounded-full px-3 py-1.5 text-xs font-medium hover:bg-white/25 transition-colors cursor-pointer"
+                >
+                  {copied ? <Check className="h-3.5 w-3.5 text-green-300" /> : <Copy className="h-3.5 w-3.5" />}
+                  {copied ? 'Copied!' : room.invite_code}
+                </button>
+              )}
+            </div>
           </div>
         </div>
 
