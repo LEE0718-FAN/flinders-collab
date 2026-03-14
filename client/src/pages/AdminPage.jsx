@@ -584,14 +584,14 @@ function MonitoringTab() {
             <TrendingUp className="h-4 w-4 text-white/70" />
             <span className="text-xs text-white/70 font-medium">Avg Response</span>
           </div>
-          <p className="text-xl font-black">{stats.avgResponseTime?.toFixed(0) || 0}<span className="text-sm font-normal">ms</span></p>
+          <p className="text-xl font-black">{Math.round(Number(stats.avgResponseTime) || 0)}<span className="text-sm font-normal">ms</span></p>
         </div>
-        <div className={`rounded-xl p-4 text-white shadow-lg ${stats.errorRate > 5 ? 'bg-gradient-to-br from-red-500 to-rose-600' : 'bg-gradient-to-br from-slate-600 to-slate-700'}`}>
+        <div className={`rounded-xl p-4 text-white shadow-lg ${Number(stats.errorRate) > 5 ? 'bg-gradient-to-br from-red-500 to-rose-600' : 'bg-gradient-to-br from-slate-600 to-slate-700'}`}>
           <div className="flex items-center gap-2 mb-2">
             <AlertCircle className="h-4 w-4 text-white/70" />
             <span className="text-xs text-white/70 font-medium">Error Rate</span>
           </div>
-          <p className="text-xl font-black">{stats.errorRate?.toFixed(1) || 0}<span className="text-sm font-normal">%</span></p>
+          <p className="text-xl font-black">{Number(stats.errorRate || 0).toFixed(1)}<span className="text-sm font-normal">%</span></p>
         </div>
       </div>
 
