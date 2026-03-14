@@ -313,7 +313,7 @@ export default function EventList({ events = [], roomId, onEventsChange }) {
               <label className="text-sm font-semibold text-slate-700">Title</label>
               <Input className="rounded-xl border-slate-200" value={editForm.title || ''} onChange={(e) => setEditForm({ ...editForm, title: e.target.value })} disabled={editLoading} />
             </div>
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
               <div className="space-y-1.5">
                 <label className="text-sm font-semibold text-slate-700">Date</label>
                 <Input className="rounded-xl border-slate-200" type="date" value={editForm.start_date || ''} onChange={(e) => setEditForm({ ...editForm, start_date: e.target.value })} disabled={editLoading} />

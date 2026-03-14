@@ -110,7 +110,7 @@ export default function EventForm({ roomId, onCreateStart, onCreated, onCreateEr
           {/* Category selection */}
           <div className="space-y-2">
             <label className="text-sm font-semibold text-slate-700">Category</label>
-            <div className="grid grid-cols-4 gap-2">
+            <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
               {CATEGORIES.map((c) => {
                 const isSelected = category === c.value;
                 return (

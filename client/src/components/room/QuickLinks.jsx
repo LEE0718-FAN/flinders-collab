@@ -148,7 +148,7 @@ export default function QuickLinks({ roomId, links = [], onLinksChange }) {
           <div className="space-y-4">
             <div className="space-y-2">
               <label className="text-sm font-medium">Tool</label>
-              <div className="grid grid-cols-5 gap-1.5">
+              <div className="grid grid-cols-4 sm:grid-cols-5 gap-1.5">
                 {TOOL_PRESETS.map((preset) => (
                   <button
                     key={preset.name}

@@ -166,7 +166,7 @@ function TaskCreateForm({ roomId, members = [], currentUserId, onCreated, onErro
           className="text-base h-11 font-medium"
         />
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {/* Due Date */}
           <div className="space-y-1.5">
             <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
