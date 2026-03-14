@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { LayoutDashboard, LogOut, Menu, Users, ChevronRight, Shield, User, CalendarClock } from 'lucide-react';
+import { LayoutDashboard, LogOut, Menu, Users, ChevronRight, Shield, User, CalendarClock, MessageSquare } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
@@ -100,6 +100,12 @@ function SidebarContent({ rooms, location, isAdmin }) {
         isActive={location.pathname === '/deadlines'}
         icon={CalendarClock}
         label="Deadlines"
+      />
+      <NavItem
+        to="/board"
+        isActive={location.pathname === '/board'}
+        icon={MessageSquare}
+        label="Free Board"
       />
 
       {/* Room section divider */}

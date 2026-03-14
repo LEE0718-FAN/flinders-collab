@@ -16,6 +16,7 @@ const locationRoutes = require('./routes/location');
 const messageRoutes = require('./routes/messages');
 const taskRoutes = require('./routes/tasks');
 const reportRoutes = require('./routes/reports');
+const boardRoutes = require('./routes/board');
 
 // Create Express app and HTTP server
 const app = express();
@@ -56,6 +57,7 @@ app.use('/api', locationRoutes);
 app.use('/api', messageRoutes);
 app.use('/api', taskRoutes);
 app.use('/api', reportRoutes);
+app.use('/api', boardRoutes);
 
 // Serve built client in production
 const path = require('path');
