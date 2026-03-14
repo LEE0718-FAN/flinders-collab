@@ -1,16 +1,18 @@
 import React from 'react';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 
 export default function MessageBubble({ message, isOwn }) {
   const name = message.users?.full_name || message.sender_name || message.user_name || 'User';
+  const avatarUrl = message.users?.avatar_url || message.avatar_url || null;
   const initials = name.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2);
   const time = message.created_at ? format(new Date(message.created_at), 'h:mm a') : '';
 
   return (
     <div className={cn('flex items-end gap-3', isOwn && 'flex-row-reverse')}>
       <Avatar className="h-9 w-9 shrink-0 ring-2 ring-white shadow-md">
+        {avatarUrl && <AvatarImage src={avatarUrl} alt={name} className="object-cover" />}
         <AvatarFallback className="bg-gradient-to-br from-blue-500 to-indigo-500 text-white text-xs font-bold">{initials}</AvatarFallback>
       </Avatar>
       <div className={cn('max-w-[75%]', isOwn && 'text-right')}>

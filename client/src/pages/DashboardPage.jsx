@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback, useLayoutEffect, useRef } from 'react';
 import MainLayout from '@/layouts/MainLayout';
-import RoomCard from '@/components/room/RoomCard';
+import RoomCard, { getRoomPalette } from '@/components/room/RoomCard';
 import CreateRoomDialog from '@/components/room/CreateRoomDialog';
 import JoinRoomDialog from '@/components/room/JoinRoomDialog';
 import { getRooms } from '@/services/rooms';
@@ -104,8 +104,7 @@ export default function DashboardPage() {
         const now = new Date();
         const future = allEvents
           .filter(e => new Date(e.start_time) > now)
-          .sort((a, b) => new Date(a.start_time) - new Date(b.start_time))
-          .slice(0, 5);
+          .sort((a, b) => new Date(a.start_time) - new Date(b.start_time));
 
         setUpcomingEvents(future);
       } catch {
@@ -294,63 +293,7 @@ export default function DashboardPage() {
           </div>
         )}
 
-        {/* Upcoming Deadlines */}
-        {upcomingEvents.length > 0 && (
-          <div className="space-y-3">
-            <div className="flex items-center gap-2">
-              <Clock className="h-5 w-5 text-orange-500" />
-              <h2 className="text-lg font-bold text-foreground">Upcoming Deadlines</h2>
-            </div>
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              {upcomingEvents.map((event) => {
-                const startDate = new Date(event.start_time);
-                const now = new Date();
-                const diffMs = startDate - now;
-                const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
-
-                let urgencyColor = 'border-l-emerald-400 bg-emerald-50/50';
-                let badgeColor = 'bg-emerald-100 text-emerald-700';
-                let badgeText = `D-${diffDays}`;
-
-                if (diffDays <= 1) {
-                  urgencyColor = 'border-l-red-400 bg-red-50/50';
-                  badgeColor = 'bg-red-100 text-red-700';
-                  badgeText = diffDays <= 0 ? 'TODAY' : 'D-1';
-                } else if (diffDays <= 3) {
-                  urgencyColor = 'border-l-orange-400 bg-orange-50/50';
-                  badgeColor = 'bg-orange-100 text-orange-700';
-                } else if (diffDays <= 7) {
-                  urgencyColor = 'border-l-yellow-400 bg-yellow-50/50';
-                  badgeColor = 'bg-yellow-100 text-yellow-700';
-                }
-
-                return (
-                  <div
-                    key={event.id}
-                    className={`rounded-xl border border-border/50 border-l-4 p-4 shadow-sm hover:shadow-md transition-shadow cursor-pointer ${urgencyColor}`}
-                    onClick={() => navigate(`/rooms/${event.room_id}`)}
-                  >
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-semibold truncate">{event.title}</p>
-                        <p className="text-xs text-muted-foreground mt-0.5 truncate">{event.room_name}</p>
-                      </div>
-                      <span className={`shrink-0 text-xs font-bold px-2 py-0.5 rounded-full ${badgeColor}`}>
-                        {badgeText}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-1.5 mt-2.5 text-xs text-muted-foreground">
-                      <CalendarDays className="h-3 w-3" />
-                      <span>{format(startDate, 'MMM d, h:mm a')}</span>
-                      <span className="text-muted-foreground/50">&middot;</span>
-                      <span>{formatDistanceToNow(startDate, { addSuffix: true })}</span>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
+        {/* Upcoming Deadlines - intentionally left empty here, rendered at the bottom */}
 
         {/* Section header */}
         <div className="flex items-center gap-3">
@@ -413,6 +356,76 @@ export default function DashboardPage() {
             <p className="mx-auto mt-2 max-w-sm text-sm text-muted-foreground">
               Create a room to start collaborating with your team, or join an existing room with an invite code.
             </p>
+          </div>
+        )}
+
+        {/* Upcoming Deadlines Section */}
+        {upcomingEvents.length > 0 && (
+          <div className="space-y-4 mt-2">
+            <div className="flex items-center gap-3">
+              <Clock className="h-5 w-5 text-orange-500" />
+              <h2 className="text-lg font-bold text-foreground">Upcoming Deadlines</h2>
+              <span className="text-xs font-semibold bg-orange-100 text-orange-700 px-2.5 py-0.5 rounded-full">{upcomingEvents.length}</span>
+            </div>
+            <div className="space-y-2.5">
+              {upcomingEvents.map((event) => {
+                const startDate = new Date(event.start_time);
+                const now = new Date();
+                const diffMs = startDate - now;
+                const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+
+                const palette = getRoomPalette({ id: event.room_id, name: event.room_name });
+                let badgeText = `D-${diffDays}`;
+                let badgeBg = 'bg-emerald-100 text-emerald-700';
+                if (diffDays <= 0) { badgeText = 'TODAY'; badgeBg = 'bg-red-100 text-red-700'; }
+                else if (diffDays === 1) { badgeText = 'D-1'; badgeBg = 'bg-red-100 text-red-700'; }
+                else if (diffDays <= 3) { badgeBg = 'bg-orange-100 text-orange-700'; }
+                else if (diffDays <= 7) { badgeBg = 'bg-yellow-100 text-yellow-700'; }
+
+                return (
+                  <div
+                    key={event.id}
+                    className="flex items-center gap-4 rounded-xl border bg-white p-4 shadow-sm hover:shadow-md transition-all cursor-pointer hover:-translate-y-0.5"
+                    style={{ borderLeftWidth: '4px', borderLeftColor: palette.accent }}
+                    onClick={() => navigate(`/rooms/${event.room_id}`)}
+                  >
+                    {/* Room color dot */}
+                    <div
+                      className="h-10 w-10 shrink-0 rounded-xl flex items-center justify-center"
+                      style={{ background: palette.pillBg }}
+                    >
+                      <CalendarDays className="h-5 w-5" style={{ color: palette.pillText }} />
+                    </div>
+
+                    {/* Event info */}
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold truncate">{event.title}</p>
+                      <div className="flex items-center gap-2 mt-0.5">
+                        <span
+                          className="inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full"
+                          style={{ backgroundColor: palette.pillBg, color: palette.pillText }}
+                        >
+                          {event.room_name}
+                        </span>
+                        <span className="text-xs text-muted-foreground">
+                          {format(startDate, 'MMM d, h:mm a')}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Time remaining */}
+                    <div className="shrink-0 text-right">
+                      <span className={`inline-block text-xs font-bold px-2.5 py-1 rounded-full ${badgeBg}`}>
+                        {badgeText}
+                      </span>
+                      <p className="text-[11px] text-muted-foreground mt-1">
+                        {formatDistanceToNow(startDate, { addSuffix: true })}
+                      </p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </div>
         )}
       </div>

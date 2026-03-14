@@ -109,7 +109,7 @@ const roomPalettes = [
   },
 ];
 
-function getRoomPalette(room) {
+export function getRoomPalette(room) {
   const seed = `${room.id || ''}-${room.name || ''}`;
   const hash = [...seed].reduce((acc, char) => ((acc * 31) + char.charCodeAt(0)) % roomPalettes.length, 0);
   return roomPalettes[Math.abs(hash) % roomPalettes.length];
