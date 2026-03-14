@@ -66,3 +66,25 @@ export async function updateAcademicInfo(yearLevel, semester) {
   });
   return parseResponse(res);
 }
+
+export async function toggleReaction(postId, emoji) {
+  const headers = getAuthHeaders();
+  const res = await fetch(`/api/board/posts/${postId}/react`, {
+    method: 'POST', headers, body: JSON.stringify({ emoji }),
+  });
+  return parseResponse(res);
+}
+
+export async function votePoll(postId, optionIndex) {
+  const headers = getAuthHeaders();
+  const res = await fetch(`/api/board/posts/${postId}/vote`, {
+    method: 'POST', headers, body: JSON.stringify({ optionIndex }),
+  });
+  return parseResponse(res);
+}
+
+export async function getReactions(postId) {
+  const headers = getAuthHeaders();
+  const res = await fetch(`/api/board/posts/${postId}/reactions`, { headers });
+  return parseResponse(res);
+}

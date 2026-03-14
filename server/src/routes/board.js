@@ -22,6 +22,9 @@ router.post(
     body('title').trim().notEmpty().withMessage('Title is required').isLength({ max: 200 }),
     body('content').trim().notEmpty().withMessage('Content is required').isLength({ max: 5000 }),
     body('category').optional().trim().isLength({ max: 50 }),
+    body('is_anonymous').optional().isBoolean().withMessage('is_anonymous must be a boolean'),
+    body('poll_options').optional().isArray({ min: 2, max: 6 }).withMessage('Poll must have 2-6 options'),
+    body('poll_options.*').optional().isString().trim().notEmpty().withMessage('Poll options must be non-empty strings'),
   ],
   validate,
   boardController.createPost
@@ -32,6 +35,37 @@ router.delete(
   [param('postId').isUUID()],
   validate,
   boardController.deletePost
+);
+
+// ── Reactions ──
+
+router.post(
+  '/board/posts/:postId/react',
+  [
+    param('postId').isUUID(),
+    body('emoji').isIn(['fire', 'heart', 'laugh', 'clap', 'think']).withMessage('Invalid emoji'),
+  ],
+  validate,
+  boardController.toggleReaction
+);
+
+router.get(
+  '/board/posts/:postId/reactions',
+  [param('postId').isUUID()],
+  validate,
+  boardController.getReactions
+);
+
+// ── Poll Voting ──
+
+router.post(
+  '/board/posts/:postId/vote',
+  [
+    param('postId').isUUID(),
+    body('optionIndex').isInt({ min: 0 }).withMessage('Option index must be a non-negative integer'),
+  ],
+  validate,
+  boardController.votePoll
 );
 
 // ── Participation ──

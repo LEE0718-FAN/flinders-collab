@@ -82,6 +82,59 @@ IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'comments_delete') T
   CREATE POLICY "comments_delete" ON comments FOR DELETE USING (auth.uid() = author_id);
 END IF;
 END $$;
+
+-- Add anonymous flag to board_posts
+ALTER TABLE board_posts ADD COLUMN IF NOT EXISTS is_anonymous BOOLEAN NOT NULL DEFAULT false;
+
+-- Add poll columns to board_posts
+ALTER TABLE board_posts ADD COLUMN IF NOT EXISTS poll_options JSONB DEFAULT NULL;
+
+-- Post reactions table
+CREATE TABLE IF NOT EXISTS post_reactions (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  post_id UUID NOT NULL REFERENCES board_posts(id) ON DELETE CASCADE,
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  emoji TEXT NOT NULL CHECK (emoji IN ('fire', 'heart', 'laugh', 'clap', 'think')),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE(post_id, user_id, emoji)
+);
+CREATE INDEX IF NOT EXISTS idx_post_reactions_post ON post_reactions(post_id);
+
+-- Poll votes table
+CREATE TABLE IF NOT EXISTS poll_votes (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  post_id UUID NOT NULL REFERENCES board_posts(id) ON DELETE CASCADE,
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  option_index INTEGER NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE(post_id, user_id)
+);
+CREATE INDEX IF NOT EXISTS idx_poll_votes_post ON poll_votes(post_id);
+
+-- RLS for new tables
+ALTER TABLE post_reactions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE poll_votes ENABLE ROW LEVEL SECURITY;
+
+DO $$ BEGIN
+IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'post_reactions_select') THEN
+  CREATE POLICY "post_reactions_select" ON post_reactions FOR SELECT USING (auth.uid() IS NOT NULL);
+END IF;
+IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'post_reactions_insert') THEN
+  CREATE POLICY "post_reactions_insert" ON post_reactions FOR INSERT WITH CHECK (auth.uid() = user_id);
+END IF;
+IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'post_reactions_delete') THEN
+  CREATE POLICY "post_reactions_delete" ON post_reactions FOR DELETE USING (auth.uid() = user_id);
+END IF;
+IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'poll_votes_select') THEN
+  CREATE POLICY "poll_votes_select" ON poll_votes FOR SELECT USING (auth.uid() IS NOT NULL);
+END IF;
+IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'poll_votes_insert') THEN
+  CREATE POLICY "poll_votes_insert" ON poll_votes FOR INSERT WITH CHECK (auth.uid() = user_id);
+END IF;
+IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'poll_votes_update') THEN
+  CREATE POLICY "poll_votes_update" ON poll_votes FOR UPDATE USING (auth.uid() = user_id);
+END IF;
+END $$;
 `;
 
 async function runMigration() {
