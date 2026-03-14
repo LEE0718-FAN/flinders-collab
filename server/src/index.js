@@ -74,6 +74,10 @@ if (config.nodeEnv === 'production') {
 app.use(notFoundHandler);
 app.use(errorHandler);
 
+// Run migrations on startup
+const { runMigration } = require('./utils/migrate');
+runMigration().catch(() => {});
+
 // Start server
 const PORT = config.port;
 server.listen(PORT, () => {

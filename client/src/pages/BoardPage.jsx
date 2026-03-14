@@ -10,7 +10,8 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
 } from '@/components/ui/dialog';
 import {
-  Loader2, Plus, MessageCircle, UserCheck, UserX, Trash2, Send, GraduationCap, BookOpen, Users2, Calendar, Coffee, HelpCircle,
+  Loader2, Plus, MessageCircle, UserCheck, UserX, Trash2, Send, GraduationCap,
+  BookOpen, Users2, Calendar, Coffee, HelpCircle, FolderKanban,
 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import {
@@ -21,6 +22,7 @@ import {
 const CATEGORIES = [
   { value: 'all', label: 'All', icon: BookOpen },
   { value: 'study_group', label: 'Study Group', icon: Users2 },
+  { value: 'project', label: 'Project Team', icon: FolderKanban },
   { value: 'study_room', label: 'Study Room', icon: Coffee },
   { value: 'event', label: 'Event', icon: Calendar },
   { value: 'general', label: 'General', icon: HelpCircle },
@@ -28,12 +30,15 @@ const CATEGORIES = [
 
 const CATEGORY_COLORS = {
   study_group: 'bg-blue-50 text-blue-700 border-blue-200',
+  project: 'bg-emerald-50 text-emerald-700 border-emerald-200',
   study_room: 'bg-amber-50 text-amber-700 border-amber-200',
   event: 'bg-purple-50 text-purple-700 border-purple-200',
   general: 'bg-slate-50 text-slate-600 border-slate-200',
 };
 
-function AcademicInfoDialog({ open, onOpenChange, onSaved }) {
+// ── Academic Info Gate (blocks board until filled) ──
+
+function AcademicInfoGate({ onSaved }) {
   const [year, setYear] = useState('');
   const [sem, setSem] = useState('');
   const [loading, setLoading] = useState(false);
@@ -46,8 +51,7 @@ function AcademicInfoDialog({ open, onOpenChange, onSaved }) {
     setError('');
     try {
       await updateAcademicInfo(Number(year), Number(sem));
-      onSaved?.({ year_level: Number(year), semester: Number(sem) });
-      onOpenChange(false);
+      onSaved({ year_level: Number(year), semester: Number(sem) });
     } catch (err) {
       setError(err.message || 'Failed to save.');
     } finally {
@@ -56,56 +60,63 @@ function AcademicInfoDialog({ open, onOpenChange, onSaved }) {
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <GraduationCap className="h-5 w-5 text-indigo-500" />
-            Academic Information
-          </DialogTitle>
-          <DialogDescription>
-            Please enter your current year and semester to use the board.
-          </DialogDescription>
-        </DialogHeader>
-        <form onSubmit={handleSave} className="space-y-4">
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-2">
-              <label className="text-sm font-semibold text-slate-700">Year Level</label>
-              <select
-                value={year}
-                onChange={(e) => setYear(e.target.value)}
-                className="flex h-10 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-              >
-                <option value="">Select</option>
-                {[1, 2, 3, 4, 5, 6, 7].map((y) => (
-                  <option key={y} value={y}>Year {y}</option>
-                ))}
-              </select>
+    <MainLayout>
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <div className="w-full max-w-md rounded-2xl border bg-white p-8 shadow-xl animate-fade-in">
+          <div className="flex items-center gap-3 mb-2">
+            <div className="rounded-xl bg-indigo-50 p-2.5">
+              <GraduationCap className="h-6 w-6 text-indigo-500" />
             </div>
-            <div className="space-y-2">
-              <label className="text-sm font-semibold text-slate-700">Semester</label>
-              <select
-                value={sem}
-                onChange={(e) => setSem(e.target.value)}
-                className="flex h-10 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-              >
-                <option value="">Select</option>
-                {[1, 2, 3].map((s) => (
-                  <option key={s} value={s}>Semester {s}</option>
-                ))}
-              </select>
+            <div>
+              <h2 className="text-lg font-bold text-slate-900">Academic Information</h2>
+              <p className="text-sm text-slate-500">Required to access the Free Board</p>
             </div>
           </div>
-          {error && <p className="text-sm text-destructive">{error}</p>}
-          <Button type="submit" disabled={loading} className="w-full rounded-xl bg-gradient-to-r from-indigo-500 to-blue-600 hover:from-indigo-600 hover:to-blue-700">
-            {loading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-            Save & Continue
-          </Button>
-        </form>
-      </DialogContent>
-    </Dialog>
+          <p className="text-sm text-slate-500 mt-3 mb-5">
+            Your year and semester will be shown on your posts and comments so others know who they're connecting with.
+          </p>
+          <form onSubmit={handleSave} className="space-y-4">
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <label className="text-sm font-semibold text-slate-700">Year Level</label>
+                <select
+                  value={year}
+                  onChange={(e) => setYear(e.target.value)}
+                  className="flex h-11 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                >
+                  <option value="">Select year</option>
+                  {[1, 2, 3, 4, 5, 6, 7].map((y) => (
+                    <option key={y} value={y}>Year {y}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-semibold text-slate-700">Semester</label>
+                <select
+                  value={sem}
+                  onChange={(e) => setSem(e.target.value)}
+                  className="flex h-11 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                >
+                  <option value="">Select semester</option>
+                  {[1, 2, 3].map((s) => (
+                    <option key={s} value={s}>Semester {s}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+            {error && <p className="text-sm text-destructive">{error}</p>}
+            <Button type="submit" disabled={loading} className="w-full rounded-xl bg-gradient-to-r from-indigo-500 to-blue-600 hover:from-indigo-600 hover:to-blue-700 h-11">
+              {loading && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+              Save & Enter Board
+            </Button>
+          </form>
+        </div>
+      </div>
+    </MainLayout>
   );
 }
+
+// ── Comment Section ──
 
 function CommentSection({ postId }) {
   const { user } = useAuth();
@@ -220,6 +231,8 @@ function CommentSection({ postId }) {
     </div>
   );
 }
+
+// ── Post Card ──
 
 function PostCard({ post, myStatus, onParticipate, onDelete, userId }) {
   const [showComments, setShowComments] = useState(false);
@@ -342,7 +355,9 @@ function PostCard({ post, myStatus, onParticipate, onDelete, userId }) {
   );
 }
 
-function CreatePostDialog({ open, onOpenChange, onCreated }) {
+// ── Create Post Dialog (with academic info display) ──
+
+function CreatePostDialog({ open, onOpenChange, onCreated, academicInfo }) {
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [category, setCategory] = useState('general');
@@ -376,6 +391,18 @@ function CreatePostDialog({ open, onOpenChange, onCreated }) {
           <DialogTitle>Create a Post</DialogTitle>
           <DialogDescription>Share with the Flinders community</DialogDescription>
         </DialogHeader>
+
+        {/* Author preview with academic info */}
+        {academicInfo && (
+          <div className="flex items-center gap-2 rounded-xl bg-slate-50 border px-3 py-2.5">
+            <GraduationCap className="h-4 w-4 text-indigo-500 shrink-0" />
+            <span className="text-xs text-slate-600">
+              Posting as <strong>Year {academicInfo.year_level}, Semester {academicInfo.semester}</strong>
+              {academicInfo.major && <> &middot; {academicInfo.major}</>}
+            </span>
+          </div>
+        )}
+
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
             <label className="text-sm font-semibold text-slate-700">Category</label>
@@ -403,7 +430,7 @@ function CreatePostDialog({ open, onOpenChange, onCreated }) {
           <div className="space-y-2">
             <label className="text-sm font-semibold text-slate-700">Title</label>
             <Input
-              placeholder="e.g. Looking for study partners for COMP3000"
+              placeholder="e.g. Looking for project partners for COMP3000"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               className="rounded-xl"
@@ -431,6 +458,8 @@ function CreatePostDialog({ open, onOpenChange, onCreated }) {
   );
 }
 
+// ── Main Board Page ──
+
 export default function BoardPage() {
   const { user } = useAuth();
   const [posts, setPosts] = useState([]);
@@ -438,7 +467,6 @@ export default function BoardPage() {
   const [loading, setLoading] = useState(true);
   const [category, setCategory] = useState('all');
   const [createOpen, setCreateOpen] = useState(false);
-  const [academicOpen, setAcademicOpen] = useState(false);
   const [academicInfo, setAcademicInfo] = useState(null);
   const [academicChecked, setAcademicChecked] = useState(false);
 
@@ -457,14 +485,12 @@ export default function BoardPage() {
   useEffect(() => {
     getAcademicInfo()
       .then((info) => {
-        setAcademicInfo(info);
-        if (!info.year_level || !info.semester) {
-          setAcademicOpen(true);
+        if (info.year_level && info.semester) {
+          setAcademicInfo(info);
         }
         setAcademicChecked(true);
       })
       .catch(() => {
-        setAcademicOpen(true);
         setAcademicChecked(true);
       });
 
@@ -474,8 +500,28 @@ export default function BoardPage() {
   }, []);
 
   useEffect(() => {
-    if (academicChecked) fetchPosts();
-  }, [fetchPosts, academicChecked]);
+    if (academicChecked && academicInfo) fetchPosts();
+  }, [fetchPosts, academicChecked, academicInfo]);
+
+  // If academic info not set, show gate (blocks entire board)
+  if (academicChecked && !academicInfo) {
+    return (
+      <AcademicInfoGate
+        onSaved={(info) => setAcademicInfo(info)}
+      />
+    );
+  }
+
+  // Still checking
+  if (!academicChecked) {
+    return (
+      <MainLayout>
+        <div className="flex justify-center py-16">
+          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        </div>
+      </MainLayout>
+    );
+  }
 
   const handlePostCreated = (post) => {
     setPosts((prev) => [post, ...prev]);
@@ -514,7 +560,7 @@ export default function BoardPage() {
             </p>
             <h1 className="mt-3 text-3xl font-black tracking-tight sm:text-4xl">Free Board</h1>
             <p className="mt-2 max-w-xl text-sm text-white/75">
-              Find study partners, share study room bookings, or post anything for the Flinders community.
+              Find study partners, project teammates, share study room bookings, or post anything for the Flinders community.
             </p>
           </div>
           <Button
@@ -578,12 +624,7 @@ export default function BoardPage() {
         open={createOpen}
         onOpenChange={setCreateOpen}
         onCreated={handlePostCreated}
-      />
-
-      <AcademicInfoDialog
-        open={academicOpen}
-        onOpenChange={setAcademicOpen}
-        onSaved={(info) => setAcademicInfo(info)}
+        academicInfo={academicInfo}
       />
     </MainLayout>
   );
