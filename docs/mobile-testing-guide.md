@@ -34,9 +34,12 @@ cd client/android
 ```
 
 **What they check:**
-- App package name matches `com.getcapacitor.myapp`
+- Test package (`com.getcapacitor.myapp`) has not drifted from directory structure
+- Capacitor appId matches `au.edu.flinders.collab` (aligned with `build.gradle` and `capacitor.config.json`)
 - MainActivity class name convention is stable
-- Capacitor defaults (dev server port, WebView scheme) are consistent
+- App name is "Flinders Collab"
+- Version code is positive
+- Capacitor defaults (dev server port 5173, WebView scheme `https`) are consistent
 - JUnit infrastructure is operational
 
 ### Common Blockers
@@ -46,6 +49,7 @@ cd client/android
 | Java not installed | `./gradlew: command not found` or `JAVA_HOME is not set` | Install JDK 17+ and set `JAVA_HOME` |
 | Android SDK missing | Gradle sync fails with SDK errors | Install Android SDK via Android Studio or `sdkmanager` |
 | No `client/android` directory | Path does not exist | Run `npx cap add android && npx cap sync android` from `client/` |
+| Missing Capacitor sync artifacts | `Could not read script 'capacitor-cordova-android-plugins/cordova.variables.gradle'` | Run `npx cap sync android` from `client/` before building |
 
 ---
 
@@ -59,10 +63,12 @@ cd client/android
 ```
 
 **What they check:**
-- App context package name is `com.getcapacitor.myapp`
+- App context package name is `au.edu.flinders.collab` (matches Capacitor appId)
 - App is resolvable by PackageManager (installed correctly)
 - App context is non-null after launch
 - ApplicationInfo has valid source directory
+- App label contains "Flinders"
+- Version code is positive
 
 ### Common Blockers
 

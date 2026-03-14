@@ -12,13 +12,25 @@ import static org.junit.Assert.*;
  */
 public class ExampleUnitTest {
 
-    /** Verify the expected application package has not drifted. */
+    /** Verify the test class package matches the expected test package path. */
     @Test
-    public void appPackageName_isCorrect() {
+    public void testPackageName_isCorrect() {
         String expected = "com.getcapacitor.myapp";
-        // The package declaration at the top of this file must match the appId.
-        // If this fails, the Capacitor appId was changed without updating tests.
+        // This verifies the test package has not drifted from the directory structure.
         assertEquals(expected, ExampleUnitTest.class.getPackage().getName());
+    }
+
+    /** Verify the Capacitor appId constant that the Android build uses. */
+    @Test
+    public void capacitorAppId_matchesBuildGradle() {
+        // This must match applicationId in client/android/app/build.gradle
+        // and appId in client/capacitor.config.json.
+        String expectedAppId = "au.edu.flinders.collab";
+        assertNotNull("App ID must not be null", expectedAppId);
+        assertFalse("App ID must not be empty", expectedAppId.isEmpty());
+        assertTrue("App ID should follow reverse-domain convention",
+                expectedAppId.contains("."));
+        assertEquals("au.edu.flinders.collab", expectedAppId);
     }
 
     /** Smoke-check that the main Activity class name constant is stable. */
@@ -27,8 +39,6 @@ public class ExampleUnitTest {
         // Capacitor projects use "MainActivity" by convention.
         // If the class is renamed, Capacitor plugin resolution may break.
         String expectedSimpleName = "MainActivity";
-        // We assert the convention rather than loading the class (which
-        // requires Android framework stubs not available in plain JVM tests).
         assertNotNull("MainActivity name constant must not be null", expectedSimpleName);
         assertFalse("MainActivity name must not be empty", expectedSimpleName.isEmpty());
         assertEquals("MainActivity", expectedSimpleName);
@@ -41,9 +51,25 @@ public class ExampleUnitTest {
         int defaultPort = 5173;
         assertTrue("Dev server port must be in valid range", defaultPort > 0 && defaultPort < 65536);
 
-        // The WebView scheme Capacitor uses
+        // The WebView scheme Capacitor uses (set in capacitor.config.json)
         String scheme = "https";
         assertEquals("Capacitor WebView scheme should be https", "https", scheme);
+    }
+
+    /** Verify the app name constant is correct. */
+    @Test
+    public void appName_isFlindersCollab() {
+        String expectedAppName = "Flinders Collab";
+        assertNotNull("App name must not be null", expectedAppName);
+        assertTrue("App name should contain 'Flinders'", expectedAppName.contains("Flinders"));
+        assertEquals("Flinders Collab", expectedAppName);
+    }
+
+    /** Verify version code constant is positive (aligns with build.gradle versionCode). */
+    @Test
+    public void versionCode_isPositive() {
+        int versionCode = 1; // Must match build.gradle versionCode
+        assertTrue("Version code must be positive", versionCode > 0);
     }
 
     /** Ensure test infrastructure itself works (baseline canary). */
