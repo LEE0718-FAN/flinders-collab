@@ -62,23 +62,26 @@ export default function LocationMap({ members = [], center }) {
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
-        {validMembers.map((member) => (
-          <Marker key={member.id} position={[member.latitude, member.longitude]}>
-            <Popup>
-              <div className="text-sm">
-                <p className="font-medium">{member.name || 'User'}</p>
-                <p style={{ color: statusColors[member.status] || '#6b7280' }}>
-                  {STATUS_LABEL[member.status] || member.status?.replace('_', ' ') || 'unknown'}
-                </p>
-                {member.updated_at && (
-                  <p className="text-xs opacity-60">
-                    Updated {new Date(member.updated_at).toLocaleTimeString()}
+        {validMembers.map((member) => {
+          const displayName = member.name || member.users?.full_name || 'User';
+          return (
+            <Marker key={member.id} position={[member.latitude, member.longitude]}>
+              <Popup>
+                <div className="text-sm">
+                  <p className="font-medium">{displayName}</p>
+                  <p style={{ color: statusColors[member.status] || '#6b7280' }}>
+                    {STATUS_LABEL[member.status] || member.status?.replace('_', ' ') || 'unknown'}
                   </p>
-                )}
-              </div>
-            </Popup>
-          </Marker>
-        ))}
+                  {member.updated_at && (
+                    <p className="text-xs opacity-60">
+                      Updated {new Date(member.updated_at).toLocaleTimeString()}
+                    </p>
+                  )}
+                </div>
+              </Popup>
+            </Marker>
+          );
+        })}
       </MapContainer>
     </div>
   );

@@ -348,7 +348,7 @@ export default function RoomPage() {
                 </div>
                 <FileUpload roomId={roomId} onUploaded={handleFileUploaded} category="lecture" events={events} />
               </div>
-              <FileList files={files} roomId={roomId} onFilesChange={setFiles} filterCategory="lecture" />
+              <FileList files={files} roomId={roomId} onFilesChange={setFiles} filterCategory="lecture" members={members} />
             </div>
 
             <div className="h-px bg-border" />
@@ -363,7 +363,7 @@ export default function RoomPage() {
                 </div>
                 <FileUpload roomId={roomId} onUploaded={handleFileUploaded} category="submission" events={events} />
               </div>
-              <FileList files={files} roomId={roomId} onFilesChange={setFiles} filterCategory="submission" />
+              <FileList files={files} roomId={roomId} onFilesChange={setFiles} filterCategory="submission" members={members} />
             </div>
           </TabsContent>
 
