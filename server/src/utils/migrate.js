@@ -85,59 +85,70 @@ END $$;
 `;
 
 async function runMigration() {
+  // Method 1: Supabase Management API (uses access token + project ref)
+  const accessToken = config.supabaseAccessToken;
+  const projectRef = config.supabaseProjectRef;
+
+  if (accessToken && projectRef) {
+    try {
+      const res = await fetch(
+        `https://api.supabase.com/v1/projects/${projectRef}/database/query`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${accessToken}`,
+          },
+          body: JSON.stringify({ query: MIGRATION_SQL }),
+        }
+      );
+
+      if (res.ok) {
+        console.log('[migrate] Migration applied via Supabase Management API');
+        return;
+      }
+
+      const text = await res.text();
+      console.log('[migrate] Management API response:', res.status, text.slice(0, 200));
+    } catch (err) {
+      console.log('[migrate] Management API failed:', err.message);
+    }
+  }
+
+  // Method 2: Direct PostgreSQL connection
+  const databaseUrl = config.databaseUrl;
+  if (databaseUrl) {
+    try {
+      const { Client } = require('pg');
+      const client = new Client({
+        connectionString: databaseUrl,
+        ssl: { rejectUnauthorized: false },
+      });
+      await client.connect();
+      await client.query(MIGRATION_SQL);
+      await client.end();
+      console.log('[migrate] Migration applied via direct PostgreSQL connection');
+      return;
+    } catch (err) {
+      console.log('[migrate] Direct PostgreSQL failed:', err.message);
+    }
+  }
+
+  // Method 3: Fallback — verify tables exist
   const url = config.supabase.url;
   const key = config.supabase.serviceRoleKey;
-
-  if (!url || !key) {
-    console.log('[migrate] Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY, skipping migration');
-    return;
-  }
-
-  try {
-    const res = await fetch(`${url}/rest/v1/rpc/`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'apikey': key,
-        'Authorization': `Bearer ${key}`,
-      },
-    });
-
-    // Try using the SQL endpoint via pg-meta (Supabase internal API)
-    const sqlRes = await fetch(`${url}/pg/query`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'apikey': key,
-        'Authorization': `Bearer ${key}`,
-      },
-      body: JSON.stringify({ query: MIGRATION_SQL }),
-    });
-
-    if (sqlRes.ok) {
-      console.log('[migrate] Board migration applied successfully');
-      return;
+  if (url && key) {
+    try {
+      const { supabaseAdmin } = require('../services/supabase');
+      const { error } = await supabaseAdmin.from('board_posts').select('id').limit(1);
+      if (error && error.message.includes('does not exist')) {
+        console.log('[migrate] Tables missing — set SUPABASE_ACCESS_TOKEN + SUPABASE_PROJECT_REF for auto-migration');
+      } else {
+        console.log('[migrate] Board tables verified');
+      }
+    } catch (err) {
+      console.log('[migrate] Verification failed:', err.message);
     }
-
-    // Fallback: try individual statements via supabase admin
-    console.log('[migrate] pg/query not available, trying individual checks...');
-    await ensureTablesExist(url, key);
-  } catch (err) {
-    console.log('[migrate] Migration check:', err.message || 'Could not auto-apply migration');
-    console.log('[migrate] If board features fail, please run the SQL in supabase/migrations/008_board_and_comments.sql via Supabase Dashboard SQL Editor');
-  }
-}
-
-async function ensureTablesExist(url, key) {
-  const { supabaseAdmin } = require('../services/supabase');
-
-  // Test if board_posts table exists
-  const { error } = await supabaseAdmin.from('board_posts').select('id').limit(1);
-  if (error && error.message.includes('does not exist')) {
-    console.log('[migrate] board_posts table missing. Please run: supabase/migrations/008_board_and_comments.sql');
-    console.log('[migrate] Go to Supabase Dashboard → SQL Editor → paste the migration SQL');
-  } else {
-    console.log('[migrate] Board tables verified');
   }
 }
 

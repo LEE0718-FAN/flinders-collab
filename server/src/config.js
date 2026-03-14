@@ -12,6 +12,9 @@ const config = {
     anonKey: process.env.SUPABASE_ANON_KEY,
     serviceRoleKey: process.env.SUPABASE_SERVICE_ROLE_KEY,
   },
+  databaseUrl: process.env.DATABASE_URL,
+  supabaseAccessToken: process.env.SUPABASE_ACCESS_TOKEN,
+  supabaseProjectRef: process.env.SUPABASE_PROJECT_REF,
   jwtSecret: process.env.JWT_SECRET,
   clientUrl: process.env.CLIENT_URL || 'http://localhost:5173',
   upload: {

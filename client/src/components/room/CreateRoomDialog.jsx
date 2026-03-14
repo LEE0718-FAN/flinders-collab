@@ -9,7 +9,6 @@ import { createRoom } from '@/services/rooms';
 export default function CreateRoomDialog({ onCreateStart, onCreated, onCreateError }) {
   const [open, setOpen] = useState(false);
   const [name, setName] = useState('');
-  const [courseCode, setCourseCode] = useState('');
   const [description, setDescription] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -24,7 +23,7 @@ export default function CreateRoomDialog({ onCreateStart, onCreated, onCreateErr
       onCreateStart?.({
         id: tempRoomId,
         name: name.trim(),
-        course_name: courseCode.trim() || null,
+        course_name: name.trim() || null,
         description: description.trim() || null,
         member_count: 1,
         my_role: 'owner',
@@ -32,13 +31,12 @@ export default function CreateRoomDialog({ onCreateStart, onCreated, onCreateErr
 
       const room = await createRoom({
         name: name.trim(),
-        course_name: courseCode.trim(),
+        course_name: name.trim(),
         description: description.trim(),
       });
 
       setOpen(false);
       setName('');
-      setCourseCode('');
       setDescription('');
       onCreated?.(room, tempRoomId);
     } catch (err) {
@@ -65,11 +63,7 @@ export default function CreateRoomDialog({ onCreateStart, onCreated, onCreateErr
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
             <label className="text-sm font-medium">Room Name</label>
-            <Input placeholder="e.g. COMP2024 Project Team" value={name} onChange={(e) => setName(e.target.value)} required />
-          </div>
-          <div className="space-y-2">
-            <label className="text-sm font-medium">Course Code (optional)</label>
-            <Input placeholder="e.g. COMP2024" value={courseCode} onChange={(e) => setCourseCode(e.target.value)} />
+            <Input placeholder="e.g. Software Engineering, Data Science" value={name} onChange={(e) => setName(e.target.value)} required />
           </div>
           <div className="space-y-2">
             <label className="text-sm font-medium">Description (optional)</label>
