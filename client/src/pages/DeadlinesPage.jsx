@@ -122,38 +122,31 @@ export default function DeadlinesPage() {
               return (
                 <div
                   key={event.id}
-                  className="flex items-center gap-4 rounded-xl border bg-white p-4 shadow-sm hover:shadow-md transition-all cursor-pointer hover:-translate-y-0.5"
+                  className="flex items-center gap-4 rounded-xl border bg-white px-5 py-4 shadow-sm hover:shadow-md transition-all cursor-pointer hover:-translate-y-0.5"
                   style={{ borderLeftWidth: '4px', borderLeftColor: palette.accent }}
                   onClick={() => navigate(`/rooms/${event.room_id}`)}
                 >
-                  <div
-                    className="h-11 w-11 shrink-0 rounded-xl flex items-center justify-center text-lg"
-                    style={{ background: palette.pillBg }}
+                  <span
+                    className="shrink-0 text-sm font-bold px-3 py-1 rounded-full"
+                    style={{ backgroundColor: palette.pillBg, color: palette.pillText }}
                   >
-                    {catInfo.icon}
-                  </div>
+                    {event.room_name}
+                  </span>
 
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold truncate">{event.title}</p>
-                    <div className="flex items-center gap-2 mt-1 flex-wrap">
-                      <span
-                        className="inline-flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-full"
-                        style={{ backgroundColor: palette.pillBg, color: palette.pillText }}
-                      >
-                        {event.room_name}
-                      </span>
-                      <span className="text-[11px] text-muted-foreground/60">{catInfo.label}</span>
-                      <span className="text-[11px] text-muted-foreground">
-                        {format(startDate, 'EEE, MMM d · h:mm a')}
-                      </span>
-                    </div>
+                    <p className="text-[15px] font-semibold truncate">{event.title}</p>
+                    <p className="text-[13px] text-muted-foreground mt-0.5">
+                      <span className="text-muted-foreground/60">{catInfo.label}</span>
+                      <span className="mx-1.5 text-muted-foreground/30">·</span>
+                      {format(startDate, 'EEE, MMM d · h:mm a')}
+                    </p>
                   </div>
 
                   <div className="shrink-0 text-right">
-                    <span className={`inline-block text-xs font-bold px-2.5 py-1 rounded-full ${badgeBg}`}>
+                    <span className={`inline-block text-sm font-bold px-3 py-1 rounded-full ${badgeBg}`}>
                       {badgeText}
                     </span>
-                    <p className="text-[11px] text-muted-foreground mt-1">
+                    <p className="text-xs text-muted-foreground mt-1">
                       {formatDistanceToNow(startDate, { addSuffix: true })}
                     </p>
                   </div>
