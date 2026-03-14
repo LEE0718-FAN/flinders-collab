@@ -33,6 +33,7 @@ export function useAuth() {
         user_metadata: {
           name: result.user.full_name,
           full_name: result.user.full_name,
+          avatar_url: result.user.avatar_url || null,
         },
       },
     };
@@ -71,6 +72,7 @@ export function useAuth() {
         user_metadata: {
           name: result.user.full_name,
           full_name: result.user.full_name,
+          avatar_url: result.user.avatar_url || null,
         },
       },
     };

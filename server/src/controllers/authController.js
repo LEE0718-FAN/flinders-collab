@@ -74,10 +74,10 @@ async function login(req, res, next) {
       return res.status(401).json({ error: 'Invalid email or password' });
     }
 
-    // Check admin status from users table
+    // Fetch profile (admin status + avatar) from users table
     const { data: profile } = await supabaseAdmin
       .from('users')
-      .select('is_admin')
+      .select('is_admin, avatar_url, full_name')
       .eq('id', data.user.id)
       .single();
 
@@ -91,7 +91,8 @@ async function login(req, res, next) {
       user: {
         id: data.user.id,
         email: data.user.email,
-        full_name: data.user.user_metadata?.full_name,
+        full_name: profile?.full_name || data.user.user_metadata?.full_name,
+        avatar_url: profile?.avatar_url || null,
         is_admin: profile?.is_admin || false,
       },
     });

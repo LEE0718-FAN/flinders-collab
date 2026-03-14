@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { LayoutDashboard, LogOut, Menu, Users, ChevronRight, Shield, User } from 'lucide-react';
+import { LayoutDashboard, LogOut, Menu, Users, ChevronRight, Shield, User, CalendarClock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
@@ -92,6 +92,12 @@ function SidebarContent({ rooms, location, isAdmin }) {
         isActive={location.pathname === '/dashboard'}
         icon={LayoutDashboard}
         label="Dashboard"
+      />
+      <NavItem
+        to="/deadlines"
+        isActive={location.pathname === '/deadlines'}
+        icon={CalendarClock}
+        label="Deadlines"
       />
 
       {/* Room section divider */}
@@ -196,7 +202,7 @@ export default function MainLayout({ children }) {
   };
 
   const initials = user?.user_metadata?.name
-    ? user.user_metadata.name.split(' ').map((n) => n[0]).join('').toUpperCase()
+    ? user.user_metadata.name.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2)
     : user?.email?.[0]?.toUpperCase() || '?';
 
   const displayName = user?.user_metadata?.name || user?.email;

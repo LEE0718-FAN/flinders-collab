@@ -9,7 +9,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { applyRoomOrder, buildOrderedIds, loadRoomOrder, persistRoomOrder } from '@/lib/room-order';
 import { useNavigate } from 'react-router-dom';
 import { format, formatDistanceToNow } from 'date-fns';
-import { Loader2, Plus, UserPlus, LayoutGrid, Clock, CalendarDays } from 'lucide-react';
+import { Loader2, Plus, UserPlus, LayoutGrid } from 'lucide-react';
 
 const TEMP_ROOM_PREFIX = 'temp-room-';
 
@@ -102,11 +102,12 @@ export default function DashboardPage() {
         results.forEach(r => { if (r.status === 'fulfilled') allEvents.push(...r.value); });
 
         const now = new Date();
-        const future = allEvents
-          .filter(e => new Date(e.start_time) > now)
-          .sort((a, b) => new Date(a.start_time) - new Date(b.start_time));
+        const meetings = allEvents
+          .filter(e => new Date(e.start_time) > now && e.category === 'meeting')
+          .sort((a, b) => new Date(a.start_time) - new Date(b.start_time))
+          .slice(0, 3); // Show max 3 upcoming meetings
 
-        setUpcomingEvents(future);
+        setUpcomingEvents(meetings);
       } catch {
         // silently fail
       }
@@ -293,7 +294,52 @@ export default function DashboardPage() {
           </div>
         )}
 
-        {/* Upcoming Deadlines - intentionally left empty here, rendered at the bottom */}
+        {/* Upcoming Meetings */}
+        {upcomingEvents.length > 0 && (
+          <div className="space-y-2">
+            {upcomingEvents.map((event) => {
+              const startDate = new Date(event.start_time);
+              const now = new Date();
+              const diffMs = startDate - now;
+              const diffHours = Math.ceil(diffMs / (1000 * 60 * 60));
+              const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+              const palette = getRoomPalette({ id: event.room_id, name: event.room_name });
+
+              let timeText = formatDistanceToNow(startDate, { addSuffix: true });
+
+              return (
+                <div
+                  key={event.id}
+                  className="flex items-center gap-3 rounded-xl border bg-white px-4 py-3 shadow-sm hover:shadow-md transition-all cursor-pointer"
+                  style={{ borderLeftWidth: '4px', borderLeftColor: palette.accent }}
+                  onClick={() => navigate(`/rooms/${event.room_id}`)}
+                >
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-base" style={{ background: palette.pillBg }}>
+                    👥
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold truncate">
+                      <span className="text-orange-600 font-bold mr-1.5">Meeting</span>
+                      {event.title}
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      <span style={{ color: palette.pillText }} className="font-medium">{event.room_name}</span>
+                      <span className="mx-1.5 text-muted-foreground/40">·</span>
+                      {format(startDate, 'MMM d, h:mm a')}
+                      <span className="mx-1.5 text-muted-foreground/40">·</span>
+                      {timeText}
+                    </p>
+                  </div>
+                  {diffDays <= 1 && (
+                    <span className="shrink-0 text-[11px] font-bold px-2 py-0.5 rounded-full bg-red-100 text-red-700 animate-pulse">
+                      {diffHours <= 1 ? 'SOON' : diffDays <= 0 ? 'TODAY' : 'TOMORROW'}
+                    </span>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
 
         {/* Section header */}
         <div className="flex items-center gap-3">
@@ -359,75 +405,6 @@ export default function DashboardPage() {
           </div>
         )}
 
-        {/* Upcoming Deadlines Section */}
-        {upcomingEvents.length > 0 && (
-          <div className="space-y-4 mt-2">
-            <div className="flex items-center gap-3">
-              <Clock className="h-5 w-5 text-orange-500" />
-              <h2 className="text-lg font-bold text-foreground">Upcoming Deadlines</h2>
-              <span className="text-xs font-semibold bg-orange-100 text-orange-700 px-2.5 py-0.5 rounded-full">{upcomingEvents.length}</span>
-            </div>
-            <div className="space-y-2.5">
-              {upcomingEvents.map((event) => {
-                const startDate = new Date(event.start_time);
-                const now = new Date();
-                const diffMs = startDate - now;
-                const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
-
-                const palette = getRoomPalette({ id: event.room_id, name: event.room_name });
-                let badgeText = `D-${diffDays}`;
-                let badgeBg = 'bg-emerald-100 text-emerald-700';
-                if (diffDays <= 0) { badgeText = 'TODAY'; badgeBg = 'bg-red-100 text-red-700'; }
-                else if (diffDays === 1) { badgeText = 'D-1'; badgeBg = 'bg-red-100 text-red-700'; }
-                else if (diffDays <= 3) { badgeBg = 'bg-orange-100 text-orange-700'; }
-                else if (diffDays <= 7) { badgeBg = 'bg-yellow-100 text-yellow-700'; }
-
-                return (
-                  <div
-                    key={event.id}
-                    className="flex items-center gap-4 rounded-xl border bg-white p-4 shadow-sm hover:shadow-md transition-all cursor-pointer hover:-translate-y-0.5"
-                    style={{ borderLeftWidth: '4px', borderLeftColor: palette.accent }}
-                    onClick={() => navigate(`/rooms/${event.room_id}`)}
-                  >
-                    {/* Room color dot */}
-                    <div
-                      className="h-10 w-10 shrink-0 rounded-xl flex items-center justify-center"
-                      style={{ background: palette.pillBg }}
-                    >
-                      <CalendarDays className="h-5 w-5" style={{ color: palette.pillText }} />
-                    </div>
-
-                    {/* Event info */}
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold truncate">{event.title}</p>
-                      <div className="flex items-center gap-2 mt-0.5">
-                        <span
-                          className="inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full"
-                          style={{ backgroundColor: palette.pillBg, color: palette.pillText }}
-                        >
-                          {event.room_name}
-                        </span>
-                        <span className="text-xs text-muted-foreground">
-                          {format(startDate, 'MMM d, h:mm a')}
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Time remaining */}
-                    <div className="shrink-0 text-right">
-                      <span className={`inline-block text-xs font-bold px-2.5 py-1 rounded-full ${badgeBg}`}>
-                        {badgeText}
-                      </span>
-                      <p className="text-[11px] text-muted-foreground mt-1">
-                        {formatDistanceToNow(startDate, { addSuffix: true })}
-                      </p>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
       </div>
     </MainLayout>
   );

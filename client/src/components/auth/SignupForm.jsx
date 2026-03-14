@@ -8,6 +8,7 @@ export default function SignupForm({ onSubmit }) {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [studentId, setStudentId] = useState('');
   const [major, setMajor] = useState('');
   const [error, setError] = useState('');
@@ -24,6 +25,11 @@ export default function SignupForm({ onSubmit }) {
 
     if (password.length < 6) {
       setError('Password must be at least 6 characters');
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      setError('Passwords do not match');
       return;
     }
 
@@ -47,6 +53,15 @@ export default function SignupForm({ onSubmit }) {
       <div className="text-center space-y-1">
         <h2 className="text-2xl font-bold tracking-tight">Create your account</h2>
         <p className="text-sm text-muted-foreground/70">Join your university community</p>
+      </div>
+
+      <div className="rounded-xl bg-blue-50 border border-blue-100 px-4 py-3 space-y-1.5">
+        <p className="text-[13px] font-semibold text-blue-800">Before you sign up</p>
+        <ul className="text-[12px] text-blue-700 space-y-1 list-disc list-inside">
+          <li>Use your <strong>Flinders University email</strong> (e.g. lee2086@flinders.edu.au)</li>
+          <li>Enter your <strong>real full name</strong> as registered at Flinders</li>
+          <li>Password can be anything you choose (min. 6 characters)</li>
+        </ul>
       </div>
 
       <div className="space-y-2">
@@ -88,6 +103,14 @@ export default function SignupForm({ onSubmit }) {
           <Input id="password" type="password" placeholder="Min. 6 characters" value={password} onChange={(e) => setPassword(e.target.value)} required className="h-12 rounded-xl pl-10 bg-muted/30 border-border/40 focus:bg-white" />
         </div>
         <p className="text-[11px] text-muted-foreground/40">Must be at least 6 characters</p>
+      </div>
+
+      <div className="space-y-2">
+        <label htmlFor="confirmPassword" className="text-[13px] font-semibold text-foreground/70">Confirm Password</label>
+        <div className="relative">
+          <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/40" />
+          <Input id="confirmPassword" type="password" placeholder="Re-enter your password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} required className="h-12 rounded-xl pl-10 bg-muted/30 border-border/40 focus:bg-white" />
+        </div>
       </div>
 
       {error && (

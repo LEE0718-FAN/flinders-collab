@@ -19,7 +19,7 @@ import { getFiles } from '@/services/files';
 import { getTasks } from '@/services/tasks';
 import { copyToClipboard } from '@/lib/native';
 import { useAuth } from '@/hooks/useAuth';
-import { Loader2, Copy, Check, Plus, MessageSquare, FileUp, CalendarPlus, CheckSquare, Activity } from 'lucide-react';
+import { Loader2, Copy, Check, Plus, MessageSquare, FileUp, CalendarPlus, CheckSquare, Activity, Link2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import ReportButton from '@/components/ReportButton';
 import EditRoomDialog from '@/components/room/EditRoomDialog';
@@ -207,6 +207,9 @@ export default function RoomPage() {
             <TabsTrigger value="tasks" className="data-[state=active]:bg-indigo-50 data-[state=active]:text-indigo-700 data-[state=active]:font-semibold">Tasks</TabsTrigger>
             <TabsTrigger value="chat" className="data-[state=active]:bg-indigo-50 data-[state=active]:text-indigo-700 data-[state=active]:font-semibold">Chat</TabsTrigger>
             <TabsTrigger value="files" className="data-[state=active]:bg-indigo-50 data-[state=active]:text-indigo-700 data-[state=active]:font-semibold">Files</TabsTrigger>
+            <TabsTrigger value="links" className="data-[state=active]:bg-indigo-50 data-[state=active]:text-indigo-700 data-[state=active]:font-semibold">
+              <Link2 className="h-4 w-4 mr-1" />Quick Links
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="overview" className="space-y-4">
@@ -238,13 +241,6 @@ export default function RoomPage() {
               </CardHeader>
               <CardContent>
                 <MemberList members={members} />
-              </CardContent>
-            </Card>
-
-            {/* Quick Links */}
-            <Card>
-              <CardContent className="p-5">
-                <QuickLinks roomId={roomId} links={quickLinks} onLinksChange={setQuickLinks} />
               </CardContent>
             </Card>
 
@@ -369,6 +365,14 @@ export default function RoomPage() {
               </div>
               <FileList files={files} roomId={roomId} onFilesChange={setFiles} filterCategory="submission" />
             </div>
+          </TabsContent>
+
+          <TabsContent value="links">
+            <Card>
+              <CardContent className="p-5">
+                <QuickLinks roomId={roomId} links={quickLinks} onLinksChange={setQuickLinks} />
+              </CardContent>
+            </Card>
           </TabsContent>
 
         </Tabs>
