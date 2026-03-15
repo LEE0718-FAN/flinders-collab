@@ -2,7 +2,6 @@ const { supabaseAdmin } = require('../services/supabase');
 
 const WP_EVENTS_URL = 'https://events.flinders.edu.au/wp-json/wp/v2/ajde_events?per_page=50';
 
-// Word-boundary keyword patterns for categorization
 const categoryPatterns = {
   'IT & Computing': [/\bcomputer\b/i, /\bI\.?T\.?\b/, /\btech\b/i, /\btechnolog/i, /\bsoftware\b/i, /\bcyber/i, /\bdata\b/i, /\bdigital\b/i, /\b(?:A\.?I\.?|artificial intelligence)\b/i, /\bmachine learning\b/i, /\bcoding\b/i, /\bprogramming\b/i, /\bhackathon\b/i, /\binformation technology\b/i, /\bSTEM\b/],
   'Engineering': [/\bengineering\b/i, /\bmechanical\b/i, /\bcivil\b/i, /\belectrical\b/i, /\brobotic/i, /\bmaritime\b/i],
@@ -30,50 +29,98 @@ function categorizeEvent(title, excerpt) {
   return matched;
 }
 
-/**
- * Extract event metadata (time, location, cost) from WordPress event data.
- */
-function extractEventMeta(ev) {
-  const meta = ev.meta || {};
+const MONTHS = { january:0, february:1, march:2, april:3, may:4, june:5, july:6, august:7, september:8, october:9, november:10, december:11 };
 
-  const srow = meta.evcal_srow || meta._evcal_srow || meta.start_date || null;
-  const erow = meta.evcal_erow || meta._evcal_erow || meta.end_date || null;
-
-  let start_time = null;
-  let end_time = null;
-
-  if (srow) {
-    const ts = Number(srow);
-    start_time = ts > 1e9 ? new Date(ts * 1000).toISOString() : String(srow);
-  }
-  if (erow) {
-    const ts = Number(erow);
-    end_time = ts > 1e9 ? new Date(ts * 1000).toISOString() : String(erow);
-  }
-
-  const location = stripHtmlTags(
-    String(meta.evcal_location || meta._evcal_location || meta.location || meta.venue || ev.location || ev.venue || '')
-  );
-
-  let cost = String(meta.evcal_cost || meta._evcal_cost || meta.cost || meta.ticket_cost || '').trim();
-  if (!cost) {
-    const text = stripHtmlTags((ev.excerpt?.rendered || '') + ' ' + (ev.content?.rendered || ''));
-    if (/\bfree\b/i.test(text)) cost = 'Free';
-    else if (/\$\d/.test(text)) {
-      const m = text.match(/\$[\d,.]+/);
-      if (m) cost = m[0];
-    } else if (/\bregist(?:er|ration)\b/i.test(text) && !/\bpaid\b/i.test(text)) {
-      cost = 'Free registration';
-    }
-  }
-
-  return { start_time, end_time, location, cost };
+function parseTime(timeStr) {
+  if (!timeStr) return null;
+  const m = timeStr.match(/(\d{1,2})(?::(\d{2}))?\s*(am|pm)/i);
+  if (!m) return null;
+  let h = parseInt(m[1]);
+  const min = parseInt(m[2] || '0');
+  if (m[3].toLowerCase() === 'pm' && h !== 12) h += 12;
+  if (m[3].toLowerCase() === 'am' && h === 12) h = 0;
+  return { h, m: min };
 }
 
-/**
- * Crawl Flinders University events from WordPress API and cache in DB.
- * Runs automatically every 24 hours.
- */
+function parseEventDateFromContent(contentHtml) {
+  if (!contentHtml) return null;
+  const text = stripHtmlTags(contentHtml);
+
+  const dateTimeMatch = text.match(
+    /(\d{1,2})\s+(January|February|March|April|May|June|July|August|September|October|November|December)\s+(\d{4}),?\s*(\d{1,2}(?::\d{2})?\s*(?:am|pm))\s*[–\-]\s*(\d{1,2}(?::\d{2})?\s*(?:am|pm))/i
+  );
+  if (dateTimeMatch) {
+    const day = parseInt(dateTimeMatch[1]);
+    const month = MONTHS[dateTimeMatch[2].toLowerCase()];
+    const year = parseInt(dateTimeMatch[3]);
+    const st = parseTime(dateTimeMatch[4]);
+    const et = parseTime(dateTimeMatch[5]);
+    return {
+      start_time: new Date(year, month, day, st?.h || 0, st?.m || 0).toISOString(),
+      end_time: et ? new Date(year, month, day, et.h, et.m).toISOString() : null,
+      time_display: `${dateTimeMatch[4].trim()} – ${dateTimeMatch[5].trim()}`,
+    };
+  }
+
+  const dateTimePartial = text.match(
+    /(\d{1,2})\s+(January|February|March|April|May|June|July|August|September|October|November|December)\s+(\d{4}),?\s*(\d{1,2}(?::\d{2})?\s*(?:am|pm))/i
+  );
+  if (dateTimePartial) {
+    const day = parseInt(dateTimePartial[1]);
+    const month = MONTHS[dateTimePartial[2].toLowerCase()];
+    const year = parseInt(dateTimePartial[3]);
+    const st = parseTime(dateTimePartial[4]);
+    return {
+      start_time: new Date(year, month, day, st?.h || 0, st?.m || 0).toISOString(),
+      end_time: null,
+      time_display: dateTimePartial[4].trim(),
+    };
+  }
+
+  const dateOnly = text.match(
+    /(\d{1,2})\s+(January|February|March|April|May|June|July|August|September|October|November|December)\s+(\d{4})/i
+  );
+  if (dateOnly) {
+    const day = parseInt(dateOnly[1]);
+    const month = MONTHS[dateOnly[2].toLowerCase()];
+    const year = parseInt(dateOnly[3]);
+    return {
+      start_time: new Date(year, month, day, 9, 0).toISOString(),
+      end_time: null,
+      time_display: '',
+    };
+  }
+
+  return null;
+}
+
+function parseLocationFromClassList(classList) {
+  if (!Array.isArray(classList)) return '';
+  const locClass = classList.find((c) => c.startsWith('event_location-'));
+  if (!locClass) return '';
+  return locClass
+    .replace('event_location-', '')
+    .split('-')
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(' ')
+    .replace(/(\s)(Level)(\s)/g, ' | Level ')
+    .replace(/(\s)(Room)(\s)/g, ' | Room ')
+    .replace(/(\s)(Building)(\s)/g, ' | Building ');
+}
+
+function parseLocationFromContent(contentHtml) {
+  if (!contentHtml) return '';
+  const boldBlocks = contentHtml.match(/<strong>([^<]+)<\/strong>/gi) || [];
+  for (const block of boldBlocks) {
+    const text = stripHtmlTags(block);
+    if (/\d{4}/.test(text) && /(?:am|pm)/i.test(text)) continue;
+    if (/(?:Campus|Room|Building|Hall|Library|Theatre|Online|Level)/i.test(text)) {
+      return text;
+    }
+  }
+  return '';
+}
+
 async function crawlFlindersEvents() {
   console.log('[event-crawler] Starting daily event crawl...');
 
@@ -90,17 +137,15 @@ async function crawlFlindersEvents() {
       return;
     }
 
-    // Log sample meta structure for debugging
-    if (data.length > 0) {
-      console.log('[event-crawler] Sample event meta keys:', Object.keys(data[0].meta || {}));
-    }
-
     let upserted = 0;
     for (const ev of data) {
       const title = ev.title?.rendered || '';
       const excerpt = ev.excerpt?.rendered || '';
-      const categories = categorizeEvent(title, excerpt);
-      const meta = extractEventMeta(ev);
+      const content = ev.content?.rendered || '';
+      const classList = ev.class_list || [];
+      const categories = categorizeEvent(title, excerpt + ' ' + content);
+      const parsed = parseEventDateFromContent(content);
+      const location = parseLocationFromContent(content) || parseLocationFromClassList(classList);
 
       const record = {
         wp_id: ev.id,
@@ -108,12 +153,13 @@ async function crawlFlindersEvents() {
         excerpt,
         link: ev.link || '',
         image: ev.featured_image_url || ev._embedded?.['wp:featuredmedia']?.[0]?.source_url || null,
-        event_date: meta.start_time || ev.date || null,
+        event_date: parsed?.start_time || ev.date || null,
         categories,
-        location: meta.location || null,
-        start_time: meta.start_time || null,
-        end_time: meta.end_time || null,
-        cost: meta.cost || null,
+        location: location || null,
+        start_time: parsed?.start_time || null,
+        end_time: parsed?.end_time || null,
+        time_display: parsed?.time_display || null,
+        cost: null,
         raw_json: ev,
         crawled_at: new Date().toISOString(),
       };
@@ -123,6 +169,7 @@ async function crawlFlindersEvents() {
         .upsert(record, { onConflict: 'wp_id' });
 
       if (!error) upserted++;
+      else console.log('[event-crawler] Upsert error:', error.message);
     }
 
     // Clean up old events (past 30 days)
@@ -139,15 +186,8 @@ async function crawlFlindersEvents() {
   }
 }
 
-/**
- * Start the daily event crawler.
- * Runs immediately on startup, then every 24 hours.
- */
 function startEventCrawler() {
-  // Run immediately on startup
   crawlFlindersEvents();
-
-  // Then every 24 hours
   const INTERVAL_MS = 24 * 60 * 60 * 1000;
   setInterval(crawlFlindersEvents, INTERVAL_MS);
   console.log('[event-crawler] Scheduled daily crawl (every 24h)');

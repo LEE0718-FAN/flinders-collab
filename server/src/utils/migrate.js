@@ -288,6 +288,7 @@ ALTER TABLE flinders_events_cache ADD COLUMN IF NOT EXISTS location TEXT;
 ALTER TABLE flinders_events_cache ADD COLUMN IF NOT EXISTS start_time TIMESTAMPTZ;
 ALTER TABLE flinders_events_cache ADD COLUMN IF NOT EXISTS end_time TIMESTAMPTZ;
 ALTER TABLE flinders_events_cache ADD COLUMN IF NOT EXISTS cost TEXT;
+ALTER TABLE flinders_events_cache ADD COLUMN IF NOT EXISTS time_display TEXT;
 `;
 
 async function runMigration() {
