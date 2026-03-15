@@ -193,20 +193,34 @@ export default function EventList({ events = [], roomId, onEventsChange }) {
           return (
             <div key={dateKey} id={`event-date-${dateKey}`} className={`scroll-mt-4 rounded-2xl p-3 transition-all duration-500 ${isPast ? 'opacity-50' : ''}`}>
               {/* Date header row */}
-              <div className="flex items-center gap-3 mb-2.5">
-                <div className={`flex items-center gap-2.5 rounded-full px-3 py-1.5 ${
+              <div className="flex items-center gap-3 mb-3">
+                <div className={`flex items-center gap-0 rounded-xl overflow-hidden shadow-sm ${
                   isToday
-                    ? 'bg-blue-600 text-white shadow-md shadow-blue-500/30'
-                    : isPast
-                      ? 'bg-slate-100 text-slate-500'
-                      : 'bg-gradient-to-r from-blue-50 to-indigo-50 text-blue-700'
+                    ? 'ring-2 ring-blue-400 ring-offset-2'
+                    : ''
                 }`}>
-                  <span className="text-xs font-bold uppercase tracking-wide">{format(date, 'EEE')}</span>
-                  <span className="text-lg font-black leading-none">{format(date, 'd')}</span>
-                  <span className="text-xs font-medium opacity-70">{format(date, 'MMM')}</span>
+                  <div className={`px-3 py-1.5 text-center ${
+                    isToday
+                      ? 'bg-blue-600 text-white'
+                      : isPast
+                        ? 'bg-slate-200 text-slate-500'
+                        : 'bg-gradient-to-r from-blue-500 to-indigo-500 text-white'
+                  }`}>
+                    <span className="text-[10px] font-bold uppercase tracking-wider block leading-tight opacity-80">{format(date, 'EEE')}</span>
+                    <span className="text-xl font-black leading-tight">{format(date, 'd')}</span>
+                  </div>
+                  <div className={`px-2.5 py-1.5 text-center ${
+                    isToday
+                      ? 'bg-blue-50 text-blue-700'
+                      : isPast
+                        ? 'bg-slate-50 text-slate-400'
+                        : 'bg-indigo-50 text-indigo-600'
+                  }`}>
+                    <span className="text-xs font-bold">{format(date, 'MMM')}</span>
+                  </div>
                 </div>
-                <div className={`h-px flex-1 ${isToday ? 'bg-blue-200' : 'bg-slate-100'}`} />
-                {isToday && <span className="text-[10px] font-bold text-blue-500 uppercase tracking-wider">Today</span>}
+                <div className={`h-px flex-1 ${isToday ? 'bg-blue-300' : isPast ? 'bg-slate-100' : 'bg-indigo-100'}`} />
+                {isToday && <span className="text-[10px] font-bold text-blue-500 bg-blue-50 px-2 py-0.5 rounded-full uppercase tracking-wider">Today</span>}
               </div>
 
               {/* Events */}

@@ -307,7 +307,7 @@ export default function RoomPage() {
                 </Button>
               </div>
             </div>
-            <div className="grid gap-4 grid-cols-1 md:grid-cols-[280px_1fr] md:items-start">
+            <div className="grid gap-4 grid-cols-1 md:grid-cols-[280px_1fr]">
               <div className="md:sticky md:top-0 z-10">
               <ScheduleCalendar
                 roomId={roomId}
