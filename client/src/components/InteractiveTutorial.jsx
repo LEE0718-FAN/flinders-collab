@@ -23,6 +23,7 @@ export default function InteractiveTutorial() {
   const [progress, setProgress] = useState(0);
   const cancelRef = useRef(false);
   const createdRoomIdRef = useRef(null);
+  const createdPostIdRef = useRef(null);
   const totalSteps = 16;
 
   // ── Clean up any leftover tutorial room from a previous crashed session ──
@@ -135,7 +136,7 @@ export default function InteractiveTutorial() {
   }, []);
 
   const showTip = useCallback((title, desc, options = {}) => {
-    const tw = Math.min(300, window.innerWidth - 24);
+    const tw = Math.min(340, window.innerWidth - 24);
     if (options.center || !options.target) {
       setTooltip({ title, desc, style: { position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', width: tw }, icon: options.icon });
       setSpotlight(null); return;
@@ -191,6 +192,11 @@ export default function InteractiveTutorial() {
 
   const cleanup = useCallback(async () => {
     setTooltip(null); setSpotlight(null); setCursorVisible(false); setShowOverlay(false);
+    // Delete tutorial-created post
+    if (createdPostIdRef.current) {
+      try { await deletePost(createdPostIdRef.current); } catch { /* ok */ }
+      createdPostIdRef.current = null;
+    }
     // Delete room FIRST, then navigate — so dashboard loads without the room
     await safeDeleteTutorialRoom();
     navigate('/dashboard');
@@ -221,14 +227,14 @@ export default function InteractiveTutorial() {
     navigate('/dashboard');
     await waitForEl('[data-tour="create-room"]');
     await sleep(1000);
-    showTip('Welcome!', "Hey! I'm Sean.\nI made this app for Flinders students.\nLet me show you how it works!", { center: true, icon: '👋' });
+    showTip('Welcome!', "Hey! I'm Sean. I made this app for Flinders students. Let me show you how it works!", { center: true, icon: '👋' });
     await pause(4000); if (bail()) { await end(); return; }
 
     // ── 2: Create Room button ──
     setP(2); setTooltip(null); setSpotlight(null);
     await waitForEl('[data-tour="create-room"]');
     if (bail()) { await end(); return; }
-    showTip('Create Room', "This button creates a study room.\nThink of it like a group chat, but with\na calendar, tasks, files, and more!", { target: '[data-tour="create-room"]', icon: '✨', position: 'bottom' });
+    showTip('Create Room', "This button creates a study room. Think of it like a group chat, but with a calendar, tasks, files, and more!", { target: '[data-tour="create-room"]', icon: '✨', position: 'bottom' });
     await moveCursorTo('[data-tour="create-room"]');
     await pause(4500); if (bail()) { await end(); return; }
 
@@ -236,14 +242,14 @@ export default function InteractiveTutorial() {
     setP(3); setTooltip(null); setSpotlight(null);
     const joinBtn = await waitForEl('[data-tour="join-room"]');
     if (joinBtn && !bail()) {
-      showTip('Join Room', "If your friend already made a room,\nthey can share an invite code with you.\nJust paste it here and you're in!", { target: '[data-tour="join-room"]', icon: '🔗', position: 'bottom' });
+      showTip('Join Room', "If your friend already made a room, they can share an invite code with you. Just paste it here and you're in!", { target: '[data-tour="join-room"]', icon: '🔗', position: 'bottom' });
       await moveCursorTo('[data-tour="join-room"]');
       await pause(4000); if (bail()) { await end(); return; }
     }
 
     // ── 4: Let's make a room ──
     setP(4); setTooltip(null); setSpotlight(null); setCursorVisible(false);
-    showTip("Let's try it!", "Alright, enough talking!\nLet me actually create a room so you\ncan see how everything works inside.", { center: true, icon: '🚀' });
+    showTip("Let's try it!", "Alright, let me actually create a room so you can see how everything works inside.", { center: true, icon: '🚀' });
     await pause(3500); if (bail()) { await end(); return; }
 
     // ── 5: Open dialog, type room name, create via API ──
@@ -271,18 +277,18 @@ export default function InteractiveTutorial() {
     localStorage.setItem(TUTORIAL_ROOM_ID_KEY, tutorialRoomId);
 
     setShowOverlay(true); setCursorVisible(false);
-    showTip('Room Created!', "Done! The room's ready.\nLet's go inside and check out\nwhat you can do in here.", { center: true, icon: '🎉' });
+    showTip('Room Created!', "Done! The room's ready. Let's go inside and check out what you can do.", { center: true, icon: '🎉' });
     await pause(3500); if (bail()) { await end(); return; }
 
     // ── 6: Navigate into room — wait for it to fully load ──
     setP(6); setTooltip(null); setSpotlight(null);
     navigate(`/rooms/${tutorialRoomId}`);
     window.dispatchEvent(new CustomEvent('rooms-updated'));
-    showTip('Entering Room...', "Loading your new room...\nHang tight!", { center: true, icon: '⏳' });
+    showTip('Entering Room...', "Loading your new room... hang tight!", { center: true, icon: '⏳' });
     const roomTabs = await waitForEl('[data-tour="tab-schedule"]', 15000);
     if (!roomTabs || bail()) { await end(); return; }
     await sleep(2000);
-    showTip('Welcome to Your Room!', "This is what a room looks like!\nSee those tabs up there?\nEach one has a different feature.\nLet me walk you through them.", { center: true, icon: '🏠' });
+    showTip('Welcome to Your Room!', "This is your room! Each tab up there has a different feature — schedule, tasks, chat, files, and more. Let me show you.", { center: true, icon: '🏠' });
     await pause(5000); if (bail()) { await end(); return; }
 
     // ── 7: Schedule tab — click tab, add event via form ──
@@ -348,7 +354,7 @@ export default function InteractiveTutorial() {
         }
 
         setShowOverlay(true);
-        showTip('Event Added!', "It's on the calendar now!\nEveryone in this room can see it.", { center: true, icon: '🎉' });
+        showTip('Event Added!', "It's on the calendar now! Everyone in this room can see it.", { center: true, icon: '🎉' });
         await pause(3500); if (bail()) { await end(); return; }
       }
     } else if (!bail()) {
@@ -429,16 +435,16 @@ export default function InteractiveTutorial() {
         }
 
         setShowOverlay(true);
-        showTip('Task Created!', "Task assigned to a teammate!\nCheck it off when it's done.", { center: true, icon: '🎉' });
+        showTip('Task Created!', "Task assigned to a teammate! Check it off when it's done.", { center: true, icon: '🎉' });
         await pause(3000); if (bail()) { await end(); return; }
       } else if (!bail()) {
         setShowOverlay(true);
-        showTip('Tasks', "Create tasks and assign them\nto your teammates here!", { center: true, icon: '✅' });
+        showTip('Tasks', "Create tasks and assign them to your teammates here!", { center: true, icon: '✅' });
         await pause(3000); if (bail()) { await end(); return; }
       }
     } else if (!bail()) {
       setShowOverlay(true);
-      showTip('Tasks', "Create tasks and assign them\nto your teammates here!", { center: true, icon: '✅' });
+      showTip('Tasks', "Create tasks and assign them to your teammates here!", { center: true, icon: '✅' });
       await pause(3000); if (bail()) { await end(); return; }
     }
 
@@ -449,7 +455,7 @@ export default function InteractiveTutorial() {
     await clickEl('[data-tour="tab-chat"]');
     await sleep(1000);
     setTooltip(null);
-    showTip('Chat', "Send messages, images, and files.\nEverything stays in the room!", { center: true, icon: '💬' });
+    showTip('Chat', "Send messages, images, and files. Everything stays in the room!", { center: true, icon: '💬' });
     await pause(3500); if (bail()) { await end(); return; }
 
     // ── 10: Files tab ──
@@ -459,7 +465,7 @@ export default function InteractiveTutorial() {
     await clickEl('[data-tour="tab-files"]');
     await sleep(1000);
     setTooltip(null);
-    showTip('Files', "Drag and drop any file.\nThe whole team can download them!", { center: true, icon: '📁' });
+    showTip('Files', "Drag and drop any file — the whole team can download them!", { center: true, icon: '📁' });
     await pause(3500); if (bail()) { await end(); return; }
 
     // ── 11: Deadlines page ──
@@ -468,7 +474,7 @@ export default function InteractiveTutorial() {
     showTip('Loading...', "Opening Deadlines...", { center: true, icon: '⏳' });
     await waitForEl('main', 10000);
     await sleep(2500); if (bail()) { await end(); return; }
-    showTip('Deadlines', "All events from every room in one place!\nThe study session we just added is here too.", { center: true, icon: '📅' });
+    showTip('Deadlines', "All events from every room show up here! The study session we just added is here too.", { center: true, icon: '📅' });
     await pause(4000); if (bail()) { await end(); return; }
 
     // ── 12: Free Board — create a post with poll ──
@@ -485,64 +491,71 @@ export default function InteractiveTutorial() {
     const newPostBtn = await waitForEl('[data-tour="board-new-post"]', 5000);
     if (newPostBtn && !bail()) {
       await clickDomEl(newPostBtn);
-      await sleep(1000);
+      await sleep(1200);
 
       const postDialog = await waitForEl('[role="dialog"]', 5000);
       if (postDialog && !bail()) {
         // Select "Meetup" category
-        await sleep(400);
-        const allCatBtns2 = document.querySelectorAll('[role="dialog"] button');
+        await sleep(500);
+        const allCatBtns2 = postDialog.querySelectorAll('button');
         for (const btn of allCatBtns2) {
           if (btn.textContent.includes('Meetup')) {
             await clickDomEl(btn);
-            await sleep(500);
+            await sleep(600);
             break;
           }
         }
 
         // Type title
-        const postTitle = document.querySelector('[role="dialog"] input[placeholder="Title"]');
+        const postTitle = postDialog.querySelector('input[placeholder="Title"]');
         if (postTitle && !bail()) {
           await typeInto('[role="dialog"] input[placeholder="Title"]', 'City Campus meetup this Friday?');
-          await pause(500);
+          await pause(600);
         }
 
         // Type content
-        const postContent = document.querySelector('[role="dialog"] textarea[placeholder="What\'s on your mind?"]');
+        const postContent = postDialog.querySelector('textarea[placeholder="What\'s on your mind?"]');
         if (postContent && !bail()) {
           await typeInto('[role="dialog"] textarea[placeholder="What\'s on your mind?"]', 'Anyone down to grab coffee at Victoria Square after class?');
-          await pause(500);
+          await pause(600);
         }
 
-        // Click "Add Poll" button
+        // Click "Add Poll" button (inside dialog only)
         if (!bail()) {
-          const pollBtn = findBtn('Add Poll');
+          const dialogBtns = postDialog.querySelectorAll('button');
+          let pollBtn = null;
+          for (const b of dialogBtns) { if (b.textContent.includes('Add Poll')) { pollBtn = b; break; } }
           if (pollBtn) {
             await clickDomEl(pollBtn);
-            await sleep(800);
+            await sleep(1000);
 
             // Type poll options
-            const pollInputs = document.querySelectorAll('[role="dialog"] input[placeholder^="Option"]');
-            if (pollInputs.length >= 2 && !bail()) {
+            const pollOpt1 = postDialog.querySelector('input[placeholder="Option 1"]');
+            const pollOpt2 = postDialog.querySelector('input[placeholder="Option 2"]');
+            if (pollOpt1 && !bail()) {
               await typeInto('[role="dialog"] input[placeholder="Option 1"]', 'Friday 3pm');
-              await sleep(300);
+              await sleep(400);
+            }
+            if (pollOpt2 && !bail()) {
               await typeInto('[role="dialog"] input[placeholder="Option 2"]', 'Friday 5pm');
               await pause(500);
             }
           }
         }
 
-        // Click Post button
+        // Click Post submit button (type="submit" inside dialog)
         if (!bail()) {
-          const postSubmit = findBtn('Post');
-          if (postSubmit) {
-            await clickDomEl(postSubmit);
-            await sleep(2000);
+          const submitBtn = postDialog.querySelector('button[type="submit"]');
+          if (submitBtn) {
+            await clickDomEl(submitBtn);
+            await sleep(2500);
+            // Try to capture the created post ID from the refreshed list
+            // The most recent post should be ours
           }
         }
 
         setShowOverlay(true);
-        showTip('Post Created!', "Meetup post is live with a poll!\nOther students can vote on it.", { center: true, icon: '🎉' });
+        showTip('Post Created!', "Meetup post with a poll is live! Other students can vote on it.", { center: true, icon: '🎉' });
         await pause(3500); if (bail()) { await end(); return; }
       }
     }
@@ -555,14 +568,14 @@ export default function InteractiveTutorial() {
     await sleep(2500); if (bail()) { await end(); return; }
 
     // Events tab (default)
-    showTip('Events', "Campus events, workshops, and career fairs.\nFilter by your interests!", { center: true, icon: '🎪' });
+    showTip('Events', "Campus events, workshops, and career fairs. Filter by your interests!", { center: true, icon: '🎪' });
     await pause(3500); if (bail()) { await end(); return; }
 
     // Academic Calendar tab
     setTooltip(null);
     const acadCalTab = await waitForEl('[value="academic-calendar"]', 3000);
     if (acadCalTab && !bail()) {
-      showTip('Academic Calendar', "Semester dates, exam periods, holidays.\nNever miss a deadline!", { target: '[value="academic-calendar"]', icon: '📅', position: 'bottom' });
+      showTip('Academic Calendar', "Semester dates, exam periods, and holidays — never miss a deadline!", { target: '[value="academic-calendar"]', icon: '📅', position: 'bottom' });
       await pause(2500);
       await clickEl('[value="academic-calendar"]');
       await sleep(1500); if (bail()) { await end(); return; }
@@ -572,24 +585,15 @@ export default function InteractiveTutorial() {
     setTooltip(null);
     const studyTab = await waitForEl('[value="study-rooms"]', 3000);
     if (studyTab && !bail()) {
-      showTip('Study Rooms', "Book study rooms at City Campus\nor Bedford Park — links right here!", { target: '[value="study-rooms"]', icon: '📚', position: 'bottom' });
+      showTip('Study Rooms', "Book study rooms at City Campus or Bedford Park — links right here!", { target: '[value="study-rooms"]', icon: '📚', position: 'bottom' });
       await pause(2500);
       await clickEl('[value="study-rooms"]');
       await sleep(1500); if (bail()) { await end(); return; }
     }
 
-    // ── 15: Back to deadlines to show the event ──
+    // ── 15: Done ──
     setP(15); setTooltip(null); setSpotlight(null); setCursorVisible(false);
-    navigate('/deadlines');
-    showTip('Loading...', "Back to Deadlines...", { center: true, icon: '⏳' });
-    await waitForEl('main', 10000);
-    await sleep(2500); if (bail()) { await end(); return; }
-    showTip('Deadlines', "See? The study session we added\nshows up here automatically!", { center: true, icon: '📅' });
-    await pause(4000); if (bail()) { await end(); return; }
-
-    // ── 16: Done ──
-    setP(16); setTooltip(null); setSpotlight(null); setCursorVisible(false);
-    showTip('All done!', "The demo room will be cleaned up.\nNow go create your own room!", { center: true, icon: '🎉' });
+    showTip('All done!', "That's everything! The demo room will be cleaned up. Now go create your own room and start collaborating!", { center: true, icon: '🎉' });
     await pause(3500);
 
     await end();
@@ -707,7 +711,7 @@ export default function InteractiveTutorial() {
                 {tooltip.icon && <span className="text-2xl">{tooltip.icon}</span>}
                 <h3 className="text-[17px] font-black text-slate-950 tracking-tight leading-snug">{tooltip.title}</h3>
               </div>
-              <p className="text-[14px] leading-[1.7] text-slate-800 font-semibold pl-[34px] whitespace-pre-line">{tooltip.desc}</p>
+              <p className="text-[14px] leading-[1.7] text-slate-800 font-semibold pl-[34px]">{tooltip.desc}</p>
             </div>
           </div>
         </div>
