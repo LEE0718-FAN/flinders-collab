@@ -43,8 +43,21 @@
     font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    -webkit-text-size-adjust: 100%;
     letter-spacing: -0.011em;
     text-rendering: optimizeLegibility;
+    overflow-x: hidden;
+  }
+
+  html, body, #root {
+    min-height: 100%;
+  }
+
+  :root {
+    --safe-top: env(safe-area-inset-top, 0px);
+    --safe-right: env(safe-area-inset-right, 0px);
+    --safe-bottom: env(safe-area-inset-bottom, 0px);
+    --safe-left: env(safe-area-inset-left, 0px);
   }
 
   /* Improved heading hierarchy for readability */
@@ -87,6 +100,24 @@
     input[type="checkbox"], input[type="radio"] {
       min-height: 24px;
       min-width: 24px;
+    }
+
+    .animate-fade-in,
+    .animate-slide-up,
+    .animate-slide-in-left,
+    .animate-slide-in-right,
+    .animate-scale-in,
+    .animate-bounce-in,
+    .animate-float,
+    .animate-shimmer,
+    .stagger-children > * {
+      animation: none !important;
+    }
+
+    .hover-lift:hover,
+    .hover-glow:hover {
+      transform: none;
+      box-shadow: inherit;
     }
   }
 }

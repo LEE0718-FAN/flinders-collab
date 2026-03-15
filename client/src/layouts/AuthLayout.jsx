@@ -17,10 +17,10 @@ export default function AuthLayout({ children }) {
       />
 
       {/* Floating animated orbs */}
-      <div className="absolute top-1/4 left-1/4 h-[200px] w-[200px] sm:h-[400px] sm:w-[400px] rounded-full bg-indigo-600/20 blur-[100px] animate-float" />
-      <div className="absolute bottom-1/4 right-1/4 h-[150px] w-[150px] sm:h-[300px] sm:w-[300px] rounded-full bg-violet-500/15 blur-[100px] animate-float" style={{ animationDelay: '2s' }} />
-      <div className="absolute top-1/2 right-1/3 h-[120px] w-[120px] sm:h-[250px] sm:w-[250px] rounded-full bg-blue-500/15 blur-[80px] animate-float" style={{ animationDelay: '4s' }} />
-      <div className="absolute bottom-1/3 left-1/3 h-[100px] w-[100px] sm:h-[200px] sm:w-[200px] rounded-full bg-purple-500/10 blur-[80px] animate-float" style={{ animationDelay: '6s' }} />
+      <div className="absolute left-1/4 top-1/4 hidden h-[400px] w-[400px] rounded-full bg-indigo-600/20 blur-[100px] animate-float sm:block" />
+      <div className="absolute bottom-1/4 right-1/4 hidden h-[300px] w-[300px] rounded-full bg-violet-500/15 blur-[100px] animate-float sm:block" style={{ animationDelay: '2s' }} />
+      <div className="absolute top-1/2 right-1/3 hidden h-[250px] w-[250px] rounded-full bg-blue-500/15 blur-[80px] animate-float sm:block" style={{ animationDelay: '4s' }} />
+      <div className="absolute bottom-1/3 left-1/3 hidden h-[200px] w-[200px] rounded-full bg-purple-500/10 blur-[80px] animate-float sm:block" style={{ animationDelay: '6s' }} />
 
       {/* Main content */}
       <div className="relative z-10 w-full max-w-md animate-slide-up">
@@ -44,7 +44,7 @@ export default function AuthLayout({ children }) {
         </div>
 
         {/* Subtle glow behind card */}
-        <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 h-[300px] w-[400px] rounded-full bg-indigo-500/10 blur-[80px] pointer-events-none" />
+        <div className="pointer-events-none absolute left-1/2 top-1/2 hidden h-[300px] w-[400px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-indigo-500/10 blur-[80px] sm:block" />
 
         {/* Auth card */}
         <Card className="relative border-0 shadow-2xl shadow-black/40 bg-white/[0.95] backdrop-blur-xl rounded-2xl">

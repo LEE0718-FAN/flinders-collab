@@ -146,7 +146,7 @@ export default function RoomCard({ room, onDeleted, draggableProps, suppressNavi
     <div className="h-full">
       <div
         {...draggableProps}
-        className="relative flex h-full cursor-grab flex-col overflow-hidden rounded-2xl border-2 text-card-foreground transition-all duration-300 ease-out hover:-translate-y-1.5 hover:scale-[1.01] active:cursor-grabbing"
+        className="relative flex h-full flex-col overflow-hidden rounded-2xl border-2 text-card-foreground transition-all duration-300 ease-out md:cursor-grab md:hover:-translate-y-1.5 md:hover:scale-[1.01] md:active:cursor-grabbing"
         style={{
           background: '#ffffff',
           borderColor: palette.border,

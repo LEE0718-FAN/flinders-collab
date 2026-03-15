@@ -58,6 +58,7 @@ export default function DashboardPage() {
   const [draggedRoomId, setDraggedRoomId] = useState(null);
   const [dropTargetId, setDropTargetId] = useState(null);
   const [suppressNavigation, setSuppressNavigation] = useState(false);
+  const [touchOptimized, setTouchOptimized] = useState(false);
   const roomNodeMapRef = useRef(new Map());
   const previousPositionsRef = useRef(new Map());
   const swapTimerRef = useRef(null);
@@ -91,6 +92,19 @@ export default function DashboardPage() {
   useEffect(() => {
     fetchRooms();
   }, [fetchRooms]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return undefined;
+
+    const mediaQuery = window.matchMedia('(pointer: coarse)');
+    const updateTouchMode = () => {
+      setTouchOptimized(mediaQuery.matches || navigator.maxTouchPoints > 0);
+    };
+
+    updateTouchMode();
+    mediaQuery.addEventListener?.('change', updateTouchMode);
+    return () => mediaQuery.removeEventListener?.('change', updateTouchMode);
+  }, []);
 
   useEffect(() => () => {
     if (swapTimerRef.current) {
@@ -131,6 +145,11 @@ export default function DashboardPage() {
   useLayoutEffect(() => {
     const nextPositions = new Map();
 
+    if (touchOptimized) {
+      previousPositionsRef.current = new Map();
+      return;
+    }
+
     rooms.forEach((room) => {
       const node = roomNodeMapRef.current.get(room.id);
       if (!node) return;
@@ -156,7 +175,7 @@ export default function DashboardPage() {
     });
 
     previousPositionsRef.current = nextPositions;
-  }, [rooms]);
+  }, [rooms, touchOptimized]);
 
   const displayName = user?.user_metadata?.name || user?.email?.split('@')[0] || 'Student';
   const handleCreateStart = useCallback((tempRoom) => {
@@ -413,6 +432,7 @@ export default function DashboardPage() {
                   e.preventDefault();
                 }}
                 onDragOver={(e) => {
+                  if (touchOptimized) return;
                   e.preventDefault();
                   e.dataTransfer.dropEffect = 'move';
                   handleDragOverRoom(room.id, e);
@@ -429,7 +449,7 @@ export default function DashboardPage() {
                   room={room}
                   onDeleted={fetchRooms}
                   suppressNavigation={suppressNavigation}
-                  draggableProps={{
+                  draggableProps={touchOptimized ? {} : {
                     draggable: true,
                     onDragStart: (event) => handleDragStart(room.id, event),
                     onDragEnd: handleDragEnd,
