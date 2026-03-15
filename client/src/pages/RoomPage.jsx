@@ -56,10 +56,13 @@ export default function RoomPage() {
   const [quickLinks, setQuickLinks] = useState([]);
   const [error, setError] = useState('');
   const [calendarOffset, setCalendarOffset] = useState(0);
+  const [calendarTrackHeight, setCalendarTrackHeight] = useState(null);
   const highlightRef = useRef(null);
   const highlightTimerRef = useRef(null);
   const scheduleLayoutRef = useRef(null);
+  const calendarColumnRef = useRef(null);
   const calendarStickyRef = useRef(null);
+  const eventListColumnRef = useRef(null);
 
   const clearHighlight = useCallback(() => {
     if (highlightRef.current) {
@@ -151,21 +154,27 @@ export default function RoomPage() {
     if (typeof window === 'undefined') return;
     if (window.innerWidth < 768) {
       setCalendarOffset(0);
+      setCalendarTrackHeight(null);
       return;
     }
 
     const scrollContainer = document.querySelector('[data-main-scroll-container="true"]');
     const layoutNode = scheduleLayoutRef.current;
+    const calendarColumnNode = calendarColumnRef.current;
     const calendarNode = calendarStickyRef.current;
-    if (!scrollContainer || !layoutNode || !calendarNode) return;
+    const eventListNode = eventListColumnRef.current;
+    if (!scrollContainer || !layoutNode || !calendarNode || !calendarColumnNode || !eventListNode) return;
 
     const containerRect = scrollContainer.getBoundingClientRect();
     const layoutRect = layoutNode.getBoundingClientRect();
+    const eventListRect = eventListNode.getBoundingClientRect();
     const viewportCenter = containerRect.top + (containerRect.height / 2);
-    const availableTravel = Math.max(0, layoutNode.offsetHeight - calendarNode.offsetHeight);
-    const desiredOffset = viewportCenter - layoutRect.top - (calendarNode.offsetHeight / 2);
+    const trackHeight = Math.max(calendarNode.offsetHeight, eventListNode.offsetHeight);
+    const availableTravel = Math.max(0, trackHeight - calendarNode.offsetHeight);
+    const desiredOffset = viewportCenter - eventListRect.top - (calendarNode.offsetHeight / 2);
     const nextOffset = Math.min(Math.max(0, desiredOffset), availableTravel);
 
+    setCalendarTrackHeight(trackHeight);
     setCalendarOffset(nextOffset);
   }, []);
 
@@ -367,10 +376,14 @@ export default function RoomPage() {
             </div>
             <div ref={scheduleLayoutRef} className="flex flex-col md:flex-row gap-4" style={{ overflow: 'visible' }}>
               {/* Calendar sidebar — outer div stretches to event list height, inner div sticks */}
-              <div className="w-full md:w-[280px] shrink-0">
+              <div
+                ref={calendarColumnRef}
+                className="w-full shrink-0 md:relative md:w-[280px]"
+                style={calendarTrackHeight ? { height: `${calendarTrackHeight}px` } : undefined}
+              >
                 <div
                   ref={calendarStickyRef}
-                  className="z-10 transition-transform duration-300 ease-out md:sticky md:top-0"
+                  className="z-10 transition-transform duration-300 ease-out md:absolute md:left-0 md:right-0 md:top-0"
                   style={{
                     transform: `translateY(${calendarOffset}px)`,
                   }}
@@ -407,7 +420,7 @@ export default function RoomPage() {
                   />
                 </div>
               </div>
-              <div className="flex-1 min-w-0">
+              <div ref={eventListColumnRef} className="flex-1 min-w-0">
                 <EventList events={events} roomId={roomId} onEventsChange={handleEventsChange} />
               </div>
             </div>
