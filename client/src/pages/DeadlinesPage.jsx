@@ -23,6 +23,23 @@ const CATEGORY_INFO = {
   other:        { icon: '📌', label: 'Other' },
 };
 
+function normalizeCategory(category) {
+  const normalized = String(category || '').trim().toLowerCase();
+
+  if (!normalized) return 'other';
+  if (CATEGORY_INFO[normalized]) return normalized;
+  if (normalized === 'due' || normalized === 'due date') return 'deadline';
+  if (normalized === 'presentation' || normalized === 'presentations') return 'presentation';
+  if (normalized === 'submission' || normalized === 'submissions') return 'submission';
+  if (normalized === 'exam' || normalized === 'exams' || normalized === 'test') return 'exam';
+  if (normalized === 'meeting' || normalized === 'meetings') return 'meeting';
+  if (normalized === 'lecture' || normalized === 'class') return 'lecture';
+  if (normalized === 'study' || normalized === 'study session') return 'study';
+  if (normalized === 'social' || normalized === 'event') return 'social';
+
+  return 'other';
+}
+
 export default function DeadlinesPage() {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -43,7 +60,14 @@ export default function DeadlinesPage() {
             return evts.map(e => ({ ...e, room_name: room.name, room_id: room.id }));
           })
         );
-        results.forEach(r => { if (r.status === 'fulfilled') allEvents.push(...r.value); });
+        results.forEach((r) => {
+          if (r.status === 'fulfilled') {
+            allEvents.push(...r.value.map((event) => ({
+              ...event,
+              category: normalizeCategory(event.category),
+            })));
+          }
+        });
 
         const now = new Date();
         const future = allEvents
@@ -59,8 +83,10 @@ export default function DeadlinesPage() {
     fetchAll();
   }, []);
 
-  const categories = ['all', ...new Set(events.map(e => e.category || 'other'))];
-  const filtered = filter === 'all' ? events : events.filter(e => (e.category || 'other') === filter);
+  const categories = ['all', ...new Set(events.map((e) => normalizeCategory(e.category)))];
+  const filtered = filter === 'all'
+    ? events
+    : events.filter((e) => normalizeCategory(e.category) === filter);
 
   return (
     <MainLayout>
@@ -114,7 +140,8 @@ export default function DeadlinesPage() {
               const diffMs = startDate - now;
               const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
               const palette = getRoomPalette({ id: event.room_id, name: event.room_name });
-              const catInfo = CATEGORY_INFO[event.category] || CATEGORY_INFO.other;
+              const normalizedCategory = normalizeCategory(event.category);
+              const catInfo = CATEGORY_INFO[normalizedCategory] || CATEGORY_INFO.other;
 
               let badgeText = `D-${diffDays}`;
               let badgeBg = 'bg-emerald-100 text-emerald-700';
