@@ -371,7 +371,7 @@ export default function FlindersLifePage() {
           {
             target: null,
             title: 'Flinders Life',
-            description: 'Campus events, 2026 academic calendar, and study room booking — all in one place. Select your interests to get event recommendations!',
+            description: 'Events, academic calendar, study rooms — pick your interests for recommendations!',
             icon: '\u{1F393}',
           },
         ]}

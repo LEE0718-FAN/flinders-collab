@@ -97,7 +97,7 @@ export default function DeadlinesPage() {
           {
             target: null,
             title: 'Your Deadlines',
-            description: 'Meetings, exams, submissions from all your rooms sync here automatically. Never miss anything!',
+            description: 'All your deadlines from every room, in one place. Never miss a thing!',
             icon: '\u{1F4C5}',
           },
         ]}

@@ -280,30 +280,34 @@ export default function RoomPage() {
           {
             target: '[data-tour="tab-schedule"]',
             title: 'Schedule',
-            description: 'Add meetings, deadlines, exams here. They auto-sync to your Deadlines page.',
+            description: 'Your team calendar — add meetings, deadlines, exams.',
             position: 'bottom',
             icon: '\u{1F4C6}',
+            action: { click: true },
           },
           {
             target: '[data-tour="tab-tasks"]',
             title: 'Tasks',
-            description: 'Create and track tasks for your team. Check them off as you go.',
+            description: 'Track to-dos, assign work, check things off.',
             position: 'bottom',
             icon: '\u2705',
+            action: { click: true },
           },
           {
             target: '[data-tour="tab-chat"]',
             title: 'Chat',
-            description: 'Message your team in real time. Share images and files too.',
+            description: 'Real-time messaging with your team.',
             position: 'bottom',
             icon: '\u{1F4AC}',
+            action: { click: true },
           },
           {
             target: '[data-tour="tab-files"]',
             title: 'Files',
-            description: 'Upload PDFs, slides, images — everything your team needs in one place.',
+            description: 'Share docs, slides, anything your team needs.',
             position: 'bottom',
             icon: '\u{1F4C1}',
+            action: { click: true },
           },
         ]}
       />

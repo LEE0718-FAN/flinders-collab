@@ -734,9 +734,58 @@ export default function BoardPage() {
         steps={[
           {
             target: null,
-            title: 'Free Board',
-            description: 'Post anonymously, create polls, find study groups, or just say hi. This is your campus community space.',
-            icon: '\u{1F4AC}',
+            title: 'Welcome to Free Board!',
+            description: 'Your campus community — post anything, meet people, get help.',
+            icon: '\u{1F44B}',
+          },
+          {
+            target: '[data-tour="cat-study_group"]',
+            title: 'Study Group',
+            description: 'Need study buddies? Find or create a group here.',
+            position: 'bottom',
+            icon: '\u{1F4DA}',
+          },
+          {
+            target: '[data-tour="cat-project"]',
+            title: 'Project Team',
+            description: 'Looking for teammates? Recruit people for your project.',
+            position: 'bottom',
+            icon: '\u{1F4C2}',
+          },
+          {
+            target: '[data-tour="cat-qna"]',
+            title: 'Q&A',
+            description: 'Got questions about uni? Someone here has answers.',
+            position: 'bottom',
+            icon: '\u{2753}',
+          },
+          {
+            target: '[data-tour="cat-meetup"]',
+            title: 'Meetup',
+            description: 'Wanna grab coffee or hang out? Find people here.',
+            position: 'bottom',
+            icon: '\u2615',
+          },
+          {
+            target: '[data-tour="cat-confession"]',
+            title: 'Confession',
+            description: 'Share thoughts anonymously. No judgement, just vibes.',
+            position: 'bottom',
+            icon: '\u{1F47B}',
+          },
+          {
+            target: '[data-tour="cat-event"]',
+            title: 'Event',
+            description: 'Campus parties, workshops, anything happening — share it!',
+            position: 'bottom',
+            icon: '\u{1F389}',
+          },
+          {
+            target: '[data-tour="board-new-post"]',
+            title: 'Write a Post',
+            description: 'Ready? Tap here to write your first post!',
+            position: 'bottom',
+            icon: '\u270F\uFE0F',
           },
         ]}
       />
@@ -757,6 +806,7 @@ export default function BoardPage() {
             </p>
           </div>
           <Button
+            data-tour="board-new-post"
             onClick={() => setCreateOpen(true)}
             className="shrink-0 rounded-xl bg-white text-purple-700 hover:bg-white/90 font-bold shadow-xl gap-2 h-11"
           >
@@ -774,6 +824,7 @@ export default function BoardPage() {
           return (
             <button
               key={cat.value}
+              data-tour={`cat-${cat.value}`}
               onClick={() => { setCategory(cat.value); setLoading(true); }}
               className={`flex items-center gap-1.5 whitespace-nowrap rounded-full border px-4 py-2 text-xs font-semibold transition-all ${
                 category === cat.value

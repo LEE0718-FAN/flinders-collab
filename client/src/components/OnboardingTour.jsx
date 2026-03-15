@@ -4,11 +4,13 @@ import { ChevronRight, X } from 'lucide-react';
 const STORAGE_KEY = 'onboarding-tours';
 
 /**
- * Premium onboarding tour with animated cursor guide.
+ * Premium onboarding tour with animated cursor that actually clicks elements.
  *
  * Props:
- *   tourId    - unique key per page (e.g. "dashboard", "deadlines")
- *   steps     - array of { target, title, description, position? }
+ *   tourId    - unique key per page
+ *   steps     - array of { target, title, description, position?, icon?, action? }
+ *               action: { click: true } to click the target element
+ *               action: { click: 'selector' } to click a different element
  *   delay     - ms before tour starts (default 600)
  */
 export default function OnboardingTour({ tourId, steps = [], delay = 600 }) {
@@ -18,16 +20,15 @@ export default function OnboardingTour({ tourId, steps = [], delay = 600 }) {
   const [tipPos, setTipPos] = useState({});
   const [cursorPos, setCursorPos] = useState({ x: 0, y: 0 });
   const [cursorVisible, setCursorVisible] = useState(false);
-  const [phase, setPhase] = useState('idle'); // idle | cursor-moving | revealing | shown
+  const [phase, setPhase] = useState('idle'); // idle | cursor-moving | clicking | shown
+  const [dontShowAgain, setDontShowAgain] = useState(false);
   const overlayRef = useRef(null);
   const tipRef = useRef(null);
-  const frameRef = useRef(null);
 
   // ── Should this tour show? ──
   useEffect(() => {
     const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
     if (saved[tourId]) return;
-    // Also check sessionStorage for "closed without don't-show-again"
     const session = JSON.parse(sessionStorage.getItem(STORAGE_KEY) || '{}');
     if (session[tourId]) return;
     const t = setTimeout(() => {
@@ -39,7 +40,6 @@ export default function OnboardingTour({ tourId, steps = [], delay = 600 }) {
 
   // ── Close helpers ──
   const dismiss = useCallback(() => {
-    // Temporary dismiss — won't show again this session
     const session = JSON.parse(sessionStorage.getItem(STORAGE_KEY) || '{}');
     session[tourId] = true;
     sessionStorage.setItem(STORAGE_KEY, JSON.stringify(session));
@@ -48,6 +48,16 @@ export default function OnboardingTour({ tourId, steps = [], delay = 600 }) {
 
   const dismissForever = useCallback(() => {
     const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
+    saved[tourId] = Date.now();
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(saved));
+    setActive(false);
+  }, [tourId]);
+
+  const skipAll = useCallback(() => {
+    // Dismiss ALL tours permanently
+    const knownTours = ['dashboard', 'deadlines', 'board', 'flinders-life', 'room'];
+    const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
+    knownTours.forEach((t) => { saved[t] = Date.now(); });
     saved[tourId] = Date.now();
     localStorage.setItem(STORAGE_KEY, JSON.stringify(saved));
     setActive(false);
@@ -111,7 +121,6 @@ export default function OnboardingTour({ tourId, steps = [], delay = 600 }) {
       style.right = window.innerWidth - sp.x + gap;
     }
 
-    // Clamp vertical if bottom
     if (style.top !== undefined && style.top > window.innerHeight - 180) {
       delete style.top;
       style.bottom = window.innerHeight - sp.y + gap;
@@ -120,7 +129,7 @@ export default function OnboardingTour({ tourId, steps = [], delay = 600 }) {
     setTipPos(style);
   }, [step, steps]);
 
-  // ── Animate step transitions ──
+  // ── Animate step transitions (with real clicks) ──
   useEffect(() => {
     if (!active) return;
     const s = steps[step];
@@ -136,7 +145,7 @@ export default function OnboardingTour({ tourId, steps = [], delay = 600 }) {
       }
     }
 
-    // 2) Animate cursor to target center (or screen center)
+    // 2) Animate cursor to target center
     const moveCursor = () => {
       if (s.target) {
         const el = document.querySelector(s.target);
@@ -153,11 +162,28 @@ export default function OnboardingTour({ tourId, steps = [], delay = 600 }) {
 
     const t1 = setTimeout(moveCursor, 100);
 
-    // 3) After cursor arrives, reveal spotlight + tooltip
+    // 3) After cursor arrives — optionally click, then show tooltip
+    const clickDelay = s.target ? 500 : 200;
     const t2 = setTimeout(() => {
-      computePositions();
-      setPhase('shown');
-    }, s.target ? 500 : 200);
+      // If step has an action.click, actually click the element
+      if (s.action?.click) {
+        setPhase('clicking');
+        const clickTarget = typeof s.action.click === 'string'
+          ? document.querySelector(s.action.click)
+          : document.querySelector(s.target);
+        if (clickTarget) {
+          clickTarget.click();
+        }
+        // Wait for UI to update after click
+        setTimeout(() => {
+          computePositions();
+          setPhase('shown');
+        }, 350);
+      } else {
+        computePositions();
+        setPhase('shown');
+      }
+    }, clickDelay);
 
     return () => {
       clearTimeout(t1);
@@ -182,7 +208,12 @@ export default function OnboardingTour({ tourId, steps = [], delay = 600 }) {
       setPhase('idle');
       setStep((s) => s + 1);
     } else {
-      dismissForever();
+      // Last step — check if "don't show again" is checked
+      if (dontShowAgain) {
+        dismissForever();
+      } else {
+        dismiss();
+      }
     }
   };
 
@@ -216,7 +247,6 @@ export default function OnboardingTour({ tourId, steps = [], delay = 600 }) {
             mask={`url(#tour-mask-${tourId})`}
             style={{ transition: 'opacity 0.3s' }}
           />
-          {/* Spotlight ring */}
           {spotlight && phase === 'shown' && (
             <rect
               x={spotlight.x} y={spotlight.y}
@@ -238,15 +268,14 @@ export default function OnboardingTour({ tourId, steps = [], delay = 600 }) {
             left: cursorPos.x - 6,
             top: cursorPos.y - 2,
             transition: 'all 0.45s cubic-bezier(0.34, 1.56, 0.64, 1)',
-            opacity: phase === 'cursor-moving' || phase === 'shown' ? 1 : 0,
+            opacity: phase !== 'idle' ? 1 : 0,
+            transform: phase === 'clicking' ? 'scale(0.8)' : 'scale(1)',
           }}
         >
-          {/* Cursor SVG */}
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" style={{ filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.3))' }}>
             <path d="M5 3L19 12L12 13L9 20L5 3Z" fill="white" stroke="rgb(79,70,229)" strokeWidth="1.5" strokeLinejoin="round" />
           </svg>
-          {/* Click ripple when arriving */}
-          {phase === 'shown' && (
+          {(phase === 'shown' || phase === 'clicking') && (
             <div className="absolute top-0 left-0 w-6 h-6 rounded-full bg-indigo-400/30 animate-ping" />
           )}
         </div>
@@ -261,7 +290,7 @@ export default function OnboardingTour({ tourId, steps = [], delay = 600 }) {
         style={{ ...tipPos, zIndex: 100000 }}
       >
         <div className="rounded-2xl bg-white/95 backdrop-blur-xl shadow-[0_20px_60px_-12px_rgba(0,0,0,0.25)] border border-white/60 overflow-hidden">
-          {/* Thin gradient accent line */}
+          {/* Progress bar */}
           <div className="h-[3px] bg-gradient-to-r from-indigo-500 via-violet-500 to-purple-500">
             <div
               className="h-full bg-white/40 transition-all duration-700 ease-out"
@@ -291,27 +320,40 @@ export default function OnboardingTour({ tourId, steps = [], delay = 600 }) {
           </div>
 
           {/* Footer */}
-          <div className="flex items-center justify-between px-5 py-2.5 bg-slate-50/60">
-            <span className="text-[10px] font-semibold text-slate-400 tracking-wide">
-              {step + 1} of {steps.length}
-            </span>
+          <div className="px-5 py-2.5 bg-slate-50/60">
+            {/* Last step: checkbox */}
+            {isLast && (
+              <label className="flex items-center gap-2 mb-2 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={dontShowAgain}
+                  onChange={(e) => setDontShowAgain(e.target.checked)}
+                  className="h-3.5 w-3.5 rounded border-slate-300 text-indigo-500 focus:ring-indigo-500 cursor-pointer"
+                />
+                <span className="text-[11px] text-slate-500">다시 표시 하지 않음</span>
+              </label>
+            )}
 
-            <div className="flex items-center gap-3">
-              {!isLast && (
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] font-semibold text-slate-400 tracking-wide">
+                {step + 1} / {steps.length}
+              </span>
+
+              <div className="flex items-center gap-3">
                 <button
-                  onClick={dismissForever}
+                  onClick={skipAll}
                   className="text-[11px] text-slate-400 hover:text-slate-600 transition-colors"
                 >
-                  Don't show again
+                  Skip all
                 </button>
-              )}
-              <button
-                onClick={goNext}
-                className="flex items-center gap-1 rounded-full bg-gradient-to-r from-indigo-500 to-violet-500 pl-3.5 pr-2.5 py-1.5 text-[12px] font-semibold text-white shadow-sm hover:shadow-md hover:brightness-110 transition-all active:scale-95"
-              >
-                {isLast ? 'Done' : 'Next'}
-                <ChevronRight className="h-3.5 w-3.5" />
-              </button>
+                <button
+                  onClick={goNext}
+                  className="flex items-center gap-1 rounded-full bg-gradient-to-r from-indigo-500 to-violet-500 pl-3.5 pr-2.5 py-1.5 text-[12px] font-semibold text-white shadow-sm hover:shadow-md hover:brightness-110 transition-all active:scale-95"
+                >
+                  {isLast ? 'Got it' : 'Next'}
+                  <ChevronRight className="h-3.5 w-3.5" />
+                </button>
+              </div>
             </div>
           </div>
         </div>
