@@ -158,8 +158,15 @@ async function fetchEventPageSchema(eventUrl) {
     const ldMatch = html.match(/<script[^>]*type\s*=\s*["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/i);
     if (!ldMatch) return null;
     const ld = JSON.parse(ldMatch[1]);
-    // May be an array or single object
-    const event = Array.isArray(ld) ? ld.find((o) => o['@type'] === 'Event') : (ld['@type'] === 'Event' ? ld : null);
+    // Handle @graph wrapper, top-level array, or single object
+    let event = null;
+    if (ld['@graph'] && Array.isArray(ld['@graph'])) {
+      event = ld['@graph'].find((o) => o['@type'] === 'Event');
+    } else if (Array.isArray(ld)) {
+      event = ld.find((o) => o['@type'] === 'Event');
+    } else if (ld['@type'] === 'Event') {
+      event = ld;
+    }
     if (!event) return null;
 
     const result = {};
@@ -200,7 +207,7 @@ async function fetchEventPageSchema(eventUrl) {
     }
     const lowerHtml = html.toLowerCase();
     if (!result.cost) {
-      if (/free\s+event/i.test(html) || /free\s+admission/i.test(html) || /no\s+cost/i.test(html)) {
+      if (/free\s+event/i.test(html) || /free\s+admission/i.test(html) || /no\s+cost/i.test(html) || /free\s+ticket/i.test(html) || /book\s+free/i.test(html) || /free\s+film/i.test(html) || /free\s+screening/i.test(html)) {
         result.cost = 'Free';
       } else if (/\$\d+/.test(html)) {
         const priceMatch = html.match(/\$(\d+(?:\.\d{2})?)/);
