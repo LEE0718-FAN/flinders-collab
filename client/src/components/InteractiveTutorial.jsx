@@ -134,12 +134,16 @@ export default function InteractiveTutorial() {
 
   const showTip = useCallback((title, desc, options = {}) => {
     const tw = Math.min(340, window.innerWidth - 24);
+    // Sidebar is 256px wide on md+ screens — offset center to content area
+    const sidebar = document.querySelector('aside.hidden.md\\:flex');
+    const sidebarW = sidebar ? sidebar.getBoundingClientRect().width : 0;
+    const centerLeft = sidebarW + (window.innerWidth - sidebarW) / 2;
     if (options.center || !options.target) {
-      setTooltip({ title, desc, style: { position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', width: tw }, icon: options.icon });
+      setTooltip({ title, desc, style: { position: 'fixed', top: '50%', left: centerLeft, transform: 'translate(-50%, -50%)', width: tw }, icon: options.icon });
       setSpotlight(null); return;
     }
     const el = document.querySelector(options.target);
-    if (!el) { setTooltip({ title, desc, style: { position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', width: tw }, icon: options.icon }); setSpotlight(null); return; }
+    if (!el) { setTooltip({ title, desc, style: { position: 'fixed', top: '50%', left: centerLeft, transform: 'translate(-50%, -50%)', width: tw }, icon: options.icon }); setSpotlight(null); return; }
     const r = el.getBoundingClientRect();
     const gap = 14; const style = { position: 'fixed', width: tw };
     const pos = options.position || 'bottom';
