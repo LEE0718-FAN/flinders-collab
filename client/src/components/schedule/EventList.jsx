@@ -190,7 +190,7 @@ export default function EventList({ events = [], roomId, onEventsChange }) {
                 <div className="h-px flex-1 bg-gradient-to-r from-blue-200 to-transparent" />
               </div>
 
-              <div className="ml-[76px] space-y-2.5">
+              <div className="ml-0 sm:ml-[76px] space-y-2.5">
                 {dayEvents.map((event) => {
                   const cat = categoryConfig[event.category] || categoryConfig.other;
                   const startDt = new Date(event.start_time);
@@ -267,11 +267,11 @@ export default function EventList({ events = [], roomId, onEventsChange }) {
                             )}
                           </div>
 
-                          <div className="flex items-center gap-0.5 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity duration-150">
+                          <div className="flex items-center gap-0.5 shrink-0 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity duration-150">
                             <Tooltip>
                               <TooltipTrigger asChild>
-                                <Button variant="ghost" size="icon" className="h-7 w-7 rounded-lg hover:bg-blue-50" onClick={() => handleEditOpen(event)}>
-                                  <Pencil className="h-3.5 w-3.5 text-slate-400 group-hover:text-blue-500 transition-colors" />
+                                <Button variant="ghost" size="icon" className="h-9 w-9 sm:h-7 sm:w-7 rounded-lg hover:bg-blue-50" onClick={() => handleEditOpen(event)}>
+                                  <Pencil className="h-4 w-4 sm:h-3.5 sm:w-3.5 text-blue-500 sm:text-slate-400 sm:group-hover:text-blue-500 transition-colors" />
                                 </Button>
                               </TooltipTrigger>
                               <TooltipContent side="top"><p>Edit event</p></TooltipContent>
@@ -281,11 +281,11 @@ export default function EventList({ events = [], roomId, onEventsChange }) {
                                 <Button
                                   variant="ghost"
                                   size="icon"
-                                  className="h-7 w-7 rounded-lg hover:bg-red-50"
+                                  className="h-9 w-9 sm:h-7 sm:w-7 rounded-lg hover:bg-red-50"
                                   onClick={() => setConfirmDelete({ id: event.id, title: event.title })}
                                   disabled={deletingId === event.id}
                                 >
-                                  <Trash2 className="h-3.5 w-3.5 text-slate-400 group-hover:text-red-500 transition-colors" />
+                                  <Trash2 className="h-4 w-4 sm:h-3.5 sm:w-3.5 text-red-500 sm:text-slate-400 sm:group-hover:text-red-500 transition-colors" />
                                 </Button>
                               </TooltipTrigger>
                               <TooltipContent side="top"><p>Delete event</p></TooltipContent>

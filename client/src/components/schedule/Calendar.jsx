@@ -54,7 +54,7 @@ export default function ScheduleCalendar({ events = [], selectedDate, onSelectDa
         {...buttonProps}
         ref={buttonRef}
         type="button"
-        className={cn(className, 'flex h-9 w-9 flex-col items-center justify-center gap-0.5 overflow-visible rounded-xl transition-all duration-150 hover:bg-blue-50')}
+        className={cn(className, 'flex h-10 w-10 sm:h-9 sm:w-9 flex-col items-center justify-center gap-0.5 overflow-visible rounded-xl transition-all duration-150 hover:bg-blue-50')}
       >
         <span className="leading-none">{children}</span>
         {markerColors.length > 0 && (
@@ -129,12 +129,12 @@ export default function ScheduleCalendar({ events = [], selectedDate, onSelectDa
           month_caption: 'hidden',
           month_grid: 'w-full border-collapse space-y-1',
           weekdays: 'flex',
-          weekday: 'w-9 rounded-md text-[0.75rem] font-bold uppercase tracking-wider text-blue-600/60',
+          weekday: 'w-10 sm:w-9 rounded-md text-[0.75rem] font-bold uppercase tracking-wider text-blue-600/60',
           week: 'mt-2 flex w-full',
-          day: 'relative h-9 w-9 p-0 text-center text-sm',
+          day: 'relative h-10 w-10 sm:h-9 sm:w-9 p-0 text-center text-sm',
           day_button: cn(
             buttonVariants({ variant: 'ghost' }),
-            'h-9 w-9 p-0 font-normal rounded-xl transition-all duration-150 aria-selected:opacity-100'
+            'h-10 w-10 sm:h-9 sm:w-9 p-0 font-normal rounded-xl transition-all duration-150 aria-selected:opacity-100'
           ),
           selected: 'rounded-xl bg-blue-600 text-white shadow-lg shadow-blue-500/30 hover:bg-blue-600 hover:text-white focus:bg-blue-600 focus:text-white font-bold',
           today: 'rounded-xl bg-blue-50 text-blue-700 font-bold ring-2 ring-blue-200',

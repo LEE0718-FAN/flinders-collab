@@ -187,21 +187,21 @@ export default function RoomPage() {
         {(() => {
           const palette = room ? getRoomPalette(room) : { headerGradient: 'linear-gradient(135deg, #0ea5e9, #7dd3fc)', accent: '#7dd3fc' };
           return (
-            <div className="relative overflow-hidden rounded-2xl px-6 sm:px-8 py-6 text-white shadow-xl mb-6" style={{ background: palette.headerGradient }}>
+            <div className="relative overflow-hidden rounded-2xl px-4 sm:px-6 md:px-8 py-5 sm:py-6 text-white shadow-xl mb-6" style={{ background: palette.headerGradient }}>
               <div className="absolute -right-12 -top-12 h-40 w-40 rounded-full bg-white/10 blur-2xl" />
-              <div className="relative flex items-center justify-between gap-4">
+              <div className="relative flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-3 flex-wrap">
-                    <h1 className="text-2xl font-black text-white tracking-tight">{room?.name}</h1>
+                  <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
+                    <h1 className="text-xl sm:text-2xl font-black text-white tracking-tight">{room?.name}</h1>
                     {room?.course_name && (
                       <Badge className="bg-white/20 text-white border-0 rounded-full text-xs">{room.course_name}</Badge>
                     )}
                   </div>
                   {room?.description && <p className="mt-1 text-white/70 text-sm">{room.description}</p>}
                 </div>
-                <div className="flex items-center gap-2 shrink-0">
+                <div className="flex items-center gap-2 shrink-0 self-start sm:self-center">
                   {room?.invite_code && (
-                    <button onClick={handleCopyInviteCode} className="flex items-center gap-1.5 bg-white/20 rounded-full px-3 py-1.5 text-xs font-medium hover:bg-white/30 transition-colors">
+                    <button onClick={handleCopyInviteCode} className="flex items-center gap-1.5 bg-white/20 rounded-full px-3 py-2 sm:py-1.5 text-xs font-medium hover:bg-white/30 transition-colors min-h-[44px] sm:min-h-0">
                       {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
                       <code className="font-mono">{copied ? 'Copied!' : room.invite_code}</code>
                     </button>
@@ -219,14 +219,14 @@ export default function RoomPage() {
         )}
 
         <Tabs defaultValue="members" onValueChange={setActiveTab}>
-          <TabsList className="flex-wrap bg-white rounded-xl p-1.5 shadow-sm border">
-            <TabsTrigger value="members" className="data-[state=active]:bg-indigo-50 data-[state=active]:text-indigo-700 data-[state=active]:font-semibold">Members</TabsTrigger>
-            <TabsTrigger value="schedule" className="data-[state=active]:bg-indigo-50 data-[state=active]:text-indigo-700 data-[state=active]:font-semibold">Schedule</TabsTrigger>
-            <TabsTrigger value="tasks" className="data-[state=active]:bg-indigo-50 data-[state=active]:text-indigo-700 data-[state=active]:font-semibold">Tasks</TabsTrigger>
-            <TabsTrigger value="chat" className="data-[state=active]:bg-indigo-50 data-[state=active]:text-indigo-700 data-[state=active]:font-semibold">Chat</TabsTrigger>
-            <TabsTrigger value="files" className="data-[state=active]:bg-indigo-50 data-[state=active]:text-indigo-700 data-[state=active]:font-semibold">Files</TabsTrigger>
-            <TabsTrigger value="links" className="data-[state=active]:bg-indigo-50 data-[state=active]:text-indigo-700 data-[state=active]:font-semibold">
-              <Link2 className="h-4 w-4 mr-1" />Quick Links
+          <TabsList className="flex flex-wrap bg-white rounded-xl p-1.5 shadow-sm border gap-1">
+            <TabsTrigger value="members" className="min-h-[44px] sm:min-h-0 px-3 data-[state=active]:bg-indigo-50 data-[state=active]:text-indigo-700 data-[state=active]:font-semibold">Members</TabsTrigger>
+            <TabsTrigger value="schedule" className="min-h-[44px] sm:min-h-0 px-3 data-[state=active]:bg-indigo-50 data-[state=active]:text-indigo-700 data-[state=active]:font-semibold">Schedule</TabsTrigger>
+            <TabsTrigger value="tasks" className="min-h-[44px] sm:min-h-0 px-3 data-[state=active]:bg-indigo-50 data-[state=active]:text-indigo-700 data-[state=active]:font-semibold">Tasks</TabsTrigger>
+            <TabsTrigger value="chat" className="min-h-[44px] sm:min-h-0 px-3 data-[state=active]:bg-indigo-50 data-[state=active]:text-indigo-700 data-[state=active]:font-semibold">Chat</TabsTrigger>
+            <TabsTrigger value="files" className="min-h-[44px] sm:min-h-0 px-3 data-[state=active]:bg-indigo-50 data-[state=active]:text-indigo-700 data-[state=active]:font-semibold">Files</TabsTrigger>
+            <TabsTrigger value="links" className="min-h-[44px] sm:min-h-0 px-3 data-[state=active]:bg-indigo-50 data-[state=active]:text-indigo-700 data-[state=active]:font-semibold">
+              <Link2 className="h-4 w-4 mr-1" />Links
             </TabsTrigger>
           </TabsList>
 
@@ -293,7 +293,7 @@ export default function RoomPage() {
                 </Button>
               </div>
             </div>
-            <div className="grid gap-4 md:grid-cols-[280px_1fr]">
+            <div className="grid gap-4 grid-cols-1 md:grid-cols-[280px_1fr]">
               <ScheduleCalendar
                 events={events}
                 selectedDate={selectedDate}

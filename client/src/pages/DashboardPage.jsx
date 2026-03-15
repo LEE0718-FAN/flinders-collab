@@ -284,7 +284,7 @@ export default function DashboardPage() {
     <MainLayout onRoomChange={fetchRooms}>
       <div className="space-y-8">
         {/* Hero Banner */}
-        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-blue-600 via-indigo-600 to-violet-700 px-8 py-10 text-white shadow-xl">
+        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-blue-600 via-indigo-600 to-violet-700 px-4 sm:px-6 md:px-8 py-8 sm:py-10 text-white shadow-xl">
           {/* Shimmer overlay */}
           <div className="absolute inset-0 overflow-hidden">
             <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent animate-shimmer" />
@@ -298,7 +298,7 @@ export default function DashboardPage() {
                 <p className="inline-flex items-center rounded-full border border-white/15 bg-white/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.22em] text-white/80">
                   Room hub
                 </p>
-                <h1 className="mt-3 text-3xl font-black tracking-tight sm:text-4xl">Welcome back, {displayName}!</h1>
+                <h1 className="mt-3 text-2xl font-black tracking-tight sm:text-3xl md:text-4xl">Welcome back, {displayName}!</h1>
                 <p className="mt-2 max-w-2xl text-sm text-white/75 sm:text-base">
                   Create a fresh room, join with an invite code, and keep your latest study spaces within easy reach on web and Android.
                 </p>

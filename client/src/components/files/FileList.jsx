@@ -56,11 +56,16 @@ function FileRow({ file, canEdit, onDelete, onEdit, onDownload, deleting, downlo
   const typeStyle = getFileTypeStyle(fileName);
 
   return (
-    <div className={`flex items-center gap-4 rounded-xl border border-slate-200/60 border-l-4 ${typeStyle.border} bg-white shadow-md shadow-slate-200/50 hover:shadow-lg hover:shadow-slate-200/70 hover:-translate-y-0.5 transition-all duration-200 p-4`}>
-      <div className={`h-12 w-12 rounded-xl bg-gradient-to-br ${typeStyle.gradient} flex items-center justify-center shrink-0 shadow-md`}>
-        <FileText className="h-6 w-6 text-white" />
+    <div className={`flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 rounded-xl border border-slate-200/60 border-l-4 ${typeStyle.border} bg-white shadow-md shadow-slate-200/50 hover:shadow-lg hover:shadow-slate-200/70 hover:-translate-y-0.5 transition-all duration-200 p-4`}>
+      <div className="flex items-center gap-3 sm:contents">
+        <div className={`h-10 w-10 sm:h-12 sm:w-12 rounded-xl bg-gradient-to-br ${typeStyle.gradient} flex items-center justify-center shrink-0 shadow-md`}>
+          <FileText className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
+        </div>
+        <div className="flex-1 min-w-0 sm:hidden">
+          <p className="font-bold text-sm truncate text-slate-800">{fileName}</p>
+        </div>
       </div>
-      <div className="flex-1 min-w-0">
+      <div className="flex-1 min-w-0 hidden sm:block">
         <p className="font-bold text-sm truncate text-slate-800">{fileName}</p>
         {file.file_description ? (
           <p className="text-xs text-slate-500 italic leading-snug line-clamp-2 mt-0.5">{file.file_description}</p>
@@ -80,8 +85,18 @@ function FileRow({ file, canEdit, onDelete, onEdit, onDownload, deleting, downlo
           </div>
         )}
       </div>
+      {/* Mobile-only meta info */}
+      <div className="sm:hidden">
+        {file.file_description && (
+          <p className="text-xs text-slate-500 italic leading-snug line-clamp-2">{file.file_description}</p>
+        )}
+        <p className="text-xs text-slate-500 mt-0.5">
+          {uploaderName} <span className="mx-1">&middot;</span> {file.created_at ? format(new Date(file.created_at), 'MMM d, h:mm a') : ''}
+          {file.file_size > 0 && <><span className="mx-1">&middot;</span>{formatSize(file.file_size)}</>}
+        </p>
+      </div>
 
-      <div className="flex items-center gap-1.5 shrink-0">
+      <div className="flex items-center gap-1.5 shrink-0 self-end sm:self-center">
         <Tooltip>
           <TooltipTrigger asChild>
             <Button variant="ghost" size="sm" className="rounded-full bg-gradient-to-r from-blue-500 to-indigo-500 text-white hover:from-blue-600 hover:to-indigo-600 h-9 px-4 shadow-md shadow-blue-500/20 hover:shadow-lg" onClick={() => onDownload(file)} disabled={downloading}>

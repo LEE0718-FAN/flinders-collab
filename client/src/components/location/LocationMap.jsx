@@ -56,7 +56,7 @@ export default function LocationMap({ members = [], center }) {
   }
 
   return (
-    <div className="h-80 w-full overflow-hidden rounded-lg border">
+    <div className="h-56 sm:h-80 w-full overflow-hidden rounded-lg border">
       <MapContainer center={mapCenter} zoom={15} className="h-full w-full" scrollWheelZoom>
         <TileLayer
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'

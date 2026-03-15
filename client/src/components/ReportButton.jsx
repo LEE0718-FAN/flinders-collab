@@ -63,7 +63,7 @@ export default function ReportButton({ section, roomId, floating = false }) {
       {floating ? (
         <button
           onClick={() => setOpen(true)}
-          className="fixed bottom-6 right-6 z-50 flex items-center gap-2 rounded-full bg-red-600 px-4 py-2.5 text-white shadow-lg shadow-red-600/30 hover:bg-red-700 transition-all hover:scale-105 active:scale-95"
+          className="fixed bottom-20 sm:bottom-6 right-4 sm:right-6 z-50 flex items-center gap-2 rounded-full bg-red-600 px-4 py-3 sm:py-2.5 text-white shadow-lg shadow-red-600/30 hover:bg-red-700 transition-all hover:scale-105 active:scale-95 min-h-[44px]"
         >
           <Flag className="h-4 w-4" />
           <span className="text-sm font-semibold">Report</span>

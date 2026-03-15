@@ -70,14 +70,14 @@ export default function ChatPanel({ roomId }) {
 
   if (loading) {
     return (
-      <div className="flex h-[calc(100vh-16rem)] sm:h-[600px] items-center justify-center rounded-2xl border border-slate-200/60 bg-white shadow-xl shadow-blue-500/5">
+      <div className="flex h-[calc(100dvh-14rem)] sm:h-[600px] items-center justify-center rounded-2xl border border-slate-200/60 bg-white shadow-xl shadow-blue-500/5">
         <Loader2 className="h-7 w-7 animate-spin text-blue-500" />
       </div>
     );
   }
 
   return (
-    <div className="flex h-[calc(100vh-16rem)] sm:h-[600px] flex-col rounded-2xl border border-slate-200/60 bg-white shadow-xl shadow-blue-500/5 overflow-hidden">
+    <div className="flex h-[calc(100dvh-14rem)] sm:h-[600px] flex-col rounded-2xl border border-slate-200/60 bg-white shadow-xl shadow-blue-500/5 overflow-hidden">
       {/* Gradient header */}
       <div className="bg-gradient-to-r from-blue-600 to-indigo-600 px-5 py-3 rounded-t-2xl flex items-center justify-between shrink-0">
         <div className="flex items-center gap-2.5">

@@ -17,10 +17,10 @@ export default function AuthLayout({ children }) {
       />
 
       {/* Floating animated orbs */}
-      <div className="absolute top-1/4 left-1/4 h-[400px] w-[400px] rounded-full bg-indigo-600/20 blur-[100px] animate-float" />
-      <div className="absolute bottom-1/4 right-1/4 h-[300px] w-[300px] rounded-full bg-violet-500/15 blur-[100px] animate-float" style={{ animationDelay: '2s' }} />
-      <div className="absolute top-1/2 right-1/3 h-[250px] w-[250px] rounded-full bg-blue-500/15 blur-[80px] animate-float" style={{ animationDelay: '4s' }} />
-      <div className="absolute bottom-1/3 left-1/3 h-[200px] w-[200px] rounded-full bg-purple-500/10 blur-[80px] animate-float" style={{ animationDelay: '6s' }} />
+      <div className="absolute top-1/4 left-1/4 h-[200px] w-[200px] sm:h-[400px] sm:w-[400px] rounded-full bg-indigo-600/20 blur-[100px] animate-float" />
+      <div className="absolute bottom-1/4 right-1/4 h-[150px] w-[150px] sm:h-[300px] sm:w-[300px] rounded-full bg-violet-500/15 blur-[100px] animate-float" style={{ animationDelay: '2s' }} />
+      <div className="absolute top-1/2 right-1/3 h-[120px] w-[120px] sm:h-[250px] sm:w-[250px] rounded-full bg-blue-500/15 blur-[80px] animate-float" style={{ animationDelay: '4s' }} />
+      <div className="absolute bottom-1/3 left-1/3 h-[100px] w-[100px] sm:h-[200px] sm:w-[200px] rounded-full bg-purple-500/10 blur-[80px] animate-float" style={{ animationDelay: '6s' }} />
 
       {/* Main content */}
       <div className="relative z-10 w-full max-w-md animate-slide-up">
@@ -34,7 +34,7 @@ export default function AuthLayout({ children }) {
               className="h-14 object-contain"
             />
           </div>
-          <h1 className="text-3xl font-bold tracking-tight text-white">
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-white">
             Flinders <span className="bg-gradient-to-r from-blue-400 to-violet-400 bg-clip-text text-transparent">Collab</span>
           </h1>
           <p className="mt-2 text-sm text-white/40">

@@ -221,7 +221,7 @@ export default function RoomCard({ room, onDeleted, draggableProps, suppressNavi
               <Button
                 variant="outline"
                 size="sm"
-                className={`h-7 gap-1.5 text-xs opacity-50 hover:opacity-100 transition-opacity ${
+                className={`h-9 sm:h-7 gap-1.5 text-xs opacity-100 sm:opacity-50 hover:opacity-100 transition-opacity ${
                   isOwner
                     ? 'text-red-600 border-red-200 hover:bg-red-50 hover:text-red-700'
                     : 'text-orange-600 border-orange-200 hover:bg-orange-50 hover:text-orange-700'
