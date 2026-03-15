@@ -56,8 +56,10 @@ export default function RoomPage() {
   const [quickLinks, setQuickLinks] = useState([]);
   const [error, setError] = useState('');
   const [calendarStickyTop, setCalendarStickyTop] = useState(24);
+  const [calendarOffset, setCalendarOffset] = useState(0);
   const highlightRef = useRef(null);
   const highlightTimerRef = useRef(null);
+  const scheduleLayoutRef = useRef(null);
   const calendarStickyRef = useRef(null);
 
   const clearHighlight = useCallback(() => {
@@ -169,6 +171,47 @@ export default function RoomPage() {
       observer?.disconnect();
     };
   }, []);
+
+  const alignCalendarToEvent = useCallback((target) => {
+    if (!target || typeof window === 'undefined') return;
+    if (window.innerWidth < 768) {
+      setCalendarOffset(0);
+      return;
+    }
+
+    const layoutNode = scheduleLayoutRef.current;
+    const calendarNode = calendarStickyRef.current;
+    if (!layoutNode || !calendarNode) return;
+
+    const layoutRect = layoutNode.getBoundingClientRect();
+    const targetRect = target.getBoundingClientRect();
+    const availableTravel = Math.max(0, layoutNode.offsetHeight - calendarNode.offsetHeight);
+    const desiredOffset = (targetRect.top - layoutRect.top) + (targetRect.height / 2) - (calendarNode.offsetHeight / 2);
+    const nextOffset = Math.min(Math.max(0, desiredOffset), availableTravel);
+
+    setCalendarOffset(nextOffset);
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return undefined;
+
+    const handleResize = () => {
+      if (window.innerWidth < 768) {
+        setCalendarOffset(0);
+        return;
+      }
+
+      if (!selectedDate) return;
+      const dateKey = format(selectedDate, 'yyyy-MM-dd');
+      const el = document.getElementById(`event-date-${dateKey}`);
+      if (el) {
+        alignCalendarToEvent(el);
+      }
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, [alignCalendarToEvent, selectedDate]);
 
   const handleCopyInviteCode = async () => {
     if (room?.invite_code) {
@@ -333,13 +376,16 @@ export default function RoomPage() {
                 </Button>
               </div>
             </div>
-            <div className="flex flex-col md:flex-row gap-4" style={{ overflow: 'visible' }}>
+            <div ref={scheduleLayoutRef} className="flex flex-col md:flex-row gap-4" style={{ overflow: 'visible' }}>
               {/* Calendar sidebar — outer div stretches to event list height, inner div sticks */}
               <div className="w-full md:w-[280px] shrink-0">
                 <div
                   ref={calendarStickyRef}
-                  className="md:sticky z-10 transition-[top] duration-500 ease-out"
-                  style={{ top: `${calendarStickyTop}px` }}
+                  className="z-10 transition-[top,transform] duration-500 ease-out md:sticky"
+                  style={{
+                    top: `${calendarStickyTop}px`,
+                    transform: `translateY(${calendarOffset}px)`,
+                  }}
                 >
                   <ScheduleCalendar
                     roomId={roomId}
@@ -354,6 +400,7 @@ export default function RoomPage() {
                       setTimeout(() => {
                         const el = document.getElementById(`event-date-${dateKey}`);
                         if (el) {
+                          alignCalendarToEvent(el);
                           el.scrollIntoView({ behavior: 'smooth', block: 'center' });
                           el.classList.add('ring-2', 'ring-blue-400', 'ring-offset-4', 'bg-blue-50/50');
                           highlightRef.current = el;
@@ -367,6 +414,7 @@ export default function RoomPage() {
                     onAddEvent={(date) => {
                       clearHighlight();
                       setSelectedDate(date);
+                      setCalendarOffset(0);
                       setEventFormOpen(true);
                     }}
                   />
