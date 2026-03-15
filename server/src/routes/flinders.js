@@ -313,10 +313,12 @@ async function enrichEventsWithSchema(events) {
     if (results[i]) schemaMap.set(e.id, results[i]);
   });
 
-  return events.map((e) => {
+  // Persist enriched data back to DB so future requests don't re-fetch
+  const dbUpdates = [];
+
+  const enriched = events.map((e) => {
     const schema = schemaMap.get(e.id);
     if (schema) {
-      // Schema.org data is the most reliable — always prefer it
       if (schema.start_time) {
         e.start_time = schema.start_time;
         e.date = schema.start_time;
@@ -325,11 +327,29 @@ async function enrichEventsWithSchema(events) {
       if (schema.time_display) e.time_display = schema.time_display;
       if (schema.location) e.location = schema.location;
       if (schema.cost) e.cost = schema.cost;
+
+      // Queue DB update
+      const update = {};
+      if (schema.start_time) { update.start_time = schema.start_time; update.event_date = schema.start_time; }
+      if (schema.end_time) update.end_time = schema.end_time;
+      if (schema.time_display) update.time_display = schema.time_display;
+      if (schema.location) update.location = schema.location;
+      if (schema.cost) update.cost = schema.cost;
+      if (Object.keys(update).length > 0) {
+        dbUpdates.push(supabaseAdmin.from('flinders_events_cache').update(update).eq('wp_id', e.id));
+      }
     }
     delete e._needsSchemaFetch;
     delete e._link;
     return e;
   });
+
+  // Fire-and-forget DB updates
+  if (dbUpdates.length > 0) {
+    Promise.all(dbUpdates).catch(() => {});
+  }
+
+  return enriched;
 }
 
 // GET /api/flinders/events
