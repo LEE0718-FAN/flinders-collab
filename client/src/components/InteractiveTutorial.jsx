@@ -20,6 +20,8 @@ export default function InteractiveTutorial() {
   const [tooltip, setTooltip] = useState(null);
   const [progress, setProgress] = useState(0);
   const cancelRef = useRef(false);
+  const skipRef = useRef(false);
+  const [isLoading, setIsLoading] = useState(false);
   const createdRoomIdRef = useRef(null);
   const totalSteps = 16;
 
@@ -66,7 +68,7 @@ export default function InteractiveTutorial() {
       let done = false;
       const t = setTimeout(() => { if (!done) { done = true; resolve(); } }, ms);
       const check = setInterval(() => {
-        if (cancelRef.current && !done) { done = true; clearTimeout(t); clearInterval(check); resolve(); }
+        if ((cancelRef.current || skipRef.current) && !done) { done = true; clearTimeout(t); clearInterval(check); skipRef.current = false; resolve(); }
       }, 100);
       setTimeout(() => clearInterval(check), ms + 50);
     }), []);
@@ -291,13 +293,14 @@ export default function InteractiveTutorial() {
     await pause(3500); if (bail()) { await end(); return; }
 
     // ── 6: Navigate into room — wait for it to fully load ──
-    setP(6); setTooltip(null); setSpotlight(null);
+    setP(6); setTooltip(null); setSpotlight(null); setIsLoading(true);
     navigate(`/rooms/${tutorialRoomId}`);
     window.dispatchEvent(new CustomEvent('rooms-updated'));
     showTip('Entering Room...', "Loading your new room... hang tight!", { center: true, icon: '⏳' });
     const roomTabs = await waitForEl('[data-tour="tab-schedule"]', 15000);
     if (!roomTabs || bail()) { await end(); return; }
-    await sleep(3000);
+    setIsLoading(false);
+    await sleep(2000);
     showTip('Welcome to Your Room!', "This is your room! Each tab up there has a different feature — schedule, tasks, chat, files, and more. Let me show you.", { center: true, icon: '🏠' });
     await pause(5000); if (bail()) { await end(); return; }
 
@@ -490,26 +493,28 @@ export default function InteractiveTutorial() {
     await pause(3500); if (bail()) { await end(); return; }
 
     // ── 11: Deadlines page ──
-    setP(11); setTooltip(null); setSpotlight(null); setCursorVisible(false);
-    showTip('Moving to Deadlines...', "Let me show you where all your events come together.", { center: true, icon: '📅' });
-    await pause(2500); if (bail()) { await end(); return; }
+    setP(11); setTooltip(null); setSpotlight(null); setCursorVisible(false); setIsLoading(true);
     navigate('/deadlines');
     showTip('Loading...', "Opening Deadlines...", { center: true, icon: '⏳' });
     await waitForEl('main', 10000);
-    await sleep(3500); if (bail()) { await end(); return; }
+    await sleep(1500); setIsLoading(false); if (bail()) { await end(); return; }
+    // Spotlight the main content area
+    const deadlinesMain = document.querySelector('main');
+    if (deadlinesMain) {
+      const mr = deadlinesMain.getBoundingClientRect();
+      setSpotlight({ x: mr.left + 10, y: mr.top + 10, w: mr.width - 20, h: Math.min(mr.height - 20, 400), r: 16 });
+    }
     showTip('Deadlines', "All events from every room show up here! The study session we just added is here too.", { center: true, icon: '📅' });
-    await pause(4500); if (bail()) { await end(); return; }
+    await pause(4000); if (bail()) { await end(); return; }
 
     // ── 12: Free Board ──
-    setP(12); setTooltip(null); setSpotlight(null); setCursorVisible(false);
-    showTip('Next up: Free Board', "Let me show you the community board.", { center: true, icon: '📋' });
-    await pause(2500); if (bail()) { await end(); return; }
+    setP(12); setTooltip(null); setSpotlight(null); setCursorVisible(false); setIsLoading(true);
     navigate('/board');
     showTip('Loading...', "Opening Free Board...", { center: true, icon: '⏳' });
     await waitForEl('[data-tour="board-new-post"]', 12000);
-    await sleep(3500); if (bail()) { await end(); return; }
-    showTip('Free Board', "This is the community board for all Flinders students — post anything, find study groups, or organize meetups!", { center: true, icon: '📋' });
-    await pause(4500); if (bail()) { await end(); return; }
+    await sleep(1500); setIsLoading(false); if (bail()) { await end(); return; }
+    showTip('Free Board', "Community board for all Flinders students — post anything, find study groups, or organize meetups!", { center: true, icon: '📋' });
+    await pause(3500); if (bail()) { await end(); return; }
 
     // Show New Post button, open dialog, demo typing, then close without posting
     setP(13); setTooltip(null); setSpotlight(null);
@@ -574,10 +579,8 @@ export default function InteractiveTutorial() {
           }
         }
 
-        // Show explanation — don't actually post
-        setShowOverlay(true);
-        showTip('Almost done!', "That's how you create a post with a poll! I won't actually post this — try it yourself after the tour.", { center: true, icon: '📝' });
-        await pause(4500); if (bail()) { await end(); return; }
+        // Brief pause then close
+        await pause(1500); if (bail()) { await end(); return; }
 
         // Close the dialog without posting
         setTooltip(null); setShowOverlay(false);
@@ -589,38 +592,32 @@ export default function InteractiveTutorial() {
     }
 
     // ── 14: Flinders Life — show 3 tabs ──
-    setP(14); setTooltip(null); setSpotlight(null); setCursorVisible(false);
-    showTip('Next up: Flinders Life', "One more page to show you!", { center: true, icon: '🎓' });
-    await pause(2500); if (bail()) { await end(); return; }
+    setP(14); setTooltip(null); setSpotlight(null); setCursorVisible(false); setIsLoading(true);
     navigate('/flinders-life');
     showTip('Loading...', "Opening Flinders Life...", { center: true, icon: '⏳' });
-    await waitForEl('[value="events"]', 12000);
-    await sleep(3500); if (bail()) { await end(); return; }
+    await waitForEl('button[value="events"]', 12000);
+    await sleep(1000); setIsLoading(false); if (bail()) { await end(); return; }
 
-    // Events tab (default — already selected)
-    showTip('Flinders Life', "This page has three sections. Let me show you each one!", { center: true, icon: '🎓' });
-    await pause(3000); if (bail()) { await end(); return; }
-
-    // Click Events tab to make sure it's active
+    // Events tab — click it
     setTooltip(null); setSpotlight(null);
-    await clickEl('[value="events"]');
-    await sleep(1500);
-    showTip('Events', "Browse campus events, workshops, and career fairs happening at Flinders!", { center: true, icon: '🎪' });
-    await pause(4000); if (bail()) { await end(); return; }
+    await clickEl('button[value="events"]');
+    await sleep(1000);
+    showTip('Events', "Campus events, workshops, and career fairs at Flinders!", { center: true, icon: '🎪' });
+    await pause(3500); if (bail()) { await end(); return; }
 
     // Academic Calendar tab — click it
     setTooltip(null); setSpotlight(null);
-    await clickEl('[value="academic-calendar"]');
-    await sleep(1500);
-    showTip('Academic Calendar', "Semester dates, exam periods, and holidays — all in one place so you never miss a deadline!", { center: true, icon: '📅' });
-    await pause(4000); if (bail()) { await end(); return; }
+    await clickEl('button[value="academic-calendar"]');
+    await sleep(1000);
+    showTip('Academic Calendar', "Semester dates, exam periods, and holidays — never miss a deadline!", { center: true, icon: '📅' });
+    await pause(3500); if (bail()) { await end(); return; }
 
     // Study Rooms tab — click it
     setTooltip(null); setSpotlight(null);
-    await clickEl('[value="study-rooms"]');
-    await sleep(1500);
-    showTip('Study Rooms', "Find and book study rooms at City Campus or Bedford Park — direct links right here!", { center: true, icon: '📚' });
-    await pause(4000); if (bail()) { await end(); return; }
+    await clickEl('button[value="study-rooms"]');
+    await sleep(1000);
+    showTip('Study Rooms', "Book study rooms at City Campus or Bedford Park — links right here!", { center: true, icon: '📚' });
+    await pause(3500); if (bail()) { await end(); return; }
 
     // ── 15: Done ──
     setP(15); setTooltip(null); setSpotlight(null); setCursorVisible(false);
@@ -689,6 +686,14 @@ export default function InteractiveTutorial() {
     <>
       {/* ── Fixed top-right control bar ── */}
       <div className="fixed top-4 right-4 z-[100002] flex items-center gap-2 animate-fade-in" style={{ pointerEvents: 'auto' }}>
+        {!isLoading && (
+          <button
+            onClick={() => { skipRef.current = true; }}
+            className="flex items-center gap-1.5 rounded-full bg-gradient-to-r from-indigo-500 to-violet-500 px-4 py-2 text-[12px] font-bold text-white shadow-lg hover:shadow-xl hover:brightness-110 transition-all active:scale-95"
+          >
+            Next →
+          </button>
+        )}
         <button
           onClick={() => handleStop(true)}
           className="flex items-center gap-1.5 rounded-full bg-white/90 backdrop-blur-sm px-3 py-1.5 text-[11px] font-semibold text-slate-400 shadow-lg border border-white/60 hover:bg-white hover:text-slate-600 transition-all"
