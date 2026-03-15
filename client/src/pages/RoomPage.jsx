@@ -300,6 +300,7 @@ export default function RoomPage() {
             </div>
             <div className="grid gap-4 grid-cols-1 md:grid-cols-[280px_1fr]">
               <ScheduleCalendar
+                roomId={roomId}
                 events={events}
                 selectedDate={selectedDate}
                 onSelectDate={setSelectedDate}

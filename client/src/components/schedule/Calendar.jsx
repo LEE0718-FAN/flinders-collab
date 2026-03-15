@@ -18,8 +18,13 @@ const categoryColors = {
   other: '#94a3b8',
 };
 
-export default function ScheduleCalendar({ events = [], selectedDate, onSelectDate, onDateClick }) {
+export default function ScheduleCalendar({ events = [], selectedDate, onSelectDate, onDateClick, roomId }) {
   const [month, setMonth] = useState(new Date());
+
+  // Reset to current month when room changes
+  useEffect(() => {
+    setMonth(new Date());
+  }, [roomId]);
 
   const eventMarkersByDate = events.reduce((map, event) => {
     const rawDate = event.date || event.start_time;
