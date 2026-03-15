@@ -92,9 +92,15 @@ export default function ScheduleCalendar({ events = [], selectedDate, onSelectDa
 
   const handleSelect = (date) => {
     onSelectDate?.(date);
-    onDateClick?.(date);
-    // Show add event prompt
-    setAddPrompt(date);
+    if (date && hasEvent(date)) {
+      // Date has events: scroll to them + show add prompt
+      onDateClick?.(date);
+      setAddPrompt(date);
+    } else {
+      // No events on this date: open form directly
+      setAddPrompt(null);
+      onAddEvent?.(date);
+    }
   };
 
   return (
