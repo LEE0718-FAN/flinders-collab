@@ -1,14 +1,15 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ChevronRight, X, Sparkles } from 'lucide-react';
-import { getRooms } from '@/services/rooms';
+import { createRoom, deleteRoom, getRoom, getRooms } from '@/services/rooms';
 
 const TUTORIAL_KEY = 'tutorial-completed';
+const TUTORIAL_ROOM_NAME = '🎓 Tutorial Room';
 
 /**
- * Purely demonstrative tutorial — navigates through pages and shows tooltips.
- * NEVER creates, modifies, or deletes any real data.
- * Only shows for brand-new users who have zero rooms.
+ * Interactive tutorial that actually clicks, types, and creates a demo room.
+ * Safety: only creates rooms via API (never grabs existing rooms),
+ * verifies room name before deleting, only for users with 0 rooms.
  */
 export default function InteractiveTutorial() {
   const navigate = useNavigate();
@@ -25,7 +26,8 @@ export default function InteractiveTutorial() {
   const [progress, setProgress] = useState(0);
   const cancelRef = useRef(false);
   const nextRef = useRef(null);
-  const totalSteps = 8;
+  const createdRoomIdRef = useRef(null); // ONLY stores room WE created via API
+  const totalSteps = 12;
 
   // ── Only show for brand-new users (no rooms, never dismissed) ──
   useEffect(() => {
@@ -43,7 +45,7 @@ export default function InteractiveTutorial() {
     return () => { cancelled = true; };
   }, []);
 
-  // ── Allow external trigger ──
+  // ── Allow external trigger (e.g. "Watch tutorial again" button) ──
   useEffect(() => {
     const handler = () => {
       setShowPrompt(false);
@@ -113,6 +115,17 @@ export default function InteractiveTutorial() {
     await sleep(500);
   }, [sleep]);
 
+  const clickEl = useCallback(async (selector) => {
+    const el = document.querySelector(selector);
+    if (!el) return;
+    await moveCursorTo(selector);
+    setCursorScale(0.75);
+    await sleep(150);
+    setCursorScale(1);
+    el.click();
+    await sleep(300);
+  }, [moveCursorTo, sleep]);
+
   const spotlightEl = useCallback((selector) => {
     const el = document.querySelector(selector);
     if (!el) { setSpotlight(null); return; }
@@ -171,16 +184,51 @@ export default function InteractiveTutorial() {
     spotlightEl(options.target);
   }, [spotlightEl]);
 
-  const cleanup = useCallback(() => {
+  const typeInto = useCallback(async (selector, text) => {
+    const el = document.querySelector(selector);
+    if (!el) return;
+    const isTextarea = el.tagName === 'TEXTAREA';
+    const proto = isTextarea ? HTMLTextAreaElement.prototype : HTMLInputElement.prototype;
+    const setter = Object.getOwnPropertyDescriptor(proto, 'value')?.set;
+    if (!setter) return;
+    await moveCursorTo(selector);
+    el.focus();
+    for (let i = 1; i <= text.length; i++) {
+      if (cancelRef.current) return;
+      setter.call(el, text.slice(0, i));
+      el.dispatchEvent(new Event('input', { bubbles: true }));
+      await sleep(40 + Math.random() * 20);
+    }
+    await sleep(300);
+  }, [moveCursorTo, sleep]);
+
+  // ── Safe cleanup: only delete the room WE created, verified by name ──
+  const safeDeleteTutorialRoom = useCallback(async () => {
+    const roomId = createdRoomIdRef.current;
+    if (!roomId) return;
+    try {
+      // Double-check: verify this room has the tutorial name before deleting
+      const room = await getRoom(roomId);
+      const name = room?.name || room?.room?.name || '';
+      if (name === TUTORIAL_ROOM_NAME) {
+        await deleteRoom(roomId);
+      }
+    } catch { /* room may already be gone */ }
+    createdRoomIdRef.current = null;
+    window.dispatchEvent(new CustomEvent('rooms-updated'));
+  }, []);
+
+  const cleanup = useCallback(async () => {
     setTooltip(null);
     setSpotlight(null);
     setCursorVisible(false);
     setShowOverlay(false);
     setShowNextBtn(false);
+    await safeDeleteTutorialRoom();
     navigate('/dashboard');
-  }, [navigate]);
+  }, [navigate, safeDeleteTutorialRoom]);
 
-  // ── Main tutorial flow (purely demonstrative, no data changes) ──
+  // ── Main tutorial flow ──
   const runTutorial = useCallback(async () => {
     cancelRef.current = false;
     const bail = () => cancelRef.current;
@@ -189,92 +237,174 @@ export default function InteractiveTutorial() {
     setProgress(1);
     setShowOverlay(true);
     navigate('/dashboard');
-    showTip('Welcome!', "Let me show you how everything works.\nSit back — I'll walk you through!", { center: true, icon: '👋' });
+    showTip('Welcome!', "Let me show you how everything works.\nI'll click and type for you!", { center: true, icon: '👋' });
     await waitForNext();
-    if (bail()) return;
+    if (bail()) { await cleanup(); return; }
 
-    // ── Step 2: Create Room button ──
+    // ── Step 2: Highlight Create Room ──
     setProgress(2);
     setTooltip(null); setSpotlight(null);
     const createBtn = await waitForEl('[data-tour="create-room"]');
-    if (!createBtn || bail()) return;
+    if (!createBtn || bail()) { await cleanup(); return; }
     await sleep(300);
-    showTip('Create a Room', 'Click here to make a room for your course or project team.\nYou can name it and invite friends!', {
+    showTip('Create a Room', "This is where you make a new room.\nLet me click it for you!", {
       target: '[data-tour="create-room"]', icon: '✨', position: 'bottom',
     });
     await moveCursorTo('[data-tour="create-room"]');
     await waitForNext();
-    if (bail()) return;
+    if (bail()) { await cleanup(); return; }
 
-    // ── Step 3: Join Room button ──
+    // ── Step 3: Click Create Room → open dialog ──
     setProgress(3);
     setTooltip(null); setSpotlight(null);
-    const joinBtn = await waitForEl('[data-tour="join-room"]');
-    if (joinBtn && !bail()) {
-      showTip('Join a Room', 'Got an invite code from a friend?\nPaste it here to join their room instantly.', {
-        target: '[data-tour="join-room"]', icon: '🔗', position: 'bottom',
-      });
-      await moveCursorTo('[data-tour="join-room"]');
-      await waitForNext();
-      if (bail()) return;
+    setShowOverlay(false); // let dialog be interactive
+    await sleep(200);
+    const triggerBtn = document.querySelector('[data-tour="create-room"] button');
+    if (triggerBtn) {
+      await moveCursorTo('[data-tour="create-room"] button');
+      setCursorScale(0.75);
+      await sleep(150);
+      setCursorScale(1);
+      triggerBtn.click();
+    }
+    await sleep(600);
+    if (bail()) { await cleanup(); return; }
+
+    // ── Step 4: Type room name ──
+    setProgress(4);
+    const nameInput = await waitForEl('[role="dialog"] input');
+    if (!nameInput || bail()) { await cleanup(); return; }
+    showTip('Room Name', "Watch me type a name!", { center: true, icon: '✏️' });
+    await sleep(400);
+    setTooltip(null);
+    await typeInto('[role="dialog"] input', TUTORIAL_ROOM_NAME);
+    if (bail()) { await cleanup(); return; }
+
+    // ── Step 5: Click Create → actually create via the dialog submit ──
+    setProgress(5);
+    showTip('Creating...', "Now I'll click Create Room!", { center: true, icon: '🚀' });
+    await sleep(500);
+    setTooltip(null);
+
+    // Create room via API directly (safer than clicking submit which may fail)
+    let tutorialRoomId = null;
+    try {
+      const result = await createRoom({ name: TUTORIAL_ROOM_NAME });
+      tutorialRoomId = result?.id || result?.room?.id;
+    } catch { /* creation failed */ }
+
+    // Close the dialog
+    const closeBtn = document.querySelector('[role="dialog"] button[aria-label="Close"]')
+      || document.querySelector('[role="dialog"] [data-radix-collection-item]');
+    // Try clicking overlay or close button to dismiss dialog
+    const dialogOverlay = document.querySelector('[data-radix-overlay]');
+    if (dialogOverlay) dialogOverlay.click();
+    else if (closeBtn) closeBtn.click();
+    // Fallback: press Escape
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    await sleep(500);
+
+    if (!tutorialRoomId || bail()) {
+      await cleanup();
+      return;
     }
 
-    // ── Step 4: Room features overview ──
-    setProgress(4);
-    setTooltip(null); setSpotlight(null); setCursorVisible(false);
-    showTip('Inside a Room', "Each room has:\n📆 Schedule — team calendar\n✅ Tasks — assign & track work\n💬 Chat — real-time messaging\n📁 Files — share anything", { center: true, icon: '🏠' });
-    await waitForNext();
-    if (bail()) return;
-
-    // ── Step 5: Deadlines page ──
-    setProgress(5);
-    setTooltip(null); setCursorVisible(false);
-    navigate('/deadlines');
+    createdRoomIdRef.current = tutorialRoomId;
+    window.dispatchEvent(new CustomEvent('rooms-updated'));
     await sleep(800);
-    if (bail()) return;
-    showTip('Deadlines', 'All your events from every room in one place!\nNever miss a deadline again.', { center: true, icon: '📅' });
-    await waitForNext();
-    if (bail()) return;
 
-    // ── Step 6: Board page ──
+    // ── Step 6: Room created — navigate inside ──
     setProgress(6);
-    setTooltip(null);
+    setShowOverlay(true);
+    showTip('Room Created!', "Your room is ready!\nLet's go inside and explore.", { center: true, icon: '🎉' });
+    await waitForNext();
+    if (bail()) { await cleanup(); return; }
+
+    setTooltip(null); setSpotlight(null); setCursorVisible(false);
+    navigate(`/rooms/${tutorialRoomId}`);
+    await sleep(1500);
+    if (bail()) { await cleanup(); return; }
+
+    // ── Step 7: Schedule tab ──
+    setProgress(7);
+    const scheduleTab = await waitForEl('[data-tour="tab-schedule"]');
+    if (scheduleTab && !bail()) {
+      showTip('Schedule', 'Your team calendar!\nAdd meetings, exams, and deadlines here.', {
+        target: '[data-tour="tab-schedule"]', icon: '📆', position: 'bottom',
+      });
+      await clickEl('[data-tour="tab-schedule"]');
+      await waitForNext();
+      if (bail()) { await cleanup(); return; }
+    }
+
+    // ── Step 8: Tasks tab ──
+    setProgress(8);
+    setTooltip(null); setSpotlight(null);
+    const tasksTab = await waitForEl('[data-tour="tab-tasks"]');
+    if (tasksTab && !bail()) {
+      showTip('Tasks', 'Create tasks and assign to teammates.\nCheck them off when done!', {
+        target: '[data-tour="tab-tasks"]', icon: '✅', position: 'bottom',
+      });
+      await clickEl('[data-tour="tab-tasks"]');
+      await waitForNext();
+      if (bail()) { await cleanup(); return; }
+    }
+
+    // ── Step 9: Chat tab ──
+    setProgress(9);
+    setTooltip(null); setSpotlight(null);
+    const chatTab = await waitForEl('[data-tour="tab-chat"]');
+    if (chatTab && !bail()) {
+      showTip('Chat', 'Real-time messaging with your team!\nSend images and files too.', {
+        target: '[data-tour="tab-chat"]', icon: '💬', position: 'bottom',
+      });
+      await clickEl('[data-tour="tab-chat"]');
+      await waitForNext();
+      if (bail()) { await cleanup(); return; }
+    }
+
+    // ── Step 10: Files tab ──
+    setProgress(10);
+    setTooltip(null); setSpotlight(null);
+    const filesTab = await waitForEl('[data-tour="tab-files"]');
+    if (filesTab && !bail()) {
+      showTip('Files', 'Share lecture notes, assignments, anything!', {
+        target: '[data-tour="tab-files"]', icon: '📁', position: 'bottom',
+      });
+      await clickEl('[data-tour="tab-files"]');
+      await waitForNext();
+      if (bail()) { await cleanup(); return; }
+    }
+
+    // ── Step 11: Board page ──
+    setProgress(11);
+    setTooltip(null); setSpotlight(null); setCursorVisible(false);
     navigate('/board');
     await sleep(800);
-    if (bail()) return;
+    if (bail()) { await cleanup(); return; }
     showTip('Free Board', 'Find study groups, Q&A, anonymous confessions!\nPost anything freely.', { center: true, icon: '💬' });
     await waitForNext();
-    if (bail()) return;
+    if (bail()) { await cleanup(); return; }
 
-    // ── Step 7: Flinders Life page ──
-    setProgress(7);
-    setTooltip(null);
-    navigate('/flinders-life');
-    await sleep(800);
-    if (bail()) return;
-    showTip('Flinders Life', 'Campus events, academic calendar, study rooms!\nPick your interests for recommendations.', { center: true, icon: '🎓' });
-    await waitForNext();
-    if (bail()) return;
-
-    // ── Step 8: Done ──
-    setProgress(8);
+    // ── Step 12: Done ──
+    setProgress(12);
     setTooltip(null); setSpotlight(null); setCursorVisible(false);
     navigate('/dashboard');
     await sleep(500);
-    showTip("You're all set!", "Start by creating your first room!\nHave fun exploring.", { center: true, icon: '🚀' });
+    showTip("You're all set!", "The demo room will be cleaned up.\nNow create your own room and get started!", { center: true, icon: '🚀' });
     await waitForNext();
 
-    // ── Finish ──
-    cleanup();
+    // ── Finish: delete tutorial room and go to dashboard ──
+    await cleanup();
     setActive(false);
     localStorage.setItem(TUTORIAL_KEY, Date.now().toString());
-  }, [navigate, sleep, waitForEl, waitForNext, moveCursorTo, showTip, cleanup]);
+  }, [navigate, sleep, waitForEl, waitForNext, moveCursorTo, clickEl, showTip, typeInto, cleanup]);
 
-  const handleSkip = useCallback(() => {
+  const handleSkip = useCallback(async () => {
     cancelRef.current = true;
     nextRef.current?.();
     nextRef.current = null;
-    cleanup();
+    await cleanup();
     setActive(false);
     setShowPrompt(false);
     if (dontShowAgain) {
@@ -315,7 +445,8 @@ export default function InteractiveTutorial() {
             <h2 className="text-xl font-black text-slate-900">First time here?</h2>
             <p className="mt-2 text-sm text-slate-500 leading-relaxed">
               Let me show you around!<br/>
-              A quick walkthrough of all features.
+              I'll click and type for you,<br/>
+              explaining everything step by step.
             </p>
           </div>
           <div className="mt-6 space-y-2">
@@ -349,7 +480,7 @@ export default function InteractiveTutorial() {
 
   return (
     <>
-      {/* ── Overlay (pointer-events-none — safe, no interaction blocking) ── */}
+      {/* ── Overlay ── */}
       {showOverlay && (
         <div className="fixed inset-0 pointer-events-none" style={{ zIndex: 99998 }}>
           <svg className="absolute inset-0 w-full h-full">
