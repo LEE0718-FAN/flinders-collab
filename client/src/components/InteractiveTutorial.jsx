@@ -96,21 +96,34 @@ export default function InteractiveTutorial() {
     await sleep(450);
   }, [sleep]);
 
+  // Simulate a real click — dispatch pointer/mouse events so Radix UI responds
+  const simulateClick = useCallback((el) => {
+    const r = el.getBoundingClientRect();
+    const x = r.left + r.width / 2;
+    const y = r.top + r.height / 2;
+    const opts = { bubbles: true, cancelable: true, clientX: x, clientY: y, pointerId: 1 };
+    el.dispatchEvent(new PointerEvent('pointerdown', opts));
+    el.dispatchEvent(new MouseEvent('mousedown', opts));
+    el.dispatchEvent(new PointerEvent('pointerup', opts));
+    el.dispatchEvent(new MouseEvent('mouseup', opts));
+    el.click();
+  }, []);
+
   const clickEl = useCallback(async (selector) => {
     const el = document.querySelector(selector);
     if (!el) return;
     await moveCursorTo(selector);
     setCursorScale(0.75); await sleep(100); setCursorScale(1);
-    el.click(); await sleep(250);
-  }, [moveCursorTo, sleep]);
+    simulateClick(el); await sleep(250);
+  }, [moveCursorTo, sleep, simulateClick]);
 
   const clickDomEl = useCallback(async (el) => {
     if (!el) return;
     const r = el.getBoundingClientRect();
     await moveCursorTo({ x: r.left + r.width / 2, y: r.top + r.height / 2 });
     setCursorScale(0.75); await sleep(100); setCursorScale(1);
-    el.click(); await sleep(250);
-  }, [moveCursorTo, sleep]);
+    simulateClick(el); await sleep(250);
+  }, [moveCursorTo, sleep, simulateClick]);
 
   const spotlightEl = useCallback((selector) => {
     const el = document.querySelector(selector);
@@ -277,11 +290,7 @@ export default function InteractiveTutorial() {
 
     // Click schedule tab and wait for content to appear
     await clickEl('[data-tour="tab-schedule"]');
-    await sleep(500);
-    // Also try direct click to ensure Radix tabs register it
-    const schedTab = document.querySelector('[data-tour="tab-schedule"]');
-    if (schedTab) { schedTab.click(); }
-    await sleep(800);
+    await sleep(1000);
 
     // Wait for "Add Event" button to appear in schedule content
     let addEventBtn = null;
@@ -366,10 +375,7 @@ export default function InteractiveTutorial() {
 
     // Click tasks tab
     await clickEl('[data-tour="tab-tasks"]');
-    await sleep(500);
-    const taskTab = document.querySelector('[data-tour="tab-tasks"]');
-    if (taskTab) { taskTab.click(); }
-    await sleep(800);
+    await sleep(1000);
 
     // Wait for "Assign Task" button
     let assignBtn = null;
@@ -435,9 +441,6 @@ export default function InteractiveTutorial() {
     showTip('Chat', "Real-time messaging with your team!", { target: '[data-tour="tab-chat"]', icon: '💬', position: 'bottom' });
     await pause(2500); if (bail()) { await end(); return; }
     await clickEl('[data-tour="tab-chat"]');
-    await sleep(500);
-    const chatTabEl = document.querySelector('[data-tour="tab-chat"]');
-    if (chatTabEl) { chatTabEl.click(); }
     await sleep(1000);
     setTooltip(null);
     showTip('Chat', "Send messages, images, and files.\nEverything stays in the room!", { center: true, icon: '💬' });
@@ -448,9 +451,6 @@ export default function InteractiveTutorial() {
     showTip('Files', "Share notes, slides, PDFs here!", { target: '[data-tour="tab-files"]', icon: '📁', position: 'bottom' });
     await pause(2500); if (bail()) { await end(); return; }
     await clickEl('[data-tour="tab-files"]');
-    await sleep(500);
-    const filesTabEl = document.querySelector('[data-tour="tab-files"]');
-    if (filesTabEl) { filesTabEl.click(); }
     await sleep(1000);
     setTooltip(null);
     showTip('Files', "Drag and drop any file.\nThe whole team can download them!", { center: true, icon: '📁' });
