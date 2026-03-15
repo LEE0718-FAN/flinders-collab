@@ -454,8 +454,10 @@ function formatUptime(seconds) {
 }
 
 function formatBytes(bytes) {
+  if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  if (bytes < 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  return `${(bytes / (1024 * 1024 * 1024)).toFixed(2)} GB`;
 }
 
 function MonitoringTab() {
@@ -689,6 +691,96 @@ function MonitoringTab() {
         </Card>
       </div>
 
+      {/* Storage Usage (Pro Plan) */}
+      {stats.storage && (
+        <Card className="shadow-sm">
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <HardDrive className="h-4 w-4 text-slate-500" />
+                <span className="text-sm font-semibold text-slate-700">Storage Usage (Pro)</span>
+              </div>
+              <Badge className="rounded-full text-[10px] bg-indigo-100 text-indigo-700 border-indigo-200">
+                {formatBytes(stats.storage.used)} / {formatBytes(stats.storage.total)}
+              </Badge>
+            </div>
+            {(() => {
+              const usedPct = stats.storage.total > 0 ? ((stats.storage.used / stats.storage.total) * 100) : 0;
+              return (
+                <>
+                  <div className="w-full h-3 bg-slate-100 rounded-full overflow-hidden">
+                    <div
+                      className={`h-full rounded-full transition-all duration-500 ${usedPct > 80 ? 'bg-red-500' : usedPct > 50 ? 'bg-amber-500' : 'bg-indigo-500'}`}
+                      style={{ width: `${Math.max(usedPct, 0.5)}%` }}
+                    />
+                  </div>
+                  <div className="flex justify-between mt-2 text-[11px] text-slate-400">
+                    <span>{usedPct.toFixed(2)}% used</span>
+                    <span>{formatBytes(stats.storage.total - stats.storage.used)} free</span>
+                  </div>
+                </>
+              );
+            })()}
+            {stats.storage.buckets && stats.storage.buckets.length > 0 && (
+              <div className="mt-4 space-y-1.5">
+                <span className="text-[11px] text-slate-500 font-medium">Buckets</span>
+                {stats.storage.buckets.map((b) => (
+                  <div key={b.name} className="flex items-center gap-2 text-[11px]">
+                    <div className="h-2 w-2 rounded-full bg-indigo-400 shrink-0" />
+                    <span className="text-slate-600 flex-1">{b.name}</span>
+                    <span className="text-slate-500 font-medium">{formatBytes(b.size)}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+            {stats.storage.lastCheck && (
+              <p className="text-[10px] text-slate-400 mt-3">
+                Last checked: {formatDistanceToNow(new Date(stats.storage.lastCheck), { addSuffix: true })}
+              </p>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* User Error Log */}
+      {stats.userErrors && stats.userErrors.length > 0 && (
+        <Card className="shadow-sm border-orange-100">
+          <CardContent className="p-4">
+            <h4 className="text-sm font-semibold text-slate-700 mb-3 flex items-center gap-2">
+              <AlertCircle className="h-4 w-4 text-orange-500" />
+              User Error Log
+              <Badge className="rounded-full text-[10px] bg-orange-100 text-orange-700 border-orange-200">{stats.userErrors.length}</Badge>
+            </h4>
+            <div className="space-y-2 max-h-72 overflow-y-auto">
+              {stats.userErrors.map((err, i) => (
+                <div key={i} className="rounded-lg bg-orange-50/50 border border-orange-100 px-3 py-2.5">
+                  <div className="flex items-center justify-between mb-1">
+                    <div className="flex items-center gap-2">
+                      <Avatar className="h-5 w-5">
+                        <AvatarFallback className="text-[9px] font-bold bg-orange-200 text-orange-700">
+                          {(err.userName || '?').slice(0, 1).toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
+                      <span className="text-xs font-semibold text-slate-700">{err.userName}</span>
+                    </div>
+                    <span className="text-[10px] text-slate-400">
+                      {err.timestamp ? formatDistanceToNow(new Date(err.timestamp), { addSuffix: true }) : ''}
+                    </span>
+                  </div>
+                  <p className="text-xs text-orange-800">
+                    <span className="font-medium">{err.action}</span> 중 오류 발생
+                    <span className="text-orange-500 ml-1">({err.statusCode})</span>
+                  </p>
+                  {err.errorMessage && (
+                    <p className="text-[11px] text-slate-500 mt-0.5">{err.errorMessage}</p>
+                  )}
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Status Codes + RPM */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         {/* Status Codes */}
@@ -766,9 +858,14 @@ function MonitoringTab() {
               {stats.recentErrors.map((err, i) => (
                 <div key={i} className="rounded-lg bg-red-50/50 border border-red-100 px-3 py-2">
                   <div className="flex items-center justify-between mb-1">
-                    <code className="text-[11px] font-mono text-red-600 bg-red-100 px-1.5 py-0.5 rounded">
-                      {err.method} {err.path}
-                    </code>
+                    <div className="flex items-center gap-2">
+                      <code className="text-[11px] font-mono text-red-600 bg-red-100 px-1.5 py-0.5 rounded">
+                        {err.method} {err.path}
+                      </code>
+                      {err.userName && (
+                        <span className="text-[10px] text-slate-500 font-medium">{err.userName}</span>
+                      )}
+                    </div>
                     <span className="text-[10px] text-slate-400">
                       {err.timestamp ? formatDistanceToNow(new Date(err.timestamp), { addSuffix: true }) : ''}
                     </span>

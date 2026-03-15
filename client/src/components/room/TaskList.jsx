@@ -143,22 +143,20 @@ function TaskCreateForm({ roomId, members = [], currentUserId, onCreated, onErro
 
       {/* Assignees section */}
       <div className="space-y-2">
-        <div className="flex items-center justify-between">
-          <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
-            <Users className="h-3.5 w-3.5" />
-            Assign to ({assignedMembers.length})
-          </label>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            className="h-8 text-xs"
-            onClick={() => setShowMemberPicker(!showMemberPicker)}
-          >
-            <UserPlus className="h-3.5 w-3.5 mr-1.5" />
-            {showMemberPicker ? 'Hide' : 'Select Members'}
-          </Button>
-        </div>
+        <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
+          <Users className="h-3.5 w-3.5" />
+          Assign to ({assignedMembers.length})
+        </label>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="h-9 text-xs w-full justify-center gap-1.5"
+          onClick={() => setShowMemberPicker(!showMemberPicker)}
+        >
+          <UserPlus className="h-3.5 w-3.5" />
+          {showMemberPicker ? 'Hide Members' : 'Select Members'}
+        </Button>
 
         {/* Selected members */}
         {assignedMembers.length > 0 && (
@@ -556,6 +554,24 @@ export default function TaskList({ tasks = [], members = [], roomId, currentUser
   };
 
   const handleTaskCreated = (createdTask) => {
+    // Ensure task_assignees has full user data for display
+    if (createdTask.task_assignees) {
+      createdTask.task_assignees = createdTask.task_assignees.map((a) => {
+        if (!a.users && a.user_id) {
+          // Find user info from members list
+          const member = members.find((m) => (m.user_id || m.id) === a.user_id);
+          if (member) {
+            a.users = {
+              id: a.user_id,
+              full_name: member.full_name,
+              university_email: member.university_email,
+              avatar_url: member.avatar_url,
+            };
+          }
+        }
+        return a;
+      });
+    }
     syncTasks((prev) => [createdTask, ...prev]);
     setShowForm(false);
   };

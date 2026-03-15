@@ -66,6 +66,19 @@ router.post('/alerts/:alertId/resolve', (req, res) => {
 });
 
 /**
+ * GET /api/admin/storage
+ * Refresh and return storage usage stats.
+ */
+router.get('/storage', async (req, res) => {
+  try {
+    const result = await monitor.checkStorageUsage();
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to check storage usage' });
+  }
+});
+
+/**
  * GET /api/admin/health
  * Trigger a manual health check and return results.
  */

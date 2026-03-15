@@ -95,7 +95,7 @@ async function getTasks(req, res, next) {
         task_assignees (
           id,
           user_id,
-          completed,
+          status,
           completed_at,
           users:user_id ( id, full_name, university_email, avatar_url )
         )
@@ -390,7 +390,7 @@ async function fetchTaskWithAssignees(taskId) {
       task_assignees (
         id,
         user_id,
-        completed,
+        status,
         completed_at,
         users:user_id ( id, full_name, university_email, avatar_url )
       )

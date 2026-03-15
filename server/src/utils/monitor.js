@@ -1,17 +1,57 @@
 const { supabaseAdmin } = require('../services/supabase');
 
+// Map API paths + methods to human-readable Korean action descriptions
+const ACTION_MAP = {
+  'POST /api/rooms/:roomId/tasks': '할일 생성',
+  'PATCH /api/rooms/:roomId/tasks/:taskId': '할일 수정',
+  'DELETE /api/rooms/:roomId/tasks/:taskId': '할일 삭제',
+  'PATCH /api/rooms/:roomId/tasks/:taskId/assignees/:userId': '할일 상태 변경',
+  'POST /api/rooms/:roomId/tasks/:taskId/assignees': '할일 담당자 추가',
+  'GET /api/rooms/:roomId/tasks': '할일 목록 조회',
+  'POST /api/rooms/:roomId/files': '파일 업로드',
+  'DELETE /api/rooms/:roomId/files/:fileId': '파일 삭제',
+  'GET /api/rooms/:roomId/files': '파일 목록 조회',
+  'POST /api/rooms': '방 생성',
+  'DELETE /api/rooms/:roomId': '방 삭제',
+  'PATCH /api/rooms/:roomId': '방 수정',
+  'POST /api/rooms/:roomId/join': '방 참가',
+  'POST /api/rooms/:roomId/events': '일정 생성',
+  'PATCH /api/rooms/:roomId/events/:eventId': '일정 수정',
+  'DELETE /api/rooms/:roomId/events/:eventId': '일정 삭제',
+  'GET /api/rooms/:roomId/events': '일정 조회',
+  'POST /api/auth/signup': '회원가입',
+  'POST /api/auth/login': '로그인',
+  'POST /api/rooms/:roomId/chat': '채팅 전송',
+  'POST /api/reports': '버그 신고',
+  'POST /api/rooms/:roomId/location': '위치 공유',
+  'GET /api/rooms/:roomId/members': '멤버 조회',
+};
+
+function matchAction(method, path) {
+  for (const [pattern, label] of Object.entries(ACTION_MAP)) {
+    const [pMethod, pPath] = pattern.split(' ');
+    if (method !== pMethod) continue;
+    // Convert route pattern to regex
+    const regex = new RegExp('^' + pPath.replace(/:[^/]+/g, '[^/]+') + '(\\?.*)?$');
+    if (regex.test(path)) return label;
+  }
+  return null;
+}
+
 class ServerMonitor {
   constructor() {
     this.startTime = Date.now();
     this.totalRequests = 0;
     this.totalErrors = 0;
     this.recentErrors = []; // last 50
+    this.userErrors = []; // last 50 user-friendly error log
     this.slowRequests = []; // last 20, >2s response time
     this.statusCodes = { '2xx': 0, '3xx': 0, '4xx': 0, '5xx': 0 };
     this.responseTimes = []; // last 1000 entries {time, duration, path}
     this.requestsPerMinute = []; // last 10 minutes [{minute, count}]
     this.alerts = []; // active alerts
     this.healthChecks = { supabase: null, lastCheck: null };
+    this.storageUsage = null; // { used, total, buckets, lastCheck }
     this.requestLog = []; // last 100 requests for activity feed
     this._alertIdCounter = 0;
   }
@@ -62,6 +102,8 @@ class ServerMonitor {
     }
 
     // Request log (keep last 100)
+    const userName = req.user?.full_name || req.user?.email || null;
+    const userId = req.user?.id || null;
     this.requestLog.push({
       method: req.method,
       path: req.originalUrl || req.url,
@@ -69,9 +111,30 @@ class ServerMonitor {
       duration,
       timestamp: new Date(now).toISOString(),
       ip: req.ip,
+      userName,
     });
     if (this.requestLog.length > 100) {
       this.requestLog = this.requestLog.slice(-100);
+    }
+
+    // Track user-facing errors (4xx/5xx) with friendly descriptions
+    if (status >= 400 && userName) {
+      const action = matchAction(req.method, req.originalUrl || req.url);
+      if (action) {
+        this.userErrors.push({
+          userName,
+          userId,
+          action,
+          statusCode: status,
+          errorMessage: res._responseBody?.error || null,
+          path: req.originalUrl || req.url,
+          method: req.method,
+          timestamp: new Date(now).toISOString(),
+        });
+        if (this.userErrors.length > 50) {
+          this.userErrors = this.userErrors.slice(-50);
+        }
+      }
     }
 
     // Requests per minute tracking (rolling 10 minutes)
@@ -103,18 +166,43 @@ class ServerMonitor {
    * Record an error that occurred during request processing.
    */
   recordError(err, req) {
+    const userName = req?.user?.full_name || req?.user?.email || null;
+    const userId = req?.user?.id || null;
+    const path = req ? (req.originalUrl || req.url) : 'unknown';
+    const method = req ? req.method : 'unknown';
+
     this.recentErrors.push({
       message: err.message || 'Unknown error',
       stack: err.stack || '',
-      path: req ? (req.originalUrl || req.url) : 'unknown',
-      method: req ? req.method : 'unknown',
+      path,
+      method,
       statusCode: err.statusCode || 500,
       timestamp: new Date().toISOString(),
+      userName,
+      userId,
     });
 
     // Keep only last 50 errors
     if (this.recentErrors.length > 50) {
       this.recentErrors = this.recentErrors.slice(-50);
+    }
+
+    // Also add to user-friendly error log
+    if (userName) {
+      const action = matchAction(method, path);
+      this.userErrors.push({
+        userName,
+        userId,
+        action: action || `${method} ${path}`,
+        statusCode: err.statusCode || 500,
+        errorMessage: err.message || 'Unknown error',
+        path,
+        method,
+        timestamp: new Date().toISOString(),
+      });
+      if (this.userErrors.length > 50) {
+        this.userErrors = this.userErrors.slice(-50);
+      }
     }
   }
 
@@ -220,6 +308,64 @@ class ServerMonitor {
   }
 
   /**
+   * Check Supabase storage usage via Management API or storage API.
+   */
+  async checkStorageUsage() {
+    const result = { used: 0, total: 100 * 1024 * 1024 * 1024, buckets: [], lastCheck: new Date().toISOString() }; // 100GB Pro
+
+    try {
+      // List buckets
+      const { data: buckets, error: bucketsError } = await supabaseAdmin.storage.listBuckets();
+      if (bucketsError || !buckets) {
+        this.storageUsage = result;
+        return result;
+      }
+
+      let totalUsed = 0;
+      for (const bucket of buckets) {
+        let bucketSize = 0;
+        try {
+          // List files in root
+          const { data: files } = await supabaseAdmin.storage.from(bucket.name).list('', { limit: 1000 });
+          if (files) {
+            for (const file of files) {
+              if (file.metadata?.size) {
+                bucketSize += file.metadata.size;
+              }
+            }
+            // Also check subdirectories (room folders)
+            const folders = files.filter(f => !f.metadata);
+            for (const folder of folders) {
+              const { data: subFiles } = await supabaseAdmin.storage.from(bucket.name).list(folder.name, { limit: 1000 });
+              if (subFiles) {
+                for (const sf of subFiles) {
+                  if (sf.metadata?.size) {
+                    bucketSize += sf.metadata.size;
+                  }
+                }
+              }
+            }
+          }
+        } catch { /* skip bucket */ }
+
+        totalUsed += bucketSize;
+        result.buckets.push({
+          name: bucket.name,
+          size: bucketSize,
+          public: bucket.public,
+        });
+      }
+
+      result.used = totalUsed;
+    } catch (err) {
+      console.log('[monitor] Storage check failed:', err.message);
+    }
+
+    this.storageUsage = result;
+    return result;
+  }
+
+  /**
    * Get all monitoring stats for the admin panel.
    */
   getStats() {
@@ -265,6 +411,8 @@ class ServerMonitor {
       health: { ...this.healthChecks },
       requestLog: this.requestLog.slice(-50).reverse(),
       serverStartTime: new Date(this.startTime).toISOString(),
+      storage: this.storageUsage,
+      userErrors: this.userErrors.slice(-20).reverse(),
     };
   }
 
@@ -290,13 +438,19 @@ class ServerMonitor {
    * Start periodic health checks and resource monitoring.
    */
   startHealthChecks() {
-    // Initial Supabase health check
+    // Initial Supabase health check + storage check
     this.checkSupabaseHealth();
+    this.checkStorageUsage();
 
     // Check Supabase every 5 minutes
     this._healthInterval = setInterval(() => {
       this.checkSupabaseHealth();
     }, 5 * 60 * 1000);
+
+    // Check storage every 30 minutes
+    this._storageInterval = setInterval(() => {
+      this.checkStorageUsage();
+    }, 30 * 60 * 1000);
 
     // Check memory and error rate every minute
     this._memoryInterval = setInterval(() => {
@@ -351,6 +505,7 @@ class ServerMonitor {
   stopHealthChecks() {
     if (this._healthInterval) clearInterval(this._healthInterval);
     if (this._memoryInterval) clearInterval(this._memoryInterval);
+    if (this._storageInterval) clearInterval(this._storageInterval);
   }
 }
 
