@@ -57,6 +57,7 @@ export default function RoomPage() {
   const [error, setError] = useState('');
   const [calendarOffset, setCalendarOffset] = useState(0);
   const [calendarTrackHeight, setCalendarTrackHeight] = useState(null);
+  const [calendarMode, setCalendarMode] = useState('follow');
   const highlightRef = useRef(null);
   const highlightTimerRef = useRef(null);
   const scheduleLayoutRef = useRef(null);
@@ -64,6 +65,7 @@ export default function RoomPage() {
   const calendarStickyRef = useRef(null);
   const eventListColumnRef = useRef(null);
   const selectedDateKeyRef = useRef(null);
+  const suppressScrollResetUntilRef = useRef(0);
 
   const clearHighlight = useCallback(() => {
     if (highlightRef.current) {
@@ -168,18 +170,23 @@ export default function RoomPage() {
 
     const containerRect = scrollContainer.getBoundingClientRect();
     const eventListRect = eventListNode.getBoundingClientRect();
-    const viewportCenter = containerRect.top + (containerRect.height / 2);
     const trackHeight = Math.max(calendarNode.offsetHeight, eventListNode.offsetHeight);
     const availableTravel = Math.max(0, trackHeight - calendarNode.offsetHeight);
     const selectedDateKey = selectedDateKeyRef.current;
     const selectedDateNode = selectedDateKey ? document.getElementById(`event-date-${selectedDateKey}`) : null;
-    const desiredOffset = selectedDateNode
+    const desiredOffset = calendarMode === 'pinned' && selectedDateNode
       ? selectedDateNode.offsetTop + (selectedDateNode.offsetHeight / 2) - (calendarNode.offsetHeight / 2)
-      : viewportCenter - eventListRect.top - (calendarNode.offsetHeight / 2);
+      : Math.max(0, containerRect.top - eventListRect.top);
     const nextOffset = Math.min(Math.max(0, desiredOffset), availableTravel);
 
     setCalendarTrackHeight(trackHeight);
     setCalendarOffset(nextOffset);
+  }, [calendarMode]);
+
+  const resetCalendarPosition = useCallback(() => {
+    selectedDateKeyRef.current = null;
+    setCalendarMode('follow');
+    setCalendarOffset(0);
   }, []);
 
   useEffect(() => {
@@ -190,6 +197,10 @@ export default function RoomPage() {
 
     let frameId = null;
     const scheduleUpdate = () => {
+      if (calendarMode === 'pinned' && Date.now() > suppressScrollResetUntilRef.current) {
+        selectedDateKeyRef.current = null;
+        setCalendarMode('follow');
+      }
       if (frameId) cancelAnimationFrame(frameId);
       frameId = requestAnimationFrame(() => {
         updateCalendarOffset();
@@ -216,7 +227,7 @@ export default function RoomPage() {
       window.removeEventListener('resize', scheduleUpdate);
       observer?.disconnect();
     };
-  }, [activeTab, updateCalendarOffset]);
+  }, [activeTab, calendarMode, updateCalendarOffset]);
 
   useEffect(() => {
     if (activeTab !== 'schedule') return undefined;
@@ -229,7 +240,9 @@ export default function RoomPage() {
   }, [activeTab, events.length, updateCalendarOffset]);
 
   useEffect(() => {
-    selectedDateKeyRef.current = selectedDate ? format(selectedDate, 'yyyy-MM-dd') : null;
+    if (calendarMode === 'pinned') {
+      selectedDateKeyRef.current = selectedDate ? format(selectedDate, 'yyyy-MM-dd') : null;
+    }
 
     if (activeTab !== 'schedule') return undefined;
 
@@ -238,7 +251,7 @@ export default function RoomPage() {
     }, 40);
 
     return () => window.clearTimeout(timer);
-  }, [activeTab, selectedDate, updateCalendarOffset]);
+  }, [activeTab, calendarMode, selectedDate, updateCalendarOffset]);
 
   const handleCopyInviteCode = async () => {
     if (room?.invite_code) {
@@ -422,10 +435,15 @@ export default function RoomPage() {
                     events={events}
                     selectedDate={selectedDate}
                     onSelectDate={setSelectedDate}
-                    onDismissPrompt={clearHighlight}
+                    onDismissPrompt={() => {
+                      clearHighlight();
+                      resetCalendarPosition();
+                    }}
                     onDateClick={(date) => {
                       setSelectedDate(date);
                       selectedDateKeyRef.current = format(date, 'yyyy-MM-dd');
+                      setCalendarMode('pinned');
+                      suppressScrollResetUntilRef.current = Date.now() + 800;
                       clearHighlight();
                       const dateKey = format(date, 'yyyy-MM-dd');
                       setTimeout(() => {
@@ -445,7 +463,7 @@ export default function RoomPage() {
                     onAddEvent={(date) => {
                       clearHighlight();
                       setSelectedDate(date);
-                      selectedDateKeyRef.current = null;
+                      resetCalendarPosition();
                       setEventFormOpen(true);
                     }}
                   />
