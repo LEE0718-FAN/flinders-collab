@@ -289,6 +289,17 @@ ALTER TABLE flinders_events_cache ADD COLUMN IF NOT EXISTS start_time TIMESTAMPT
 ALTER TABLE flinders_events_cache ADD COLUMN IF NOT EXISTS end_time TIMESTAMPTZ;
 ALTER TABLE flinders_events_cache ADD COLUMN IF NOT EXISTS cost TEXT;
 ALTER TABLE flinders_events_cache ADD COLUMN IF NOT EXISTS time_display TEXT;
+
+-- Performance indexes for common query patterns
+CREATE INDEX IF NOT EXISTS idx_messages_room_created ON messages(room_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_files_room_active ON files(room_id, created_at DESC) WHERE deleted_at IS NULL;
+CREATE INDEX IF NOT EXISTS idx_post_reactions_post_user ON post_reactions(post_id, user_id);
+CREATE INDEX IF NOT EXISTS idx_poll_votes_post_user ON poll_votes(post_id, user_id);
+CREATE INDEX IF NOT EXISTS idx_board_participations_post_user ON board_participations(post_id, user_id);
+CREATE INDEX IF NOT EXISTS idx_room_announcements_room_created ON room_announcements(room_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_announcement_reads_user ON announcement_reads(user_id, announcement_id);
+CREATE INDEX IF NOT EXISTS idx_events_room_start ON events(room_id, start_time);
+CREATE INDEX IF NOT EXISTS idx_tasks_room_created ON tasks(room_id, created_at DESC);
 `;
 
 async function runMigration() {

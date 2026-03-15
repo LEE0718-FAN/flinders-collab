@@ -112,17 +112,21 @@ export default function DashboardPage() {
     }
   }, []);
 
+  // Fetch events only once when rooms are first loaded (use room IDs as stable dependency)
+  const roomIds = rooms.filter(r => !String(r.id).startsWith(TEMP_ROOM_PREFIX)).map(r => r.id).sort().join(',');
   useEffect(() => {
-    if (rooms.length === 0) return;
+    if (!roomIds) return;
 
     const fetchAllEvents = async () => {
       try {
         const allEvents = [];
+        const ids = roomIds.split(',');
         const results = await Promise.allSettled(
-          rooms.filter(r => !String(r.id).startsWith(TEMP_ROOM_PREFIX)).map(async (room) => {
-            const data = await getEvents(room.id);
+          ids.map(async (id) => {
+            const room = rooms.find(r => r.id === id);
+            const data = await getEvents(id);
             const events = Array.isArray(data) ? data : data.events || [];
-            return events.map(e => ({ ...e, room_name: room.name, room_id: room.id }));
+            return events.map(e => ({ ...e, room_name: room?.name, room_id: id }));
           })
         );
         results.forEach(r => { if (r.status === 'fulfilled') allEvents.push(...r.value); });
@@ -131,7 +135,7 @@ export default function DashboardPage() {
         const meetings = allEvents
           .filter(e => new Date(e.start_time) > now && e.category === 'meeting')
           .sort((a, b) => new Date(a.start_time) - new Date(b.start_time))
-          .slice(0, 3); // Show max 3 upcoming meetings
+          .slice(0, 3);
 
         setUpcomingEvents(meetings);
       } catch {
@@ -140,7 +144,7 @@ export default function DashboardPage() {
     };
 
     fetchAllEvents();
-  }, [rooms]);
+  }, [roomIds]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useLayoutEffect(() => {
     const nextPositions = new Map();

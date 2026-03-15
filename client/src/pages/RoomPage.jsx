@@ -136,6 +136,7 @@ export default function RoomPage() {
   }, [roomId]);
 
   useEffect(() => {
+    setLoading(true);
     const init = async () => {
       try {
         await Promise.all([fetchRoom(), fetchMembers(), fetchEvents(), fetchFiles(), fetchTasks(), fetchActivity(), fetchAnnouncements()]);
@@ -145,7 +146,8 @@ export default function RoomPage() {
       setLoading(false);
     };
     init();
-  }, [fetchRoom, fetchMembers, fetchEvents, fetchFiles, fetchTasks, fetchActivity, fetchAnnouncements]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [roomId]);
 
   useEffect(() => {
     try {

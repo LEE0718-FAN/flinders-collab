@@ -228,7 +228,13 @@ export default function MainLayout({ children }) {
       refreshRooms().catch(() => {});
     };
 
+    // Debounce window focus to avoid excessive refetches (min 30s between)
+    let lastFocusRefresh = 0;
     const handleWindowFocus = () => {
+      if (document.visibilityState === 'hidden') return;
+      const now = Date.now();
+      if (now - lastFocusRefresh < 30000) return;
+      lastFocusRefresh = now;
       refreshRooms().catch(() => {});
     };
 
