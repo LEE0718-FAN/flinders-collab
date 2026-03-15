@@ -11,12 +11,16 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 
 const CATEGORY_INFO = {
-  meeting: { icon: '👥', label: 'Meeting' },
+  meeting:      { icon: '👥', label: 'Meeting' },
+  submission:   { icon: '📮', label: 'Submission' },
+  quiz:         { icon: '✏️', label: 'Quiz' },
+  exam:         { icon: '📝', label: 'Exam' },
   presentation: { icon: '📊', label: 'Presentation' },
-  deadline: { icon: '⏰', label: 'Deadline' },
-  study: { icon: '📚', label: 'Study Session' },
-  lecture: { icon: '🎓', label: 'Lecture' },
-  other: { icon: '📌', label: 'Other' },
+  deadline:     { icon: '⏰', label: 'Deadline' },
+  study:        { icon: '📚', label: 'Study Session' },
+  lecture:      { icon: '🎓', label: 'Lecture' },
+  social:       { icon: '🎉', label: 'Social' },
+  other:        { icon: '📌', label: 'Other' },
 };
 
 export default function DeadlinesPage() {
