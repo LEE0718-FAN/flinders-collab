@@ -1,11 +1,14 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ChevronRight, X, Sparkles } from 'lucide-react';
-import { createRoom, deleteRoom } from '@/services/rooms';
 
 const TUTORIAL_KEY = 'tutorial-completed';
-const TUTORIAL_ROOM_KEY = 'tutorial-room-id';
 
+/**
+ * Purely demonstrative tutorial — navigates through pages and shows tooltips.
+ * NEVER creates, modifies, or deletes any real data.
+ * Only shows for first-time users (no rooms yet).
+ */
 export default function InteractiveTutorial() {
   const navigate = useNavigate();
   const [showPrompt, setShowPrompt] = useState(false);
@@ -20,24 +23,24 @@ export default function InteractiveTutorial() {
   const [dontShowAgain, setDontShowAgain] = useState(false);
   const [progress, setProgress] = useState(0);
   const cancelRef = useRef(false);
-  const roomIdRef = useRef(null);
   const nextRef = useRef(null);
-  const totalSteps = 13;
-
-  // ── Cleanup stale tutorial room on mount ──
-  useEffect(() => {
-    const staleRoomId = localStorage.getItem(TUTORIAL_ROOM_KEY);
-    if (staleRoomId) {
-      deleteRoom(staleRoomId).catch(() => {});
-      localStorage.removeItem(TUTORIAL_ROOM_KEY);
-    }
-  }, []);
+  const totalSteps = 8;
 
   // ── Show prompt for first-time users ──
   useEffect(() => {
     if (localStorage.getItem(TUTORIAL_KEY)) return;
     const t = setTimeout(() => setShowPrompt(true), 1200);
     return () => clearTimeout(t);
+  }, []);
+
+  // ── Allow external trigger ──
+  useEffect(() => {
+    const handler = () => {
+      setShowPrompt(false);
+      setActive(true);
+    };
+    window.addEventListener('start-interactive-tutorial', handler);
+    return () => window.removeEventListener('start-interactive-tutorial', handler);
   }, []);
 
   // ── Utilities ──
@@ -53,7 +56,6 @@ export default function InteractiveTutorial() {
           resolve();
         }
       }, 100);
-      // Clean up interval when timeout fires normally
       setTimeout(() => clearInterval(check), ms + 50);
     }), []);
 
@@ -101,17 +103,6 @@ export default function InteractiveTutorial() {
     await sleep(500);
   }, [sleep]);
 
-  const clickAt = useCallback(async (selector) => {
-    const el = document.querySelector(selector);
-    if (!el) return;
-    await moveCursorTo(selector);
-    setCursorScale(0.75);
-    await sleep(150);
-    setCursorScale(1);
-    el.click();
-    await sleep(300);
-  }, [moveCursorTo, sleep]);
-
   const spotlightEl = useCallback((selector) => {
     const el = document.querySelector(selector);
     if (!el) { setSpotlight(null); return; }
@@ -139,7 +130,6 @@ export default function InteractiveTutorial() {
 
     const el = document.querySelector(options.target);
     if (!el) {
-      // Fallback to center if element not found
       setTooltip({
         title, desc,
         style: { position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', width: tw },
@@ -171,208 +161,73 @@ export default function InteractiveTutorial() {
     spotlightEl(options.target);
   }, [spotlightEl]);
 
-  const typeInto = useCallback(async (selector, text) => {
-    const el = document.querySelector(selector);
-    if (!el) return;
-    const isTextarea = el.tagName === 'TEXTAREA';
-    const proto = isTextarea ? HTMLTextAreaElement.prototype : HTMLInputElement.prototype;
-    const setter = Object.getOwnPropertyDescriptor(proto, 'value')?.set;
-    if (!setter) return;
-    await moveCursorTo(selector);
-    el.focus();
-    for (let i = 1; i <= text.length; i++) {
-      if (cancelRef.current) return;
-      setter.call(el, text.slice(0, i));
-      el.dispatchEvent(new Event('input', { bubbles: true }));
-      await sleep(45 + Math.random() * 25);
-    }
-    await sleep(300);
-  }, [moveCursorTo, sleep]);
-
-  const cleanup = useCallback(async () => {
+  const cleanup = useCallback(() => {
     setTooltip(null);
     setSpotlight(null);
     setCursorVisible(false);
     setShowOverlay(false);
     setShowNextBtn(false);
-    if (roomIdRef.current) {
-      try { await deleteRoom(roomIdRef.current); } catch { /* ignore */ }
-      localStorage.removeItem(TUTORIAL_ROOM_KEY);
-      roomIdRef.current = null;
-      window.dispatchEvent(new CustomEvent('rooms-updated'));
-    }
     navigate('/dashboard');
   }, [navigate]);
 
-  // ── Main tutorial flow ──
+  // ── Main tutorial flow (purely demonstrative, no data changes) ──
   const runTutorial = useCallback(async () => {
     cancelRef.current = false;
     const bail = () => cancelRef.current;
 
-    // ── Step 1: Navigate to dashboard ──
+    // ── Step 1: Welcome ──
     setProgress(1);
     setShowOverlay(true);
-    showTip('Welcome!', "Let me show you how everything works.\nSit back and watch!", { center: true, icon: '👋' });
     navigate('/dashboard');
+    showTip('Welcome!', "Let me show you how everything works.\nSit back — I'll walk you through!", { center: true, icon: '👋' });
     await waitForNext();
     if (bail()) return;
 
-    // ── Step 2: Wait for dashboard to load, then highlight Create Room ──
+    // ── Step 2: Create Room button ──
     setProgress(2);
-    setTooltip(null);
-    setSpotlight(null);
+    setTooltip(null); setSpotlight(null);
     const createBtn = await waitForEl('[data-tour="create-room"]');
     if (!createBtn || bail()) return;
     await sleep(300);
-    showTip('Create a Room', 'You can create a new room here!\nLet me show you 👆', {
+    showTip('Create a Room', 'Click here to make a room for your course or project team.\nYou can name it and invite friends!', {
       target: '[data-tour="create-room"]', icon: '✨', position: 'bottom',
     });
     await moveCursorTo('[data-tour="create-room"]');
     await waitForNext();
     if (bail()) return;
 
-    // ── Step 3: Click Create Room → dialog opens ──
+    // ── Step 3: Join Room button ──
     setProgress(3);
-    setTooltip(null);
-    setSpotlight(null);
-    setShowOverlay(false); // Hide overlay so dialog is visible
-    await sleep(200);
-    const triggerBtn = document.querySelector('[data-tour="create-room"] button');
-    if (triggerBtn) {
-      await moveCursorTo('[data-tour="create-room"] button');
-      setCursorScale(0.75);
-      await sleep(150);
-      setCursorScale(1);
-      triggerBtn.click();
+    setTooltip(null); setSpotlight(null);
+    const joinBtn = await waitForEl('[data-tour="join-room"]');
+    if (joinBtn && !bail()) {
+      showTip('Join a Room', 'Got an invite code from a friend?\nPaste it here to join their room instantly.', {
+        target: '[data-tour="join-room"]', icon: '🔗', position: 'bottom',
+      });
+      await moveCursorTo('[data-tour="join-room"]');
+      await waitForNext();
+      if (bail()) return;
     }
-    await sleep(600);
-    if (bail()) return;
 
-    // ── Step 4: Type room name in dialog ──
+    // ── Step 4: Room features overview ──
     setProgress(4);
-    const nameInput = await waitForEl('[role="dialog"] input');
-    if (!nameInput || bail()) return;
-    showTip('Room Name', "I'll type a name for you!", { center: true, icon: '✏️' });
-    await sleep(400);
-    setTooltip(null);
-    await typeInto('[role="dialog"] input', 'Tutorial Room');
-    if (bail()) return;
-
-    // ── Step 5: Submit → create room ──
-    setProgress(5);
-    const submitBtn = document.querySelector('[role="dialog"] button[type="submit"]');
-    if (submitBtn) {
-      await moveCursorTo('[role="dialog"] button[type="submit"]');
-      setCursorScale(0.75);
-      await sleep(150);
-      setCursorScale(1);
-      submitBtn.click();
-    }
-    await sleep(2000); // Wait for room creation + dialog close + sidebar update
-    if (bail()) return;
-
-    // ── Find the created room ──
-    let tutorialRoomId = null;
-    // Wait for sidebar to update
-    await sleep(500);
-    const roomLinks = document.querySelectorAll('[data-tour="sidebar-rooms"] a');
-    for (const link of roomLinks) {
-      const href = link.getAttribute('href') || '';
-      const m = href.match(/\/rooms\/(.+)/);
-      if (m) { tutorialRoomId = m[1]; break; }
-    }
-    if (!tutorialRoomId) {
-      // Fallback: create via API
-      try {
-        const room = await createRoom({ name: 'Tutorial Room' });
-        tutorialRoomId = room.id || room.room?.id;
-        window.dispatchEvent(new CustomEvent('rooms-updated'));
-        await sleep(500);
-      } catch { /* skip room tour */ }
-    }
-    if (tutorialRoomId) {
-      roomIdRef.current = tutorialRoomId;
-      localStorage.setItem(TUTORIAL_ROOM_KEY, tutorialRoomId);
-    }
-
-    // ── Step 6: Navigate to room ──
-    setProgress(6);
-    setCursorVisible(false);
-    setShowOverlay(true);
-    if (tutorialRoomId) {
-      showTip('Room Created!', "Let's go inside! 🚀", { center: true, icon: '🎉' });
-      await waitForNext();
-      if (bail()) return;
-      setTooltip(null);
-      setSpotlight(null);
-      navigate(`/rooms/${tutorialRoomId}`);
-      await sleep(1200);
-    }
-    if (bail()) return;
-
-    // ── Step 7: Schedule tab ──
-    setProgress(7);
-    const scheduleTab = await waitForEl('[data-tour="tab-schedule"]');
-    if (scheduleTab && !bail()) {
-      showTip('Schedule', 'Manage your team calendar.\nAdd meetings, exams, and deadlines!', {
-        target: '[data-tour="tab-schedule"]', icon: '📆', position: 'bottom',
-      });
-      await clickAt('[data-tour="tab-schedule"]');
-      await waitForNext();
-      if (bail()) return;
-    }
-
-    // ── Step 8: Tasks tab ──
-    setProgress(8);
-    setTooltip(null); setSpotlight(null);
-    const tasksTab = await waitForEl('[data-tour="tab-tasks"]');
-    if (tasksTab && !bail()) {
-      showTip('Tasks', 'Create tasks and assign to teammates.\nCheck them off when done!', {
-        target: '[data-tour="tab-tasks"]', icon: '✅', position: 'bottom',
-      });
-      await clickAt('[data-tour="tab-tasks"]');
-      await waitForNext();
-      if (bail()) return;
-    }
-
-    // ── Step 9: Chat tab ──
-    setProgress(9);
-    setTooltip(null); setSpotlight(null);
-    const chatTab = await waitForEl('[data-tour="tab-chat"]');
-    if (chatTab && !bail()) {
-      showTip('Chat', 'Real-time messaging with your team!\nSend images and files too.', {
-        target: '[data-tour="tab-chat"]', icon: '💬', position: 'bottom',
-      });
-      await clickAt('[data-tour="tab-chat"]');
-      await waitForNext();
-      if (bail()) return;
-    }
-
-    // ── Step 10: Files tab ──
-    setProgress(10);
-    setTooltip(null); setSpotlight(null);
-    const filesTab = await waitForEl('[data-tour="tab-files"]');
-    if (filesTab && !bail()) {
-      showTip('Files', 'Share lecture notes, assignments, anything!', {
-        target: '[data-tour="tab-files"]', icon: '📁', position: 'bottom',
-      });
-      await clickAt('[data-tour="tab-files"]');
-      await waitForNext();
-      if (bail()) return;
-    }
-
-    // ── Step 11: Deadlines ──
-    setProgress(11);
     setTooltip(null); setSpotlight(null); setCursorVisible(false);
-    navigate('/deadlines');
-    await sleep(800);
-    if (bail()) return;
-    showTip('Deadlines', 'All your events from every room in one place!\nNever miss a thing.', { center: true, icon: '📅' });
+    showTip('Inside a Room', "Each room has:\n📆 Schedule — team calendar\n✅ Tasks — assign & track work\n💬 Chat — real-time messaging\n📁 Files — share anything", { center: true, icon: '🏠' });
     await waitForNext();
     if (bail()) return;
 
-    // ── Step 12: Board ──
-    setProgress(12);
+    // ── Step 5: Deadlines page ──
+    setProgress(5);
+    setTooltip(null); setCursorVisible(false);
+    navigate('/deadlines');
+    await sleep(800);
+    if (bail()) return;
+    showTip('Deadlines', 'All your events from every room in one place!\nNever miss a deadline again.', { center: true, icon: '📅' });
+    await waitForNext();
+    if (bail()) return;
+
+    // ── Step 6: Board page ──
+    setProgress(6);
     setTooltip(null);
     navigate('/board');
     await sleep(800);
@@ -381,8 +236,8 @@ export default function InteractiveTutorial() {
     await waitForNext();
     if (bail()) return;
 
-    // ── Step 13: Flinders Life ──
-    setProgress(13);
+    // ── Step 7: Flinders Life page ──
+    setProgress(7);
     setTooltip(null);
     navigate('/flinders-life');
     await sleep(800);
@@ -391,22 +246,25 @@ export default function InteractiveTutorial() {
     await waitForNext();
     if (bail()) return;
 
-    // ── Farewell ──
+    // ── Step 8: Done ──
+    setProgress(8);
     setTooltip(null); setSpotlight(null); setCursorVisible(false);
-    showTip("You're all set!", "Now try it yourself! 🎉\nHave fun exploring.", { center: true, icon: '🚀' });
+    navigate('/dashboard');
+    await sleep(500);
+    showTip("You're all set!", "Start by creating your first room!\nHave fun exploring.", { center: true, icon: '🚀' });
     await waitForNext();
 
-    // ── Cleanup ──
-    await cleanup();
+    // ── Finish ──
+    cleanup();
     setActive(false);
     localStorage.setItem(TUTORIAL_KEY, Date.now().toString());
-  }, [navigate, sleep, waitForEl, waitForNext, moveCursorTo, clickAt, showTip, typeInto, cleanup]);
+  }, [navigate, sleep, waitForEl, waitForNext, moveCursorTo, showTip, cleanup]);
 
-  const handleSkip = useCallback(async () => {
+  const handleSkip = useCallback(() => {
     cancelRef.current = true;
     nextRef.current?.();
     nextRef.current = null;
-    await cleanup();
+    cleanup();
     setActive(false);
     setShowPrompt(false);
     if (dontShowAgain) {
@@ -444,11 +302,10 @@ export default function InteractiveTutorial() {
             <div className="mx-auto mb-4 h-16 w-16 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-lg shadow-indigo-500/30">
               <Sparkles className="h-8 w-8 text-white" />
             </div>
-            <h2 className="text-xl font-black text-slate-900">First time here? 👋</h2>
+            <h2 className="text-xl font-black text-slate-900">First time here?</h2>
             <p className="mt-2 text-sm text-slate-500 leading-relaxed">
               Let me show you around!<br/>
-              I'll click and type for you,<br/>
-              explaining everything step by step.
+              A quick walkthrough of all features.
             </p>
           </div>
           <div className="mt-6 space-y-2">
@@ -456,7 +313,7 @@ export default function InteractiveTutorial() {
               onClick={startTutorial}
               className="w-full rounded-xl bg-gradient-to-r from-indigo-500 to-purple-600 py-3 text-sm font-bold text-white shadow-lg shadow-indigo-500/25 hover:shadow-xl transition-all active:scale-[0.98]"
             >
-              Show me around! 🚀
+              Show me around!
             </button>
             <button
               onClick={handleDecline}
@@ -482,7 +339,7 @@ export default function InteractiveTutorial() {
 
   return (
     <>
-      {/* ── Overlay with spotlight (pointer-events-none so dialogs work) ── */}
+      {/* ── Overlay (pointer-events-none — safe, no interaction blocking) ── */}
       {showOverlay && (
         <div className="fixed inset-0 pointer-events-none" style={{ zIndex: 99998 }}>
           <svg className="absolute inset-0 w-full h-full">
