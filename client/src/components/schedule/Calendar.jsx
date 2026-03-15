@@ -18,7 +18,7 @@ const categoryColors = {
   other: '#94a3b8',
 };
 
-export default function ScheduleCalendar({ events = [], selectedDate, onSelectDate, onDateClick, onAddEvent, roomId }) {
+export default function ScheduleCalendar({ events = [], selectedDate, onSelectDate, onDateClick, onAddEvent, onDismissPrompt, roomId }) {
   const [month, setMonth] = useState(new Date());
   const [addPrompt, setAddPrompt] = useState(null); // date to show "add event?" prompt
 
@@ -183,7 +183,7 @@ export default function ScheduleCalendar({ events = [], selectedDate, onSelectDa
                 variant="ghost"
                 size="icon"
                 className="h-8 w-8 text-slate-400 hover:text-slate-600"
-                onClick={() => setAddPrompt(null)}
+                onClick={() => { setAddPrompt(null); onDismissPrompt?.(); }}
               >
                 <X className="h-3.5 w-3.5" />
               </Button>

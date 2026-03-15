@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 import MainLayout from '@/layouts/MainLayout';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -21,6 +21,7 @@ import { copyToClipboard } from '@/lib/native';
 import { getRoomPalette } from '@/components/room/RoomCard';
 import { useAuth } from '@/hooks/useAuth';
 import { Loader2, Copy, Check, Plus, MessageSquare, FileUp, CalendarPlus, CheckSquare, Activity, Link2, Users } from 'lucide-react';
+import { useRef as useReactRef } from 'react';
 import { Button } from '@/components/ui/button';
 import ReportButton from '@/components/ReportButton';
 import EditRoomDialog from '@/components/room/EditRoomDialog';
@@ -54,6 +55,19 @@ export default function RoomPage() {
   const [activities, setActivities] = useState([]);
   const [quickLinks, setQuickLinks] = useState([]);
   const [error, setError] = useState('');
+  const highlightRef = useRef(null);
+  const highlightTimerRef = useRef(null);
+
+  const clearHighlight = useCallback(() => {
+    if (highlightRef.current) {
+      highlightRef.current.classList.remove('ring-2', 'ring-blue-400', 'ring-offset-4', 'bg-blue-50/50');
+      highlightRef.current = null;
+    }
+    if (highlightTimerRef.current) {
+      clearTimeout(highlightTimerRef.current);
+      highlightTimerRef.current = null;
+    }
+  }, []);
 
   const fetchRoom = useCallback(async () => {
     try {
@@ -294,26 +308,32 @@ export default function RoomPage() {
               </div>
             </div>
             <div className="grid gap-4 grid-cols-1 md:grid-cols-[280px_1fr] md:items-start">
-              <div className="md:sticky md:top-4">
+              <div className="md:sticky md:top-0 z-10">
               <ScheduleCalendar
                 roomId={roomId}
                 events={events}
                 selectedDate={selectedDate}
                 onSelectDate={setSelectedDate}
+                onDismissPrompt={clearHighlight}
                 onDateClick={(date) => {
                   setSelectedDate(date);
-                  // Scroll to that date in the event list if events exist
+                  clearHighlight();
                   const dateKey = format(date, 'yyyy-MM-dd');
                   setTimeout(() => {
                     const el = document.getElementById(`event-date-${dateKey}`);
                     if (el) {
                       el.scrollIntoView({ behavior: 'smooth', block: 'center' });
                       el.classList.add('ring-2', 'ring-blue-400', 'ring-offset-4', 'bg-blue-50/50');
-                      setTimeout(() => el.classList.remove('ring-2', 'ring-blue-400', 'ring-offset-4', 'bg-blue-50/50'), 4000);
+                      highlightRef.current = el;
+                      highlightTimerRef.current = setTimeout(() => {
+                        el.classList.remove('ring-2', 'ring-blue-400', 'ring-offset-4', 'bg-blue-50/50');
+                        highlightRef.current = null;
+                      }, 4000);
                     }
                   }, 150);
                 }}
                 onAddEvent={(date) => {
+                  clearHighlight();
                   setSelectedDate(date);
                   setEventFormOpen(true);
                 }}
