@@ -180,7 +180,6 @@ export default function RoomPage() {
     const eventListNode = eventListColumnRef.current;
     if (!scrollContainer || !layoutNode || !calendarNode || !calendarColumnNode || !eventListNode) return;
 
-    const containerRect = scrollContainer.getBoundingClientRect();
     const layoutRect = layoutNode.getBoundingClientRect();
     const trackHeight = Math.max(calendarNode.offsetHeight, eventListNode.offsetHeight);
     const availableTravel = Math.max(0, trackHeight - calendarNode.offsetHeight);
@@ -190,7 +189,10 @@ export default function RoomPage() {
       ? calendarNode.querySelector(`[data-calendar-date="${selectedDateKey}"]`)
       : null;
 
-    let desiredOffset = Math.max(0, containerRect.top - layoutRect.top);
+    const followScrollTop = typeof scrollContainer.scrollTop === 'number'
+      ? scrollContainer.scrollTop
+      : 0;
+    let desiredOffset = Math.max(0, followScrollTop - layoutNode.offsetTop);
 
     if (calendarMode === 'pinned' && selectedDateNode) {
       if (selectedDayButton) {
@@ -448,7 +450,9 @@ export default function RoomPage() {
               >
                 <div
                   ref={calendarStickyRef}
-                  className="z-10 transition-transform duration-300 ease-out md:absolute md:left-0 md:right-0 md:top-0"
+                  className={`z-10 transition-transform ease-out md:absolute md:left-0 md:right-0 md:top-0 ${
+                    calendarMode === 'pinned' ? 'duration-300' : 'duration-75'
+                  }`}
                   style={{
                     transform: `translateY(${calendarOffset}px)`,
                   }}
@@ -460,7 +464,6 @@ export default function RoomPage() {
                     onSelectDate={setSelectedDate}
                     onDismissPrompt={() => {
                       clearHighlight();
-                      resetCalendarPosition();
                     }}
                     promptResetToken={calendarResetToken}
                     onDateClick={(date) => {
