@@ -6,13 +6,30 @@ import { ToastProvider } from '@/components/ui/toast';
 import ErrorBoundary from '@/components/ErrorBoundary';
 import { Loader2 } from 'lucide-react';
 
-const LoginPage = lazy(() => import('@/pages/LoginPage'));
-const SignupPage = lazy(() => import('@/pages/SignupPage'));
-const DashboardPage = lazy(() => import('@/pages/DashboardPage'));
-const RoomPage = lazy(() => import('@/pages/RoomPage'));
-const AdminPage = lazy(() => import('@/pages/AdminPage'));
-const DeadlinesPage = lazy(() => import('@/pages/DeadlinesPage'));
-const BoardPage = lazy(() => import('@/pages/BoardPage'));
+// Retry dynamic imports with page reload on chunk mismatch (after new deployments)
+function lazyRetry(importFn) {
+  return lazy(() =>
+    importFn().catch(() => {
+      // If chunk fails to load (hash mismatch after deploy), reload once
+      const reloaded = sessionStorage.getItem('chunk_reload');
+      if (!reloaded) {
+        sessionStorage.setItem('chunk_reload', '1');
+        window.location.reload();
+        return new Promise(() => {}); // never resolves — page is reloading
+      }
+      sessionStorage.removeItem('chunk_reload');
+      return importFn(); // second attempt after reload
+    })
+  );
+}
+
+const LoginPage = lazyRetry(() => import('@/pages/LoginPage'));
+const SignupPage = lazyRetry(() => import('@/pages/SignupPage'));
+const DashboardPage = lazyRetry(() => import('@/pages/DashboardPage'));
+const RoomPage = lazyRetry(() => import('@/pages/RoomPage'));
+const AdminPage = lazyRetry(() => import('@/pages/AdminPage'));
+const DeadlinesPage = lazyRetry(() => import('@/pages/DeadlinesPage'));
+const BoardPage = lazyRetry(() => import('@/pages/BoardPage'));
 
 function PageLoader() {
   return (
