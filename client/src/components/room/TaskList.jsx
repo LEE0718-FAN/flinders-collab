@@ -251,6 +251,20 @@ const assigneeStatusConfig = {
 function TaskCard({ task, roomId, currentUserId, members = [], onStatusChange, onEdit, onDelete, onAssigneesAdded }) {
   const [addingMembers, setAddingMembers] = useState(false);
   const [toggling, setToggling] = useState(null);
+  const [statusMenu, setStatusMenu] = useState(null);
+  const cardRef = useRef(null);
+
+  // Close status menu on click outside
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (cardRef.current && !cardRef.current.contains(e.target)) {
+        setStatusMenu(null);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
   const prio = priorityConfig[task.priority] || priorityConfig.medium;
   const due = formatDueDate(task.due_date);
 
@@ -265,11 +279,13 @@ function TaskCard({ task, roomId, currentUserId, members = [], onStatusChange, o
   const allDone = assignees.length > 0 && completedCount === assignees.length;
   const progress = assignees.length > 0 ? Math.round((completedCount / assignees.length) * 100) : 0;
 
-  const handleStatusCycle = async (assignee) => {
+  const handleStatusSelect = async (assignee, newStatus) => {
+    setStatusMenu(null);
+    if (assignee.status === newStatus) return;
     const userId = assignee.user_id;
     setToggling(userId);
     try {
-      await onStatusChange(task.id, userId);
+      await onStatusChange(task.id, userId, newStatus);
     } finally {
       setToggling(null);
     }
@@ -292,7 +308,7 @@ function TaskCard({ task, roomId, currentUserId, members = [], onStatusChange, o
   };
 
   return (
-    <div className={`rounded-xl border bg-card shadow-sm hover:shadow-md transition-all overflow-hidden border-l-[3px] ${prio.border} ${allDone ? 'opacity-50' : ''}`}>
+    <div ref={cardRef} className={`rounded-xl border bg-card shadow-sm hover:shadow-md transition-all border-l-[3px] ${prio.border} ${allDone ? 'opacity-50' : ''}`}>
       <div className="p-4">
         {/* Header: Title + actions */}
         <div className="flex items-start justify-between gap-2">
@@ -320,27 +336,29 @@ function TaskCard({ task, roomId, currentUserId, members = [], onStatusChange, o
         </div>
 
         {/* Meta: Due date + priority + progress */}
-        <div className="flex items-center gap-2 mt-2 flex-wrap">
+        <div className="flex items-center gap-2.5 mt-3 flex-wrap">
           {due ? (
-            <span className={`inline-flex items-center gap-1 text-xs font-medium ${
-              due.overdue && !allDone ? 'text-red-600' : 'text-muted-foreground'
+            <span className={`inline-flex items-center gap-1.5 text-sm font-semibold rounded-lg px-2.5 py-1 ${
+              due.overdue && !allDone ? 'bg-red-50 text-red-600 border border-red-200' : 'bg-slate-50 text-slate-700 border border-slate-200'
             }`}>
-              <Clock className="h-3.5 w-3.5" />
+              <CalendarDays className="h-4 w-4" />
               {due.text}
-              {due.overdue && !allDone && <span className="text-red-500 font-semibold">· Overdue</span>}
+              {due.overdue && !allDone && <span className="text-red-500 font-bold ml-1">Overdue</span>}
             </span>
           ) : (
-            <span className="inline-flex items-center gap-1 text-xs text-muted-foreground/40">
-              <Clock className="h-3.5 w-3.5" />
+            <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground/50 px-2.5 py-1">
+              <CalendarDays className="h-3.5 w-3.5" />
               No due date
             </span>
           )}
-          <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+          <span className={`inline-flex items-center gap-1.5 text-xs font-semibold rounded-lg px-2.5 py-1 border ${
+            task.priority === 'high' ? 'bg-red-50 text-red-600 border-red-200' : task.priority === 'low' ? 'bg-slate-50 text-slate-500 border-slate-200' : 'bg-amber-50 text-amber-700 border-amber-200'
+          }`}>
             <span className={`h-2 w-2 rounded-full ${prio.dot}`} />
             {prio.label}
           </span>
           {assignees.length > 0 && (
-            <Badge variant="outline" className={`text-[10px] px-2 py-0.5 ${allDone ? 'bg-green-50 text-green-700 border-green-200' : 'bg-blue-50 text-blue-700 border-blue-200'}`}>
+            <Badge variant="outline" className={`text-xs font-semibold px-2.5 py-1 ${allDone ? 'bg-green-50 text-green-700 border-green-200' : 'bg-blue-50 text-blue-700 border-blue-200'}`}>
               {completedCount}/{assignees.length} done
             </Badge>
           )}
@@ -382,18 +400,41 @@ function TaskCard({ task, roomId, currentUserId, members = [], onStatusChange, o
                 <span className={`flex-1 truncate font-medium ${assignee.status === 'completed' ? 'line-through text-muted-foreground' : 'text-foreground'}`}>
                   {name}
                 </span>
-                <button
-                  onClick={() => handleStatusCycle(assignee)}
-                  disabled={isToggling}
-                  className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] font-semibold transition-all hover:scale-105 active:scale-95 shrink-0 ${aStatus.bg}`}
-                >
-                  {isToggling ? (
-                    <Loader2 className="h-3 w-3 animate-spin" />
-                  ) : (
-                    <StatusIcon className="h-3 w-3" />
+                <div className="relative shrink-0">
+                  <button
+                    onClick={() => setStatusMenu(statusMenu === assignee.user_id ? null : assignee.user_id)}
+                    disabled={isToggling}
+                    className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] font-semibold transition-all hover:scale-105 active:scale-95 ${aStatus.bg}`}
+                  >
+                    {isToggling ? (
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                    ) : (
+                      <StatusIcon className="h-3 w-3" />
+                    )}
+                    {aStatus.label}
+                  </button>
+                  {statusMenu === assignee.user_id && (
+                    <div className="absolute right-0 top-full mt-1 z-50 bg-white rounded-lg border shadow-lg py-1 min-w-[130px]">
+                      {Object.entries(assigneeStatusConfig).map(([key, cfg]) => {
+                        const Icon = cfg.icon;
+                        const isActive = assignee.status === key;
+                        return (
+                          <button
+                            key={key}
+                            onClick={() => handleStatusSelect(assignee, key)}
+                            className={`w-full flex items-center gap-2 px-3 py-2 text-xs font-medium transition-colors ${
+                              isActive ? 'bg-primary/5 text-primary' : 'text-slate-600 hover:bg-slate-50'
+                            }`}
+                          >
+                            <Icon className="h-3.5 w-3.5" />
+                            {cfg.label}
+                            {isActive && <CheckCircle2 className="h-3 w-3 ml-auto text-primary" />}
+                          </button>
+                        );
+                      })}
+                    </div>
                   )}
-                  {aStatus.label}
-                </button>
+                </div>
               </div>
             );
           })}
@@ -468,14 +509,13 @@ export default function TaskList({ tasks = [], members = [], roomId, currentUser
     });
   };
 
-  const handleToggleAssignee = async (taskId, userId) => {
-    const statusCycle = { pending: 'in_progress', in_progress: 'completed', completed: 'pending' };
+  const handleToggleAssignee = async (taskId, userId, newStatus) => {
     // Optimistic update
     syncTasks((prev) =>
       prev.map((t) => {
         if (t.id !== taskId) return t;
         const updatedAssignees = (t.task_assignees || []).map((a) =>
-          a.user_id === userId ? { ...a, status: statusCycle[a.status] || 'pending' } : a
+          a.user_id === userId ? { ...a, status: newStatus } : a
         );
         const allDone = updatedAssignees.every((a) => a.status === 'completed');
         const anyInProgress = updatedAssignees.some((a) => a.status === 'in_progress' || a.status === 'completed');
@@ -488,7 +528,7 @@ export default function TaskList({ tasks = [], members = [], roomId, currentUser
     );
 
     try {
-      await toggleAssignee(roomId, taskId, userId);
+      await toggleAssignee(roomId, taskId, userId, newStatus);
     } catch (err) {
       // Revert on error
       syncTasks(tasks);

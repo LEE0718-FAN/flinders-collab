@@ -28,9 +28,13 @@ export async function deleteTask(roomId, taskId) {
   return parseResponse(res);
 }
 
-export async function toggleAssignee(roomId, taskId, userId) {
+export async function toggleAssignee(roomId, taskId, userId, status) {
   const headers = getAuthHeaders();
-  const res = await fetch(`/api/rooms/${roomId}/tasks/${taskId}/assignees/${userId}`, { method: 'PATCH', headers });
+  const res = await fetch(`/api/rooms/${roomId}/tasks/${taskId}/assignees/${userId}`, {
+    method: 'PATCH',
+    headers,
+    body: JSON.stringify(status ? { status } : {}),
+  });
   return parseResponse(res);
 }
 
