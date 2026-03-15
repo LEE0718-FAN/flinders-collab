@@ -3,8 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import { X } from 'lucide-react';
 import { createRoom, deleteRoom, getRoom, getRooms } from '@/services/rooms';
 import { createEvent } from '@/services/events';
-import { createTask } from '@/services/tasks';
-import { deletePost } from '@/services/board';
 
 const TUTORIAL_KEY = 'tutorial-completed';
 const TUTORIAL_ROOM_NAME = '🎓 Tutorial Room';
@@ -23,7 +21,6 @@ export default function InteractiveTutorial() {
   const [progress, setProgress] = useState(0);
   const cancelRef = useRef(false);
   const createdRoomIdRef = useRef(null);
-  const createdPostIdRef = useRef(null);
   const totalSteps = 16;
 
   // ── Clean up any leftover tutorial room from a previous crashed session ──
@@ -192,11 +189,6 @@ export default function InteractiveTutorial() {
 
   const cleanup = useCallback(async () => {
     setTooltip(null); setSpotlight(null); setCursorVisible(false); setShowOverlay(false);
-    // Delete tutorial-created post
-    if (createdPostIdRef.current) {
-      try { await deletePost(createdPostIdRef.current); } catch { /* ok */ }
-      createdPostIdRef.current = null;
-    }
     // Delete room FIRST, then navigate — so dashboard loads without the room
     await safeDeleteTutorialRoom();
     navigate('/dashboard');
@@ -486,78 +478,32 @@ export default function InteractiveTutorial() {
     showTip('Free Board', "Community board for all Flinders students!", { center: true, icon: '📋' });
     await pause(3000); if (bail()) { await end(); return; }
 
-    // Click New Post — hide tooltip while interacting
-    setP(13); setTooltip(null); setSpotlight(null); setShowOverlay(false);
+    // Show New Post button, click to open dialog, explain, then close
+    setP(13); setTooltip(null); setSpotlight(null);
     const newPostBtn = await waitForEl('[data-tour="board-new-post"]', 5000);
     if (newPostBtn && !bail()) {
+      showTip('New Post', "Click here to write a post — you can pick a category like Meetup or Study Group, add a poll, and share with everyone!", { target: '[data-tour="board-new-post"]', icon: '✏️', position: 'bottom' });
+      await moveCursorTo('[data-tour="board-new-post"]');
+      await pause(4000); if (bail()) { await end(); return; }
+
+      // Open the dialog briefly to show the form
+      setTooltip(null); setShowOverlay(false);
       await clickDomEl(newPostBtn);
       await sleep(1200);
 
       const postDialog = await waitForEl('[role="dialog"]', 5000);
       if (postDialog && !bail()) {
-        // Select "Meetup" category
-        await sleep(500);
-        const allCatBtns2 = postDialog.querySelectorAll('button');
-        for (const btn of allCatBtns2) {
-          if (btn.textContent.includes('Meetup')) {
-            await clickDomEl(btn);
-            await sleep(600);
-            break;
-          }
-        }
-
-        // Type title
-        const postTitle = postDialog.querySelector('input[placeholder="Title"]');
-        if (postTitle && !bail()) {
-          await typeInto('[role="dialog"] input[placeholder="Title"]', 'City Campus meetup this Friday?');
-          await pause(600);
-        }
-
-        // Type content
-        const postContent = postDialog.querySelector('textarea[placeholder="What\'s on your mind?"]');
-        if (postContent && !bail()) {
-          await typeInto('[role="dialog"] textarea[placeholder="What\'s on your mind?"]', 'Anyone down to grab coffee at Victoria Square after class?');
-          await pause(600);
-        }
-
-        // Click "Add Poll" button (inside dialog only)
-        if (!bail()) {
-          const dialogBtns = postDialog.querySelectorAll('button');
-          let pollBtn = null;
-          for (const b of dialogBtns) { if (b.textContent.includes('Add Poll')) { pollBtn = b; break; } }
-          if (pollBtn) {
-            await clickDomEl(pollBtn);
-            await sleep(1000);
-
-            // Type poll options
-            const pollOpt1 = postDialog.querySelector('input[placeholder="Option 1"]');
-            const pollOpt2 = postDialog.querySelector('input[placeholder="Option 2"]');
-            if (pollOpt1 && !bail()) {
-              await typeInto('[role="dialog"] input[placeholder="Option 1"]', 'Friday 3pm');
-              await sleep(400);
-            }
-            if (pollOpt2 && !bail()) {
-              await typeInto('[role="dialog"] input[placeholder="Option 2"]', 'Friday 5pm');
-              await pause(500);
-            }
-          }
-        }
-
-        // Click Post submit button (type="submit" inside dialog)
-        if (!bail()) {
-          const submitBtn = postDialog.querySelector('button[type="submit"]');
-          if (submitBtn) {
-            await clickDomEl(submitBtn);
-            await sleep(2500);
-            // Try to capture the created post ID from the refreshed list
-            // The most recent post should be ours
-          }
-        }
-
         setShowOverlay(true);
-        showTip('Post Created!', "Meetup post with a poll is live! Other students can vote on it.", { center: true, icon: '🎉' });
-        await pause(3500); if (bail()) { await end(); return; }
+        showTip('Post Form', "Choose a category, write your post, and even add a poll for votes. Try it out after the tour!", { center: true, icon: '📝' });
+        await pause(4000); if (bail()) { await end(); return; }
+
+        // Close the dialog
+        setTooltip(null); setShowOverlay(false);
+        const closeBtn = postDialog.querySelector('button[type="button"]');
+        if (closeBtn) await clickDomEl(closeBtn);
+        await sleep(800);
       }
+      setShowOverlay(true);
     }
 
     // ── 14: Flinders Life — show 3 tabs ──
