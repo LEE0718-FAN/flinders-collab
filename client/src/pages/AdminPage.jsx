@@ -743,14 +743,16 @@ function MonitoringTab() {
       )}
 
       {/* User Error Log */}
-      {stats.userErrors && stats.userErrors.length > 0 && (
-        <Card className="shadow-sm border-orange-100">
-          <CardContent className="p-4">
-            <h4 className="text-sm font-semibold text-slate-700 mb-3 flex items-center gap-2">
-              <AlertCircle className="h-4 w-4 text-orange-500" />
-              User Error Log
-              <Badge className="rounded-full text-[10px] bg-orange-100 text-orange-700 border-orange-200">{stats.userErrors.length}</Badge>
-            </h4>
+      <Card className="shadow-sm border-orange-100">
+        <CardContent className="p-4">
+          <h4 className="text-sm font-semibold text-slate-700 mb-3 flex items-center gap-2">
+            <AlertCircle className="h-4 w-4 text-orange-500" />
+            User Error Log
+            <Badge className="rounded-full text-[10px] bg-orange-100 text-orange-700 border-orange-200">
+              {stats.userErrors?.length || 0}
+            </Badge>
+          </h4>
+          {stats.userErrors && stats.userErrors.length > 0 ? (
             <div className="space-y-2 max-h-72 overflow-y-auto">
               {stats.userErrors.map((err, i) => (
                 <div key={i} className="rounded-lg bg-orange-50/50 border border-orange-100 px-3 py-2.5">
@@ -777,9 +779,15 @@ function MonitoringTab() {
                 </div>
               ))}
             </div>
-          </CardContent>
-        </Card>
-      )}
+          ) : (
+            <div className="flex flex-col items-center gap-2 py-6 text-muted-foreground">
+              <CheckCircle2 className="h-8 w-8 text-emerald-400" />
+              <p className="text-sm font-medium text-slate-500">오류 없음</p>
+              <p className="text-xs text-slate-400">유저 오류가 발생하면 여기에 표시됩니다</p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Status Codes + RPM */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
