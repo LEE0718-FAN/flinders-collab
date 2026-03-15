@@ -89,7 +89,7 @@ function NavItem({ to, isActive, icon: Icon, label, palette }) {
 
 function SidebarContent({ rooms, location, isAdmin, unreadCounts = {} }) {
   return (
-    <nav className="flex flex-col gap-1" role="navigation" aria-label="Main navigation">
+    <nav className="flex flex-col gap-1" role="navigation" aria-label="Main navigation" data-tour="sidebar-nav">
       <NavItem
         to="/dashboard"
         isActive={location.pathname === '/dashboard'}
@@ -129,7 +129,7 @@ function SidebarContent({ rooms, location, isAdmin, unreadCounts = {} }) {
       </div>
 
       {/* Room list */}
-      <div className="flex flex-col gap-0.5">
+      <div className="flex flex-col gap-0.5" data-tour="sidebar-rooms">
         {rooms.map((room) => {
           const unread = unreadCounts[room.id] || 0;
           return (
@@ -421,7 +421,7 @@ export default function MainLayout({ children }) {
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="gap-2 rounded-full px-2 sm:gap-2.5 sm:pr-3 hover:bg-muted" aria-label="User menu">
+              <Button variant="ghost" className="gap-2 rounded-full px-2 sm:gap-2.5 sm:pr-3 hover:bg-muted" aria-label="User menu" data-tour="user-menu">
                 <Avatar className="h-8 w-8 ring-2 ring-white shadow-sm">
                   {user?.user_metadata?.avatar_url && (
                     <AvatarImage src={user.user_metadata.avatar_url} alt="Profile" className="object-cover" />

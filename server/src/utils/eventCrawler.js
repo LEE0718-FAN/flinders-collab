@@ -49,40 +49,63 @@ function parseTime(timeStr) {
 function parseEventDateFromContent(contentHtml) {
   if (!contentHtml) return null;
   const text = stripHtmlTags(contentHtml);
+  const monthPattern = '(?:January|February|March|April|May|June|July|August|September|October|November|December)';
 
-  const dateTimeMatch = text.match(
-    /(\d{1,2})\s+(January|February|March|April|May|June|July|August|September|October|November|December)\s+(\d{4}),?\s*(\d{1,2}(?::\d{2})?\s*(?:am|pm))\s*[–\-]\s*(\d{1,2}(?::\d{2})?\s*(?:am|pm))/i
+  // Both times have am/pm
+  const bothAmPm = text.match(
+    new RegExp(`(\\d{1,2})\\s+(${monthPattern})\\s+(\\d{4}),?\\s*(\\d{1,2}(?::\\d{2})?\\s*(?:am|pm))\\s*[–\\-]\\s*(\\d{1,2}(?::\\d{2})?\\s*(?:am|pm))`, 'i')
   );
-  if (dateTimeMatch) {
-    const day = parseInt(dateTimeMatch[1]);
-    const month = MONTHS[dateTimeMatch[2].toLowerCase()];
-    const year = parseInt(dateTimeMatch[3]);
-    const st = parseTime(dateTimeMatch[4]);
-    const et = parseTime(dateTimeMatch[5]);
+  if (bothAmPm) {
+    const day = parseInt(bothAmPm[1]);
+    const month = MONTHS[bothAmPm[2].toLowerCase()];
+    const year = parseInt(bothAmPm[3]);
+    const st = parseTime(bothAmPm[4]);
+    const et = parseTime(bothAmPm[5]);
     return {
       start_time: new Date(year, month, day, st?.h || 0, st?.m || 0).toISOString(),
       end_time: et ? new Date(year, month, day, et.h, et.m).toISOString() : null,
-      time_display: `${dateTimeMatch[4].trim()} – ${dateTimeMatch[5].trim()}`,
+      time_display: `${bothAmPm[4].trim()} – ${bothAmPm[5].trim()}`,
     };
   }
 
-  const dateTimePartial = text.match(
-    /(\d{1,2})\s+(January|February|March|April|May|June|July|August|September|October|November|December)\s+(\d{4}),?\s*(\d{1,2}(?::\d{2})?\s*(?:am|pm))/i
+  // Only end time has am/pm — "12:15 – 1:00 pm"
+  const endOnlyAmPm = text.match(
+    new RegExp(`(\\d{1,2})\\s+(${monthPattern})\\s+(\\d{4}),?\\s*(\\d{1,2}(?::\\d{2})?)\\s*[–\\-]\\s*(\\d{1,2}(?::\\d{2})?\\s*(?:am|pm))`, 'i')
   );
-  if (dateTimePartial) {
-    const day = parseInt(dateTimePartial[1]);
-    const month = MONTHS[dateTimePartial[2].toLowerCase()];
-    const year = parseInt(dateTimePartial[3]);
-    const st = parseTime(dateTimePartial[4]);
+  if (endOnlyAmPm) {
+    const day = parseInt(endOnlyAmPm[1]);
+    const month = MONTHS[endOnlyAmPm[2].toLowerCase()];
+    const year = parseInt(endOnlyAmPm[3]);
+    const et = parseTime(endOnlyAmPm[5]);
+    const startRaw = endOnlyAmPm[4].trim();
+    const endAmPm = endOnlyAmPm[5].match(/(am|pm)/i)?.[1] || 'am';
+    const st = parseTime(startRaw + endAmPm);
+    return {
+      start_time: new Date(year, month, day, st?.h || 0, st?.m || 0).toISOString(),
+      end_time: et ? new Date(year, month, day, et.h, et.m).toISOString() : null,
+      time_display: `${startRaw} – ${endOnlyAmPm[5].trim()}`,
+    };
+  }
+
+  // Single time
+  const singleTime = text.match(
+    new RegExp(`(\\d{1,2})\\s+(${monthPattern})\\s+(\\d{4}),?\\s*(\\d{1,2}(?::\\d{2})?\\s*(?:am|pm))`, 'i')
+  );
+  if (singleTime) {
+    const day = parseInt(singleTime[1]);
+    const month = MONTHS[singleTime[2].toLowerCase()];
+    const year = parseInt(singleTime[3]);
+    const st = parseTime(singleTime[4]);
     return {
       start_time: new Date(year, month, day, st?.h || 0, st?.m || 0).toISOString(),
       end_time: null,
-      time_display: dateTimePartial[4].trim(),
+      time_display: singleTime[4].trim(),
     };
   }
 
+  // Date only
   const dateOnly = text.match(
-    /(\d{1,2})\s+(January|February|March|April|May|June|July|August|September|October|November|December)\s+(\d{4})/i
+    new RegExp(`(\\d{1,2})\\s+(${monthPattern})\\s+(\\d{4})`, 'i')
   );
   if (dateOnly) {
     const day = parseInt(dateOnly[1]);
@@ -173,6 +196,24 @@ async function fetchEventPageSchema(eventUrl) {
       if (loc?.name) result.location = loc.name;
     }
 
+    // Parse cost/registration info
+    if (event.offers) {
+      const offer = Array.isArray(event.offers) ? event.offers[0] : event.offers;
+      if (offer?.price === 0 || offer?.price === '0') result.cost = 'Free';
+      else if (offer?.price) result.cost = `$${offer.price}`;
+    }
+    const lowerHtml = html.toLowerCase();
+    if (!result.cost) {
+      if (/free\s+event/i.test(html) || /free\s+admission/i.test(html) || /no\s+cost/i.test(html)) {
+        result.cost = 'Free';
+      } else if (/\$\d+/.test(html)) {
+        const priceMatch = html.match(/\$(\d+(?:\.\d{2})?)/);
+        if (priceMatch) result.cost = `$${priceMatch[1]}`;
+      } else if (lowerHtml.includes('eventbrite') || lowerHtml.includes('register')) {
+        result.cost = 'Free · Registration required';
+      }
+    }
+
     return result;
   } catch (err) {
     console.log('[event-crawler] Schema fetch failed for', eventUrl, err.message);
@@ -225,19 +266,22 @@ async function crawlFlindersEvents() {
       const categories = categorizeEvent(title, excerpt + ' ' + content, classList);
       let parsed = parseEventDateFromContent(content);
       let location = parseLocationFromContent(content) || parseLocationFromClassList(classList);
+      let cost = null;
 
-      // Fallback: fetch individual event page for schema.org data
-      if (!parsed && ev.link) {
+      // Always fetch individual event page for reliable schema.org data
+      if (ev.link) {
         const schema = await fetchEventPageSchema(ev.link);
         if (schema) {
-          parsed = {
-            start_time: schema.start_time || null,
-            end_time: schema.end_time || null,
-            time_display: schema.time_display || '',
-          };
-          if (!location && schema.location) {
-            location = schema.location;
+          // Schema.org is the most reliable source — always prefer it
+          if (schema.start_time) {
+            parsed = {
+              start_time: schema.start_time,
+              end_time: schema.end_time || parsed?.end_time || null,
+              time_display: schema.time_display || parsed?.time_display || '',
+            };
           }
+          if (schema.location) location = schema.location;
+          if (schema.cost) cost = schema.cost;
         }
       }
 
@@ -253,7 +297,7 @@ async function crawlFlindersEvents() {
         start_time: parsed?.start_time || null,
         end_time: parsed?.end_time || null,
         time_display: parsed?.time_display || null,
-        cost: null,
+        cost,
         raw_json: ev,
         crawled_at: new Date().toISOString(),
       };

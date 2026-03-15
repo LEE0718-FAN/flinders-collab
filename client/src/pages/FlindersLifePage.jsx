@@ -95,6 +95,7 @@ function EventRow({ event, isFavorite, onToggleFavorite }) {
   const location = event.location ? stripHtml(event.location) : '';
   const timeDisplay = event.time_display || '';
   const dateStr = event.start_time || event.date;
+  const cost = event.cost || '';
 
   const mapsUrl = location && location !== 'Online'
     ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(location)}`
@@ -142,6 +143,11 @@ function EventRow({ event, isFavorite, onToggleFavorite }) {
               ) : (
                 <span className="truncate">{location}</span>
               )}
+            </span>
+          )}
+          {cost && (
+            <span className={`inline-flex items-center gap-1 text-[11px] font-medium ${cost.toLowerCase().includes('free') ? 'text-emerald-600' : 'text-amber-600'}`}>
+              {cost.toLowerCase().includes('free') ? '✓' : '$'} {cost}
             </span>
           )}
         </div>

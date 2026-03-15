@@ -54,49 +54,75 @@ function parseTime(timeStr) {
 
 /**
  * Parse actual event date/time from content HTML.
- * Looks for patterns like "Monday 16 March 2026, 10am – 11:15am"
+ * Handles patterns like:
+ *   "16 March 2026, 10am – 11:15am"
+ *   "9 April 2026 12:15 – 1:00 pm" (only end has am/pm)
+ *   "10 June 2026 5:00 pm - 7:00 pm"
  */
 function parseEventDateFromContent(contentHtml) {
   if (!contentHtml) return null;
   const text = stripHtmlTags(contentHtml);
 
-  // Pattern: "16 March 2026, 10am – 11:15am" or "10 June 2026 5:00 pm - 7:00 pm"
-  const dateTimeMatch = text.match(
-    /(\d{1,2})\s+(January|February|March|April|May|June|July|August|September|October|November|December)\s+(\d{4}),?\s*(\d{1,2}(?::\d{2})?\s*(?:am|pm))\s*[–\-]\s*(\d{1,2}(?::\d{2})?\s*(?:am|pm))/i
-  );
+  const monthPattern = '(?:January|February|March|April|May|June|July|August|September|October|November|December)';
 
-  if (dateTimeMatch) {
-    const day = parseInt(dateTimeMatch[1]);
-    const month = MONTHS[dateTimeMatch[2].toLowerCase()];
-    const year = parseInt(dateTimeMatch[3]);
-    const st = parseTime(dateTimeMatch[4]);
-    const et = parseTime(dateTimeMatch[5]);
+  // Pattern 1: Both times have am/pm — "10am – 11:15am"
+  const bothAmPm = text.match(
+    new RegExp(`(\\d{1,2})\\s+(${monthPattern})\\s+(\\d{4}),?\\s*(\\d{1,2}(?::\\d{2})?\\s*(?:am|pm))\\s*[–\\-]\\s*(\\d{1,2}(?::\\d{2})?\\s*(?:am|pm))`, 'i')
+  );
+  if (bothAmPm) {
+    const day = parseInt(bothAmPm[1]);
+    const month = MONTHS[bothAmPm[2].toLowerCase()];
+    const year = parseInt(bothAmPm[3]);
+    const st = parseTime(bothAmPm[4]);
+    const et = parseTime(bothAmPm[5]);
     return {
       start_time: new Date(year, month, day, st?.h || 0, st?.m || 0).toISOString(),
       end_time: et ? new Date(year, month, day, et.h, et.m).toISOString() : null,
-      time_display: `${dateTimeMatch[4].trim()} – ${dateTimeMatch[5].trim()}`,
+      time_display: `${bothAmPm[4].trim()} – ${bothAmPm[5].trim()}`,
     };
   }
 
-  // Pattern: "16 March 2026, 10am" (no end time)
-  const dateTimePartial = text.match(
-    /(\d{1,2})\s+(January|February|March|April|May|June|July|August|September|October|November|December)\s+(\d{4}),?\s*(\d{1,2}(?::\d{2})?\s*(?:am|pm))/i
+  // Pattern 2: Only end time has am/pm — "12:15 – 1:00 pm"
+  const endOnlyAmPm = text.match(
+    new RegExp(`(\\d{1,2})\\s+(${monthPattern})\\s+(\\d{4}),?\\s*(\\d{1,2}(?::\\d{2})?)\\s*[–\\-]\\s*(\\d{1,2}(?::\\d{2})?\\s*(?:am|pm))`, 'i')
   );
-  if (dateTimePartial) {
-    const day = parseInt(dateTimePartial[1]);
-    const month = MONTHS[dateTimePartial[2].toLowerCase()];
-    const year = parseInt(dateTimePartial[3]);
-    const st = parseTime(dateTimePartial[4]);
+  if (endOnlyAmPm) {
+    const day = parseInt(endOnlyAmPm[1]);
+    const month = MONTHS[endOnlyAmPm[2].toLowerCase()];
+    const year = parseInt(endOnlyAmPm[3]);
+    const et = parseTime(endOnlyAmPm[5]);
+    // Infer start am/pm from end time
+    const startRaw = endOnlyAmPm[4].trim();
+    const endAmPm = endOnlyAmPm[5].match(/(am|pm)/i)?.[1] || 'am';
+    const st = parseTime(startRaw + endAmPm);
+    const startDisplay = startRaw.includes(':') ? startRaw : startRaw;
+    const endDisplay = endOnlyAmPm[5].trim();
+    return {
+      start_time: new Date(year, month, day, st?.h || 0, st?.m || 0).toISOString(),
+      end_time: et ? new Date(year, month, day, et.h, et.m).toISOString() : null,
+      time_display: `${startDisplay} – ${endDisplay}`,
+    };
+  }
+
+  // Pattern 3: Single time — "16 March 2026, 10am"
+  const singleTime = text.match(
+    new RegExp(`(\\d{1,2})\\s+(${monthPattern})\\s+(\\d{4}),?\\s*(\\d{1,2}(?::\\d{2})?\\s*(?:am|pm))`, 'i')
+  );
+  if (singleTime) {
+    const day = parseInt(singleTime[1]);
+    const month = MONTHS[singleTime[2].toLowerCase()];
+    const year = parseInt(singleTime[3]);
+    const st = parseTime(singleTime[4]);
     return {
       start_time: new Date(year, month, day, st?.h || 0, st?.m || 0).toISOString(),
       end_time: null,
-      time_display: dateTimePartial[4].trim(),
+      time_display: singleTime[4].trim(),
     };
   }
 
-  // Pattern: just date "16 March 2026" without time
+  // Pattern 4: Date only — "16 March 2026"
   const dateOnly = text.match(
-    /(\d{1,2})\s+(January|February|March|April|May|June|July|August|September|October|November|December)\s+(\d{4})/i
+    new RegExp(`(\\d{1,2})\\s+(${monthPattern})\\s+(\\d{4})`, 'i')
   );
   if (dateOnly) {
     const day = parseInt(dateOnly[1]);
@@ -205,6 +231,26 @@ async function fetchEventPageSchema(eventUrl) {
       const loc = Array.isArray(event.location) ? event.location[0] : event.location;
       if (loc?.name) result.location = loc.name;
     }
+
+    // Parse cost/registration info from page content
+    if (event.offers) {
+      const offer = Array.isArray(event.offers) ? event.offers[0] : event.offers;
+      if (offer?.price === 0 || offer?.price === '0') result.cost = 'Free';
+      else if (offer?.price) result.cost = `$${offer.price}`;
+    }
+    // Check page text for cost clues
+    const lowerHtml = html.toLowerCase();
+    if (!result.cost) {
+      if (/free\s+event/i.test(html) || /free\s+admission/i.test(html) || /no\s+cost/i.test(html)) {
+        result.cost = 'Free';
+      } else if (/\$\d+/.test(html)) {
+        const priceMatch = html.match(/\$(\d+(?:\.\d{2})?)/);
+        if (priceMatch) result.cost = `$${priceMatch[1]}`;
+      } else if (lowerHtml.includes('eventbrite') || lowerHtml.includes('register')) {
+        result.cost = 'Free · Registration required';
+      }
+    }
+
     return result;
   } catch {
     return null;
@@ -240,7 +286,7 @@ function mapWpEvent(ev) {
     end_time: parsed?.end_time || null,
     time_display: parsed?.time_display || '',
     cost: '',
-    _needsSchemaFetch: !parsed && !!ev.link,
+    _needsSchemaFetch: !!ev.link,
     _link: ev.link || '',
   };
 }
@@ -265,11 +311,15 @@ async function enrichEventsWithSchema(events) {
   return events.map((e) => {
     const schema = schemaMap.get(e.id);
     if (schema) {
-      e.start_time = schema.start_time || e.start_time;
-      e.end_time = schema.end_time || e.end_time;
-      e.time_display = schema.time_display || e.time_display;
-      e.date = schema.start_time || e.date;
-      if (!e.location && schema.location) e.location = schema.location;
+      // Schema.org data is the most reliable — always prefer it
+      if (schema.start_time) {
+        e.start_time = schema.start_time;
+        e.date = schema.start_time;
+      }
+      if (schema.end_time) e.end_time = schema.end_time;
+      if (schema.time_display) e.time_display = schema.time_display;
+      if (schema.location) e.location = schema.location;
+      if (schema.cost) e.cost = schema.cost;
     }
     delete e._needsSchemaFetch;
     delete e._link;

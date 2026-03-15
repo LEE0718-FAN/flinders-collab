@@ -10,6 +10,64 @@ import { applyRoomOrder, buildOrderedIds, loadRoomOrder, persistRoomOrder } from
 import { useNavigate } from 'react-router-dom';
 import { format, formatDistanceToNow } from 'date-fns';
 import { Loader2, LayoutGrid } from 'lucide-react';
+import OnboardingTour from '@/components/OnboardingTour';
+
+const DASHBOARD_TOUR_STEPS = [
+  {
+    target: null,
+    title: 'Welcome to Flinders Collab!',
+    description: "Let's take a quick tour. We'll show you how to create rooms, collaborate with teammates, and make the most of your study tools.",
+    icon: '\u{1F44B}',
+  },
+  {
+    target: '[data-tour="create-room"]',
+    title: 'Create a Room',
+    description: 'Start by creating a collaboration room \u2014 enter your course code and room name. Share the invite code with your team!',
+    position: 'bottom',
+    icon: '\u{1F3E0}',
+  },
+  {
+    target: '[data-tour="join-room"]',
+    title: 'Join a Room',
+    description: 'Got an invite code from a teammate? Paste it here to join their room instantly.',
+    position: 'bottom',
+    icon: '\u{1F517}',
+  },
+  {
+    target: '[data-tour="sidebar-nav"]',
+    title: 'Explore the App',
+    description: 'Navigate between Deadlines, Free Board (anonymous posts & polls), and Flinders Life (events, academic calendar, study room booking).',
+    position: 'right',
+    icon: '\u{1F9ED}',
+  },
+  {
+    target: '[data-tour="sidebar-rooms"]',
+    title: 'Your Rooms',
+    description: 'All your rooms appear here for quick access. Orange badges show unread announcements.',
+    position: 'right',
+    icon: '\u{1F4DA}',
+  },
+  {
+    target: '[data-tour="user-menu"]',
+    title: 'Your Profile',
+    description: 'Click here to update your profile picture, change your name, or sign out.',
+    position: 'bottom',
+    icon: '\u{1F464}',
+  },
+  {
+    target: '[data-tour="room-grid"]',
+    title: 'Your Room Cards',
+    description: "Rooms appear as cards here. Click one to open it \u2014 inside you'll find Chat, Schedule, Tasks, Files, and Announcements. Drag cards to reorder!",
+    position: 'top',
+    icon: '\u{1F4CB}',
+  },
+  {
+    target: null,
+    title: "You're Ready!",
+    description: 'Create your first room or join one to start collaborating. Each room has Chat, Schedule, Tasks, Files, Announcements, and Quick Links. Enjoy!',
+    icon: '\u{1F389}',
+  },
+];
 
 const TEMP_ROOM_PREFIX = 'temp-room-';
 const ROOM_NAVIGATION_UPDATED_EVENT = 'rooms-updated';
@@ -305,6 +363,7 @@ export default function DashboardPage() {
 
   return (
     <MainLayout onRoomChange={fetchRooms}>
+      <OnboardingTour tourId="dashboard" steps={DASHBOARD_TOUR_STEPS} />
       <div className="space-y-8">
         {/* Hero Banner */}
         <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-blue-600 via-indigo-600 to-violet-700 px-4 sm:px-6 md:px-8 py-8 sm:py-10 text-white shadow-xl">
@@ -337,13 +396,17 @@ export default function DashboardPage() {
                 </div>
               </div>
             </div>
-            <div className="mt-6 flex flex-col gap-2 sm:flex-row">
-              <CreateRoomDialog
-                onCreateStart={handleCreateStart}
-                onCreated={handleRoomCreated}
-                onCreateError={handleCreateError}
-              />
-              <JoinRoomDialog onJoined={handleRoomJoined} />
+            <div className="mt-6 flex flex-col gap-2 sm:flex-row" data-tour="create-join-buttons">
+              <span data-tour="create-room">
+                <CreateRoomDialog
+                  onCreateStart={handleCreateStart}
+                  onCreated={handleRoomCreated}
+                  onCreateError={handleCreateError}
+                />
+              </span>
+              <span data-tour="join-room">
+                <JoinRoomDialog onJoined={handleRoomJoined} />
+              </span>
             </div>
           </div>
         </div>
@@ -421,7 +484,7 @@ export default function DashboardPage() {
             </div>
           </div>
         ) : rooms.length > 0 ? (
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3" data-tour="room-grid">
             {rooms.map((room) => (
               <div
                 key={room.id}
@@ -463,7 +526,7 @@ export default function DashboardPage() {
             ))}
           </div>
         ) : (
-          <div className="rounded-2xl border-2 border-dashed border-indigo-200 p-16 text-center">
+          <div className="rounded-2xl border-2 border-dashed border-indigo-200 p-16 text-center" data-tour="room-grid">
             <LayoutGrid className="h-12 w-12 mx-auto text-indigo-300 mb-4" />
             <h3 className="text-lg font-semibold text-foreground">No rooms yet</h3>
             <p className="mx-auto mt-2 max-w-sm text-sm text-muted-foreground">
