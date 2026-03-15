@@ -54,6 +54,13 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
+// Public maintenance schedule endpoint
+app.get('/api/maintenance/schedule', (req, res) => {
+  const { getNextMaintenanceTime } = require('./utils/maintenance');
+  const next = getNextMaintenanceTime();
+  res.json({ nextMaintenanceTime: next ? next.toISOString() : null });
+});
+
 // API routes
 app.use('/api/auth', authRoutes);
 app.use('/api/rooms', roomRoutes);
@@ -93,6 +100,10 @@ server.listen(PORT, () => {
 
   // Start 24/7 server monitoring (health checks, memory alerts, error rate tracking)
   monitor.startHealthChecks();
+
+  // Start nightly DB maintenance scheduler
+  const { startMaintenance } = require('./utils/maintenance');
+  startMaintenance(io);
 
   // Keep-alive ping to prevent Render free tier from sleeping
   if (config.nodeEnv === 'production') {

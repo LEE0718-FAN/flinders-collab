@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { LayoutDashboard, LogOut, Menu, Users, ChevronRight, Shield, User, CalendarClock, MessageSquare } from 'lucide-react';
+import { LayoutDashboard, LogOut, Menu, Users, ChevronRight, Shield, User, CalendarClock, MessageSquare, Wrench } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
@@ -11,6 +11,7 @@ import {
   AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { useAuth } from '@/hooks/useAuth';
+import { socket } from '@/lib/socket';
 import ProfileDialog from '@/components/ProfileDialog';
 import { getRooms } from '@/services/rooms';
 import { applyRoomOrder, loadRoomOrder } from '@/lib/room-order';
@@ -165,6 +166,7 @@ export default function MainLayout({ children }) {
   const [sheetOpen, setSheetOpen] = useState(false);
   const [logoutOpen, setLogoutOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
+  const [maintenance, setMaintenance] = useState(null); // { type, message, minutesUntil }
 
   const refreshRooms = async () => {
     const data = await getRooms();
@@ -228,6 +230,39 @@ export default function MainLayout({ children }) {
       document.removeEventListener('visibilitychange', handleWindowFocus);
     };
   }, [user?.id]);
+
+  // Listen for maintenance notifications via Socket.IO
+  useEffect(() => {
+    const onUpcoming = (data) => {
+      setMaintenance({
+        type: 'upcoming',
+        message: `DB 최적화가 ${data.minutesUntil}분 후 진행됩니다 (약 ${data.estimatedDuration})`,
+      });
+    };
+    const onStarted = () => {
+      setMaintenance({
+        type: 'started',
+        message: 'DB 최적화 진행 중...',
+      });
+    };
+    const onDone = (data) => {
+      setMaintenance({
+        type: 'done',
+        message: `DB 최적화 완료 (${(data.duration / 1000).toFixed(1)}초)`,
+      });
+      setTimeout(() => setMaintenance(null), 10000);
+    };
+
+    socket.on('maintenance:upcoming', onUpcoming);
+    socket.on('maintenance:started', onStarted);
+    socket.on('maintenance:done', onDone);
+
+    return () => {
+      socket.off('maintenance:upcoming', onUpcoming);
+      socket.off('maintenance:started', onStarted);
+      socket.off('maintenance:done', onDone);
+    };
+  }, []);
 
   const handleLogout = async () => {
     await logout();
@@ -321,6 +356,22 @@ export default function MainLayout({ children }) {
             </div>
           </div>
 
+          <div className="flex items-center gap-2">
+          {/* Maintenance notification */}
+          {maintenance && (
+            <div className={`hidden sm:flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-medium animate-fade-in ${
+              maintenance.type === 'upcoming' ? 'bg-amber-50 text-amber-700 border border-amber-200' :
+              maintenance.type === 'started' ? 'bg-blue-50 text-blue-700 border border-blue-200' :
+              'bg-green-50 text-green-700 border border-green-200'
+            }`}>
+              <Wrench className={`h-3.5 w-3.5 ${maintenance.type === 'started' ? 'animate-spin' : ''}`} />
+              <span>{maintenance.message}</span>
+              {maintenance.type !== 'started' && (
+                <button onClick={() => setMaintenance(null)} className="ml-1 text-current opacity-50 hover:opacity-100">&times;</button>
+              )}
+            </div>
+          )}
+
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className="gap-2 rounded-full px-2 sm:gap-2.5 sm:pr-3 hover:bg-muted" aria-label="User menu">
@@ -352,7 +403,25 @@ export default function MainLayout({ children }) {
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
+          </div>
         </header>
+
+        {/* Mobile maintenance notification */}
+        {maintenance && (
+          <div className={`sm:hidden flex items-center justify-between gap-2 px-3 py-2 text-xs font-medium ${
+            maintenance.type === 'upcoming' ? 'bg-amber-50 text-amber-700' :
+            maintenance.type === 'started' ? 'bg-blue-50 text-blue-700' :
+            'bg-green-50 text-green-700'
+          }`}>
+            <div className="flex items-center gap-2">
+              <Wrench className={`h-3.5 w-3.5 shrink-0 ${maintenance.type === 'started' ? 'animate-spin' : ''}`} />
+              <span>{maintenance.message}</span>
+            </div>
+            {maintenance.type !== 'started' && (
+              <button onClick={() => setMaintenance(null)} className="text-current opacity-50 hover:opacity-100 shrink-0">&times;</button>
+            )}
+          </div>
+        )}
 
         {/* Main Content */}
         <main className="relative flex-1 overflow-y-auto bg-slate-50 p-3 sm:p-4 md:p-6 custom-scrollbar animate-fade-in">

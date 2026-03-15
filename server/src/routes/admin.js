@@ -3,6 +3,7 @@ const router = express.Router();
 const { authenticate } = require('../middleware/auth');
 const { supabaseAdmin } = require('../services/supabase');
 const monitor = require('../utils/monitor');
+const { getNextMaintenanceTime, runOptimization } = require('../utils/maintenance');
 
 /**
  * Middleware to check if the authenticated user is an admin.
@@ -75,6 +76,32 @@ router.get('/storage', async (req, res) => {
     res.json(result);
   } catch (err) {
     res.status(500).json({ error: 'Failed to check storage usage' });
+  }
+});
+
+/**
+ * GET /api/admin/maintenance
+ * Get next maintenance schedule.
+ */
+router.get('/maintenance', (req, res) => {
+  const next = getNextMaintenanceTime();
+  res.json({
+    nextMaintenanceTime: next ? next.toISOString() : null,
+    timezone: 'ACDT (UTC+10:30)',
+    schedule: 'Daily at 3:00 AM ACDT',
+  });
+});
+
+/**
+ * POST /api/admin/maintenance/run
+ * Manually trigger maintenance optimization.
+ */
+router.post('/maintenance/run', async (req, res) => {
+  try {
+    const result = await runOptimization();
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ error: 'Maintenance failed: ' + err.message });
   }
 });
 
