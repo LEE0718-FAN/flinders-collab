@@ -297,7 +297,7 @@ export default function RoomPage() {
             </Card>
           </TabsContent>
 
-          <TabsContent value="schedule" className="space-y-4">
+          <TabsContent value="schedule" className="space-y-4" style={{ overflow: 'visible' }}>
             <div className="flex items-center justify-between rounded-xl bg-gradient-to-r from-slate-50 to-indigo-50 px-5 py-4">
               <h2 className="text-lg font-bold text-indigo-900">Schedule</h2>
               <div className="flex items-center gap-2">
@@ -307,39 +307,44 @@ export default function RoomPage() {
                 </Button>
               </div>
             </div>
-            <div className="grid gap-4 grid-cols-1 md:grid-cols-[280px_1fr]">
-              <div className="md:sticky md:top-0 z-10">
-              <ScheduleCalendar
-                roomId={roomId}
-                events={events}
-                selectedDate={selectedDate}
-                onSelectDate={setSelectedDate}
-                onDismissPrompt={clearHighlight}
-                onDateClick={(date) => {
-                  setSelectedDate(date);
-                  clearHighlight();
-                  const dateKey = format(date, 'yyyy-MM-dd');
-                  setTimeout(() => {
-                    const el = document.getElementById(`event-date-${dateKey}`);
-                    if (el) {
-                      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                      el.classList.add('ring-2', 'ring-blue-400', 'ring-offset-4', 'bg-blue-50/50');
-                      highlightRef.current = el;
-                      highlightTimerRef.current = setTimeout(() => {
-                        el.classList.remove('ring-2', 'ring-blue-400', 'ring-offset-4', 'bg-blue-50/50');
-                        highlightRef.current = null;
-                      }, 4000);
-                    }
-                  }, 150);
-                }}
-                onAddEvent={(date) => {
-                  clearHighlight();
-                  setSelectedDate(date);
-                  setEventFormOpen(true);
-                }}
-              />
+            <div className="flex flex-col md:flex-row gap-4" style={{ overflow: 'visible' }}>
+              {/* Calendar sidebar — outer div stretches to event list height, inner div sticks */}
+              <div className="w-full md:w-[280px] shrink-0">
+                <div className="md:sticky md:top-0 z-10">
+                  <ScheduleCalendar
+                    roomId={roomId}
+                    events={events}
+                    selectedDate={selectedDate}
+                    onSelectDate={setSelectedDate}
+                    onDismissPrompt={clearHighlight}
+                    onDateClick={(date) => {
+                      setSelectedDate(date);
+                      clearHighlight();
+                      const dateKey = format(date, 'yyyy-MM-dd');
+                      setTimeout(() => {
+                        const el = document.getElementById(`event-date-${dateKey}`);
+                        if (el) {
+                          el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                          el.classList.add('ring-2', 'ring-blue-400', 'ring-offset-4', 'bg-blue-50/50');
+                          highlightRef.current = el;
+                          highlightTimerRef.current = setTimeout(() => {
+                            el.classList.remove('ring-2', 'ring-blue-400', 'ring-offset-4', 'bg-blue-50/50');
+                            highlightRef.current = null;
+                          }, 4000);
+                        }
+                      }, 150);
+                    }}
+                    onAddEvent={(date) => {
+                      clearHighlight();
+                      setSelectedDate(date);
+                      setEventFormOpen(true);
+                    }}
+                  />
+                </div>
               </div>
-              <EventList events={events} roomId={roomId} onEventsChange={handleEventsChange} />
+              <div className="flex-1 min-w-0">
+                <EventList events={events} roomId={roomId} onEventsChange={handleEventsChange} />
+              </div>
             </div>
 
             <EventForm
