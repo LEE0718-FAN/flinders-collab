@@ -272,6 +272,7 @@ function CommentSection({ postId }) {
   };
 
   const handleDelete = async (commentId) => {
+    if (!window.confirm('Delete this comment?')) return;
     try {
       await deleteComment(commentId);
       setComments((prev) => prev.filter((c) => c.id !== commentId));
@@ -708,6 +709,7 @@ export default function BoardPage() {
 
   const handlePostCreated = (post) => setPosts((prev) => [post, ...prev]);
   const handleDelete = async (postId) => {
+    if (!window.confirm('Are you sure you want to delete this post?')) return;
     try { await deletePost(postId); setPosts((prev) => prev.filter((p) => p.id !== postId)); } catch { /* silent */ }
   };
   const handleParticipate = async (postId, status) => {
