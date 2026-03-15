@@ -368,54 +368,60 @@ export default function InteractiveTutorial() {
       await pause(3000); if (bail()) { await end(); return; }
     }
 
-    // ── 8: Tasks tab — click tab, add task via form ──
+    // ── 8: Tasks tab — click tab, add task via inline form ──
     setP(8); setTooltip(null); setSpotlight(null);
     showTip('Tasks', "Assign to-dos to your teammates!", { target: '[data-tour="tab-tasks"]', icon: '✅', position: 'bottom' });
     await pause(2500); if (bail()) { await end(); return; }
 
     // Click tasks tab
     await clickEl('[data-tour="tab-tasks"]');
-    await sleep(1000);
+    await sleep(1200);
 
-    // Wait for "Assign Task" button
-    let assignBtn = null;
+    // Find "New Task" button in the inline TaskList
+    let newTaskBtn = null;
     for (let i = 0; i < 15; i++) {
-      assignBtn = findBtn('Assign Task');
-      if (assignBtn) break;
+      newTaskBtn = findBtn('New Task');
+      if (newTaskBtn) break;
       await sleep(300);
     }
 
-    if (assignBtn && !bail()) {
-      // Hide tooltip while interacting with dialog
+    if (newTaskBtn && !bail()) {
+      // Hide tooltip while interacting with inline form
       setTooltip(null); setShowOverlay(false);
-      await clickDomEl(assignBtn);
+      await clickDomEl(newTaskBtn);
       await sleep(1000);
 
-      const taskDialog = await waitForEl('[role="dialog"]', 5000);
-      if (taskDialog && !bail()) {
+      // Wait for inline form to appear — look for the task title input
+      const taskInput = await waitForEl('input[placeholder="What needs to be done?"]', 5000);
+      if (taskInput && !bail()) {
         // Type task title
-        const taskTitleInput = await waitForEl('[role="dialog"] input[placeholder="Task title"]', 3000);
-        if (taskTitleInput && !bail()) {
-          await typeInto('[role="dialog"] input[placeholder="Task title"]', 'Review lecture notes');
-          await pause(600);
-        }
+        await typeInto('input[placeholder="What needs to be done?"]', 'Review lecture notes');
+        await pause(800);
 
-        // Select the first member from the dropdown
-        const memberSelect = document.querySelector('[role="dialog"] select');
-        if (memberSelect && memberSelect.options.length > 1) {
-          const firstMemberValue = memberSelect.options[1].value;
-          const setter = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value')?.set;
-          if (setter) {
-            setter.call(memberSelect, firstMemberValue);
-            memberSelect.dispatchEvent(new Event('change', { bubbles: true }));
-            await sleep(300);
+        // Click "Select Members" to expand member picker
+        if (!bail()) {
+          let selectMembersBtn = null;
+          for (let i = 0; i < 10; i++) {
+            selectMembersBtn = findBtn('Select Members');
+            if (selectMembersBtn) break;
+            await sleep(200);
+          }
+          if (selectMembersBtn) {
+            await clickDomEl(selectMembersBtn);
+            await sleep(800);
+
+            // Click the first member button in the picker grid
+            const memberBtns = document.querySelectorAll('.grid button[type="button"]');
+            if (memberBtns.length > 0 && !bail()) {
+              await clickDomEl(memberBtns[0]);
+              await sleep(600);
+            }
           }
         }
 
-        // Click Create Task submit
+        // Click "Create Task" submit button
         if (!bail()) {
-          const dialogBtns = document.querySelectorAll('[role="dialog"] button[type="submit"]');
-          const submitBtn = dialogBtns.length > 0 ? dialogBtns[dialogBtns.length - 1] : null;
+          const submitBtn = findBtn('Create Task');
           if (submitBtn) {
             await clickDomEl(submitBtn);
             await sleep(2000);
@@ -423,16 +429,17 @@ export default function InteractiveTutorial() {
         }
 
         setShowOverlay(true);
-        showTip('Task Created!', "Task assigned! Check it off when done.", { center: true, icon: '🎉' });
+        showTip('Task Created!', "Task assigned to a teammate!\nCheck it off when it's done.", { center: true, icon: '🎉' });
+        await pause(3000); if (bail()) { await end(); return; }
+      } else if (!bail()) {
+        setShowOverlay(true);
+        showTip('Tasks', "Create tasks and assign them\nto your teammates here!", { center: true, icon: '✅' });
         await pause(3000); if (bail()) { await end(); return; }
       }
     } else if (!bail()) {
-      // Fallback: create task via API
-      try {
-        // Need user ID for assignment — skip if we can't
-        showTip('Tasks', "You can assign tasks to teammates here!", { center: true, icon: '✅' });
-        await pause(3000); if (bail()) { await end(); return; }
-      } catch { /* ok */ }
+      setShowOverlay(true);
+      showTip('Tasks', "Create tasks and assign them\nto your teammates here!", { center: true, icon: '✅' });
+      await pause(3000); if (bail()) { await end(); return; }
     }
 
     // ── 9: Chat tab ──
@@ -691,16 +698,16 @@ export default function InteractiveTutorial() {
       {/* ── Tooltip ── */}
       {tooltip && (
         <div className="fixed animate-fade-in" style={{ ...tooltip.style, zIndex: 100000, pointerEvents: 'none' }}>
-          <div className="rounded-2xl bg-white shadow-[0_25px_60px_-12px_rgba(0,0,0,0.35)] border border-slate-200 overflow-hidden" style={{ minWidth: 280 }}>
-            <div className="h-1 bg-gradient-to-r from-indigo-500 via-violet-500 to-purple-500">
+          <div className="rounded-2xl bg-white shadow-[0_25px_60px_-12px_rgba(0,0,0,0.4)] border border-slate-200/80 overflow-hidden" style={{ minWidth: 290 }}>
+            <div className="h-1.5 bg-gradient-to-r from-indigo-500 via-violet-500 to-purple-500">
               <div className="h-full bg-white/40 transition-all duration-700" style={{ width: `${100 - progressPct}%`, marginLeft: 'auto' }} />
             </div>
             <div className="px-5 py-4">
-              <div className="flex items-center gap-2.5 mb-1.5">
+              <div className="flex items-center gap-2.5 mb-2">
                 {tooltip.icon && <span className="text-2xl">{tooltip.icon}</span>}
-                <h3 className="text-[16px] font-black text-slate-900 tracking-tight">{tooltip.title}</h3>
+                <h3 className="text-[17px] font-black text-slate-950 tracking-tight leading-snug">{tooltip.title}</h3>
               </div>
-              <p className="text-[14px] leading-relaxed text-slate-700 font-medium pl-[34px] whitespace-pre-line">{tooltip.desc}</p>
+              <p className="text-[14px] leading-[1.7] text-slate-800 font-semibold pl-[34px] whitespace-pre-line">{tooltip.desc}</p>
             </div>
           </div>
         </div>
