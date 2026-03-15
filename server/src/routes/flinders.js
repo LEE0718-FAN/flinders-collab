@@ -50,22 +50,27 @@ router.get('/flinders/recommended-events', async (req, res) => {
 
     const data = await response.json();
 
-    const categoryKeywords = {
-      'IT & Computing': ['computer', 'it', 'tech', 'software', 'cyber', 'data', 'digital', 'ai', 'artificial intelligence', 'machine learning', 'coding', 'programming', 'hackathon', 'information technology'],
-      'Engineering': ['engineering', 'mechanical', 'civil', 'electrical', 'robotics', 'maritime'],
-      'Health & Medicine': ['health', 'medicine', 'nursing', 'medical', 'clinical', 'nutrition', 'paramedic', 'physiotherapy'],
-      'Business & Law': ['business', 'law', 'accounting', 'finance', 'commerce', 'mba', 'management', 'entrepreneurship'],
-      'Education': ['education', 'teaching', 'teacher', 'learning', 'stem education'],
-      'Arts & Creative': ['art', 'creative', 'design', 'film', 'fashion', 'media', 'performance', 'visual', 'music'],
-      'Science': ['science', 'biology', 'chemistry', 'marine', 'environmental', 'forensic', 'biodiversity'],
-      'Career': ['career', 'employment', 'job', 'internship', 'graduate', 'resume', 'networking', 'industry', 'professional', 'work placement'],
+    // Word-boundary keyword patterns (avoid false matches like 'it' in 'Student')
+    const categoryPatterns = {
+      'IT & Computing': [/\bcomputer\b/i, /\bI\.?T\.?\b/, /\btech\b/i, /\btechnolog/i, /\bsoftware\b/i, /\bcyber/i, /\bdata\b/i, /\bdigital\b/i, /\b(?:A\.?I\.?|artificial intelligence)\b/i, /\bmachine learning\b/i, /\bcoding\b/i, /\bprogramming\b/i, /\bhackathon\b/i, /\binformation technology\b/i, /\bSTEM\b/],
+      'Engineering': [/\bengineering\b/i, /\bmechanical\b/i, /\bcivil\b/i, /\belectrical\b/i, /\brobotic/i, /\bmaritime\b/i],
+      'Health & Medicine': [/\bhealth\b/i, /\bmedicin/i, /\bnursing\b/i, /\bmedical\b/i, /\bclinical\b/i, /\bnutrition/i, /\bparamedic/i, /\bphysiotherap/i, /\bwellbeing\b/i, /\bmental health\b/i],
+      'Business & Law': [/\bbusiness\b/i, /\b(?:^|\s)law(?:\s|$)/i, /\baccounting\b/i, /\bfinance\b/i, /\bcommerce\b/i, /\bMBA\b/, /\bentrepreneurship\b/i, /\bcorporate\b/i],
+      'Education': [/\beducation\b/i, /\bteaching\b/i, /\bteacher\b/i, /\bSTEM education\b/i],
+      'Arts & Creative': [/\bcreative arts?\b/i, /\bdesign\b/i, /\bfilm\b/i, /\bfashion\b/i, /\bperformance\b/i, /\bvisual art/i, /\bmusic\b/i, /\bcostume\b/i, /\btheatre\b/i, /\bdrama\b/i],
+      'Science': [/\bscience\b/i, /\bbiology\b/i, /\bchemistry\b/i, /\bmarine\b/i, /\benvironmental\b/i, /\bforensic\b/i, /\bbiodiversity\b/i],
+      'Career': [/\bcareer/i, /\bemployment\b/i, /\bjob\b/i, /\binternship/i, /\bresume\b/i, /\bnetworking\b/i, /\bprofessional development\b/i, /\bwork placement\b/i, /\bcareer expo\b/i, /\bcareer fair\b/i, /\brecruit/i],
     };
 
+    function stripHtmlTags(html) {
+      return (html || '').replace(/<[^>]*>/g, '').replace(/&#\d+;/g, ' ').replace(/&\w+;/g, ' ');
+    }
+
     function categorizeEvent(title, excerpt) {
-      const text = `${title} ${excerpt}`.toLowerCase();
+      const text = `${stripHtmlTags(title)} ${stripHtmlTags(excerpt)}`;
       const matched = [];
-      for (const [category, keywords] of Object.entries(categoryKeywords)) {
-        if (keywords.some((kw) => text.includes(kw))) {
+      for (const [category, patterns] of Object.entries(categoryPatterns)) {
+        if (patterns.some((re) => re.test(text))) {
           matched.push(category);
         }
       }
@@ -87,6 +92,9 @@ router.get('/flinders/recommended-events', async (req, res) => {
         categories,
       };
     });
+
+    // Sort by date descending (newest first)
+    events.sort((a, b) => new Date(b.date) - new Date(a.date));
 
     const career = events.filter((e) => e.categories.includes('Career'));
     const recommended = interests.length > 0

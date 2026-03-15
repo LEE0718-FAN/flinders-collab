@@ -13,7 +13,10 @@ export default function ChatInput({ onSend, onFileSelect, uploading }) {
   const handleSubmit = (e) => {
     e.preventDefault();
     if (preview) {
-      const name = customName.trim() || preview.file.name;
+      // Ensure filename has extension
+      let name = customName.trim() || preview.file.name;
+      const ext = preview.file.name.match(/\.[^.]+$/)?.[0];
+      if (ext && !name.endsWith(ext)) name = `${name}${ext}`;
       const desc = customDesc.trim();
       onFileSelect?.(preview.file, name, desc);
       clearPreview();

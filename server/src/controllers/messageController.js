@@ -39,8 +39,19 @@ async function refreshFileUrls(messages) {
 
         if (!file) return msg;
 
-        // Generate fresh signed URL
-        const storagePath = file.file_url;
+        // Generate fresh signed URL — normalize path first
+        let storagePath = file.file_url;
+        // Strip bucket prefix if present (e.g. "bucket/rooms/..." → "rooms/...")
+        const bucketPrefix = `${bucket}/`;
+        if (storagePath.startsWith(bucketPrefix)) {
+          storagePath = storagePath.slice(bucketPrefix.length);
+        }
+        // Strip URL components if it's a full URL
+        if (storagePath.includes('/object/')) {
+          const match = storagePath.match(/\/object\/(?:public|sign|authenticated)\/[^/]+\/(.+)/);
+          if (match) storagePath = match[1];
+        }
+
         const { data: signedData } = await supabaseAdmin.storage
           .from(bucket)
           .createSignedUrl(storagePath, 60 * 60); // 1 hour
