@@ -50,15 +50,10 @@ export default function OnboardingTour({ tourId, steps = [], delay = 600 }) {
     setActive(false);
   }, [tourId]);
 
+  // Skip all steps of THIS tour only
   const skipAll = useCallback(() => {
-    // Dismiss ALL tours permanently
-    const knownTours = ['dashboard', 'deadlines', 'board', 'flinders-life', 'room'];
-    const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
-    knownTours.forEach((t) => { saved[t] = Date.now(); });
-    saved[tourId] = Date.now();
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(saved));
     setActive(false);
-  }, [tourId]);
+  }, []);
 
   // ── Position calculation ──
   const computePositions = useCallback(() => {
