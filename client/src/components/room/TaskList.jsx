@@ -14,21 +14,15 @@ import {
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import {
   CheckCircle2, Circle, Clock, Trash2, Pencil, Plus,
-  Loader2, CalendarDays, GripVertical, UserPlus, AlertCircle,
+  Loader2, CalendarDays, GripVertical, UserPlus, AlertCircle, Users,
 } from 'lucide-react';
-import { updateTask, deleteTask, createTask } from '@/services/tasks';
+import { createTask, updateTask, deleteTask, toggleAssignee, addAssignees } from '@/services/tasks';
 import { useToast } from '@/components/ui/toast';
 
 const priorityConfig = {
   low:    { dot: 'bg-slate-400', label: 'Low',    border: 'border-l-slate-400' },
   medium: { dot: 'bg-amber-500', label: 'Medium', border: 'border-l-amber-500' },
   high:   { dot: 'bg-red-500',   label: 'High',   border: 'border-l-red-500' },
-};
-
-const statusConfig = {
-  pending:     { label: 'Pending',     bg: 'bg-slate-100 text-slate-700' },
-  in_progress: { label: 'In Progress', bg: 'bg-blue-100 text-blue-700' },
-  completed:   { label: 'Done',        bg: 'bg-green-100 text-green-700' },
 };
 
 function formatDueDate(dateStr) {
@@ -55,306 +49,271 @@ function getInitials(name) {
   return name.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2);
 }
 
-function buildOptimisticTask({ id, title, dueDate, priority, member, currentUserId }) {
-  const assigneeId = member.user_id || member.id;
-  return {
-    id,
-    room_id: null,
-    title,
-    due_date: dueDate ? new Date(`${dueDate}T23:59`).toISOString() : null,
-    priority,
-    status: 'pending',
-    assigned_to: assigneeId,
-    assigned_by: currentUserId,
-    created_at: new Date().toISOString(),
-    assignee: {
-      id: assigneeId,
-      full_name: member.full_name || null,
-      university_email: member.university_email || null,
-      avatar_url: member.avatar_url || null,
-    },
-  };
-}
-
-/* ─── Task Creation Form with Drag & Drop Member Assignment ─── */
+/* ─── Task Creation Form ─── */
 function TaskCreateForm({ roomId, members = [], currentUserId, onCreated, onError }) {
   const [title, setTitle] = useState('');
   const [dueDate, setDueDate] = useState('');
   const [priority, setPriority] = useState('medium');
   const [assignedMembers, setAssignedMembers] = useState([]);
   const [submitting, setSubmitting] = useState(false);
-  const [dragOver, setDragOver] = useState(false);
-  const dropRef = useRef(null);
+  const [showMemberPicker, setShowMemberPicker] = useState(false);
 
-  const handleDrop = (e) => {
-    e.preventDefault();
-    setDragOver(false);
-    const memberId = e.dataTransfer.getData('text/member-id');
-    const member = members.find((m) => (m.user_id || m.id) === memberId);
-    if (member && !assignedMembers.find((m) => (m.user_id || m.id) === memberId)) {
-      setAssignedMembers((prev) => [...prev, member]);
-    }
-  };
-
-  const removeMember = (memberId) => {
-    setAssignedMembers((prev) => prev.filter((m) => (m.user_id || m.id) !== memberId));
+  const toggleMember = (member) => {
+    const id = member.user_id || member.id;
+    setAssignedMembers((prev) => {
+      const exists = prev.find((m) => (m.user_id || m.id) === id);
+      if (exists) return prev.filter((m) => (m.user_id || m.id) !== id);
+      return [...prev, member];
+    });
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!title.trim() || assignedMembers.length === 0) return;
     setSubmitting(true);
-    const normalizedTitle = title.trim();
-    const tempTasks = assignedMembers.map((member) =>
-      buildOptimisticTask({
-        id: `temp-task-${member.user_id || member.id}-${Date.now()}`,
-        title: normalizedTitle,
-        dueDate,
-        priority,
-        member,
-        currentUserId,
-      })
-    );
-
-    onCreated?.(tempTasks);
 
     try {
-      // Create one task per assigned member
-      const createdTasks = await Promise.all(
-        assignedMembers.map((member) =>
-          createTask(roomId, {
-            title: normalizedTitle,
-            assigned_to: member.user_id || member.id,
-            due_date: dueDate ? new Date(`${dueDate}T23:59`).toISOString() : undefined,
-            priority,
-          })
-        )
-      );
-      const savedTasks = createdTasks.map((task, index) => ({
-        ...task,
-        assignee: tempTasks[index].assignee,
-      }));
+      const assigneeIds = assignedMembers.map((m) => m.user_id || m.id);
+      const createdTask = await createTask(roomId, {
+        title: title.trim(),
+        assignees: assigneeIds,
+        due_date: dueDate ? new Date(`${dueDate}T23:59`).toISOString() : undefined,
+        priority,
+      });
 
       setTitle('');
       setDueDate('');
       setPriority('medium');
       setAssignedMembers([]);
-      onCreated?.(savedTasks, tempTasks.map((task) => task.id));
+      setShowMemberPicker(false);
+      onCreated?.(createdTask);
     } catch (err) {
-      onError?.(tempTasks.map((task) => task.id), err);
-      console.error('Failed to create task:', err.message);
+      onError?.(err);
     } finally {
       setSubmitting(false);
     }
   };
 
   return (
-    <div className="space-y-4">
-      {/* Form */}
-      <form onSubmit={handleSubmit} className="rounded-xl border-2 border-dashed border-border bg-card p-5 space-y-4">
-        <div className="flex items-center gap-2 mb-1">
-          <Plus className="h-5 w-5 text-primary" />
-          <h3 className="text-base font-semibold">New Task</h3>
+    <form onSubmit={handleSubmit} className="rounded-xl border-2 border-dashed border-border bg-card p-5 space-y-4">
+      <div className="flex items-center gap-2 mb-1">
+        <Plus className="h-5 w-5 text-primary" />
+        <h3 className="text-base font-semibold">New Task</h3>
+      </div>
+
+      <Input
+        placeholder="What needs to be done?"
+        value={title}
+        onChange={(e) => setTitle(e.target.value)}
+        disabled={submitting}
+        className="text-base h-11 font-medium"
+      />
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div className="space-y-1.5">
+          <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
+            <CalendarDays className="h-3.5 w-3.5" />
+            Due Date
+          </label>
+          <Input
+            type="date"
+            value={dueDate}
+            onChange={(e) => setDueDate(e.target.value)}
+            disabled={submitting}
+            className="h-10"
+          />
         </div>
-
-        {/* Title */}
-        <Input
-          placeholder="What needs to be done?"
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          disabled={submitting}
-          className="text-base h-11 font-medium"
-        />
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          {/* Due Date */}
-          <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
-              <CalendarDays className="h-3.5 w-3.5" />
-              Due Date
-            </label>
-            <Input
-              type="date"
-              value={dueDate}
-              onChange={(e) => setDueDate(e.target.value)}
-              disabled={submitting}
-              className="h-10"
-            />
-          </div>
-
-          {/* Priority */}
-          <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
-              <AlertCircle className="h-3.5 w-3.5" />
-              Priority
-            </label>
-            <select
-              value={priority}
-              onChange={(e) => setPriority(e.target.value)}
-              disabled={submitting}
-              className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm"
-            >
-              <option value="low">Low</option>
-              <option value="medium">Medium</option>
-              <option value="high">High</option>
-            </select>
-          </div>
-        </div>
-
-        {/* Drop zone for members */}
-        <div
-          ref={dropRef}
-          onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
-          onDragLeave={() => setDragOver(false)}
-          onDrop={handleDrop}
-          className={`rounded-lg border-2 border-dashed p-4 transition-all ${
-            dragOver
-              ? 'border-primary bg-primary/5 scale-[1.01]'
-              : assignedMembers.length > 0
-                ? 'border-green-300 bg-green-50'
-                : 'border-muted-foreground/20 bg-muted/30'
-          }`}
-        >
-          {assignedMembers.length > 0 ? (
-            <div className="space-y-2">
-              <p className="text-xs font-semibold text-green-600 uppercase tracking-wider">
-                Assigned to ({assignedMembers.length})
-              </p>
-              <div className="flex flex-wrap gap-2">
-                {assignedMembers.map((m) => {
-                  const id = m.user_id || m.id;
-                  const name = m.full_name || m.university_email || 'Unknown';
-                  return (
-                    <span
-                      key={id}
-                      className="inline-flex items-center gap-1.5 rounded-full bg-white border border-green-200 pl-1 pr-2 py-1 text-sm"
-                    >
-                      <Avatar className="h-6 w-6">
-                        <AvatarFallback className="text-[9px] font-semibold bg-primary/10 text-primary">
-                          {getInitials(name)}
-                        </AvatarFallback>
-                      </Avatar>
-                      <span className="font-medium">{name}</span>
-                      <button
-                        type="button"
-                        onClick={() => removeMember(id)}
-                        className="ml-0.5 text-muted-foreground hover:text-red-500 transition-colors text-xs font-bold"
-                      >
-                        ✕
-                      </button>
-                    </span>
-                  );
-                })}
-              </div>
-              <p className="text-xs text-muted-foreground/60">
-                Drag more members to assign them too
-              </p>
-            </div>
-          ) : (
-            <div className="flex items-center gap-3">
-              <UserPlus className={`h-5 w-5 ${dragOver ? 'text-primary' : 'text-muted-foreground/50'}`} />
-              <p className={`text-sm ${dragOver ? 'text-primary font-medium' : 'text-muted-foreground/60'}`}>
-                Drag a member here to assign this task
-              </p>
-            </div>
-          )}
-        </div>
-
-        <Button
-          type="submit"
-          className="w-full h-10"
-          disabled={submitting || !title.trim() || assignedMembers.length === 0}
-        >
-          {submitting ? (
-            <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Creating...</>
-          ) : (
-            <><Plus className="mr-2 h-4 w-4" />Create Task</>
-          )}
-        </Button>
-        {title.trim() && assignedMembers.length === 0 && (
-          <p className="text-xs text-muted-foreground text-center -mt-2">
-            Drag a team member above to assign this task
-          </p>
-        )}
-      </form>
-
-      {/* Draggable member chips */}
-      <div className="space-y-2">
-        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-          Team Members — drag to assign
-        </p>
-        <div className="flex flex-wrap gap-2">
-          {members.map((m) => {
-            const id = m.user_id || m.id;
-            const name = m.full_name || m.university_email || 'Unknown';
-            return (
-              <div
-                key={id}
-                draggable
-                onDragStart={(e) => {
-                  e.dataTransfer.setData('text/member-id', id);
-                  e.dataTransfer.effectAllowed = 'copy';
-                }}
-                className="flex items-center gap-2 rounded-full border bg-card pl-1 pr-3 py-1 cursor-grab active:cursor-grabbing hover:shadow-md hover:border-primary/30 transition-all select-none"
-              >
-                <Avatar className="h-7 w-7">
-                  <AvatarFallback className="text-[10px] font-semibold bg-primary/10 text-primary">
-                    {getInitials(name)}
-                  </AvatarFallback>
-                </Avatar>
-                <span className="text-sm font-medium">{name}</span>
-                <GripVertical className="h-3.5 w-3.5 text-muted-foreground/40" />
-              </div>
-            );
-          })}
+        <div className="space-y-1.5">
+          <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
+            <AlertCircle className="h-3.5 w-3.5" />
+            Priority
+          </label>
+          <select
+            value={priority}
+            onChange={(e) => setPriority(e.target.value)}
+            disabled={submitting}
+            className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm"
+          >
+            <option value="low">Low</option>
+            <option value="medium">Medium</option>
+            <option value="high">High</option>
+          </select>
         </div>
       </div>
-    </div>
+
+      {/* Assignees section */}
+      <div className="space-y-2">
+        <div className="flex items-center justify-between">
+          <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
+            <Users className="h-3.5 w-3.5" />
+            Assign to ({assignedMembers.length})
+          </label>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="h-8 text-xs"
+            onClick={() => setShowMemberPicker(!showMemberPicker)}
+          >
+            <UserPlus className="h-3.5 w-3.5 mr-1.5" />
+            {showMemberPicker ? 'Hide' : 'Select Members'}
+          </Button>
+        </div>
+
+        {/* Selected members */}
+        {assignedMembers.length > 0 && (
+          <div className="flex flex-wrap gap-2">
+            {assignedMembers.map((m) => {
+              const id = m.user_id || m.id;
+              const name = m.full_name || m.university_email || 'Unknown';
+              return (
+                <span
+                  key={id}
+                  className="inline-flex items-center gap-1.5 rounded-full bg-green-50 border border-green-200 pl-1 pr-2 py-1 text-sm"
+                >
+                  <Avatar className="h-6 w-6">
+                    <AvatarFallback className="text-[9px] font-semibold bg-green-100 text-green-700">
+                      {getInitials(name)}
+                    </AvatarFallback>
+                  </Avatar>
+                  <span className="font-medium text-green-800">{name}</span>
+                  <button
+                    type="button"
+                    onClick={() => toggleMember(m)}
+                    className="ml-0.5 text-green-400 hover:text-red-500 transition-colors text-xs font-bold"
+                  >
+                    ✕
+                  </button>
+                </span>
+              );
+            })}
+          </div>
+        )}
+
+        {/* Member picker */}
+        {showMemberPicker && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 rounded-lg border bg-muted/30 p-3 max-h-48 overflow-y-auto">
+            {members.map((m) => {
+              const id = m.user_id || m.id;
+              const name = m.full_name || m.university_email || 'Unknown';
+              const isSelected = assignedMembers.some((am) => (am.user_id || am.id) === id);
+              return (
+                <button
+                  key={id}
+                  type="button"
+                  onClick={() => toggleMember(m)}
+                  className={`flex items-center gap-2 rounded-lg px-3 py-2.5 text-sm transition-all min-h-[44px] ${
+                    isSelected
+                      ? 'bg-green-100 border border-green-300 text-green-800 font-medium'
+                      : 'bg-white border border-transparent hover:border-primary/30 hover:bg-primary/5'
+                  }`}
+                >
+                  <Avatar className="h-7 w-7 shrink-0">
+                    <AvatarFallback className={`text-[10px] font-semibold ${isSelected ? 'bg-green-200 text-green-800' : 'bg-primary/10 text-primary'}`}>
+                      {getInitials(name)}
+                    </AvatarFallback>
+                  </Avatar>
+                  <span className="truncate">{name}</span>
+                  {isSelected && <CheckCircle2 className="h-4 w-4 ml-auto shrink-0 text-green-600" />}
+                </button>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      <Button
+        type="submit"
+        className="w-full h-10"
+        disabled={submitting || !title.trim() || assignedMembers.length === 0}
+      >
+        {submitting ? (
+          <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Creating...</>
+        ) : (
+          <><Plus className="mr-2 h-4 w-4" />Create Task</>
+        )}
+      </Button>
+      {title.trim() && assignedMembers.length === 0 && (
+        <p className="text-xs text-muted-foreground text-center -mt-2">
+          Select at least one team member to assign
+        </p>
+      )}
+    </form>
   );
 }
 
-/* ─── Single Task Card (Compact) ─── */
-function TaskCard({ task, onStatusChange, onEdit, onDelete }) {
-  const [statusOpen, setStatusOpen] = useState(false);
-  const statusBtnRef = useRef(null);
-  const prio = priorityConfig[task.priority] || priorityConfig.medium;
-  const status = statusConfig[task.status] || statusConfig.pending;
-  const due = formatDueDate(task.due_date);
-  const isCompleted = task.status === 'completed';
-  const assigneeName = task.assignee?.full_name || task.assignee?.university_email || 'Unassigned';
+/* ─── Assignee Status Config ─── */
+const assigneeStatusConfig = {
+  pending:     { label: 'Pending',     bg: 'bg-slate-100 text-slate-600 border-slate-200', icon: Circle },
+  in_progress: { label: 'In Progress', bg: 'bg-blue-100 text-blue-700 border-blue-200', icon: Clock },
+  completed:   { label: 'Done',        bg: 'bg-green-100 text-green-700 border-green-200', icon: CheckCircle2 },
+};
 
-  const handleStatusSelect = async (newStatus) => {
-    setStatusOpen(false);
-    if (newStatus !== task.status) {
-      onStatusChange(task, newStatus).catch(() => {});
+/* ─── Task Card with Multi-Assignee Status ─── */
+function TaskCard({ task, roomId, currentUserId, members = [], onStatusChange, onEdit, onDelete, onAssigneesAdded }) {
+  const [addingMembers, setAddingMembers] = useState(false);
+  const [toggling, setToggling] = useState(null);
+  const prio = priorityConfig[task.priority] || priorityConfig.medium;
+  const due = formatDueDate(task.due_date);
+
+  // Get assignees from task_assignees or fall back to single assignee
+  const assignees = task.task_assignees && task.task_assignees.length > 0
+    ? task.task_assignees
+    : task.assignee
+      ? [{ user_id: task.assignee.id, status: task.status || 'pending', users: task.assignee }]
+      : [];
+
+  const completedCount = assignees.filter((a) => a.status === 'completed').length;
+  const allDone = assignees.length > 0 && completedCount === assignees.length;
+  const progress = assignees.length > 0 ? Math.round((completedCount / assignees.length) * 100) : 0;
+
+  const handleStatusCycle = async (assignee) => {
+    const userId = assignee.user_id;
+    setToggling(userId);
+    try {
+      await onStatusChange(task.id, userId);
+    } finally {
+      setToggling(null);
+    }
+  };
+
+  // Members not yet assigned
+  const unassignedMembers = members.filter((m) => {
+    const mid = m.user_id || m.id;
+    return !assignees.some((a) => a.user_id === mid);
+  });
+
+  const handleAddAssignees = async (memberIds) => {
+    try {
+      const result = await addAssignees(roomId, task.id, memberIds);
+      onAssigneesAdded?.(task.id, result);
+      setAddingMembers(false);
+    } catch {
+      // fail silently
     }
   };
 
   return (
-    <div
-      className={`relative rounded-lg border bg-card shadow-sm hover:shadow-md transition-all overflow-hidden border-l-[3px] ${prio.border} ${
-        isCompleted ? 'opacity-50' : ''
-      }`}
-    >
-      <div className="px-3.5 py-3">
-        {/* Row 1: Title + actions */}
+    <div className={`rounded-xl border bg-card shadow-sm hover:shadow-md transition-all overflow-hidden border-l-[3px] ${prio.border} ${allDone ? 'opacity-50' : ''}`}>
+      <div className="p-4">
+        {/* Header: Title + actions */}
         <div className="flex items-start justify-between gap-2">
-          <h3 className={`text-[15px] font-bold leading-snug flex-1 ${isCompleted ? 'line-through text-muted-foreground' : 'text-foreground'}`}>
+          <h3 className={`text-[15px] font-bold leading-snug flex-1 ${allDone ? 'line-through text-muted-foreground' : 'text-foreground'}`}>
             {task.title}
           </h3>
-          <div className="flex items-center gap-0.5 shrink-0 -mt-0.5">
+          <div className="flex items-center gap-0.5 shrink-0">
             <Tooltip>
               <TooltipTrigger asChild>
-                <button onClick={() => onEdit(task)} className="p-1 rounded hover:bg-muted transition-colors">
-                  <Pencil className="h-3 w-3 text-muted-foreground" />
+                <button onClick={() => onEdit(task)} className="p-1.5 sm:p-1 rounded hover:bg-muted transition-colors">
+                  <Pencil className="h-3.5 w-3.5 sm:h-3 sm:w-3 text-muted-foreground" />
                 </button>
               </TooltipTrigger>
               <TooltipContent><p>Edit</p></TooltipContent>
             </Tooltip>
             <Tooltip>
               <TooltipTrigger asChild>
-                <button onClick={() => onDelete(task)} className="p-1 rounded hover:bg-red-50 transition-colors">
-                  <Trash2 className="h-3 w-3 text-muted-foreground hover:text-red-500" />
+                <button onClick={() => onDelete(task)} className="p-1.5 sm:p-1 rounded hover:bg-red-50 transition-colors">
+                  <Trash2 className="h-3.5 w-3.5 sm:h-3 sm:w-3 text-muted-foreground hover:text-red-500" />
                 </button>
               </TooltipTrigger>
               <TooltipContent><p>Delete</p></TooltipContent>
@@ -362,16 +321,15 @@ function TaskCard({ task, onStatusChange, onEdit, onDelete }) {
           </div>
         </div>
 
-        {/* Row 2: Due date + priority */}
+        {/* Meta: Due date + priority + progress */}
         <div className="flex items-center gap-2 mt-2 flex-wrap">
           {due ? (
             <span className={`inline-flex items-center gap-1 text-xs font-medium ${
-              due.overdue && !isCompleted ? 'text-red-600' : 'text-muted-foreground'
+              due.overdue && !allDone ? 'text-red-600' : 'text-muted-foreground'
             }`}>
               <Clock className="h-3.5 w-3.5" />
-              <span className="font-normal">Due:</span>
               {due.text}
-              {due.overdue && !isCompleted && <span>· Overdue</span>}
+              {due.overdue && !allDone && <span className="text-red-500 font-semibold">· Overdue</span>}
             </span>
           ) : (
             <span className="inline-flex items-center gap-1 text-xs text-muted-foreground/40">
@@ -383,62 +341,108 @@ function TaskCard({ task, onStatusChange, onEdit, onDelete }) {
             <span className={`h-2 w-2 rounded-full ${prio.dot}`} />
             {prio.label}
           </span>
+          {assignees.length > 0 && (
+            <Badge variant="outline" className={`text-[10px] px-2 py-0.5 ${allDone ? 'bg-green-50 text-green-700 border-green-200' : 'bg-blue-50 text-blue-700 border-blue-200'}`}>
+              {completedCount}/{assignees.length} done
+            </Badge>
+          )}
         </div>
 
-        {/* Row 3: Status badge (click to open menu) + assigned member */}
-        <div className="flex items-center justify-between mt-2.5 pt-2 border-t border-border/40">
-          {/* Status badge with popup menu */}
-          <div>
-            <button
-              ref={statusBtnRef}
-              onClick={() => setStatusOpen(!statusOpen)}
-              className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold transition-all hover:scale-105 active:scale-95 cursor-pointer ${status.bg}`}
-            >
-              {isCompleted ? <CheckCircle2 className="h-3.5 w-3.5" /> : <Circle className="h-3.5 w-3.5" />}
-              {status.label}
-            </button>
-
-            {/* Status picker — fixed position to escape overflow */}
-            {statusOpen && statusBtnRef.current && (() => {
-              const rect = statusBtnRef.current.getBoundingClientRect();
-              return (
-                <>
-                  <div className="fixed inset-0 z-[100]" onClick={() => setStatusOpen(false)} />
-                  <div
-                    className="fixed z-[101] rounded-lg border bg-popover shadow-lg p-1 min-w-[150px]"
-                    style={{ top: rect.bottom + 4, left: rect.left }}
-                  >
-                    {Object.entries(statusConfig).map(([key, cfg]) => (
-                      <button
-                        key={key}
-                        onClick={() => handleStatusSelect(key)}
-                        className={`w-full flex items-center gap-2 rounded-md px-3 py-2 text-xs font-medium transition-colors ${
-                          task.status === key ? 'bg-muted' : 'hover:bg-muted/60'
-                        }`}
-                      >
-                        <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 ${cfg.bg}`}>
-                          {key === 'completed' ? <CheckCircle2 className="h-3 w-3" /> : <Circle className="h-3 w-3" />}
-                          {cfg.label}
-                        </span>
-                        {task.status === key && <span className="text-primary ml-auto">✓</span>}
-                      </button>
-                    ))}
-                  </div>
-                </>
-              );
-            })()}
+        {/* Progress bar */}
+        {assignees.length > 1 && (
+          <div className="mt-3 h-1.5 rounded-full bg-muted overflow-hidden">
+            <div
+              className={`h-full rounded-full transition-all duration-500 ${allDone ? 'bg-green-500' : 'bg-blue-500'}`}
+              style={{ width: `${progress}%` }}
+            />
           </div>
+        )}
 
-          {/* Assigned member */}
-          <div className="flex items-center gap-1.5">
-            <span className="text-[11px] text-muted-foreground">{assigneeName}</span>
-            <Avatar className="h-5 w-5">
-              <AvatarFallback className="text-[8px] font-semibold bg-muted text-muted-foreground">
-                {getInitials(assigneeName)}
-              </AvatarFallback>
-            </Avatar>
-          </div>
+        {/* Assignees with status badges */}
+        <div className="mt-3 space-y-1.5">
+          {assignees.map((assignee) => {
+            const user = assignee.users || {};
+            const name = user.full_name || user.university_email || 'Unknown';
+            const isToggling = toggling === assignee.user_id;
+            const aStatus = assigneeStatusConfig[assignee.status] || assigneeStatusConfig.pending;
+            const StatusIcon = aStatus.icon;
+
+            return (
+              <div
+                key={assignee.user_id || assignee.id}
+                className={`flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-all min-h-[44px] ${
+                  assignee.status === 'completed' ? 'bg-green-50/60' : assignee.status === 'in_progress' ? 'bg-blue-50/60' : 'bg-muted/30'
+                }`}
+              >
+                <Avatar className="h-7 w-7 shrink-0">
+                  <AvatarFallback className={`text-[9px] font-semibold ${
+                    assignee.status === 'completed' ? 'bg-green-200 text-green-800' : assignee.status === 'in_progress' ? 'bg-blue-200 text-blue-800' : 'bg-muted text-muted-foreground'
+                  }`}>
+                    {getInitials(name)}
+                  </AvatarFallback>
+                </Avatar>
+                <span className={`flex-1 truncate font-medium ${assignee.status === 'completed' ? 'line-through text-muted-foreground' : 'text-foreground'}`}>
+                  {name}
+                </span>
+                <button
+                  onClick={() => handleStatusCycle(assignee)}
+                  disabled={isToggling}
+                  className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] font-semibold transition-all hover:scale-105 active:scale-95 shrink-0 ${aStatus.bg}`}
+                >
+                  {isToggling ? (
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                  ) : (
+                    <StatusIcon className="h-3 w-3" />
+                  )}
+                  {aStatus.label}
+                </button>
+              </div>
+            );
+          })}
         </div>
+
+        {/* Add member button */}
+        {unassignedMembers.length > 0 && (
+          <div className="mt-2">
+            {!addingMembers ? (
+              <button
+                onClick={() => setAddingMembers(true)}
+                className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-primary transition-colors py-1 min-h-[36px]"
+              >
+                <UserPlus className="h-3.5 w-3.5" />
+                Add member
+              </button>
+            ) : (
+              <div className="space-y-1.5 rounded-lg border bg-muted/20 p-2">
+                {unassignedMembers.map((m) => {
+                  const id = m.user_id || m.id;
+                  const name = m.full_name || m.university_email || 'Unknown';
+                  return (
+                    <button
+                      key={id}
+                      onClick={() => handleAddAssignees([id])}
+                      className="w-full flex items-center gap-2 rounded-md px-2 py-1.5 text-xs hover:bg-primary/5 transition-colors min-h-[36px]"
+                    >
+                      <Avatar className="h-5 w-5">
+                        <AvatarFallback className="text-[8px] font-semibold bg-primary/10 text-primary">
+                          {getInitials(name)}
+                        </AvatarFallback>
+                      </Avatar>
+                      <span className="truncate">{name}</span>
+                      <Plus className="h-3 w-3 ml-auto text-muted-foreground" />
+                    </button>
+                  );
+                })}
+                <button
+                  onClick={() => setAddingMembers(false)}
+                  className="w-full text-xs text-muted-foreground hover:text-foreground py-1"
+                >
+                  Cancel
+                </button>
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );
@@ -466,31 +470,38 @@ export default function TaskList({ tasks = [], members = [], roomId, currentUser
     });
   };
 
-  const handleStatusChange = async (task, newStatus) => {
-    const previousTasks = localTasks;
+  const handleToggleAssignee = async (taskId, userId) => {
+    const statusCycle = { pending: 'in_progress', in_progress: 'completed', completed: 'pending' };
+    // Optimistic update
     syncTasks((prev) =>
-      prev.map((item) => (
-        item.id === task.id
-          ? { ...item, status: newStatus }
-          : item
-      ))
+      prev.map((t) => {
+        if (t.id !== taskId) return t;
+        const updatedAssignees = (t.task_assignees || []).map((a) =>
+          a.user_id === userId ? { ...a, status: statusCycle[a.status] || 'pending' } : a
+        );
+        const allDone = updatedAssignees.every((a) => a.status === 'completed');
+        const anyInProgress = updatedAssignees.some((a) => a.status === 'in_progress' || a.status === 'completed');
+        return {
+          ...t,
+          task_assignees: updatedAssignees,
+          status: allDone ? 'completed' : anyInProgress ? 'in_progress' : 'pending',
+        };
+      })
     );
 
     try {
-      const updatedTask = await updateTask(roomId, task.id, { status: newStatus });
-      syncTasks((prev) =>
-        prev.map((item) => (
-          item.id === task.id
-            ? { ...item, ...updatedTask }
-            : item
-        ))
-      );
+      await toggleAssignee(roomId, taskId, userId);
     } catch (err) {
-      syncTasks(previousTasks);
-      console.error('Failed to update task status:', err.message);
-      addToast(err.message || 'Failed to update task status.', 'error');
-      throw err;
+      // Revert on error
+      syncTasks(tasks);
+      addToast(err.message || 'Failed to update', 'error');
     }
+  };
+
+  const handleAssigneesAdded = (taskId, updatedTask) => {
+    syncTasks((prev) =>
+      prev.map((t) => (t.id === taskId ? { ...t, ...updatedTask } : t))
+    );
   };
 
   const handleDelete = async () => {
@@ -501,7 +512,6 @@ export default function TaskList({ tasks = [], members = [], roomId, currentUser
       await deleteTask(roomId, confirmDelete.id);
     } catch (err) {
       syncTasks(previousTasks);
-      console.error('Failed to delete task:', err.message);
       addToast(err.message || 'Failed to delete task.', 'error');
     } finally {
       setConfirmDelete(null);
@@ -545,6 +555,11 @@ export default function TaskList({ tasks = [], members = [], roomId, currentUser
     }
   };
 
+  const handleTaskCreated = (createdTask) => {
+    syncTasks((prev) => [createdTask, ...prev]);
+    setShowForm(false);
+  };
+
   // Separate active and completed
   const activeTasks = localTasks.filter((t) => t.status !== 'completed');
   const completedTasks = localTasks.filter((t) => t.status === 'completed');
@@ -557,6 +572,7 @@ export default function TaskList({ tasks = [], members = [], roomId, currentUser
           variant={showForm ? 'secondary' : 'default'}
           size="sm"
           onClick={() => setShowForm(!showForm)}
+          className="min-h-[44px] sm:min-h-0"
         >
           <Plus className="mr-2 h-4 w-4" />
           {showForm ? 'Hide Form' : 'New Task'}
@@ -575,21 +591,8 @@ export default function TaskList({ tasks = [], members = [], roomId, currentUser
             roomId={roomId}
             members={members}
             currentUserId={currentUserId}
-            onCreated={(createdTasks, replaceIds = []) => {
-              syncTasks((prev) => {
-                const base = replaceIds.length > 0
-                  ? prev.filter((task) => !replaceIds.includes(task.id))
-                  : prev;
-                return [...createdTasks, ...base];
-              });
-              if (replaceIds.length > 0) {
-                setShowForm(false);
-              }
-            }}
-            onError={(replaceIds, err) => {
-              syncTasks((prev) => prev.filter((task) => !replaceIds.includes(task.id)));
-              addToast(err.message || 'Failed to create task.', 'error');
-            }}
+            onCreated={handleTaskCreated}
+            onError={(err) => addToast(err.message || 'Failed to create task.', 'error')}
           />
         </div>
       )}
@@ -600,7 +603,7 @@ export default function TaskList({ tasks = [], members = [], roomId, currentUser
           <div className="text-5xl mb-4">📋</div>
           <p className="text-lg font-semibold text-muted-foreground">No tasks yet</p>
           <p className="text-sm text-muted-foreground/70 mt-1">
-            Create a task and drag a team member to assign it
+            Create a task and assign team members
           </p>
         </div>
       ) : (
@@ -611,14 +614,18 @@ export default function TaskList({ tasks = [], members = [], roomId, currentUser
               <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">
                 Active ({activeTasks.length})
               </h3>
-              <div className="grid gap-4 sm:grid-cols-2">
+              <div className="grid gap-4 grid-cols-1 sm:grid-cols-2">
                 {activeTasks.map((task) => (
                   <TaskCard
                     key={task.id}
                     task={task}
-                    onStatusChange={handleStatusChange}
+                    roomId={roomId}
+                    currentUserId={currentUserId}
+                    members={members}
+                    onStatusChange={handleToggleAssignee}
                     onEdit={handleEditOpen}
                     onDelete={(t) => setConfirmDelete({ id: t.id, title: t.title })}
+                    onAssigneesAdded={handleAssigneesAdded}
                   />
                 ))}
               </div>
@@ -631,14 +638,18 @@ export default function TaskList({ tasks = [], members = [], roomId, currentUser
               <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">
                 Completed ({completedTasks.length})
               </h3>
-              <div className="grid gap-4 sm:grid-cols-2">
+              <div className="grid gap-4 grid-cols-1 sm:grid-cols-2">
                 {completedTasks.map((task) => (
                   <TaskCard
                     key={task.id}
                     task={task}
-                    onStatusChange={handleStatusChange}
+                    roomId={roomId}
+                    currentUserId={currentUserId}
+                    members={members}
+                    onStatusChange={handleToggleAssignee}
                     onEdit={handleEditOpen}
                     onDelete={(t) => setConfirmDelete({ id: t.id, title: t.title })}
+                    onAssigneesAdded={handleAssigneesAdded}
                   />
                 ))}
               </div>

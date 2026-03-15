@@ -145,6 +145,72 @@ DO $$ BEGIN
     ALTER TABLE comments ADD CONSTRAINT comments_author_users_fkey FOREIGN KEY (author_id) REFERENCES users(id) ON DELETE CASCADE;
   END IF;
 END $$;
+
+-- Task assignees table (multi-assignee support)
+CREATE TABLE IF NOT EXISTS task_assignees (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  task_id UUID NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'in_progress', 'completed')),
+  completed_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE(task_id, user_id)
+);
+CREATE INDEX IF NOT EXISTS idx_task_assignees_task ON task_assignees(task_id);
+CREATE INDEX IF NOT EXISTS idx_task_assignees_user ON task_assignees(user_id);
+
+-- Make assigned_to nullable for multi-assignee tasks
+ALTER TABLE tasks ALTER COLUMN assigned_to DROP NOT NULL;
+
+-- RLS for task_assignees
+ALTER TABLE task_assignees ENABLE ROW LEVEL SECURITY;
+
+DO $$ BEGIN
+IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'task_assignees_select') THEN
+  CREATE POLICY "task_assignees_select" ON task_assignees FOR SELECT USING (
+    EXISTS (
+      SELECT 1 FROM tasks t
+      JOIN room_members rm ON rm.room_id = t.room_id AND rm.user_id = auth.uid()
+      WHERE t.id = task_assignees.task_id
+    )
+  );
+END IF;
+IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'task_assignees_insert') THEN
+  CREATE POLICY "task_assignees_insert" ON task_assignees FOR INSERT WITH CHECK (
+    EXISTS (
+      SELECT 1 FROM tasks t
+      JOIN room_members rm ON rm.room_id = t.room_id AND rm.user_id = auth.uid()
+      WHERE t.id = task_assignees.task_id
+    )
+  );
+END IF;
+IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'task_assignees_update') THEN
+  CREATE POLICY "task_assignees_update" ON task_assignees FOR UPDATE USING (
+    user_id = auth.uid()
+    OR EXISTS (
+      SELECT 1 FROM tasks t
+      JOIN room_members rm ON rm.room_id = t.room_id AND rm.user_id = auth.uid()
+      WHERE t.id = task_assignees.task_id AND rm.role IN ('owner', 'admin')
+    )
+  );
+END IF;
+IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'task_assignees_delete') THEN
+  CREATE POLICY "task_assignees_delete" ON task_assignees FOR DELETE USING (
+    EXISTS (
+      SELECT 1 FROM tasks t
+      JOIN room_members rm ON rm.room_id = t.room_id AND rm.user_id = auth.uid()
+      WHERE t.id = task_assignees.task_id AND rm.role IN ('owner', 'admin')
+    )
+  );
+END IF;
+END $$;
+
+-- FK to public.users for PostgREST joins on task_assignees
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM information_schema.table_constraints WHERE constraint_name = 'task_assignees_user_users_fkey' AND table_name = 'task_assignees') THEN
+    ALTER TABLE task_assignees ADD CONSTRAINT task_assignees_user_users_fkey FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE;
+  END IF;
+END $$;
 `;
 
 async function runMigration() {

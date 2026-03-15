@@ -43,6 +43,26 @@ router.patch(
   taskController.updateTask
 );
 
+// PATCH /rooms/:roomId/tasks/:taskId/assignees/:userId - Toggle assignee completion
+router.patch(
+  '/rooms/:roomId/tasks/:taskId/assignees/:userId',
+  roomIdParam,
+  taskIdParam,
+  validate,
+  requireRoomMember,
+  taskController.toggleAssignee
+);
+
+// POST /rooms/:roomId/tasks/:taskId/assignees - Add assignees to a task
+router.post(
+  '/rooms/:roomId/tasks/:taskId/assignees',
+  roomIdParam,
+  taskIdParam,
+  validate,
+  requireRoomMember,
+  taskController.addAssignees
+);
+
 // DELETE /rooms/:roomId/tasks/:taskId - Delete a task
 router.delete(
   '/rooms/:roomId/tasks/:taskId',

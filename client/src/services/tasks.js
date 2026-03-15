@@ -27,3 +27,15 @@ export async function deleteTask(roomId, taskId) {
   const res = await fetch(`/api/rooms/${roomId}/tasks/${taskId}`, { method: 'DELETE', headers });
   return parseResponse(res);
 }
+
+export async function toggleAssignee(roomId, taskId, userId) {
+  const headers = getAuthHeaders();
+  const res = await fetch(`/api/rooms/${roomId}/tasks/${taskId}/assignees/${userId}`, { method: 'PATCH', headers });
+  return parseResponse(res);
+}
+
+export async function addAssignees(roomId, taskId, assignees) {
+  const headers = getAuthHeaders();
+  const res = await fetch(`/api/rooms/${roomId}/tasks/${taskId}/assignees`, { method: 'POST', headers, body: JSON.stringify({ assignees }) });
+  return parseResponse(res);
+}
