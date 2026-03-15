@@ -4,6 +4,7 @@ import { X } from 'lucide-react';
 import { createRoom, deleteRoom, getRoom, getRooms } from '@/services/rooms';
 import { createEvent } from '@/services/events';
 import { createTask } from '@/services/tasks';
+import { deletePost } from '@/services/board';
 
 const TUTORIAL_KEY = 'tutorial-completed';
 const TUTORIAL_ROOM_NAME = '🎓 Tutorial Room';
@@ -22,7 +23,7 @@ export default function InteractiveTutorial() {
   const [progress, setProgress] = useState(0);
   const cancelRef = useRef(false);
   const createdRoomIdRef = useRef(null);
-  const totalSteps = 14;
+  const totalSteps = 16;
 
   // ── Clean up any leftover tutorial room from a previous crashed session ──
   useEffect(() => {
@@ -219,8 +220,9 @@ export default function InteractiveTutorial() {
     setP(1); setShowOverlay(true);
     navigate('/dashboard');
     await waitForEl('[data-tour="create-room"]');
-    showTip('Welcome!', "Hey! I'm Seung Yun, a Flinders student just like you.\nI made this app so we can study together better.\nLet me show you how it works!", { center: true, icon: '👋' });
-    await pause(4500); if (bail()) { await end(); return; }
+    await sleep(1000);
+    showTip('Welcome!', "Hey! I'm Sean.\nI made this app for Flinders students.\nLet me show you how it works!", { center: true, icon: '👋' });
+    await pause(4000); if (bail()) { await end(); return; }
 
     // ── 2: Create Room button ──
     setP(2); setTooltip(null); setSpotlight(null);
@@ -279,7 +281,7 @@ export default function InteractiveTutorial() {
     showTip('Entering Room...', "Loading your new room...\nHang tight!", { center: true, icon: '⏳' });
     const roomTabs = await waitForEl('[data-tour="tab-schedule"]', 15000);
     if (!roomTabs || bail()) { await end(); return; }
-    await sleep(1200);
+    await sleep(2000);
     showTip('Welcome to Your Room!', "This is what a room looks like!\nSee those tabs up there?\nEach one has a different feature.\nLet me walk you through them.", { center: true, icon: '🏠' });
     await pause(5000); if (bail()) { await end(); return; }
 
@@ -301,20 +303,17 @@ export default function InteractiveTutorial() {
     }
 
     if (addEventBtn && !bail()) {
-      setTooltip(null);
-      showTip('Add Event', "Let me add a study session!", { center: true, icon: '✏️' });
-      await pause(2000); if (bail()) { await end(); return; }
-
       // Click the Add Event button
+      setTooltip(null); setShowOverlay(false);
       await clickDomEl(addEventBtn);
       await sleep(1000);
 
-      // Wait for event dialog
+      // Wait for event dialog — hide tooltip while interacting
       const eventDialog = await waitForEl('[role="dialog"]', 5000);
       if (eventDialog && !bail()) {
         await sleep(500);
 
-        // Pick "study" category — find button with "Study Session" text
+        // Pick "study" category
         const allCatBtns = document.querySelectorAll('[role="dialog"] button[type="button"]');
         for (const btn of allCatBtns) {
           if (btn.textContent.includes('Study')) {
@@ -348,6 +347,7 @@ export default function InteractiveTutorial() {
           }
         }
 
+        setShowOverlay(true);
         showTip('Event Added!', "It's on the calendar now!\nEveryone in this room can see it.", { center: true, icon: '🎉' });
         await pause(3500); if (bail()) { await end(); return; }
       }
@@ -386,10 +386,8 @@ export default function InteractiveTutorial() {
     }
 
     if (assignBtn && !bail()) {
-      setTooltip(null);
-      showTip('Assign Task', "Let me create a task!", { center: true, icon: '📝' });
-      await pause(2000); if (bail()) { await end(); return; }
-
+      // Hide tooltip while interacting with dialog
+      setTooltip(null); setShowOverlay(false);
       await clickDomEl(assignBtn);
       await sleep(1000);
 
@@ -424,6 +422,7 @@ export default function InteractiveTutorial() {
           }
         }
 
+        setShowOverlay(true);
         showTip('Task Created!', "Task assigned! Check it off when done.", { center: true, icon: '🎉' });
         await pause(3000); if (bail()) { await end(); return; }
       }
@@ -465,32 +464,130 @@ export default function InteractiveTutorial() {
     showTip('Deadlines', "All events from every room in one place!\nThe study session we just added is here too.", { center: true, icon: '📅' });
     await pause(4000); if (bail()) { await end(); return; }
 
-    // ── 12: Free Board ──
-    setP(12); setTooltip(null);
+    // ── 12: Free Board — create a post with poll ──
+    setP(12); setTooltip(null); setSpotlight(null); setCursorVisible(false);
     navigate('/board');
     showTip('Loading...', "Opening Free Board...", { center: true, icon: '⏳' });
-    await waitForEl('main', 10000);
-    await sleep(2500); if (bail()) { await end(); return; }
-    showTip('Free Board', "Community board for all students.\nFind study partners or ask questions!", { center: true, icon: '📋' });
-    await pause(4000); if (bail()) { await end(); return; }
+    await waitForEl('[data-tour="board-new-post"]', 12000);
+    await sleep(2000); if (bail()) { await end(); return; }
+    showTip('Free Board', "Community board for all Flinders students!", { center: true, icon: '📋' });
+    await pause(3000); if (bail()) { await end(); return; }
 
-    // ── 13: Flinders Life ──
-    setP(13); setTooltip(null);
+    // Click New Post — hide tooltip while interacting
+    setP(13); setTooltip(null); setSpotlight(null); setShowOverlay(false);
+    const newPostBtn = await waitForEl('[data-tour="board-new-post"]', 5000);
+    if (newPostBtn && !bail()) {
+      await clickDomEl(newPostBtn);
+      await sleep(1000);
+
+      const postDialog = await waitForEl('[role="dialog"]', 5000);
+      if (postDialog && !bail()) {
+        // Select "Meetup" category
+        await sleep(400);
+        const allCatBtns2 = document.querySelectorAll('[role="dialog"] button');
+        for (const btn of allCatBtns2) {
+          if (btn.textContent.includes('Meetup')) {
+            await clickDomEl(btn);
+            await sleep(500);
+            break;
+          }
+        }
+
+        // Type title
+        const postTitle = document.querySelector('[role="dialog"] input[placeholder="Title"]');
+        if (postTitle && !bail()) {
+          await typeInto('[role="dialog"] input[placeholder="Title"]', 'City Campus meetup this Friday?');
+          await pause(500);
+        }
+
+        // Type content
+        const postContent = document.querySelector('[role="dialog"] textarea[placeholder="What\'s on your mind?"]');
+        if (postContent && !bail()) {
+          await typeInto('[role="dialog"] textarea[placeholder="What\'s on your mind?"]', 'Anyone down to grab coffee at Victoria Square after class?');
+          await pause(500);
+        }
+
+        // Click "Add Poll" button
+        if (!bail()) {
+          const pollBtn = findBtn('Add Poll');
+          if (pollBtn) {
+            await clickDomEl(pollBtn);
+            await sleep(800);
+
+            // Type poll options
+            const pollInputs = document.querySelectorAll('[role="dialog"] input[placeholder^="Option"]');
+            if (pollInputs.length >= 2 && !bail()) {
+              await typeInto('[role="dialog"] input[placeholder="Option 1"]', 'Friday 3pm');
+              await sleep(300);
+              await typeInto('[role="dialog"] input[placeholder="Option 2"]', 'Friday 5pm');
+              await pause(500);
+            }
+          }
+        }
+
+        // Click Post button
+        if (!bail()) {
+          const postSubmit = findBtn('Post');
+          if (postSubmit) {
+            await clickDomEl(postSubmit);
+            await sleep(2000);
+          }
+        }
+
+        setShowOverlay(true);
+        showTip('Post Created!', "Meetup post is live with a poll!\nOther students can vote on it.", { center: true, icon: '🎉' });
+        await pause(3500); if (bail()) { await end(); return; }
+      }
+    }
+
+    // ── 14: Flinders Life — show 3 tabs ──
+    setP(14); setTooltip(null); setSpotlight(null); setCursorVisible(false);
     navigate('/flinders-life');
     showTip('Loading...', "Opening Flinders Life...", { center: true, icon: '⏳' });
+    await waitForEl('main', 12000);
+    await sleep(2500); if (bail()) { await end(); return; }
+
+    // Events tab (default)
+    showTip('Events', "Campus events, workshops, and career fairs.\nFilter by your interests!", { center: true, icon: '🎪' });
+    await pause(3500); if (bail()) { await end(); return; }
+
+    // Academic Calendar tab
+    setTooltip(null);
+    const acadCalTab = await waitForEl('[value="academic-calendar"]', 3000);
+    if (acadCalTab && !bail()) {
+      showTip('Academic Calendar', "Semester dates, exam periods, holidays.\nNever miss a deadline!", { target: '[value="academic-calendar"]', icon: '📅', position: 'bottom' });
+      await pause(2500);
+      await clickEl('[value="academic-calendar"]');
+      await sleep(1500); if (bail()) { await end(); return; }
+    }
+
+    // Study Rooms tab
+    setTooltip(null);
+    const studyTab = await waitForEl('[value="study-rooms"]', 3000);
+    if (studyTab && !bail()) {
+      showTip('Study Rooms', "Book study rooms at City Campus\nor Bedford Park — links right here!", { target: '[value="study-rooms"]', icon: '📚', position: 'bottom' });
+      await pause(2500);
+      await clickEl('[value="study-rooms"]');
+      await sleep(1500); if (bail()) { await end(); return; }
+    }
+
+    // ── 15: Back to deadlines to show the event ──
+    setP(15); setTooltip(null); setSpotlight(null); setCursorVisible(false);
+    navigate('/deadlines');
+    showTip('Loading...', "Back to Deadlines...", { center: true, icon: '⏳' });
     await waitForEl('main', 10000);
     await sleep(2500); if (bail()) { await end(); return; }
-    showTip('Flinders Life', "Campus events, news, clubs —\neverything at Flinders in one place!", { center: true, icon: '🎓' });
+    showTip('Deadlines', "See? The study session we added\nshows up here automatically!", { center: true, icon: '📅' });
     await pause(4000); if (bail()) { await end(); return; }
 
-    // ── 14: Done ──
-    setP(14); setTooltip(null); setSpotlight(null); setCursorVisible(false);
-    showTip('All done!', "Let me clean up the demo room.\nNow go create your own!", { center: true, icon: '🎉' });
-    await pause(3000);
+    // ── 16: Done ──
+    setP(16); setTooltip(null); setSpotlight(null); setCursorVisible(false);
+    showTip('All done!', "The demo room will be cleaned up.\nNow go create your own room!", { center: true, icon: '🎉' });
+    await pause(3500);
 
     await end();
     localStorage.setItem(TUTORIAL_KEY, Date.now().toString());
-  }, [navigate, sleep, waitForEl, moveCursorTo, clickEl, clickDomEl, showTip, typeInto, cleanup, findBtn]);
+  }, [navigate, sleep, waitForEl, moveCursorTo, clickEl, clickDomEl, showTip, typeInto, cleanup, findBtn, simulateClick]);
 
   const runTutorialRef = useRef(runTutorial);
   runTutorialRef.current = runTutorial;
@@ -519,9 +616,9 @@ export default function InteractiveTutorial() {
         <div className="mx-4 w-full max-w-sm rounded-3xl bg-white p-8 shadow-2xl animate-scale-in">
           <div className="text-center">
             <div className="mx-auto mb-4 h-20 w-20 rounded-full overflow-hidden shadow-lg shadow-indigo-500/30 ring-3 ring-indigo-100">
-              <img src="/images/seungyun.png" alt="Seung Yun Lee" className="h-full w-full object-cover" />
+              <img src="/images/seungyun.png" alt="Sean Lee" className="h-full w-full object-cover" />
             </div>
-            <h2 className="text-xl font-black text-slate-900">Hi, I'm Seung Yun!</h2>
+            <h2 className="text-xl font-black text-slate-900">Hi, I'm Sean!</h2>
             <p className="mt-2 text-sm text-slate-500 leading-relaxed">
               I built this app for Flinders students.<br/>
               Let me give you a quick tour!
@@ -594,16 +691,16 @@ export default function InteractiveTutorial() {
       {/* ── Tooltip ── */}
       {tooltip && (
         <div className="fixed animate-fade-in" style={{ ...tooltip.style, zIndex: 100000, pointerEvents: 'none' }}>
-          <div className="rounded-2xl bg-white/95 backdrop-blur-xl shadow-[0_20px_60px_-12px_rgba(0,0,0,0.25)] border border-white/60 overflow-hidden" style={{ minWidth: 260 }}>
-            <div className="h-[3px] bg-gradient-to-r from-indigo-500 via-violet-500 to-purple-500">
+          <div className="rounded-2xl bg-white shadow-[0_25px_60px_-12px_rgba(0,0,0,0.35)] border border-slate-200 overflow-hidden" style={{ minWidth: 280 }}>
+            <div className="h-1 bg-gradient-to-r from-indigo-500 via-violet-500 to-purple-500">
               <div className="h-full bg-white/40 transition-all duration-700" style={{ width: `${100 - progressPct}%`, marginLeft: 'auto' }} />
             </div>
             <div className="px-5 py-4">
-              <div className="flex items-center gap-2.5 mb-1">
-                {tooltip.icon && <span className="text-xl">{tooltip.icon}</span>}
-                <h3 className="text-[15px] font-bold text-slate-900">{tooltip.title}</h3>
+              <div className="flex items-center gap-2.5 mb-1.5">
+                {tooltip.icon && <span className="text-2xl">{tooltip.icon}</span>}
+                <h3 className="text-[16px] font-black text-slate-900 tracking-tight">{tooltip.title}</h3>
               </div>
-              <p className="text-[13px] leading-relaxed text-slate-500 pl-[30px] whitespace-pre-line">{tooltip.desc}</p>
+              <p className="text-[14px] leading-relaxed text-slate-700 font-medium pl-[34px] whitespace-pre-line">{tooltip.desc}</p>
             </div>
           </div>
         </div>
