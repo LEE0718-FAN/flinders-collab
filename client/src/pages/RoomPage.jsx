@@ -180,6 +180,7 @@ export default function RoomPage() {
     const eventListNode = eventListColumnRef.current;
     if (!scrollContainer || !layoutNode || !calendarNode || !calendarColumnNode || !eventListNode) return;
 
+    const containerRect = scrollContainer.getBoundingClientRect();
     const layoutRect = layoutNode.getBoundingClientRect();
     const trackHeight = Math.max(calendarNode.offsetHeight, eventListNode.offsetHeight);
     const availableTravel = Math.max(0, trackHeight - calendarNode.offsetHeight);
@@ -189,10 +190,14 @@ export default function RoomPage() {
       ? calendarNode.querySelector(`[data-calendar-date="${selectedDateKey}"]`)
       : null;
 
-    const followScrollTop = typeof scrollContainer.scrollTop === 'number'
-      ? scrollContainer.scrollTop
-      : 0;
-    let desiredOffset = Math.max(0, followScrollTop - layoutNode.offsetTop);
+    const followScrollTop = typeof scrollContainer.scrollTop === 'number' ? scrollContainer.scrollTop : 0;
+    const layoutTopInScroll = followScrollTop + layoutRect.top - containerRect.top;
+    const scrollRange = Math.max(1, trackHeight - scrollContainer.clientHeight);
+    const followProgress = Math.min(
+      1,
+      Math.max(0, (followScrollTop - layoutTopInScroll) / scrollRange),
+    );
+    let desiredOffset = availableTravel * followProgress;
 
     if (calendarMode === 'pinned' && selectedDateNode) {
       if (selectedDayButton) {
