@@ -594,29 +594,36 @@ export default function InteractiveTutorial() {
     // ── 14: Flinders Life — show 3 tabs ──
     setP(14); setTooltip(null); setSpotlight(null); setCursorVisible(false); setIsLoading(true);
     navigate('/flinders-life');
-    showTip('Loading...', "Opening Flinders Life...", { center: true, icon: '⏳' });
     await waitForEl('button[value="events"]', 12000);
-    await sleep(1000); setIsLoading(false); if (bail()) { await end(); return; }
+    setIsLoading(false); if (bail()) { await end(); return; }
 
-    // Events tab — click it
-    setTooltip(null); setSpotlight(null);
-    await clickEl('button[value="events"]');
-    await sleep(1000);
-    showTip('Events', "Campus events, workshops, and career fairs at Flinders!", { center: true, icon: '🎪' });
-    await pause(3500); if (bail()) { await end(); return; }
+    // Events tab — already active by default
+    showTip('Events', "Campus events, workshops, and career fairs at Flinders!", { target: 'button[value="events"]', icon: '🎪', position: 'bottom' });
+    await pause(3000); if (bail()) { await end(); return; }
 
-    // Academic Calendar tab — click it
+    // Academic Calendar tab — click it and highlight content
     setTooltip(null); setSpotlight(null);
     await clickEl('button[value="academic-calendar"]');
-    await sleep(1000);
-    showTip('Academic Calendar', "Semester dates, exam periods, and holidays — never miss a deadline!", { center: true, icon: '📅' });
+    await sleep(800);
+    // Spotlight the tab content area
+    const acadContent = document.querySelector('[role="tabpanel"]');
+    if (acadContent) {
+      const cr = acadContent.getBoundingClientRect();
+      setSpotlight({ x: cr.left, y: cr.top, w: cr.width, h: Math.min(cr.height, 350), r: 12 });
+    }
+    showTip('Academic Calendar', "Semester dates, exam periods, and holidays — never miss a deadline!", { target: 'button[value="academic-calendar"]', icon: '📅', position: 'bottom' });
     await pause(3500); if (bail()) { await end(); return; }
 
-    // Study Rooms tab — click it
+    // Study Rooms tab — click it and highlight content
     setTooltip(null); setSpotlight(null);
     await clickEl('button[value="study-rooms"]');
-    await sleep(1000);
-    showTip('Study Rooms', "Book study rooms at City Campus or Bedford Park — links right here!", { center: true, icon: '📚' });
+    await sleep(800);
+    const studyContent = document.querySelector('[role="tabpanel"]');
+    if (studyContent) {
+      const cr2 = studyContent.getBoundingClientRect();
+      setSpotlight({ x: cr2.left, y: cr2.top, w: cr2.width, h: Math.min(cr2.height, 350), r: 12 });
+    }
+    showTip('Study Rooms', "Book study rooms at City Campus or Bedford Park — links right here!", { target: 'button[value="study-rooms"]', icon: '📚', position: 'bottom' });
     await pause(3500); if (bail()) { await end(); return; }
 
     // ── 15: Done ──
