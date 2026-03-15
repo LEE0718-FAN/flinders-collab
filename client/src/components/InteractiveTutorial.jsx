@@ -20,8 +20,6 @@ export default function InteractiveTutorial() {
   const [tooltip, setTooltip] = useState(null);
   const [progress, setProgress] = useState(0);
   const cancelRef = useRef(false);
-  const skipRef = useRef(false);
-  const [isLoading, setIsLoading] = useState(false);
   const createdRoomIdRef = useRef(null);
   const totalSteps = 16;
 
@@ -68,7 +66,7 @@ export default function InteractiveTutorial() {
       let done = false;
       const t = setTimeout(() => { if (!done) { done = true; resolve(); } }, ms);
       const check = setInterval(() => {
-        if ((cancelRef.current || skipRef.current) && !done) { done = true; clearTimeout(t); clearInterval(check); skipRef.current = false; resolve(); }
+        if (cancelRef.current && !done) { done = true; clearTimeout(t); clearInterval(check); resolve(); }
       }, 100);
       setTimeout(() => clearInterval(check), ms + 50);
     }), []);
@@ -142,10 +140,11 @@ export default function InteractiveTutorial() {
     const centerLeft = sidebarW + (window.innerWidth - sidebarW) / 2;
     if (options.center || !options.target) {
       setTooltip({ title, desc, style: { position: 'fixed', top: '50%', left: centerLeft, transform: 'translate(-50%, -50%)', width: tw }, icon: options.icon });
-      setSpotlight(null); return;
+      if (!options.keepSpotlight) setSpotlight(null);
+      return;
     }
     const el = document.querySelector(options.target);
-    if (!el) { setTooltip({ title, desc, style: { position: 'fixed', top: '50%', left: centerLeft, transform: 'translate(-50%, -50%)', width: tw }, icon: options.icon }); setSpotlight(null); return; }
+    if (!el) { setTooltip({ title, desc, style: { position: 'fixed', top: '50%', left: centerLeft, transform: 'translate(-50%, -50%)', width: tw }, icon: options.icon }); if (!options.keepSpotlight) setSpotlight(null); return; }
     const r = el.getBoundingClientRect();
     const gap = 14; const style = { position: 'fixed', width: tw };
     const pos = options.position || 'bottom';
@@ -251,11 +250,10 @@ export default function InteractiveTutorial() {
     setTooltip(null); setSpotlight(null); setCursorVisible(false);
     const sidebarEl = document.querySelector('aside');
     if (sidebarEl && !bail()) {
-      // Spotlight the whole sidebar
+      // Spotlight the whole sidebar and show tip in content area
       const sr = sidebarEl.getBoundingClientRect();
       setSpotlight({ x: sr.left, y: sr.top, w: sr.width, h: sr.height, r: 0 });
-      // Show tip in the content area so it doesn't cover the sidebar
-      showTip('Sidebar', "This sidebar is your main navigation — Dashboard, Deadlines, Free Board, Flinders Life, and your rooms all live here.", { center: true, icon: '📌' });
+      showTip('Sidebar', "This sidebar is your main navigation — Dashboard, Deadlines, Free Board, Flinders Life, and your rooms all live here.", { center: true, icon: '📌', keepSpotlight: true });
       await pause(5000); if (bail()) { await end(); return; }
     }
 
@@ -293,14 +291,12 @@ export default function InteractiveTutorial() {
     await pause(3500); if (bail()) { await end(); return; }
 
     // ── 6: Navigate into room — wait for it to fully load ──
-    setP(6); setTooltip(null); setSpotlight(null); setIsLoading(true);
-    navigate(`/rooms/${tutorialRoomId}`);
+    setP(6); setTooltip(null); setSpotlight(null);    navigate(`/rooms/${tutorialRoomId}`);
     window.dispatchEvent(new CustomEvent('rooms-updated'));
     showTip('Entering Room...', "Loading your new room... hang tight!", { center: true, icon: '⏳' });
     const roomTabs = await waitForEl('[data-tour="tab-schedule"]', 15000);
     if (!roomTabs || bail()) { await end(); return; }
-    setIsLoading(false);
-    await sleep(2000);
+       await sleep(2000);
     showTip('Welcome to Your Room!', "This is your room! Each tab up there has a different feature — schedule, tasks, chat, files, and more. Let me show you.", { center: true, icon: '🏠' });
     await pause(5000); if (bail()) { await end(); return; }
 
@@ -493,8 +489,7 @@ export default function InteractiveTutorial() {
     await pause(3500); if (bail()) { await end(); return; }
 
     // ── 11: Deadlines page ──
-    setP(11); setTooltip(null); setSpotlight(null); setCursorVisible(false); setIsLoading(true);
-    navigate('/deadlines');
+    setP(11); setTooltip(null); setSpotlight(null); setCursorVisible(false);    navigate('/deadlines');
     showTip('Loading...', "Opening Deadlines...", { center: true, icon: '⏳' });
     await waitForEl('main', 10000);
     await sleep(1500); setIsLoading(false); if (bail()) { await end(); return; }
@@ -508,8 +503,7 @@ export default function InteractiveTutorial() {
     await pause(4000); if (bail()) { await end(); return; }
 
     // ── 12: Free Board ──
-    setP(12); setTooltip(null); setSpotlight(null); setCursorVisible(false); setIsLoading(true);
-    navigate('/board');
+    setP(12); setTooltip(null); setSpotlight(null); setCursorVisible(false);    navigate('/board');
     showTip('Loading...', "Opening Free Board...", { center: true, icon: '⏳' });
     await waitForEl('[data-tour="board-new-post"]', 12000);
     await sleep(1500); setIsLoading(false); if (bail()) { await end(); return; }
@@ -592,8 +586,7 @@ export default function InteractiveTutorial() {
     }
 
     // ── 14: Flinders Life — show 3 tabs ──
-    setP(14); setTooltip(null); setSpotlight(null); setCursorVisible(false); setIsLoading(true);
-    navigate('/flinders-life');
+    setP(14); setTooltip(null); setSpotlight(null); setCursorVisible(false);    navigate('/flinders-life');
     await waitForEl('button[value="events"]', 12000);
     setIsLoading(false); if (bail()) { await end(); return; }
 
@@ -693,14 +686,6 @@ export default function InteractiveTutorial() {
     <>
       {/* ── Fixed top-right control bar ── */}
       <div className="fixed top-4 right-4 z-[100002] flex items-center gap-2 animate-fade-in" style={{ pointerEvents: 'auto' }}>
-        {!isLoading && (
-          <button
-            onClick={() => { skipRef.current = true; }}
-            className="flex items-center gap-1.5 rounded-full bg-gradient-to-r from-indigo-500 to-violet-500 px-4 py-2 text-[12px] font-bold text-white shadow-lg hover:shadow-xl hover:brightness-110 transition-all active:scale-95"
-          >
-            Next →
-          </button>
-        )}
         <button
           onClick={() => handleStop(true)}
           className="flex items-center gap-1.5 rounded-full bg-white/90 backdrop-blur-sm px-3 py-1.5 text-[11px] font-semibold text-slate-400 shadow-lg border border-white/60 hover:bg-white hover:text-slate-600 transition-all"
