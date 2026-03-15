@@ -22,11 +22,16 @@ function stripHtmlTags(html) {
   return (html || '').replace(/<[^>]*>/g, '').replace(/&#\d+;/g, ' ').replace(/&\w+;/g, ' ').trim();
 }
 
-function categorizeEvent(title, excerpt) {
+function categorizeEvent(title, excerpt, classList) {
   const text = `${stripHtmlTags(title)} ${stripHtmlTags(excerpt)}`;
+  // Also include class_list tags for better categorization
+  const classText = Array.isArray(classList)
+    ? classList.map((c) => c.replace(/[-_]/g, ' ')).join(' ')
+    : '';
+  const fullText = `${text} ${classText}`;
   const matched = [];
   for (const [category, patterns] of Object.entries(categoryPatterns)) {
-    if (patterns.some((re) => re.test(text))) {
+    if (patterns.some((re) => re.test(fullText))) {
       matched.push(category);
     }
   }
@@ -143,6 +148,69 @@ function parseLocationFromContent(contentHtml) {
   return '';
 }
 
+/**
+ * Parse schema.org date strings like "2026-4-1T11:00+10.5:00"
+ */
+function parseSchemaDate(dateStr) {
+  if (!dateStr) return null;
+  const cleaned = dateStr.replace(/[+-]\d+\.?\d*:\d+$/, '');
+  const m = cleaned.match(/(\d{4})-(\d{1,2})-(\d{1,2})T(\d{1,2}):(\d{2})/);
+  if (!m) return null;
+  return new Date(parseInt(m[1]), parseInt(m[2]) - 1, parseInt(m[3]), parseInt(m[4]), parseInt(m[5]));
+}
+
+function formatTimeAmPm(date) {
+  let h = date.getHours();
+  const min = date.getMinutes();
+  const ampm = h >= 12 ? 'pm' : 'am';
+  h = h % 12 || 12;
+  return min > 0 ? `${h}:${String(min).padStart(2, '0')}${ampm}` : `${h}${ampm}`;
+}
+
+/**
+ * Fetch individual event page and parse JSON-LD schema for date/time/location.
+ */
+async function fetchEventPageSchema(eventUrl) {
+  if (!eventUrl) return null;
+  try {
+    const res = await fetch(eventUrl);
+    if (!res.ok) return null;
+    const html = await res.text();
+    const ldMatch = html.match(/<script[^>]*type\s*=\s*["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/i);
+    if (!ldMatch) return null;
+    const ld = JSON.parse(ldMatch[1]);
+    const event = Array.isArray(ld) ? ld.find((o) => o['@type'] === 'Event') : (ld['@type'] === 'Event' ? ld : null);
+    if (!event) return null;
+
+    const result = {};
+    if (event.startDate) {
+      const sd = parseSchemaDate(event.startDate);
+      if (sd) result.start_time = sd.toISOString();
+    }
+    if (event.endDate) {
+      const ed = parseSchemaDate(event.endDate);
+      if (ed) result.end_time = ed.toISOString();
+    }
+    if (result.start_time) {
+      const s = new Date(result.start_time);
+      const startStr = formatTimeAmPm(s);
+      if (result.end_time) {
+        const e = new Date(result.end_time);
+        result.time_display = `${startStr} – ${formatTimeAmPm(e)}`;
+      } else {
+        result.time_display = startStr;
+      }
+    }
+    if (event.location) {
+      const loc = Array.isArray(event.location) ? event.location[0] : event.location;
+      if (loc?.name) result.location = loc.name;
+    }
+    return result;
+  } catch {
+    return null;
+  }
+}
+
 function mapWpEvent(ev) {
   const title = ev.title?.rendered || '';
   const excerpt = ev.excerpt?.rendered || '';
@@ -166,13 +234,47 @@ function mapWpEvent(ev) {
     excerpt,
     link: ev.link || '',
     image: ev.featured_image_url || ev._embedded?.['wp:featuredmedia']?.[0]?.source_url || null,
-    categories: categorizeEvent(title, excerpt + ' ' + content),
+    categories: categorizeEvent(title, excerpt + ' ' + content, classList),
     location,
     start_time: parsed?.start_time || null,
     end_time: parsed?.end_time || null,
     time_display: parsed?.time_display || '',
     cost: '',
+    _needsSchemaFetch: !parsed && !!ev.link,
+    _link: ev.link || '',
   };
+}
+
+/**
+ * Enrich events that have no content by fetching individual event pages.
+ * Runs schema fetches in parallel (max 5 concurrent).
+ */
+async function enrichEventsWithSchema(events) {
+  const needsFetch = events.filter((e) => e._needsSchemaFetch);
+  if (needsFetch.length === 0) return events;
+
+  const results = await Promise.all(
+    needsFetch.map((e) => fetchEventPageSchema(e._link))
+  );
+
+  const schemaMap = new Map();
+  needsFetch.forEach((e, i) => {
+    if (results[i]) schemaMap.set(e.id, results[i]);
+  });
+
+  return events.map((e) => {
+    const schema = schemaMap.get(e.id);
+    if (schema) {
+      e.start_time = schema.start_time || e.start_time;
+      e.end_time = schema.end_time || e.end_time;
+      e.time_display = schema.time_display || e.time_display;
+      e.date = schema.start_time || e.date;
+      if (!e.location && schema.location) e.location = schema.location;
+    }
+    delete e._needsSchemaFetch;
+    delete e._link;
+    return e;
+  });
 }
 
 // GET /api/flinders/events
@@ -183,7 +285,8 @@ router.get('/flinders/events', async (req, res) => {
     );
     if (!response.ok) return res.json([]);
     const data = await response.json();
-    const events = (Array.isArray(data) ? data : []).map(mapWpEvent);
+    let events = (Array.isArray(data) ? data : []).map(mapWpEvent);
+    events = await enrichEventsWithSchema(events);
     res.json(events);
   } catch (err) {
     console.error('Flinders events proxy error:', err.message);
@@ -239,6 +342,7 @@ router.get('/flinders/recommended-events', async (req, res) => {
         if (response.ok) {
           const data = await response.json();
           events = (Array.isArray(data) ? data : []).map(mapWpEvent);
+          events = await enrichEventsWithSchema(events);
           crawlFlindersEvents().catch(() => {});
         }
       } catch {

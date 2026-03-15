@@ -17,11 +17,15 @@ function stripHtmlTags(html) {
   return (html || '').replace(/<[^>]*>/g, '').replace(/&#\d+;/g, ' ').replace(/&\w+;/g, ' ').trim();
 }
 
-function categorizeEvent(title, excerpt) {
+function categorizeEvent(title, excerpt, classList) {
   const text = `${stripHtmlTags(title)} ${stripHtmlTags(excerpt)}`;
+  const classText = Array.isArray(classList)
+    ? classList.map((c) => c.replace(/[-_]/g, ' ')).join(' ')
+    : '';
+  const fullText = `${text} ${classText}`;
   const matched = [];
   for (const [category, patterns] of Object.entries(categoryPatterns)) {
-    if (patterns.some((re) => re.test(text))) {
+    if (patterns.some((re) => re.test(fullText))) {
       matched.push(category);
     }
   }
@@ -121,6 +125,81 @@ function parseLocationFromContent(contentHtml) {
   return '';
 }
 
+/**
+ * Fetch individual event page and parse JSON-LD schema for date/time/location.
+ * Used as fallback when content.rendered is empty.
+ */
+async function fetchEventPageSchema(eventUrl) {
+  if (!eventUrl) return null;
+  try {
+    const res = await fetch(eventUrl);
+    if (!res.ok) return null;
+    const html = await res.text();
+    // Extract JSON-LD script
+    const ldMatch = html.match(/<script[^>]*type\s*=\s*["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/i);
+    if (!ldMatch) return null;
+    const ld = JSON.parse(ldMatch[1]);
+    // May be an array or single object
+    const event = Array.isArray(ld) ? ld.find((o) => o['@type'] === 'Event') : (ld['@type'] === 'Event' ? ld : null);
+    if (!event) return null;
+
+    const result = {};
+
+    // Parse startDate like "2026-4-1T11:00+10.5:00"
+    if (event.startDate) {
+      const sd = parseSchemaDate(event.startDate);
+      if (sd) result.start_time = sd.toISOString();
+    }
+    if (event.endDate) {
+      const ed = parseSchemaDate(event.endDate);
+      if (ed) result.end_time = ed.toISOString();
+    }
+
+    // Build time_display from start/end
+    if (result.start_time) {
+      const s = new Date(result.start_time);
+      const startStr = formatTimeAmPm(s);
+      if (result.end_time) {
+        const e = new Date(result.end_time);
+        result.time_display = `${startStr} – ${formatTimeAmPm(e)}`;
+      } else {
+        result.time_display = startStr;
+      }
+    }
+
+    // Parse location
+    if (event.location) {
+      const loc = Array.isArray(event.location) ? event.location[0] : event.location;
+      if (loc?.name) result.location = loc.name;
+    }
+
+    return result;
+  } catch (err) {
+    console.log('[event-crawler] Schema fetch failed for', eventUrl, err.message);
+    return null;
+  }
+}
+
+/**
+ * Parse schema.org date strings like "2026-4-1T11:00+10.5:00"
+ */
+function parseSchemaDate(dateStr) {
+  if (!dateStr) return null;
+  // Remove timezone offset for simpler parsing — treat as local
+  const cleaned = dateStr.replace(/[+-]\d+\.?\d*:\d+$/, '');
+  const m = cleaned.match(/(\d{4})-(\d{1,2})-(\d{1,2})T(\d{1,2}):(\d{2})/);
+  if (!m) return null;
+  return new Date(parseInt(m[1]), parseInt(m[2]) - 1, parseInt(m[3]), parseInt(m[4]), parseInt(m[5]));
+}
+
+function formatTimeAmPm(date) {
+  let h = date.getHours();
+  const min = date.getMinutes();
+  const ampm = h >= 12 ? 'pm' : 'am';
+  h = h % 12 || 12;
+  return min > 0 ? `${h}:${String(min).padStart(2, '0')}${ampm}` : `${h}${ampm}`;
+}
+
 async function crawlFlindersEvents() {
   console.log('[event-crawler] Starting daily event crawl...');
 
@@ -143,9 +222,24 @@ async function crawlFlindersEvents() {
       const excerpt = ev.excerpt?.rendered || '';
       const content = ev.content?.rendered || '';
       const classList = ev.class_list || [];
-      const categories = categorizeEvent(title, excerpt + ' ' + content);
-      const parsed = parseEventDateFromContent(content);
-      const location = parseLocationFromContent(content) || parseLocationFromClassList(classList);
+      const categories = categorizeEvent(title, excerpt + ' ' + content, classList);
+      let parsed = parseEventDateFromContent(content);
+      let location = parseLocationFromContent(content) || parseLocationFromClassList(classList);
+
+      // Fallback: fetch individual event page for schema.org data
+      if (!parsed && ev.link) {
+        const schema = await fetchEventPageSchema(ev.link);
+        if (schema) {
+          parsed = {
+            start_time: schema.start_time || null,
+            end_time: schema.end_time || null,
+            time_display: schema.time_display || '',
+          };
+          if (!location && schema.location) {
+            location = schema.location;
+          }
+        }
+      }
 
       const record = {
         wp_id: ev.id,
