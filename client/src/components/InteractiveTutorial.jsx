@@ -6,6 +6,7 @@ import { createEvent } from '@/services/events';
 
 const TUTORIAL_KEY = 'tutorial-completed';
 const TUTORIAL_ROOM_NAME = '🎓 Tutorial Room';
+const TUTORIAL_ROOM_ID_KEY = 'tutorial-room-id';
 
 export default function InteractiveTutorial() {
   const navigate = useNavigate();
@@ -21,6 +22,24 @@ export default function InteractiveTutorial() {
   const cancelRef = useRef(false);
   const createdRoomIdRef = useRef(null);
   const totalSteps = 12;
+
+  // ── Clean up any leftover tutorial room from a previous crashed session ──
+  useEffect(() => {
+    const leftover = localStorage.getItem(TUTORIAL_ROOM_ID_KEY);
+    if (leftover) {
+      localStorage.removeItem(TUTORIAL_ROOM_ID_KEY);
+      getRoom(leftover)
+        .then((room) => {
+          const name = room?.name || room?.room?.name || '';
+          if (name === TUTORIAL_ROOM_NAME) {
+            deleteRoom(leftover)
+              .then(() => window.dispatchEvent(new CustomEvent('rooms-updated')))
+              .catch(() => {});
+          }
+        })
+        .catch(() => {});
+    }
+  }, []);
 
   useEffect(() => {
     if (localStorage.getItem(TUTORIAL_KEY)) return;
@@ -145,6 +164,7 @@ export default function InteractiveTutorial() {
       if (name === TUTORIAL_ROOM_NAME) await deleteRoom(roomId);
     } catch { /* gone */ }
     createdRoomIdRef.current = null;
+    localStorage.removeItem(TUTORIAL_ROOM_ID_KEY);
     window.dispatchEvent(new CustomEvent('rooms-updated'));
   }, []);
 
@@ -213,6 +233,7 @@ export default function InteractiveTutorial() {
 
     if (!tutorialRoomId || bail()) { await end(); return; }
     createdRoomIdRef.current = tutorialRoomId;
+    localStorage.setItem(TUTORIAL_ROOM_ID_KEY, tutorialRoomId);
 
     // Navigate directly to room (this unmounts dialog automatically)
     setShowOverlay(true); setCursorVisible(false);

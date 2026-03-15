@@ -4,6 +4,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { ToastProvider } from '@/components/ui/toast';
 import ErrorBoundary from '@/components/ErrorBoundary';
+import InteractiveTutorial from '@/components/InteractiveTutorial';
 import { Loader2 } from 'lucide-react';
 
 // Retry dynamic imports with page reload on chunk mismatch (after new deployments)
@@ -104,6 +105,7 @@ export default function App() {
       <ToastProvider>
         <TooltipProvider>
           <BrowserRouter>
+            <InteractiveTutorial />
             <Suspense fallback={<PageLoader />}>
               <Routes>
                 <Route path="/" element={<Navigate to="/dashboard" replace />} />

@@ -13,7 +13,7 @@ import {
 import { useAuth } from '@/hooks/useAuth';
 import { socket } from '@/lib/socket';
 import ProfileDialog from '@/components/ProfileDialog';
-import InteractiveTutorial from '@/components/InteractiveTutorial';
+
 import { getRooms } from '@/services/rooms';
 import { applyRoomOrder, loadRoomOrder } from '@/lib/room-order';
 
@@ -494,7 +494,6 @@ export default function MainLayout({ children }) {
         </main>
       </div>
 
-      <InteractiveTutorial />
       <ProfileDialog open={profileOpen} onOpenChange={setProfileOpen} />
 
       {/* Logout confirmation */}
