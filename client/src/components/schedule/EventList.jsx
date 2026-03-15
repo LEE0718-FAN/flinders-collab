@@ -375,15 +375,15 @@ export default function EventList({ events = [], roomId, onEventsChange }) {
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
               <div className="space-y-1.5">
                 <label className="text-sm font-semibold text-slate-700">Date</label>
-                <Input className="rounded-xl border-slate-200" type="date" value={editForm.start_date || ''} onChange={(e) => setEditForm({ ...editForm, start_date: e.target.value })} disabled={editLoading} />
+                <Input className="rounded-xl border-slate-200" type="date" lang="en" value={editForm.start_date || ''} onChange={(e) => setEditForm({ ...editForm, start_date: e.target.value })} disabled={editLoading} />
               </div>
               <div className="space-y-1.5">
                 <label className="text-sm font-semibold text-slate-700">Start</label>
-                <Input className="rounded-xl border-slate-200" type="time" value={editForm.start_time || ''} onChange={(e) => setEditForm({ ...editForm, start_time: e.target.value })} disabled={editLoading} />
+                <Input className="rounded-xl border-slate-200" type="time" lang="en" value={editForm.start_time || ''} onChange={(e) => setEditForm({ ...editForm, start_time: e.target.value })} disabled={editLoading} />
               </div>
               <div className="space-y-1.5">
                 <label className="text-sm font-semibold text-slate-700">End</label>
-                <Input className="rounded-xl border-slate-200" type="time" value={editForm.end_time || ''} onChange={(e) => setEditForm({ ...editForm, end_time: e.target.value })} disabled={editLoading} />
+                <Input className="rounded-xl border-slate-200" type="time" lang="en" value={editForm.end_time || ''} onChange={(e) => setEditForm({ ...editForm, end_time: e.target.value })} disabled={editLoading} />
               </div>
             </div>
             <div className="space-y-1.5">

@@ -107,11 +107,13 @@ export default function TaskForm({ roomId, members = [], onCreated }) {
             <div className="grid grid-cols-2 gap-2">
               <Input
                 type="date"
+                lang="en"
                 value={dueDate}
                 onChange={(e) => setDueDate(e.target.value)}
               />
               <Input
                 type="time"
+                lang="en"
                 value={dueTime}
                 onChange={(e) => setDueTime(e.target.value)}
               />

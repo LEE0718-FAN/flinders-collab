@@ -117,6 +117,7 @@ function TaskCreateForm({ roomId, members = [], currentUserId, onCreated, onErro
           </label>
           <Input
             type="date"
+            lang="en"
             value={dueDate}
             onChange={(e) => setDueDate(e.target.value)}
             disabled={submitting}
@@ -733,6 +734,7 @@ export default function TaskList({ tasks = [], members = [], roomId, currentUser
                 <label className="text-sm font-medium">Due Date</label>
                 <Input
                   type="date"
+                  lang="en"
                   value={editForm.due_date || ''}
                   onChange={(e) => setEditForm({ ...editForm, due_date: e.target.value })}
                   disabled={editLoading}

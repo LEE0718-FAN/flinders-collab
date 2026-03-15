@@ -152,9 +152,9 @@ export default function EventForm({ roomId, onCreateStart, onCreated, onCreateEr
           <div className="space-y-2">
             <label className="text-sm font-semibold text-slate-700">Time</label>
             <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3">
-              <Input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} className="rounded-xl border-slate-200" />
+              <Input type="time" lang="en" value={startTime} onChange={(e) => setStartTime(e.target.value)} className="rounded-xl border-slate-200" />
               <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">to</span>
-              <Input type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)} className="rounded-xl border-slate-200" />
+              <Input type="time" lang="en" value={endTime} onChange={(e) => setEndTime(e.target.value)} className="rounded-xl border-slate-200" />
             </div>
           </div>
 
