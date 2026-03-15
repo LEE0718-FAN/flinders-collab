@@ -55,8 +55,10 @@ export default function RoomPage() {
   const [activities, setActivities] = useState([]);
   const [quickLinks, setQuickLinks] = useState([]);
   const [error, setError] = useState('');
+  const [calendarStickyTop, setCalendarStickyTop] = useState(24);
   const highlightRef = useRef(null);
   const highlightTimerRef = useRef(null);
+  const calendarStickyRef = useRef(null);
 
   const clearHighlight = useCallback(() => {
     if (highlightRef.current) {
@@ -143,6 +145,30 @@ export default function RoomPage() {
       // ignore
     }
   }, [roomId]);
+
+  useEffect(() => {
+    const node = calendarStickyRef.current;
+    if (!node || typeof window === 'undefined') return undefined;
+
+    const updateStickyTop = () => {
+      const nextTop = Math.max(24, Math.round((window.innerHeight - node.offsetHeight) / 2));
+      setCalendarStickyTop(nextTop);
+    };
+
+    updateStickyTop();
+    window.addEventListener('resize', updateStickyTop);
+
+    let observer;
+    if (typeof ResizeObserver !== 'undefined') {
+      observer = new ResizeObserver(updateStickyTop);
+      observer.observe(node);
+    }
+
+    return () => {
+      window.removeEventListener('resize', updateStickyTop);
+      observer?.disconnect();
+    };
+  }, []);
 
   const handleCopyInviteCode = async () => {
     if (room?.invite_code) {
@@ -310,7 +336,11 @@ export default function RoomPage() {
             <div className="flex flex-col md:flex-row gap-4" style={{ overflow: 'visible' }}>
               {/* Calendar sidebar — outer div stretches to event list height, inner div sticks */}
               <div className="w-full md:w-[280px] shrink-0">
-                <div className="md:sticky md:top-0 z-10">
+                <div
+                  ref={calendarStickyRef}
+                  className="md:sticky z-10 transition-[top] duration-500 ease-out"
+                  style={{ top: `${calendarStickyTop}px` }}
+                >
                   <ScheduleCalendar
                     roomId={roomId}
                     events={events}
