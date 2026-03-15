@@ -109,6 +109,10 @@ server.listen(PORT, () => {
   const { startMaintenance } = require('./utils/maintenance');
   startMaintenance(io);
 
+  // Start daily Flinders event crawler (runs immediately, then every 24h)
+  const { startEventCrawler } = require('./utils/eventCrawler');
+  startEventCrawler();
+
   // Keep-alive ping to prevent Render free tier from sleeping
   if (config.nodeEnv === 'production') {
     const PING_URL = process.env.RENDER_EXTERNAL_URL || 'https://flinders-collab.onrender.com';

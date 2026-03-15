@@ -267,6 +267,21 @@ DO $$ BEGIN
     ALTER TABLE room_announcements ADD CONSTRAINT room_announcements_author_users_fkey FOREIGN KEY (author_id) REFERENCES users(id) ON DELETE CASCADE;
   END IF;
 END $$;
+
+-- Cached Flinders events (auto-crawled daily)
+CREATE TABLE IF NOT EXISTS flinders_events_cache (
+  id SERIAL PRIMARY KEY,
+  wp_id INTEGER UNIQUE NOT NULL,
+  title TEXT NOT NULL,
+  excerpt TEXT,
+  link TEXT,
+  image TEXT,
+  event_date TIMESTAMPTZ,
+  categories TEXT[] DEFAULT '{}',
+  raw_json JSONB,
+  crawled_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_flinders_events_date ON flinders_events_cache(event_date);
 `;
 
 async function runMigration() {
