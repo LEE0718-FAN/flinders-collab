@@ -22,6 +22,9 @@ import LocationMap from '@/components/location/LocationMap';
 
 const categoryConfig = {
   meeting:      { label: 'Meeting',       icon: '👥', color: 'bg-blue-500',    badgeBg: 'bg-blue-50 text-blue-700 border-blue-200/60', borderColor: 'border-l-blue-500' },
+  submission:   { label: 'Submission',    icon: '📮', color: 'bg-pink-500',    badgeBg: 'bg-pink-50 text-pink-700 border-pink-200/60', borderColor: 'border-l-pink-500' },
+  quiz:         { label: 'Quiz',          icon: '✏️', color: 'bg-cyan-500',    badgeBg: 'bg-cyan-50 text-cyan-700 border-cyan-200/60', borderColor: 'border-l-cyan-500' },
+  exam:         { label: 'Exam',          icon: '📝', color: 'bg-rose-500',    badgeBg: 'bg-rose-50 text-rose-700 border-rose-200/60', borderColor: 'border-l-rose-500' },
   presentation: { label: 'Presentation',  icon: '📊', color: 'bg-purple-500',  badgeBg: 'bg-purple-50 text-purple-700 border-purple-200/60', borderColor: 'border-l-purple-500' },
   deadline:     { label: 'Deadline',       icon: '⏰', color: 'bg-red-500',     badgeBg: 'bg-red-50 text-red-700 border-red-200/60', borderColor: 'border-l-red-500' },
   study:        { label: 'Study Session',  icon: '📚', color: 'bg-emerald-500', badgeBg: 'bg-emerald-50 text-emerald-700 border-emerald-200/60', borderColor: 'border-l-emerald-500' },

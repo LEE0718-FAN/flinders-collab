@@ -7,6 +7,9 @@ import { cn } from '@/lib/utils';
 
 const categoryColors = {
   meeting: '#3b82f6',
+  submission: '#ec4899',
+  quiz: '#06b6d4',
+  exam: '#f43f5e',
   presentation: '#a855f7',
   deadline: '#ef4444',
   study: '#10b981',

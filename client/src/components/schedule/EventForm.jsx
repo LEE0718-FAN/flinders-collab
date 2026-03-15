@@ -9,6 +9,9 @@ import { format } from 'date-fns';
 
 const CATEGORIES = [
   { value: 'meeting', label: 'Meeting', icon: '👥' },
+  { value: 'submission', label: 'Submission', icon: '📮' },
+  { value: 'quiz', label: 'Quiz', icon: '✏️' },
+  { value: 'exam', label: 'Exam', icon: '📝' },
   { value: 'presentation', label: 'Presentation', icon: '📊' },
   { value: 'deadline', label: 'Deadline', icon: '⏰' },
   { value: 'study', label: 'Study Session', icon: '📚' },
