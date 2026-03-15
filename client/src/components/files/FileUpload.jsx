@@ -17,7 +17,7 @@ const ALLOWED_TYPES = [
   'application/x-zip-compressed',
   'text/plain',
 ];
-const MAX_SIZE = 10 * 1024 * 1024;
+const MAX_SIZE = 50 * 1024 * 1024;
 
 const CATEGORIES = [
   { value: 'lecture', label: 'Lecture Materials', icon: '📖' },

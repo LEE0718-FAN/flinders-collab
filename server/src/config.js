@@ -18,7 +18,7 @@ const config = {
   jwtSecret: process.env.JWT_SECRET,
   clientUrl: process.env.CLIENT_URL || 'http://localhost:5173',
   upload: {
-    maxFileSize: 10 * 1024 * 1024, // 10MB
+    maxFileSize: 50 * 1024 * 1024, // 50MB
     allowedTypes: [
       'application/pdf',
       'application/vnd.openxmlformats-officedocument.presentationml.presentation',
