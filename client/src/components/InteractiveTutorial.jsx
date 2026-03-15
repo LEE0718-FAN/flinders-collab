@@ -1,13 +1,14 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ChevronRight, X, Sparkles } from 'lucide-react';
+import { getRooms } from '@/services/rooms';
 
 const TUTORIAL_KEY = 'tutorial-completed';
 
 /**
  * Purely demonstrative tutorial — navigates through pages and shows tooltips.
  * NEVER creates, modifies, or deletes any real data.
- * Only shows for first-time users (no rooms yet).
+ * Only shows for brand-new users who have zero rooms.
  */
 export default function InteractiveTutorial() {
   const navigate = useNavigate();
@@ -26,11 +27,20 @@ export default function InteractiveTutorial() {
   const nextRef = useRef(null);
   const totalSteps = 8;
 
-  // ── Show prompt for first-time users ──
+  // ── Only show for brand-new users (no rooms, never dismissed) ──
   useEffect(() => {
     if (localStorage.getItem(TUTORIAL_KEY)) return;
-    const t = setTimeout(() => setShowPrompt(true), 1200);
-    return () => clearTimeout(t);
+    let cancelled = false;
+    getRooms()
+      .then((rooms) => {
+        if (cancelled) return;
+        const list = Array.isArray(rooms) ? rooms : rooms?.rooms || [];
+        if (list.length === 0) {
+          setTimeout(() => { if (!cancelled) setShowPrompt(true); }, 1200);
+        }
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
   }, []);
 
   // ── Allow external trigger ──
