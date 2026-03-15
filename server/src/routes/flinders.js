@@ -19,7 +19,7 @@ const categoryPatterns = {
 };
 
 function stripHtmlTags(html) {
-  return (html || '').replace(/<[^>]*>/g, '').replace(/&#\d+;/g, ' ').replace(/&\w+;/g, ' ');
+  return (html || '').replace(/<[^>]*>/g, '').replace(/&#\d+;/g, ' ').replace(/&\w+;/g, ' ').trim();
 }
 
 function categorizeEvent(title, excerpt) {
@@ -34,6 +34,70 @@ function categorizeEvent(title, excerpt) {
   return matched;
 }
 
+/**
+ * Extract event metadata (time, location, cost) from WordPress event data.
+ * EventON plugin stores data in meta fields; field names vary by installation.
+ */
+function extractEventMeta(ev) {
+  const meta = ev.meta || {};
+
+  // --- Event start/end time ---
+  const srow = meta.evcal_srow || meta._evcal_srow || meta.start_date || null;
+  const erow = meta.evcal_erow || meta._evcal_erow || meta.end_date || null;
+
+  let start_time = null;
+  let end_time = null;
+
+  if (srow) {
+    const ts = Number(srow);
+    start_time = ts > 1e9 ? new Date(ts * 1000).toISOString() : String(srow);
+  }
+  if (erow) {
+    const ts = Number(erow);
+    end_time = ts > 1e9 ? new Date(ts * 1000).toISOString() : String(erow);
+  }
+
+  // --- Location ---
+  const location = stripHtmlTags(
+    String(meta.evcal_location || meta._evcal_location || meta.location || meta.venue || ev.location || ev.venue || '')
+  );
+
+  // --- Cost / ticket ---
+  let cost = String(meta.evcal_cost || meta._evcal_cost || meta.cost || meta.ticket_cost || '').trim();
+  if (!cost) {
+    // Try to detect from excerpt
+    const text = stripHtmlTags((ev.excerpt?.rendered || '') + ' ' + (ev.content?.rendered || ''));
+    if (/\bfree\b/i.test(text)) cost = 'Free';
+    else if (/\$\d/.test(text)) {
+      const m = text.match(/\$[\d,.]+/);
+      if (m) cost = m[0];
+    } else if (/\bregist(?:er|ration)\b/i.test(text) && !/\bpaid\b/i.test(text)) {
+      cost = 'Free registration';
+    }
+  }
+
+  return { start_time, end_time, location, cost };
+}
+
+function mapWpEvent(ev) {
+  const title = ev.title?.rendered || '';
+  const excerpt = ev.excerpt?.rendered || '';
+  const meta = extractEventMeta(ev);
+  return {
+    id: ev.id,
+    title,
+    date: meta.start_time || ev.date || '',
+    excerpt,
+    link: ev.link || '',
+    image: ev.featured_image_url || ev._embedded?.['wp:featuredmedia']?.[0]?.source_url || null,
+    categories: categorizeEvent(title, excerpt),
+    location: meta.location,
+    start_time: meta.start_time,
+    end_time: meta.end_time,
+    cost: meta.cost,
+  };
+}
+
 // GET /api/flinders/events — proxy Flinders University events
 router.get('/flinders/events', async (req, res) => {
   try {
@@ -44,16 +108,7 @@ router.get('/flinders/events', async (req, res) => {
     if (!response.ok) return res.json([]);
 
     const data = await response.json();
-
-    const events = (Array.isArray(data) ? data : []).map((ev) => ({
-      id: ev.id,
-      title: ev.title?.rendered || '',
-      date: ev.date || '',
-      excerpt: ev.excerpt?.rendered || '',
-      link: ev.link || '',
-      image: ev.featured_image_url || ev._embedded?.['wp:featuredmedia']?.[0]?.source_url || null,
-    }));
-
+    const events = (Array.isArray(data) ? data : []).map(mapWpEvent);
     res.json(events);
   } catch (err) {
     console.error('Flinders events proxy error:', err.message);
@@ -69,9 +124,6 @@ router.get('/flinders/recommended-events', async (req, res) => {
       ? req.query.interests.split(',').map((s) => s.trim()).filter(Boolean)
       : [];
 
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
     let events = [];
 
     // Try DB cache first
@@ -79,18 +131,21 @@ router.get('/flinders/recommended-events', async (req, res) => {
       const { data: cached } = await supabaseAdmin
         .from('flinders_events_cache')
         .select('*')
-        .gte('event_date', today.toISOString())
         .order('event_date', { ascending: true });
 
       if (cached && cached.length > 0) {
         events = cached.map((row) => ({
           id: row.wp_id,
           title: row.title,
-          date: row.event_date || '',
+          date: row.start_time || row.event_date || '',
           excerpt: row.excerpt || '',
           link: row.link || '',
           image: row.image || null,
           categories: row.categories || categorizeEvent(row.title, row.excerpt),
+          location: row.location || '',
+          start_time: row.start_time || null,
+          end_time: row.end_time || null,
+          cost: row.cost || '',
         }));
       }
     } catch {
@@ -107,23 +162,17 @@ router.get('/flinders/recommended-events', async (req, res) => {
         if (response.ok) {
           const data = await response.json();
 
-          events = (Array.isArray(data) ? data : []).map((ev) => {
-            const title = ev.title?.rendered || '';
-            const excerpt = ev.excerpt?.rendered || '';
-            return {
-              id: ev.id,
-              title,
-              date: ev.date || '',
-              excerpt,
-              link: ev.link || '',
-              image: ev.featured_image_url || ev._embedded?.['wp:featuredmedia']?.[0]?.source_url || null,
-              categories: categorizeEvent(title, excerpt),
-            };
-          });
+          // Log first event structure for debugging meta fields
+          if (Array.isArray(data) && data.length > 0) {
+            const sample = data[0];
+            console.log('[flinders] Sample event meta keys:', Object.keys(sample.meta || {}));
+            console.log('[flinders] Sample event top-level keys:', Object.keys(sample));
+          }
 
-          // Filter past events
-          events = events.filter((e) => !e.date || new Date(e.date) >= today);
-          events.sort((a, b) => new Date(a.date) - new Date(b.date));
+          events = (Array.isArray(data) ? data : []).map(mapWpEvent);
+
+          // Sort by date ascending (soonest first)
+          events.sort((a, b) => new Date(a.date || 0) - new Date(b.date || 0));
 
           // Trigger background crawl to populate cache
           crawlFlindersEvents().catch(() => {});

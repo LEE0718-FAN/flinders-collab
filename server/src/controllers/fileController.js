@@ -107,9 +107,7 @@ async function buildSignedDownloadUrl(storagePath) {
 
   const { data, error } = await supabaseAdmin.storage
     .from(bucket)
-    .createSignedUrl(normalizedPath, SIGNED_URL_TTL_SECONDS, {
-      download: true,
-    });
+    .createSignedUrl(normalizedPath, SIGNED_URL_TTL_SECONDS);
 
   if (error) {
     throw error;

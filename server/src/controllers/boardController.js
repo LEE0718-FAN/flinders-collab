@@ -5,14 +5,20 @@ const { supabaseAdmin } = require('../services/supabase');
 async function getPosts(req, res, next) {
   try {
     const userId = req.user.id;
-    const { category } = req.query;
+    const { category, limit = '30', before } = req.query;
+    const pageLimit = Math.min(parseInt(limit, 10) || 30, 50);
+
     let query = supabaseAdmin
       .from('board_posts')
       .select('*, users!board_posts_author_users_fkey(full_name, avatar_url, major, year_level, semester)')
-      .order('created_at', { ascending: false });
+      .order('created_at', { ascending: false })
+      .limit(pageLimit);
 
     if (category && category !== 'all') {
       query = query.eq('category', category);
+    }
+    if (before) {
+      query = query.lt('created_at', before);
     }
 
     const { data, error } = await query;

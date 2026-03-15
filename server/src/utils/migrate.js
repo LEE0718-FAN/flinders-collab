@@ -282,6 +282,12 @@ CREATE TABLE IF NOT EXISTS flinders_events_cache (
   crawled_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 CREATE INDEX IF NOT EXISTS idx_flinders_events_date ON flinders_events_cache(event_date);
+
+-- Add location, time, cost columns to events cache
+ALTER TABLE flinders_events_cache ADD COLUMN IF NOT EXISTS location TEXT;
+ALTER TABLE flinders_events_cache ADD COLUMN IF NOT EXISTS start_time TIMESTAMPTZ;
+ALTER TABLE flinders_events_cache ADD COLUMN IF NOT EXISTS end_time TIMESTAMPTZ;
+ALTER TABLE flinders_events_cache ADD COLUMN IF NOT EXISTS cost TEXT;
 `;
 
 async function runMigration() {

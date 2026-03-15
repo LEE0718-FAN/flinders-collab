@@ -15,7 +15,7 @@ const categoryPatterns = {
 };
 
 function stripHtmlTags(html) {
-  return (html || '').replace(/<[^>]*>/g, '').replace(/&#\d+;/g, ' ').replace(/&\w+;/g, ' ');
+  return (html || '').replace(/<[^>]*>/g, '').replace(/&#\d+;/g, ' ').replace(/&\w+;/g, ' ').trim();
 }
 
 function categorizeEvent(title, excerpt) {
@@ -28,6 +28,46 @@ function categorizeEvent(title, excerpt) {
   }
   if (matched.length === 0) matched.push('General');
   return matched;
+}
+
+/**
+ * Extract event metadata (time, location, cost) from WordPress event data.
+ */
+function extractEventMeta(ev) {
+  const meta = ev.meta || {};
+
+  const srow = meta.evcal_srow || meta._evcal_srow || meta.start_date || null;
+  const erow = meta.evcal_erow || meta._evcal_erow || meta.end_date || null;
+
+  let start_time = null;
+  let end_time = null;
+
+  if (srow) {
+    const ts = Number(srow);
+    start_time = ts > 1e9 ? new Date(ts * 1000).toISOString() : String(srow);
+  }
+  if (erow) {
+    const ts = Number(erow);
+    end_time = ts > 1e9 ? new Date(ts * 1000).toISOString() : String(erow);
+  }
+
+  const location = stripHtmlTags(
+    String(meta.evcal_location || meta._evcal_location || meta.location || meta.venue || ev.location || ev.venue || '')
+  );
+
+  let cost = String(meta.evcal_cost || meta._evcal_cost || meta.cost || meta.ticket_cost || '').trim();
+  if (!cost) {
+    const text = stripHtmlTags((ev.excerpt?.rendered || '') + ' ' + (ev.content?.rendered || ''));
+    if (/\bfree\b/i.test(text)) cost = 'Free';
+    else if (/\$\d/.test(text)) {
+      const m = text.match(/\$[\d,.]+/);
+      if (m) cost = m[0];
+    } else if (/\bregist(?:er|ration)\b/i.test(text) && !/\bpaid\b/i.test(text)) {
+      cost = 'Free registration';
+    }
+  }
+
+  return { start_time, end_time, location, cost };
 }
 
 /**
@@ -50,11 +90,17 @@ async function crawlFlindersEvents() {
       return;
     }
 
+    // Log sample meta structure for debugging
+    if (data.length > 0) {
+      console.log('[event-crawler] Sample event meta keys:', Object.keys(data[0].meta || {}));
+    }
+
     let upserted = 0;
     for (const ev of data) {
       const title = ev.title?.rendered || '';
       const excerpt = ev.excerpt?.rendered || '';
       const categories = categorizeEvent(title, excerpt);
+      const meta = extractEventMeta(ev);
 
       const record = {
         wp_id: ev.id,
@@ -62,8 +108,12 @@ async function crawlFlindersEvents() {
         excerpt,
         link: ev.link || '',
         image: ev.featured_image_url || ev._embedded?.['wp:featuredmedia']?.[0]?.source_url || null,
-        event_date: ev.date || null,
+        event_date: meta.start_time || ev.date || null,
         categories,
+        location: meta.location || null,
+        start_time: meta.start_time || null,
+        end_time: meta.end_time || null,
+        cost: meta.cost || null,
         raw_json: ev,
         crawled_at: new Date().toISOString(),
       };
