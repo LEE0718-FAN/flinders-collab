@@ -19,6 +19,8 @@ const messageRoutes = require('./routes/messages');
 const taskRoutes = require('./routes/tasks');
 const reportRoutes = require('./routes/reports');
 const boardRoutes = require('./routes/board');
+const flindersRoutes = require('./routes/flinders');
+const announcementRoutes = require('./routes/announcements');
 const adminRoutes = require('./routes/admin');
 
 // Create Express app and HTTP server
@@ -71,6 +73,8 @@ app.use('/api', messageRoutes);
 app.use('/api', taskRoutes);
 app.use('/api', reportRoutes);
 app.use('/api', boardRoutes);
+app.use('/api', flindersRoutes);
+app.use('/api', announcementRoutes);
 app.use('/api/admin', adminRoutes);
 
 // Serve built client in production

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { LayoutDashboard, LogOut, Menu, Users, ChevronRight, Shield, User, CalendarClock, MessageSquare, Wrench } from 'lucide-react';
+import { LayoutDashboard, LogOut, Menu, Users, ChevronRight, Shield, User, CalendarClock, MessageSquare, Wrench, GraduationCap } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
@@ -87,7 +87,7 @@ function NavItem({ to, isActive, icon: Icon, label, palette }) {
   );
 }
 
-function SidebarContent({ rooms, location, isAdmin }) {
+function SidebarContent({ rooms, location, isAdmin, unreadCounts = {} }) {
   return (
     <nav className="flex flex-col gap-1" role="navigation" aria-label="Main navigation">
       <NavItem
@@ -108,6 +108,12 @@ function SidebarContent({ rooms, location, isAdmin }) {
         icon={MessageSquare}
         label="Free Board"
       />
+      <NavItem
+        to="/flinders-life"
+        isActive={location.pathname === '/flinders-life'}
+        icon={GraduationCap}
+        label="Flinders Life"
+      />
 
       {/* Room section divider */}
       <div className="mt-5 mb-1 flex items-center gap-2 px-3">
@@ -124,16 +130,25 @@ function SidebarContent({ rooms, location, isAdmin }) {
 
       {/* Room list */}
       <div className="flex flex-col gap-0.5">
-        {rooms.map((room) => (
-          <NavItem
-            key={room.id}
-            to={`/rooms/${room.id}`}
-            isActive={location.pathname === `/rooms/${room.id}`}
-            icon={Users}
-            label={room.name}
-            palette={getRoomPalette(room)}
-          />
-        ))}
+        {rooms.map((room) => {
+          const unread = unreadCounts[room.id] || 0;
+          return (
+            <div key={room.id} className="relative">
+              <NavItem
+                to={`/rooms/${room.id}`}
+                isActive={location.pathname === `/rooms/${room.id}`}
+                icon={Users}
+                label={room.name}
+                palette={getRoomPalette(room)}
+              />
+              {unread > 0 && (
+                <span className="absolute right-2 top-1/2 -translate-y-1/2 flex h-5 min-w-5 items-center justify-center rounded-full bg-amber-500 px-1.5 text-[10px] font-bold text-white shadow-sm">
+                  {unread}
+                </span>
+              )}
+            </div>
+          );
+        })}
       </div>
 
       {rooms.length === 0 && (
@@ -167,6 +182,7 @@ export default function MainLayout({ children }) {
   const [logoutOpen, setLogoutOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [maintenance, setMaintenance] = useState(null); // { type, message, minutesUntil }
+  const [unreadCounts, setUnreadCounts] = useState({});
 
   const refreshRooms = async () => {
     const data = await getRooms();
@@ -230,6 +246,31 @@ export default function MainLayout({ children }) {
       document.removeEventListener('visibilitychange', handleWindowFocus);
     };
   }, [user?.id]);
+
+  // Fetch unread announcement counts for sidebar badges
+  useEffect(() => {
+    const fetchUnreadCounts = async () => {
+      try {
+        const { getUnreadCounts } = await import('@/services/announcements');
+        const counts = await getUnreadCounts();
+        setUnreadCounts(counts || {});
+      } catch { /* silent */ }
+    };
+    fetchUnreadCounts();
+
+    const handleAnnouncementsRead = (e) => {
+      const { roomId } = e.detail || {};
+      if (roomId) {
+        setUnreadCounts(prev => {
+          const next = { ...prev };
+          delete next[roomId];
+          return next;
+        });
+      }
+    };
+    window.addEventListener('announcements-read', handleAnnouncementsRead);
+    return () => window.removeEventListener('announcements-read', handleAnnouncementsRead);
+  }, []);
 
   // Listen for maintenance notifications via Socket.IO
   useEffect(() => {
@@ -297,7 +338,7 @@ export default function MainLayout({ children }) {
 
         {/* Sidebar navigation */}
         <div className="flex-1 overflow-y-auto px-3 py-4 custom-scrollbar">
-          <SidebarContent rooms={rooms} location={location} isAdmin={user?.is_admin} />
+          <SidebarContent rooms={rooms} location={location} isAdmin={user?.is_admin} unreadCounts={unreadCounts} />
         </div>
 
         {/* Sidebar footer / user info */}
@@ -344,7 +385,7 @@ export default function MainLayout({ children }) {
                 </SheetHeader>
                 <div className="h-px bg-gradient-to-r from-white/10 via-white/5 to-transparent mx-3" />
                 <div className="px-3 py-4">
-                  <SidebarContent rooms={rooms} location={location} isAdmin={user?.is_admin} />
+                  <SidebarContent rooms={rooms} location={location} isAdmin={user?.is_admin} unreadCounts={unreadCounts} />
                 </div>
               </SheetContent>
             </Sheet>

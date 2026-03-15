@@ -20,12 +20,13 @@ import { getTasks } from '@/services/tasks';
 import { copyToClipboard } from '@/lib/native';
 import { getRoomPalette } from '@/components/room/RoomCard';
 import { useAuth } from '@/hooks/useAuth';
-import { Loader2, Copy, Check, Plus, MessageSquare, FileUp, CalendarPlus, CheckSquare, Activity, Link2, Users } from 'lucide-react';
-import { useRef as useReactRef } from 'react';
+import { Loader2, Copy, Check, Plus, MessageSquare, FileUp, CalendarPlus, CheckSquare, Activity, Link2, Users, Megaphone, X } from 'lucide-react';
+// useRef already imported above
 import { Button } from '@/components/ui/button';
 import ReportButton from '@/components/ReportButton';
 import EditRoomDialog from '@/components/room/EditRoomDialog';
 import QuickLinks from '@/components/room/QuickLinks';
+import { getAnnouncements, createAnnouncement, deleteAnnouncement as deleteAnnouncementApi, markAllRead } from '@/services/announcements';
 import { formatDistanceToNow, format } from 'date-fns';
 
 function sortEvents(items) {
@@ -55,18 +56,12 @@ export default function RoomPage() {
   const [activities, setActivities] = useState([]);
   const [quickLinks, setQuickLinks] = useState([]);
   const [error, setError] = useState('');
-  const [calendarOffset, setCalendarOffset] = useState(0);
-  const [calendarTrackHeight, setCalendarTrackHeight] = useState(null);
-  const [calendarMode, setCalendarMode] = useState('follow');
-  const [calendarResetToken, setCalendarResetToken] = useState(0);
+  const [announcements, setAnnouncements] = useState([]);
+  const [announcementInput, setAnnouncementInput] = useState('');
+  const [showAnnouncementForm, setShowAnnouncementForm] = useState(false);
   const highlightRef = useRef(null);
   const highlightTimerRef = useRef(null);
-  const scheduleLayoutRef = useRef(null);
-  const calendarColumnRef = useRef(null);
-  const calendarStickyRef = useRef(null);
   const eventListColumnRef = useRef(null);
-  const selectedDateKeyRef = useRef(null);
-  const suppressScrollResetUntilRef = useRef(0);
 
   const clearHighlight = useCallback(() => {
     if (highlightRef.current) {
@@ -133,17 +128,24 @@ export default function RoomPage() {
     }
   }, [roomId]);
 
+  const fetchAnnouncements = useCallback(async () => {
+    try {
+      const data = await getAnnouncements(roomId);
+      setAnnouncements(Array.isArray(data) ? data : []);
+    } catch { /* non-critical */ }
+  }, [roomId]);
+
   useEffect(() => {
     const init = async () => {
       try {
-        await Promise.all([fetchRoom(), fetchMembers(), fetchEvents(), fetchFiles(), fetchTasks(), fetchActivity()]);
+        await Promise.all([fetchRoom(), fetchMembers(), fetchEvents(), fetchFiles(), fetchTasks(), fetchActivity(), fetchAnnouncements()]);
       } catch {
         setError('Failed to load some data. Please refresh.');
       }
       setLoading(false);
     };
     init();
-  }, [fetchRoom, fetchMembers, fetchEvents, fetchFiles, fetchTasks, fetchActivity]);
+  }, [fetchRoom, fetchMembers, fetchEvents, fetchFiles, fetchTasks, fetchActivity, fetchAnnouncements]);
 
   useEffect(() => {
     try {
@@ -154,134 +156,32 @@ export default function RoomPage() {
     }
   }, [roomId]);
 
-  const resetCalendarPosition = useCallback(({ clearSelection = true } = {}) => {
-    selectedDateKeyRef.current = null;
-    setCalendarMode('follow');
-    setCalendarOffset(0);
-    setCalendarTrackHeight(null);
-    setCalendarResetToken((prev) => prev + 1);
-    if (clearSelection) {
-      setSelectedDate(undefined);
-    }
-  }, []);
-
-  const updateCalendarOffset = useCallback(() => {
-    if (typeof window === 'undefined') return;
-    if (window.innerWidth < 768) {
-      setCalendarOffset(0);
-      setCalendarTrackHeight(null);
-      return;
-    }
-
-    const scrollContainer = document.querySelector('[data-main-scroll-container="true"]');
-    const layoutNode = scheduleLayoutRef.current;
-    const calendarColumnNode = calendarColumnRef.current;
-    const calendarNode = calendarStickyRef.current;
-    const eventListNode = eventListColumnRef.current;
-    if (!scrollContainer || !layoutNode || !calendarNode || !calendarColumnNode || !eventListNode) return;
-
-    const containerRect = scrollContainer.getBoundingClientRect();
-    const layoutRect = layoutNode.getBoundingClientRect();
-    const trackHeight = Math.max(calendarNode.offsetHeight, eventListNode.offsetHeight);
-    const availableTravel = Math.max(0, trackHeight - calendarNode.offsetHeight);
-    const selectedDateKey = selectedDateKeyRef.current;
-    const selectedDateNode = selectedDateKey ? document.getElementById(`event-date-${selectedDateKey}`) : null;
-    const selectedDayButton = selectedDateKey
-      ? calendarNode.querySelector(`[data-calendar-date="${selectedDateKey}"]`)
-      : null;
-
-    const followScrollTop = typeof scrollContainer.scrollTop === 'number' ? scrollContainer.scrollTop : 0;
-    const layoutTopInScroll = followScrollTop + layoutRect.top - containerRect.top;
-    const scrollRange = Math.max(1, trackHeight - scrollContainer.clientHeight);
-    const followProgress = Math.min(
-      1,
-      Math.max(0, (followScrollTop - layoutTopInScroll) / scrollRange),
-    );
-    let desiredOffset = availableTravel * followProgress;
-
-    if (calendarMode === 'pinned' && selectedDateNode) {
-      if (selectedDayButton) {
-        const selectedDateRect = selectedDateNode.getBoundingClientRect();
-        const calendarRect = calendarNode.getBoundingClientRect();
-        const dayRect = selectedDayButton.getBoundingClientRect();
-        const dayMidpoint = (dayRect.top - calendarRect.top) + (dayRect.height / 2);
-        const targetMidpoint = (selectedDateRect.top - layoutRect.top) + (selectedDateRect.height / 2);
-        desiredOffset = targetMidpoint - dayMidpoint;
-      } else {
-        const selectedDateRect = selectedDateNode.getBoundingClientRect();
-        desiredOffset = selectedDateRect.top - layoutRect.top;
-      }
-    }
-
-    const nextOffset = Math.min(Math.max(0, desiredOffset), availableTravel);
-
-    setCalendarTrackHeight(trackHeight);
-    setCalendarOffset(nextOffset);
-  }, [calendarMode]);
-
   useEffect(() => {
-    if (typeof window === 'undefined' || activeTab !== 'schedule') return undefined;
-
-    const scrollContainer = document.querySelector('[data-main-scroll-container="true"]');
-    if (!scrollContainer) return undefined;
-
-    let frameId = null;
-    const scheduleUpdate = () => {
-      if (calendarMode === 'pinned' && Date.now() > suppressScrollResetUntilRef.current) {
-        clearHighlight();
-        resetCalendarPosition();
-      }
-      if (frameId) cancelAnimationFrame(frameId);
-      frameId = requestAnimationFrame(() => {
-        updateCalendarOffset();
-      });
-    };
-
-    scheduleUpdate();
-    scrollContainer.addEventListener('scroll', scheduleUpdate, { passive: true });
-    window.addEventListener('scroll', scheduleUpdate, { passive: true });
-    window.addEventListener('resize', scheduleUpdate);
-
-    let observer;
-    if (typeof ResizeObserver !== 'undefined') {
-      observer = new ResizeObserver(scheduleUpdate);
-      if (scheduleLayoutRef.current) observer.observe(scheduleLayoutRef.current);
-      if (calendarStickyRef.current) observer.observe(calendarStickyRef.current);
-      if (eventListColumnRef.current) observer.observe(eventListColumnRef.current);
+    if (!loading && announcements.some(a => !a.is_read)) {
+      markAllRead(roomId).catch(() => {});
+      // Dispatch event so sidebar updates
+      window.dispatchEvent(new CustomEvent('announcements-read', { detail: { roomId } }));
     }
+  }, [loading, roomId, announcements]);
 
-    return () => {
-      if (frameId) cancelAnimationFrame(frameId);
-      scrollContainer.removeEventListener('scroll', scheduleUpdate);
-      window.removeEventListener('scroll', scheduleUpdate);
-      window.removeEventListener('resize', scheduleUpdate);
-      observer?.disconnect();
-    };
-  }, [activeTab, calendarMode, clearHighlight, resetCalendarPosition, updateCalendarOffset]);
+  const handleCreateAnnouncement = async () => {
+    if (!announcementInput.trim()) return;
+    try {
+      const ann = await createAnnouncement(roomId, announcementInput.trim());
+      setAnnouncements(prev => [ann, ...prev]);
+      setAnnouncementInput('');
+      setShowAnnouncementForm(false);
+    } catch { /* silent */ }
+  };
 
-  useEffect(() => {
-    if (activeTab !== 'schedule') return undefined;
+  const handleDeleteAnnouncement = async (id) => {
+    try {
+      await deleteAnnouncementApi(id);
+      setAnnouncements(prev => prev.filter(a => a.id !== id));
+    } catch { /* silent */ }
+  };
 
-    const timer = window.setTimeout(() => {
-      updateCalendarOffset();
-    }, 80);
-
-    return () => window.clearTimeout(timer);
-  }, [activeTab, events.length, updateCalendarOffset]);
-
-  useEffect(() => {
-    if (calendarMode === 'pinned') {
-      selectedDateKeyRef.current = selectedDate ? format(selectedDate, 'yyyy-MM-dd') : null;
-    }
-
-    if (activeTab !== 'schedule') return undefined;
-
-    const timer = window.setTimeout(() => {
-      updateCalendarOffset();
-    }, 40);
-
-    return () => window.clearTimeout(timer);
-  }, [activeTab, calendarMode, selectedDate, updateCalendarOffset]);
+  // No complex calendar follow logic needed — using CSS sticky instead
 
   const handleCopyInviteCode = async () => {
     if (room?.invite_code) {
@@ -362,6 +262,62 @@ export default function RoomPage() {
                 </div>
               </div>
             </div>
+          );
+        })()}
+
+        {/* Announcements */}
+        {announcements.length > 0 && (
+          <div className="space-y-2">
+            {announcements.map((ann) => {
+              const authorName = ann.users?.full_name || 'Admin';
+              const currentMember = members.find(m => String(m.user_id) === String(user?.id));
+              const canDelete = ann.author_id === user?.id || currentMember?.role === 'owner' || currentMember?.role === 'admin';
+              return (
+                <div key={ann.id} className="flex items-start gap-3 rounded-xl bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200/60 px-4 py-3 shadow-sm">
+                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-amber-100">
+                    <Megaphone className="h-4 w-4 text-amber-600" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-bold text-amber-700">{authorName}</span>
+                      <span className="text-[10px] text-amber-500">{ann.created_at ? formatDistanceToNow(new Date(ann.created_at), { addSuffix: true }) : ''}</span>
+                    </div>
+                    <p className="text-sm text-amber-900 mt-0.5 whitespace-pre-wrap">{ann.content}</p>
+                  </div>
+                  {canDelete && (
+                    <button onClick={() => handleDeleteAnnouncement(ann.id)} className="shrink-0 text-amber-400 hover:text-red-500 transition-colors mt-1">
+                      <X className="h-4 w-4" />
+                    </button>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {/* Create announcement (admin/owner only) */}
+        {(() => {
+          const currentMember = members.find(m => String(m.user_id) === String(user?.id));
+          const isAdminOrOwner = currentMember?.role === 'owner' || currentMember?.role === 'admin';
+          if (!isAdminOrOwner) return null;
+          return showAnnouncementForm ? (
+            <div className="flex gap-2">
+              <input
+                className="flex-1 rounded-xl border border-amber-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
+                placeholder="Write an announcement..."
+                value={announcementInput}
+                onChange={(e) => setAnnouncementInput(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter') handleCreateAnnouncement(); }}
+                maxLength={2000}
+              />
+              <Button size="sm" className="rounded-xl bg-amber-500 hover:bg-amber-600 text-white" onClick={handleCreateAnnouncement}>Post</Button>
+              <Button size="sm" variant="ghost" className="rounded-xl" onClick={() => setShowAnnouncementForm(false)}>Cancel</Button>
+            </div>
+          ) : (
+            <Button size="sm" variant="outline" className="rounded-xl border-amber-200 text-amber-700 hover:bg-amber-50" onClick={() => setShowAnnouncementForm(true)}>
+              <Megaphone className="h-3.5 w-3.5 mr-1.5" />
+              New Announcement
+            </Button>
           );
         })()}
 
@@ -446,22 +402,10 @@ export default function RoomPage() {
                 </Button>
               </div>
             </div>
-            <div ref={scheduleLayoutRef} className="flex flex-col md:flex-row gap-4" style={{ overflow: 'visible' }}>
-              {/* Calendar sidebar — outer div stretches to event list height, inner div sticks */}
-              <div
-                ref={calendarColumnRef}
-                className="w-full shrink-0 md:relative md:w-[280px]"
-                style={calendarTrackHeight ? { height: `${calendarTrackHeight}px` } : undefined}
-              >
-                <div
-                  ref={calendarStickyRef}
-                  className={`z-10 transition-transform ease-out md:absolute md:left-0 md:right-0 md:top-0 ${
-                    calendarMode === 'pinned' ? 'duration-300' : 'duration-75'
-                  }`}
-                  style={{
-                    transform: `translateY(${calendarOffset}px)`,
-                  }}
-                >
+            <div className="flex flex-col md:flex-row gap-4" style={{ overflow: 'visible' }}>
+              {/* Calendar sidebar — sticky on desktop */}
+              <div className="w-full shrink-0 md:w-[280px]">
+                <div className="md:sticky md:top-4 z-10">
                   <ScheduleCalendar
                     roomId={roomId}
                     events={events}
@@ -470,19 +414,14 @@ export default function RoomPage() {
                     onDismissPrompt={() => {
                       clearHighlight();
                     }}
-                    promptResetToken={calendarResetToken}
                     onDateClick={(date) => {
                       setSelectedDate(date);
-                      selectedDateKeyRef.current = format(date, 'yyyy-MM-dd');
-                      setCalendarMode('pinned');
-                      suppressScrollResetUntilRef.current = Date.now() + 800;
                       clearHighlight();
                       const dateKey = format(date, 'yyyy-MM-dd');
                       setTimeout(() => {
                         const el = document.getElementById(`event-date-${dateKey}`);
                         if (el) {
                           el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                          setTimeout(() => updateCalendarOffset(), 260);
                           el.classList.add('ring-2', 'ring-blue-400', 'ring-offset-4', 'bg-blue-50/50');
                           highlightRef.current = el;
                           highlightTimerRef.current = setTimeout(() => {
@@ -494,7 +433,6 @@ export default function RoomPage() {
                     }}
                     onAddEvent={(date) => {
                       clearHighlight();
-                      resetCalendarPosition();
                       setSelectedDate(date);
                       setEventFormOpen(true);
                     }}
@@ -532,39 +470,65 @@ export default function RoomPage() {
           <TabsContent value="chat">
             <Card>
               <CardContent className="p-0">
-                <ChatPanel roomId={roomId} />
+                <ChatPanel roomId={roomId} onChatFileUploaded={handleFileUploaded} />
               </CardContent>
             </Card>
           </TabsContent>
 
           <TabsContent value="files" className="space-y-6">
-            {/* Lecture Materials */}
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <span className="text-lg">📖</span>
-                  <h2 className="text-lg font-semibold">Lecture Materials</h2>
-                  <Badge variant="secondary" className="text-xs">{files.filter(f => f.category === 'lecture').length}</Badge>
-                </div>
-                <FileUpload roomId={roomId} onUploaded={handleFileUploaded} category="lecture" events={events} />
-              </div>
-              <FileList files={files} roomId={roomId} onFilesChange={setFiles} filterCategory="lecture" members={members} />
-            </div>
+            {(() => {
+              const categories = [
+                { key: 'lecture', label: 'Lecture Materials', icon: '📖', canUpload: true },
+                { key: 'submission', label: 'Team Submissions', icon: '📝', canUpload: true },
+                { key: 'chat', label: 'Chat Files', icon: '💬', canUpload: false },
+              ];
 
-            <div className="h-px bg-border" />
+              const handleDrop = async (e, targetCategory) => {
+                e.preventDefault();
+                e.currentTarget.classList.remove('ring-2', 'ring-blue-400', 'bg-blue-50/30');
+                const fileId = e.dataTransfer.getData('text/file-id');
+                const sourceCategory = e.dataTransfer.getData('text/source-category');
+                if (!fileId || sourceCategory === targetCategory) return;
+                try {
+                  const { updateFile: updateFileFn } = await import('@/services/files');
+                  await updateFileFn(fileId, { category: targetCategory });
+                  setFiles((prev) => prev.map((f) => f.id === fileId ? { ...f, category: targetCategory } : f));
+                } catch { /* ignore */ }
+              };
 
-            {/* Team Submissions */}
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <span className="text-lg">📝</span>
-                  <h2 className="text-lg font-semibold">Team Submissions</h2>
-                  <Badge variant="secondary" className="text-xs">{files.filter(f => f.category === 'submission').length}</Badge>
-                </div>
-                <FileUpload roomId={roomId} onUploaded={handleFileUploaded} category="submission" events={events} />
-              </div>
-              <FileList files={files} roomId={roomId} onFilesChange={setFiles} filterCategory="submission" members={members} />
-            </div>
+              const handleDragOver = (e) => {
+                e.preventDefault();
+                e.currentTarget.classList.add('ring-2', 'ring-blue-400', 'bg-blue-50/30');
+              };
+
+              const handleDragLeave = (e) => {
+                e.currentTarget.classList.remove('ring-2', 'ring-blue-400', 'bg-blue-50/30');
+              };
+
+              return categories.map((cat, idx) => (
+                <React.Fragment key={cat.key}>
+                  {idx > 0 && <div className="h-px bg-border" />}
+                  <div
+                    className="space-y-3 rounded-xl p-3 transition-all"
+                    onDragOver={handleDragOver}
+                    onDragLeave={handleDragLeave}
+                    onDrop={(e) => handleDrop(e, cat.key)}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="text-lg">{cat.icon}</span>
+                        <h2 className="text-lg font-semibold">{cat.label}</h2>
+                        <Badge variant="secondary" className="text-xs">{files.filter(f => f.category === cat.key).length}</Badge>
+                      </div>
+                      {cat.canUpload && (
+                        <FileUpload roomId={roomId} onUploaded={handleFileUploaded} category={cat.key} events={events} />
+                      )}
+                    </div>
+                    <FileList files={files} roomId={roomId} onFilesChange={setFiles} filterCategory={cat.key} members={members} draggable />
+                  </div>
+                </React.Fragment>
+              ));
+            })()}
           </TabsContent>
 
           <TabsContent value="links">

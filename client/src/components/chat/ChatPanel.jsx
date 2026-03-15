@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import MessageBubble from './MessageBubble';
 import ChatInput from './ChatInput';
 import { getMessages } from '@/services/chat';
+import { uploadFile } from '@/services/files';
 import { useSocket } from '@/hooks/useSocket';
 import { useAuth } from '@/hooks/useAuth';
 import { Loader2 } from 'lucide-react';
@@ -19,9 +20,10 @@ function normalizeMessage(message) {
   };
 }
 
-export default function ChatPanel({ roomId }) {
+export default function ChatPanel({ roomId, onChatFileUploaded }) {
   const [messages, setMessages] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [uploading, setUploading] = useState(false);
   const bottomRef = useRef(null);
   const { emit, on, off } = useSocket();
   const { user } = useAuth();
@@ -68,6 +70,36 @@ export default function ChatPanel({ roomId }) {
     emit('chat:message', { roomId, content });
   };
 
+  const handleFileSelect = async (file) => {
+    setUploading(true);
+    try {
+      // Upload file to server with category 'chat'
+      const uploaded = await uploadFile(roomId, file, {
+        description: '',
+        category: 'chat',
+      });
+
+      // Build file message content as JSON
+      const fileContent = JSON.stringify({
+        file_id: uploaded.id,
+        file_name: uploaded.file_name || file.name,
+        file_type: uploaded.file_type || file.type,
+        file_size: uploaded.file_size || file.size,
+        download_url: uploaded.download_url,
+      });
+
+      // Send as file message via socket
+      emit('chat:message', { roomId, content: fileContent, message_type: 'file' });
+
+      // Notify parent so Files tab updates
+      onChatFileUploaded?.(uploaded);
+    } catch (err) {
+      console.error('File upload failed:', err);
+    } finally {
+      setUploading(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex h-[min(68dvh,36rem)] min-h-[24rem] sm:h-[600px] items-center justify-center rounded-2xl border border-slate-200/60 bg-white shadow-xl shadow-blue-500/5">
@@ -107,7 +139,7 @@ export default function ChatPanel({ roomId }) {
         ))}
         <div ref={bottomRef} />
       </div>
-      <ChatInput onSend={handleSend} />
+      <ChatInput onSend={handleSend} onFileSelect={handleFileSelect} uploading={uploading} />
     </div>
   );
 }

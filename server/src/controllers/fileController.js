@@ -426,9 +426,21 @@ async function updateFile(req, res, next) {
       return res.status(403).json({ error: 'Only the uploader or admin can edit this file' });
     }
 
-    const { file_description } = req.body;
+    const { file_description, file_name, category } = req.body;
     const updates = {};
     if (file_description !== undefined) updates.file_description = file_description;
+    if (file_name !== undefined) {
+      const trimmed = String(file_name).trim();
+      if (!trimmed) return res.status(400).json({ error: 'File name cannot be empty' });
+      updates.file_name = trimmed;
+    }
+    if (category !== undefined) {
+      const allowed = ['lecture', 'submission', 'chat'];
+      if (!allowed.includes(category)) {
+        return res.status(400).json({ error: `Category must be one of: ${allowed.join(', ')}` });
+      }
+      updates.category = category;
+    }
 
     if (Object.keys(updates).length === 0) {
       return res.status(400).json({ error: 'No fields to update' });

@@ -44,7 +44,7 @@ async function getPosts(req, res, next) {
       postIds.length
         ? supabaseAdmin
             .from('poll_votes')
-            .select('post_id, option_index, user_id')
+            .select('post_id, option_index, user_id, users:user_id(full_name)')
             .in('post_id', postIds)
         : { data: [] },
     ]);
@@ -76,12 +76,20 @@ async function getPosts(req, res, next) {
     // Build poll vote counts per post: { postId: { 0: 5, 1: 3, ... } }
     const pollVoteMap = {};
     const myPollVoteMap = {};
+    const pollVoterMap = {};
     for (const v of pollVotesResult.data || []) {
       if (!pollVoteMap[v.post_id]) pollVoteMap[v.post_id] = {};
       pollVoteMap[v.post_id][v.option_index] = (pollVoteMap[v.post_id][v.option_index] || 0) + 1;
       if (v.user_id === userId) {
         myPollVoteMap[v.post_id] = v.option_index;
       }
+      // Build voter names map: { postId: { optionIndex: [{ user_id, full_name }] } }
+      if (!pollVoterMap[v.post_id]) pollVoterMap[v.post_id] = {};
+      if (!pollVoterMap[v.post_id][v.option_index]) pollVoterMap[v.post_id][v.option_index] = [];
+      pollVoterMap[v.post_id][v.option_index].push({
+        user_id: v.user_id,
+        full_name: v.users?.full_name || 'Unknown',
+      });
     }
 
     const enriched = (data || []).map((post) => {
@@ -95,6 +103,19 @@ async function getPosts(req, res, next) {
         poll_vote_counts: pollVoteMap[post.id] || {},
         my_poll_vote: myPollVoteMap[post.id] !== undefined ? myPollVoteMap[post.id] : null,
       };
+
+      // Build poll_voters — hide names for anonymous polls (unless viewer is the post author)
+      const rawVoters = pollVoterMap[post.id] || {};
+      if (post.anonymous_poll && post.author_id !== userId) {
+        // Show structure but replace names with "Anonymous"
+        const anonVoters = {};
+        for (const [optIdx, voters] of Object.entries(rawVoters)) {
+          anonVoters[optIdx] = voters.map((v) => ({ user_id: v.user_id, full_name: 'Anonymous' }));
+        }
+        result.poll_voters = anonVoters;
+      } else {
+        result.poll_voters = rawVoters;
+      }
 
       // For anonymous posts, hide author info from other users
       if (post.is_anonymous && post.author_id !== userId) {
@@ -113,7 +134,7 @@ async function getPosts(req, res, next) {
 async function createPost(req, res, next) {
   try {
     const userId = req.user.id;
-    const { title, content, category, is_anonymous, poll_options } = req.body;
+    const { title, content, category, is_anonymous, poll_options, anonymous_poll } = req.body;
 
     // Validate poll_options if provided
     if (poll_options !== undefined && poll_options !== null) {
@@ -136,6 +157,7 @@ async function createPost(req, res, next) {
 
     if (poll_options && Array.isArray(poll_options) && poll_options.length >= 2) {
       insertData.poll_options = poll_options.map((opt) => opt.trim());
+      insertData.anonymous_poll = anonymous_poll === true;
     }
 
     const { data, error } = await supabaseAdmin
@@ -146,7 +168,7 @@ async function createPost(req, res, next) {
 
     if (error) return res.status(400).json({ error: error.message });
 
-    const result = { ...data, join_count: 0, pass_count: 0, comment_count: 0, reactions: {}, my_reactions: [], poll_vote_counts: {}, my_poll_vote: null };
+    const result = { ...data, join_count: 0, pass_count: 0, comment_count: 0, reactions: {}, my_reactions: [], poll_vote_counts: {}, my_poll_vote: null, poll_voters: {} };
 
     // If anonymous, hide author info in response (except to the author themselves)
     if (data.is_anonymous) {
@@ -465,21 +487,33 @@ async function votePoll(req, res, next) {
     // Check if user already voted
     const { data: existing } = await supabaseAdmin
       .from('poll_votes')
-      .select('id')
+      .select('id, option_index')
       .eq('post_id', postId)
       .eq('user_id', userId)
       .maybeSingle();
 
+    let newVote = optionIndex;
+
     if (existing) {
-      return res.status(400).json({ error: 'You have already voted on this poll' });
+      if (existing.option_index === optionIndex) {
+        // Same option → toggle off (remove vote)
+        await supabaseAdmin.from('poll_votes').delete().eq('id', existing.id);
+        newVote = null;
+      } else {
+        // Different option → update vote
+        const { error: updateErr } = await supabaseAdmin
+          .from('poll_votes')
+          .update({ option_index: optionIndex })
+          .eq('id', existing.id);
+        if (updateErr) return res.status(400).json({ error: updateErr.message });
+      }
+    } else {
+      // New vote → insert
+      const { error: insertErr } = await supabaseAdmin
+        .from('poll_votes')
+        .insert({ post_id: postId, user_id: userId, option_index: optionIndex });
+      if (insertErr) return res.status(400).json({ error: insertErr.message });
     }
-
-    // Insert vote
-    const { error } = await supabaseAdmin
-      .from('poll_votes')
-      .insert({ post_id: postId, user_id: userId, option_index: optionIndex });
-
-    if (error) return res.status(400).json({ error: error.message });
 
     // Return updated vote counts
     const { data: allVotes } = await supabaseAdmin
@@ -492,7 +526,7 @@ async function votePoll(req, res, next) {
       voteCounts[v.option_index] = (voteCounts[v.option_index] || 0) + 1;
     }
 
-    res.json({ poll_vote_counts: voteCounts, my_poll_vote: optionIndex });
+    res.json({ poll_vote_counts: voteCounts, my_poll_vote: newVote });
   } catch (err) {
     next(err);
   }

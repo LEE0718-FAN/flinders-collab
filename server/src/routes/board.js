@@ -25,6 +25,7 @@ router.post(
     body('is_anonymous').optional().isBoolean().withMessage('is_anonymous must be a boolean'),
     body('poll_options').optional().isArray({ min: 2, max: 6 }).withMessage('Poll must have 2-6 options'),
     body('poll_options.*').optional().isString().trim().notEmpty().withMessage('Poll options must be non-empty strings'),
+    body('anonymous_poll').optional().isBoolean().withMessage('anonymous_poll must be a boolean'),
   ],
   validate,
   boardController.createPost

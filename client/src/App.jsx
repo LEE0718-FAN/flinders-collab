@@ -30,6 +30,7 @@ const RoomPage = lazyRetry(() => import('@/pages/RoomPage'));
 const AdminPage = lazyRetry(() => import('@/pages/AdminPage'));
 const DeadlinesPage = lazyRetry(() => import('@/pages/DeadlinesPage'));
 const BoardPage = lazyRetry(() => import('@/pages/BoardPage'));
+const FlindersLifePage = lazyRetry(() => import('@/pages/FlindersLifePage'));
 
 function PageLoader() {
   return (
@@ -111,6 +112,7 @@ export default function App() {
                 <Route path="/dashboard" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
                 <Route path="/deadlines" element={<ProtectedRoute><DeadlinesPage /></ProtectedRoute>} />
                 <Route path="/board" element={<ProtectedRoute><BoardPage /></ProtectedRoute>} />
+                <Route path="/flinders-life" element={<ProtectedRoute><FlindersLifePage /></ProtectedRoute>} />
                 <Route path="/rooms/:roomId" element={<ProtectedRoute><RoomPage /></ProtectedRoute>} />
                 <Route path="/admin" element={<AdminRoute><AdminPage /></AdminRoute>} />
               </Routes>

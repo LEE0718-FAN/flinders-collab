@@ -88,6 +88,7 @@ ALTER TABLE board_posts ADD COLUMN IF NOT EXISTS is_anonymous BOOLEAN NOT NULL D
 
 -- Add poll columns to board_posts
 ALTER TABLE board_posts ADD COLUMN IF NOT EXISTS poll_options JSONB DEFAULT NULL;
+ALTER TABLE board_posts ADD COLUMN IF NOT EXISTS anonymous_poll BOOLEAN DEFAULT false;
 
 -- Post reactions table
 CREATE TABLE IF NOT EXISTS post_reactions (
@@ -134,6 +135,9 @@ END IF;
 IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'poll_votes_update') THEN
   CREATE POLICY "poll_votes_update" ON poll_votes FOR UPDATE USING (auth.uid() = user_id);
 END IF;
+IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'poll_votes_delete') THEN
+  CREATE POLICY "poll_votes_delete" ON poll_votes FOR DELETE USING (auth.uid() = user_id);
+END IF;
 END $$;
 
 -- Add FK to public.users for PostgREST joins (auth.users FK is not visible to PostgREST)
@@ -143,6 +147,9 @@ DO $$ BEGIN
   END IF;
   IF NOT EXISTS (SELECT 1 FROM information_schema.table_constraints WHERE constraint_name = 'comments_author_users_fkey' AND table_name = 'comments') THEN
     ALTER TABLE comments ADD CONSTRAINT comments_author_users_fkey FOREIGN KEY (author_id) REFERENCES users(id) ON DELETE CASCADE;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.table_constraints WHERE constraint_name = 'poll_votes_user_users_fkey' AND table_name = 'poll_votes') THEN
+    ALTER TABLE poll_votes ADD CONSTRAINT poll_votes_user_users_fkey FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE;
   END IF;
 END $$;
 
@@ -209,6 +216,55 @@ END $$;
 DO $$ BEGIN
   IF NOT EXISTS (SELECT 1 FROM information_schema.table_constraints WHERE constraint_name = 'task_assignees_user_users_fkey' AND table_name = 'task_assignees') THEN
     ALTER TABLE task_assignees ADD CONSTRAINT task_assignees_user_users_fkey FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE;
+  END IF;
+END $$;
+
+-- Room announcements
+CREATE TABLE IF NOT EXISTS room_announcements (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  room_id UUID NOT NULL REFERENCES rooms(id) ON DELETE CASCADE,
+  author_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  content TEXT NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_room_announcements_room ON room_announcements(room_id);
+
+-- Announcement reads (tracks who has read which announcement)
+CREATE TABLE IF NOT EXISTS announcement_reads (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  announcement_id UUID NOT NULL REFERENCES room_announcements(id) ON DELETE CASCADE,
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  read_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE(announcement_id, user_id)
+);
+
+ALTER TABLE room_announcements ENABLE ROW LEVEL SECURITY;
+ALTER TABLE announcement_reads ENABLE ROW LEVEL SECURITY;
+
+DO $$ BEGIN
+IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'room_announcements_select') THEN
+  CREATE POLICY "room_announcements_select" ON room_announcements FOR SELECT USING (
+    EXISTS (SELECT 1 FROM room_members rm WHERE rm.room_id = room_announcements.room_id AND rm.user_id = auth.uid())
+  );
+END IF;
+IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'room_announcements_insert') THEN
+  CREATE POLICY "room_announcements_insert" ON room_announcements FOR INSERT WITH CHECK (auth.uid() = author_id);
+END IF;
+IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'room_announcements_delete') THEN
+  CREATE POLICY "room_announcements_delete" ON room_announcements FOR DELETE USING (auth.uid() = author_id);
+END IF;
+IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'announcement_reads_select') THEN
+  CREATE POLICY "announcement_reads_select" ON announcement_reads FOR SELECT USING (auth.uid() = user_id);
+END IF;
+IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'announcement_reads_insert') THEN
+  CREATE POLICY "announcement_reads_insert" ON announcement_reads FOR INSERT WITH CHECK (auth.uid() = user_id);
+END IF;
+END $$;
+
+-- FK to public.users for PostgREST joins
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM information_schema.table_constraints WHERE constraint_name = 'room_announcements_author_users_fkey' AND table_name = 'room_announcements') THEN
+    ALTER TABLE room_announcements ADD CONSTRAINT room_announcements_author_users_fkey FOREIGN KEY (author_id) REFERENCES users(id) ON DELETE CASCADE;
   END IF;
 END $$;
 `;

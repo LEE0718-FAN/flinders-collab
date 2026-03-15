@@ -164,7 +164,7 @@ function ReactionBar({ reactions, myReactions, onToggle }) {
 
 // ── Poll Component ──
 
-function PollSection({ pollOptions, voteCounts, myVote, onVote, postId }) {
+function PollSection({ pollOptions, voteCounts, myVote, onVote, postId, pollVoters, isAnonymousPoll }) {
   const totalVotes = Object.values(voteCounts).reduce((a, b) => a + b, 0);
   const hasVoted = myVote !== null && myVote !== undefined;
 
@@ -174,17 +174,17 @@ function PollSection({ pollOptions, voteCounts, myVote, onVote, postId }) {
         const count = voteCounts[idx] || 0;
         const pct = totalVotes > 0 ? Math.round((count / totalVotes) * 100) : 0;
         const isMyVote = myVote === idx;
+        const voters = pollVoters?.[idx] || [];
 
         return (
           <button
             key={idx}
-            onClick={(e) => { e.stopPropagation(); if (!hasVoted) onVote(postId, idx); }}
-            disabled={hasVoted}
+            onClick={(e) => { e.stopPropagation(); onVote(postId, idx); }}
             className={`relative w-full text-left rounded-xl border px-4 py-2.5 text-sm font-medium transition-all overflow-hidden ${
               isMyVote
                 ? 'border-indigo-300 bg-indigo-50'
                 : hasVoted
-                  ? 'border-slate-200 bg-slate-50'
+                  ? 'border-slate-200 bg-slate-50 hover:border-slate-300 cursor-pointer'
                   : 'border-slate-200 bg-white hover:border-indigo-300 hover:bg-indigo-50/50 cursor-pointer'
             }`}
           >
@@ -200,11 +200,20 @@ function PollSection({ pollOptions, voteCounts, myVote, onVote, postId }) {
                 <span className={`text-xs font-bold ${isMyVote ? 'text-indigo-600' : 'text-slate-400'}`}>{pct}%</span>
               )}
             </div>
+            {hasVoted && voters.length > 0 && (
+              <div className="relative mt-1">
+                <p className="text-[10px] text-slate-400 truncate">
+                  {isAnonymousPoll
+                    ? `${voters.length} anonymous vote${voters.length !== 1 ? 's' : ''}`
+                    : voters.map((v) => v.full_name).join(', ')}
+                </p>
+              </div>
+            )}
           </button>
         );
       })}
       <p className="text-[11px] text-slate-400 text-center">
-        {totalVotes} vote{totalVotes !== 1 ? 's' : ''}{hasVoted ? ' · You voted' : ' · Tap to vote'}
+        {totalVotes} vote{totalVotes !== 1 ? 's' : ''}{hasVoted ? ' · You voted · Tap to change' : ' · Tap to vote'}
       </p>
     </div>
   );
@@ -394,6 +403,8 @@ function PostCard({ post, myStatus, onParticipate, onDelete, onReaction, onVote,
           myVote={myPollVote}
           onVote={handleVote}
           postId={post.id}
+          pollVoters={post.poll_voters || {}}
+          isAnonymousPoll={post.anonymous_poll}
         />
       )}
 
@@ -426,13 +437,14 @@ function CreatePostDialog({ open, onOpenChange, onCreated, academicInfo }) {
   const [isAnonymous, setIsAnonymous] = useState(false);
   const [hasPoll, setHasPoll] = useState(false);
   const [pollOptions, setPollOptions] = useState(['', '']);
+  const [anonymousPoll, setAnonymousPoll] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
   useEffect(() => {
     if (open) {
       setTitle(''); setContent(''); setCategory('general');
-      setIsAnonymous(false); setHasPoll(false); setPollOptions(['', '']); setError('');
+      setIsAnonymous(false); setHasPoll(false); setPollOptions(['', '']); setAnonymousPoll(false); setError('');
     }
   }, [open]);
 
@@ -453,6 +465,7 @@ function CreatePostDialog({ open, onOpenChange, onCreated, academicInfo }) {
       };
       if (hasPoll) {
         data.poll_options = pollOptions.filter((o) => o.trim()).map((o) => o.trim());
+        data.anonymous_poll = anonymousPoll;
       }
       const post = await createPost(data);
       onCreated?.(post);
@@ -584,11 +597,25 @@ function CreatePostDialog({ open, onOpenChange, onCreated, academicInfo }) {
                     )}
                   </div>
                 ))}
-                {pollOptions.length < 6 && (
-                  <button type="button" onClick={addPollOption} className="text-xs text-violet-600 font-semibold hover:underline">
-                    + Add option
+                <div className="flex items-center justify-between">
+                  {pollOptions.length < 6 && (
+                    <button type="button" onClick={addPollOption} className="text-xs text-violet-600 font-semibold hover:underline">
+                      + Add option
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => setAnonymousPoll(!anonymousPoll)}
+                    className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium transition-all ${
+                      anonymousPoll
+                        ? 'bg-violet-200 text-violet-700'
+                        : 'bg-white border border-violet-200 text-violet-400 hover:border-violet-300'
+                    }`}
+                  >
+                    {anonymousPoll ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
+                    {anonymousPoll ? 'Anonymous Poll' : 'Show Voters'}
                   </button>
-                )}
+                </div>
               </div>
             )}
           </div>

@@ -50,13 +50,22 @@ function getFileTypeStyle(fileName) {
   return { border: 'border-l-indigo-500', gradient: 'from-indigo-500 to-indigo-600' };
 }
 
-function FileRow({ file, canEdit, onDelete, onEdit, onDownload, deleting, downloading }) {
+function FileRow({ file, canEdit, onDelete, onEdit, onDownload, deleting, downloading, draggable: isDraggable }) {
   const fileName = file.file_name || file.name;
   const uploaderName = file.users?.full_name || file.uploader_name || 'Unknown';
   const typeStyle = getFileTypeStyle(fileName);
 
+  const handleDragStart = (e) => {
+    e.dataTransfer.setData('text/file-id', file.id);
+    e.dataTransfer.setData('text/source-category', file.category || '');
+    e.dataTransfer.effectAllowed = 'move';
+  };
+
   return (
-    <div className={`flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 rounded-xl border border-slate-200/60 border-l-4 ${typeStyle.border} bg-white shadow-md shadow-slate-200/50 hover:shadow-lg hover:shadow-slate-200/70 hover:-translate-y-0.5 transition-all duration-200 p-4`}>
+    <div
+      draggable={isDraggable}
+      onDragStart={isDraggable ? handleDragStart : undefined}
+      className={`flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 rounded-xl border border-slate-200/60 border-l-4 ${typeStyle.border} bg-white shadow-md shadow-slate-200/50 hover:shadow-lg hover:shadow-slate-200/70 hover:-translate-y-0.5 transition-all duration-200 p-4 ${isDraggable ? 'cursor-grab active:cursor-grabbing' : ''}`}>
       <div className="flex items-center gap-3 sm:contents">
         <div className={`h-10 w-10 sm:h-12 sm:w-12 rounded-xl bg-gradient-to-br ${typeStyle.gradient} flex items-center justify-center shrink-0 shadow-md`}>
           <FileText className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
@@ -130,7 +139,7 @@ function FileRow({ file, canEdit, onDelete, onEdit, onDownload, deleting, downlo
   );
 }
 
-export default function FileList({ files = [], roomId, onFilesChange, filterCategory, members = [] }) {
+export default function FileList({ files = [], roomId, onFilesChange, filterCategory, members = [], draggable: isDraggable }) {
   const { user } = useAuth();
 
   // Determine if current user is admin/owner for delete/edit affordance
@@ -160,9 +169,12 @@ export default function FileList({ files = [], roomId, onFilesChange, filterCate
     }
   };
 
+  const [editName, setEditName] = useState('');
+
   const handleEditOpen = (file) => {
     setEditFile(file);
     setEditDesc(file.file_description || '');
+    setEditName(file.file_name || file.name || '');
   };
 
   const handleEditSave = async () => {
@@ -170,7 +182,12 @@ export default function FileList({ files = [], roomId, onFilesChange, filterCate
     setEditLoading(true);
     setErrorMsg('');
     try {
-      const updatedFile = await updateFile(editFile.id, { file_description: editDesc.trim() });
+      const updates = { file_description: editDesc.trim() };
+      const trimmedName = editName.trim();
+      if (trimmedName && trimmedName !== (editFile.file_name || editFile.name)) {
+        updates.file_name = trimmedName;
+      }
+      const updatedFile = await updateFile(editFile.id, updates);
       onFilesChange?.((prev) =>
         prev.map((file) => (
           file.id === editFile.id
@@ -245,6 +262,7 @@ export default function FileList({ files = [], roomId, onFilesChange, filterCate
               onEdit={handleEditOpen}
               deleting={deletingId === file.id}
               downloading={downloadingId === file.id}
+              draggable={isDraggable}
             />
           );
         })}
@@ -254,17 +272,29 @@ export default function FileList({ files = [], roomId, onFilesChange, filterCate
       <Dialog open={!!editFile} onOpenChange={(open) => !open && setEditFile(null)}>
         <DialogContent className="sm:max-w-md rounded-2xl">
           <DialogHeader>
-            <DialogTitle className="font-bold">Edit File Description</DialogTitle>
+            <DialogTitle className="font-bold">Edit File</DialogTitle>
           </DialogHeader>
           <div className="space-y-3">
-            <p className="text-xs text-slate-500">File: {editFile?.file_name}</p>
-            <Input
-              placeholder="Enter description..."
-              value={editDesc}
-              onChange={(e) => setEditDesc(e.target.value)}
-              disabled={editLoading}
-              className="rounded-xl border-slate-200"
-            />
+            <div>
+              <label className="text-xs font-semibold text-slate-600 mb-1 block">File Name</label>
+              <Input
+                placeholder="File name..."
+                value={editName}
+                onChange={(e) => setEditName(e.target.value)}
+                disabled={editLoading}
+                className="rounded-xl border-slate-200"
+              />
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-slate-600 mb-1 block">Description</label>
+              <Input
+                placeholder="Enter description..."
+                value={editDesc}
+                onChange={(e) => setEditDesc(e.target.value)}
+                disabled={editLoading}
+                className="rounded-xl border-slate-200"
+              />
+            </div>
           </div>
           <DialogFooter>
             <Button variant="outline" className="rounded-xl" onClick={() => setEditFile(null)} disabled={editLoading}>Cancel</Button>
