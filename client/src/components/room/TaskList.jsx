@@ -335,7 +335,7 @@ function TaskCard({ task, roomId, currentUserId, members = [], onStatusChange, o
           </div>
         </div>
 
-        {/* Meta: Due date + priority + progress */}
+        {/* Meta: Due date + progress */}
         <div className="flex items-center gap-2.5 mt-3 flex-wrap">
           {due ? (
             <span className={`inline-flex items-center gap-1.5 text-sm font-semibold rounded-lg px-2.5 py-1 ${
@@ -343,7 +343,11 @@ function TaskCard({ task, roomId, currentUserId, members = [], onStatusChange, o
             }`}>
               <CalendarDays className="h-4 w-4" />
               {due.text}
-              {due.overdue && !allDone && <span className="text-red-500 font-bold ml-1">Overdue</span>}
+              {due.overdue && !allDone ? (
+                <span className="text-red-500 font-bold ml-1">Overdue</span>
+              ) : due.label && due.label !== due.text ? (
+                <span className="text-muted-foreground font-normal ml-1">· {due.label}</span>
+              ) : null}
             </span>
           ) : (
             <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground/50 px-2.5 py-1">
@@ -351,12 +355,6 @@ function TaskCard({ task, roomId, currentUserId, members = [], onStatusChange, o
               No due date
             </span>
           )}
-          <span className={`inline-flex items-center gap-1.5 text-xs font-semibold rounded-lg px-2.5 py-1 border ${
-            task.priority === 'high' ? 'bg-red-50 text-red-600 border-red-200' : task.priority === 'low' ? 'bg-slate-50 text-slate-500 border-slate-200' : 'bg-amber-50 text-amber-700 border-amber-200'
-          }`}>
-            <span className={`h-2 w-2 rounded-full ${prio.dot}`} />
-            {prio.label}
-          </span>
           {assignees.length > 0 && (
             <Badge variant="outline" className={`text-xs font-semibold px-2.5 py-1 ${allDone ? 'bg-green-50 text-green-700 border-green-200' : 'bg-blue-50 text-blue-700 border-blue-200'}`}>
               {completedCount}/{assignees.length} done
