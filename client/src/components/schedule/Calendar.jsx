@@ -18,7 +18,7 @@ const categoryColors = {
   other: '#94a3b8',
 };
 
-export default function ScheduleCalendar({ events = [], selectedDate, onSelectDate, onDateClick, onAddEvent, onDismissPrompt, roomId }) {
+export default function ScheduleCalendar({ events = [], selectedDate, onSelectDate, onDateClick, onAddEvent, onDismissPrompt, roomId, promptResetToken = 0 }) {
   const [month, setMonth] = useState(new Date());
   const [addPrompt, setAddPrompt] = useState(null); // date to show "add event?" prompt
 
@@ -27,6 +27,10 @@ export default function ScheduleCalendar({ events = [], selectedDate, onSelectDa
     setMonth(new Date());
     setAddPrompt(null);
   }, [roomId]);
+
+  useEffect(() => {
+    setAddPrompt(null);
+  }, [promptResetToken]);
 
   const eventMarkersByDate = events.reduce((map, event) => {
     const rawDate = event.date || event.start_time;
@@ -64,6 +68,7 @@ export default function ScheduleCalendar({ events = [], selectedDate, onSelectDa
         {...buttonProps}
         ref={buttonRef}
         type="button"
+        data-calendar-date={dateKey}
         className={cn(className, 'flex h-10 w-10 sm:h-9 sm:w-9 flex-col items-center justify-center gap-0.5 overflow-visible rounded-xl transition-all duration-150 hover:bg-blue-50')}
       >
         <span className="leading-none">{children}</span>

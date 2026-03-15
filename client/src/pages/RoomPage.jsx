@@ -58,6 +58,7 @@ export default function RoomPage() {
   const [calendarOffset, setCalendarOffset] = useState(0);
   const [calendarTrackHeight, setCalendarTrackHeight] = useState(null);
   const [calendarMode, setCalendarMode] = useState('follow');
+  const [calendarResetToken, setCalendarResetToken] = useState(0);
   const highlightRef = useRef(null);
   const highlightTimerRef = useRef(null);
   const scheduleLayoutRef = useRef(null);
@@ -153,6 +154,17 @@ export default function RoomPage() {
     }
   }, [roomId]);
 
+  const resetCalendarPosition = useCallback(({ clearSelection = true } = {}) => {
+    selectedDateKeyRef.current = null;
+    setCalendarMode('follow');
+    setCalendarOffset(0);
+    setCalendarTrackHeight(null);
+    setCalendarResetToken((prev) => prev + 1);
+    if (clearSelection) {
+      setSelectedDate(undefined);
+    }
+  }, []);
+
   const updateCalendarOffset = useCallback(() => {
     if (typeof window === 'undefined') return;
     if (window.innerWidth < 768) {
@@ -169,25 +181,33 @@ export default function RoomPage() {
     if (!scrollContainer || !layoutNode || !calendarNode || !calendarColumnNode || !eventListNode) return;
 
     const containerRect = scrollContainer.getBoundingClientRect();
-    const eventListRect = eventListNode.getBoundingClientRect();
+    const layoutRect = layoutNode.getBoundingClientRect();
     const trackHeight = Math.max(calendarNode.offsetHeight, eventListNode.offsetHeight);
     const availableTravel = Math.max(0, trackHeight - calendarNode.offsetHeight);
     const selectedDateKey = selectedDateKeyRef.current;
     const selectedDateNode = selectedDateKey ? document.getElementById(`event-date-${selectedDateKey}`) : null;
-    const desiredOffset = calendarMode === 'pinned' && selectedDateNode
-      ? selectedDateNode.offsetTop + (selectedDateNode.offsetHeight / 2) - (calendarNode.offsetHeight / 2)
-      : Math.max(0, containerRect.top - eventListRect.top);
+    const selectedDayButton = selectedDateKey
+      ? calendarNode.querySelector(`[data-calendar-date="${selectedDateKey}"]`)
+      : null;
+
+    let desiredOffset = Math.max(0, containerRect.top - layoutRect.top);
+
+    if (calendarMode === 'pinned' && selectedDateNode) {
+      if (selectedDayButton) {
+        const calendarRect = calendarNode.getBoundingClientRect();
+        const dayRect = selectedDayButton.getBoundingClientRect();
+        const dayMidpoint = (dayRect.top - calendarRect.top) + (dayRect.height / 2);
+        desiredOffset = selectedDateNode.offsetTop + (selectedDateNode.offsetHeight / 2) - dayMidpoint;
+      } else {
+        desiredOffset = selectedDateNode.offsetTop;
+      }
+    }
+
     const nextOffset = Math.min(Math.max(0, desiredOffset), availableTravel);
 
     setCalendarTrackHeight(trackHeight);
     setCalendarOffset(nextOffset);
   }, [calendarMode]);
-
-  const resetCalendarPosition = useCallback(() => {
-    selectedDateKeyRef.current = null;
-    setCalendarMode('follow');
-    setCalendarOffset(0);
-  }, []);
 
   useEffect(() => {
     if (typeof window === 'undefined' || activeTab !== 'schedule') return undefined;
@@ -198,8 +218,8 @@ export default function RoomPage() {
     let frameId = null;
     const scheduleUpdate = () => {
       if (calendarMode === 'pinned' && Date.now() > suppressScrollResetUntilRef.current) {
-        selectedDateKeyRef.current = null;
-        setCalendarMode('follow');
+        clearHighlight();
+        resetCalendarPosition();
       }
       if (frameId) cancelAnimationFrame(frameId);
       frameId = requestAnimationFrame(() => {
@@ -227,7 +247,7 @@ export default function RoomPage() {
       window.removeEventListener('resize', scheduleUpdate);
       observer?.disconnect();
     };
-  }, [activeTab, calendarMode, updateCalendarOffset]);
+  }, [activeTab, calendarMode, clearHighlight, resetCalendarPosition, updateCalendarOffset]);
 
   useEffect(() => {
     if (activeTab !== 'schedule') return undefined;
@@ -439,6 +459,7 @@ export default function RoomPage() {
                       clearHighlight();
                       resetCalendarPosition();
                     }}
+                    promptResetToken={calendarResetToken}
                     onDateClick={(date) => {
                       setSelectedDate(date);
                       selectedDateKeyRef.current = format(date, 'yyyy-MM-dd');
@@ -462,8 +483,8 @@ export default function RoomPage() {
                     }}
                     onAddEvent={(date) => {
                       clearHighlight();
-                      setSelectedDate(date);
                       resetCalendarPosition();
+                      setSelectedDate(date);
                       setEventFormOpen(true);
                     }}
                   />
