@@ -194,12 +194,15 @@ export default function RoomPage() {
 
     if (calendarMode === 'pinned' && selectedDateNode) {
       if (selectedDayButton) {
+        const selectedDateRect = selectedDateNode.getBoundingClientRect();
         const calendarRect = calendarNode.getBoundingClientRect();
         const dayRect = selectedDayButton.getBoundingClientRect();
         const dayMidpoint = (dayRect.top - calendarRect.top) + (dayRect.height / 2);
-        desiredOffset = selectedDateNode.offsetTop + (selectedDateNode.offsetHeight / 2) - dayMidpoint;
+        const targetMidpoint = (selectedDateRect.top - layoutRect.top) + (selectedDateRect.height / 2);
+        desiredOffset = targetMidpoint - dayMidpoint;
       } else {
-        desiredOffset = selectedDateNode.offsetTop;
+        const selectedDateRect = selectedDateNode.getBoundingClientRect();
+        desiredOffset = selectedDateRect.top - layoutRect.top;
       }
     }
 
