@@ -91,6 +91,16 @@ export default function ScheduleCalendar({ events = [], selectedDate, onSelectDa
   };
 
   const handleSelect = (date) => {
+    if (!date) {
+      if (addPrompt && hasEvent(addPrompt)) {
+        onSelectDate?.(addPrompt);
+        setAddPrompt(addPrompt);
+        return;
+      }
+      onSelectDate?.(date);
+      return;
+    }
+
     onSelectDate?.(date);
     if (date && hasEvent(date)) {
       // Date has events: scroll to them + show add prompt
