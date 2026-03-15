@@ -70,19 +70,20 @@ export default function ChatPanel({ roomId, onChatFileUploaded }) {
     emit('chat:message', { roomId, content });
   };
 
-  const handleFileSelect = async (file) => {
+  const handleFileSelect = async (file, customName, customDesc) => {
     setUploading(true);
     try {
       // Upload file to server with category 'chat'
       const uploaded = await uploadFile(roomId, file, {
-        description: '',
+        description: customDesc || '',
         category: 'chat',
+        file_name: customName || undefined,
       });
 
       // Build file message content as JSON
       const fileContent = JSON.stringify({
         file_id: uploaded.id,
-        file_name: uploaded.file_name || file.name,
+        file_name: uploaded.file_name || customName || file.name,
         file_type: uploaded.file_type || file.type,
         file_size: uploaded.file_size || file.size,
         download_url: uploaded.download_url,

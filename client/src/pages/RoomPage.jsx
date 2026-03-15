@@ -181,7 +181,42 @@ export default function RoomPage() {
     } catch { /* silent */ }
   };
 
-  // No complex calendar follow logic needed — using CSS sticky instead
+  // Scroll-follow: detect which event date group is at top of viewport
+  const [scrollFollowDate, setScrollFollowDate] = useState(null);
+
+  useEffect(() => {
+    if (activeTab !== 'schedule') return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        // Find the topmost visible date group
+        let topEntry = null;
+        for (const entry of entries) {
+          if (entry.isIntersecting) {
+            if (!topEntry || entry.boundingClientRect.top < topEntry.boundingClientRect.top) {
+              topEntry = entry;
+            }
+          }
+        }
+        if (topEntry) {
+          const dateKey = topEntry.target.id.replace('event-date-', '');
+          if (dateKey) setScrollFollowDate(dateKey);
+        }
+      },
+      { rootMargin: '-80px 0px -70% 0px', threshold: 0 }
+    );
+
+    // Small delay to let DOM render
+    const timer = setTimeout(() => {
+      const dateElements = document.querySelectorAll('[id^="event-date-"]');
+      dateElements.forEach((el) => observer.observe(el));
+    }, 300);
+
+    return () => {
+      clearTimeout(timer);
+      observer.disconnect();
+    };
+  }, [activeTab, events]);
 
   const handleCopyInviteCode = async () => {
     if (room?.invite_code) {
@@ -411,6 +446,7 @@ export default function RoomPage() {
                     events={events}
                     selectedDate={selectedDate}
                     onSelectDate={setSelectedDate}
+                    scrollFollowDate={scrollFollowDate}
                     onDismissPrompt={() => {
                       clearHighlight();
                     }}

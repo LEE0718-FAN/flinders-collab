@@ -1,4 +1,5 @@
 const { supabaseAdmin } = require('../services/supabase');
+const config = require('../config');
 
 function formatMessage(message) {
   return {
@@ -9,6 +10,55 @@ function formatMessage(message) {
       message.sender_name ||
       'User',
   };
+}
+
+/**
+ * For file-type messages, regenerate signed download URLs
+ * since the original URLs embedded in message content expire.
+ */
+async function refreshFileUrls(messages) {
+  const fileMessages = messages.filter((m) => m.message_type === 'file');
+  if (fileMessages.length === 0) return messages;
+
+  const bucket = config.upload.storageBucket;
+
+  return Promise.all(
+    messages.map(async (msg) => {
+      if (msg.message_type !== 'file') return msg;
+
+      try {
+        const fileData = JSON.parse(msg.content);
+        if (!fileData.file_id) return msg;
+
+        // Fetch current file record to get storage path
+        const { data: file } = await supabaseAdmin
+          .from('files')
+          .select('file_url, file_name, file_type, file_size')
+          .eq('id', fileData.file_id)
+          .maybeSingle();
+
+        if (!file) return msg;
+
+        // Generate fresh signed URL
+        const storagePath = file.file_url;
+        const { data: signedData } = await supabaseAdmin.storage
+          .from(bucket)
+          .createSignedUrl(storagePath, 60 * 60); // 1 hour
+
+        const refreshedContent = JSON.stringify({
+          ...fileData,
+          file_name: file.file_name || fileData.file_name,
+          file_type: file.file_type || fileData.file_type,
+          file_size: file.file_size || fileData.file_size,
+          download_url: signedData?.signedUrl || fileData.download_url,
+        });
+
+        return { ...msg, content: refreshedContent };
+      } catch {
+        return msg;
+      }
+    })
+  );
 }
 
 /**
@@ -46,8 +96,10 @@ async function getMessages(req, res, next) {
       return res.status(400).json({ error: error.message });
     }
 
-    // Return in chronological order
-    res.json(data.reverse().map(formatMessage));
+    // Return in chronological order, with refreshed file URLs
+    const chronological = data.reverse().map(formatMessage);
+    const withFreshUrls = await refreshFileUrls(chronological);
+    res.json(withFreshUrls);
   } catch (err) {
     next(err);
   }

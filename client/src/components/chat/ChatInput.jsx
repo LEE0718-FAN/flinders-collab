@@ -1,17 +1,21 @@
 import React, { useState, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Send, Paperclip, X, Image, FileText } from 'lucide-react';
+import { Send, Paperclip, X, FileText } from 'lucide-react';
 
 export default function ChatInput({ onSend, onFileSelect, uploading }) {
   const [message, setMessage] = useState('');
-  const [preview, setPreview] = useState(null); // { file, previewUrl }
+  const [preview, setPreview] = useState(null); // { file, previewUrl, isImage }
+  const [customName, setCustomName] = useState('');
+  const [customDesc, setCustomDesc] = useState('');
   const fileRef = useRef(null);
 
   const handleSubmit = (e) => {
     e.preventDefault();
     if (preview) {
-      onFileSelect?.(preview.file);
+      const name = customName.trim() || preview.file.name;
+      const desc = customDesc.trim();
+      onFileSelect?.(preview.file, name, desc);
       clearPreview();
       return;
     }
@@ -24,6 +28,8 @@ export default function ChatInput({ onSend, onFileSelect, uploading }) {
   const clearPreview = () => {
     if (preview?.previewUrl) URL.revokeObjectURL(preview.previewUrl);
     setPreview(null);
+    setCustomName('');
+    setCustomDesc('');
     if (fileRef.current) fileRef.current.value = '';
   };
 
@@ -36,27 +42,48 @@ export default function ChatInput({ onSend, onFileSelect, uploading }) {
       previewUrl: isImage ? URL.createObjectURL(file) : null,
       isImage,
     });
+    // Pre-fill with original filename (without extension for editing convenience)
+    const nameWithoutExt = file.name.replace(/\.[^.]+$/, '');
+    setCustomName(nameWithoutExt);
+    setCustomDesc('');
   };
 
   return (
     <div className="border-t-0 bg-slate-50 rounded-b-2xl" style={{ paddingBottom: 'max(0.75rem, var(--safe-bottom))' }}>
       {preview && (
         <div className="px-3 pt-3 sm:px-4 sm:pt-4">
-          <div className="flex items-center gap-3 rounded-xl border border-blue-200 bg-blue-50/50 p-3">
-            {preview.isImage && preview.previewUrl ? (
-              <img src={preview.previewUrl} alt="preview" className="h-14 w-14 rounded-lg object-cover shadow-sm" />
-            ) : (
-              <div className="flex h-14 w-14 items-center justify-center rounded-lg bg-gradient-to-br from-blue-500 to-indigo-500 shadow-sm">
-                <FileText className="h-6 w-6 text-white" />
+          <div className="rounded-xl border border-blue-200 bg-blue-50/50 p-3 space-y-2.5">
+            <div className="flex items-center gap-3">
+              {preview.isImage && preview.previewUrl ? (
+                <img src={preview.previewUrl} alt="preview" className="h-16 w-16 rounded-lg object-cover shadow-sm" />
+              ) : (
+                <div className="flex h-16 w-16 items-center justify-center rounded-lg bg-gradient-to-br from-blue-500 to-indigo-500 shadow-sm">
+                  <FileText className="h-7 w-7 text-white" />
+                </div>
+              )}
+              <div className="flex-1 min-w-0 space-y-1.5">
+                <Input
+                  placeholder="File name..."
+                  value={customName}
+                  onChange={(e) => setCustomName(e.target.value)}
+                  disabled={uploading}
+                  className="h-8 text-sm rounded-lg border-blue-200 bg-white/80 px-2.5"
+                />
+                <Input
+                  placeholder="Add description (optional)"
+                  value={customDesc}
+                  onChange={(e) => setCustomDesc(e.target.value)}
+                  disabled={uploading}
+                  className="h-8 text-xs rounded-lg border-blue-200 bg-white/80 px-2.5"
+                />
               </div>
-            )}
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold truncate text-slate-800">{preview.file.name}</p>
-              <p className="text-xs text-slate-500">{(preview.file.size / 1024).toFixed(1)} KB</p>
+              <Button type="button" variant="ghost" size="icon" className="h-8 w-8 rounded-full hover:bg-red-100 shrink-0" onClick={clearPreview} disabled={uploading}>
+                <X className="h-4 w-4 text-slate-400" />
+              </Button>
             </div>
-            <Button type="button" variant="ghost" size="icon" className="h-8 w-8 rounded-full hover:bg-red-100" onClick={clearPreview} disabled={uploading}>
-              <X className="h-4 w-4 text-slate-400" />
-            </Button>
+            <p className="text-[11px] text-slate-400 px-1">
+              {preview.file.name} · {(preview.file.size / 1024).toFixed(1)} KB
+            </p>
           </div>
         </div>
       )}

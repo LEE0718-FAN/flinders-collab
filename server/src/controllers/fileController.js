@@ -179,7 +179,22 @@ async function uploadFile(req, res, next) {
       }
     }
 
-    const ext = path.extname(file.originalname);
+    // Decode filename — multer may encode non-ASCII as latin1
+    let originalName = file.originalname;
+    try {
+      const decoded = Buffer.from(file.originalname, 'latin1').toString('utf8');
+      if (decoded !== file.originalname && /[^\x00-\x7F]/.test(decoded)) {
+        originalName = decoded;
+      }
+    } catch {}
+
+    // Allow custom filename from client
+    if (req.body.file_name) {
+      const customName = String(req.body.file_name).trim();
+      if (customName) originalName = customName;
+    }
+
+    const ext = path.extname(originalName);
     const fileUuid = uuidv4();
     const storagePath = `rooms/${roomId}/${fileUuid}${ext}`;
     const backupPath = `rooms/${roomId}/${fileUuid}_backup${ext}`;
@@ -216,7 +231,7 @@ async function uploadFile(req, res, next) {
     const insertObj = {
       room_id: roomId,
       uploaded_by: userId,
-      file_name: file.originalname,
+      file_name: originalName,
       file_url: storagePath,
       file_type: file.mimetype,
       file_size: file.size,

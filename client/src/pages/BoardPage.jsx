@@ -167,6 +167,7 @@ function ReactionBar({ reactions, myReactions, onToggle }) {
 function PollSection({ pollOptions, voteCounts, myVote, onVote, postId, pollVoters, isAnonymousPoll }) {
   const totalVotes = Object.values(voteCounts).reduce((a, b) => a + b, 0);
   const hasVoted = myVote !== null && myVote !== undefined;
+  const [showVoters, setShowVoters] = useState(false);
 
   return (
     <div className="mt-3 space-y-2">
@@ -177,44 +178,68 @@ function PollSection({ pollOptions, voteCounts, myVote, onVote, postId, pollVote
         const voters = pollVoters?.[idx] || [];
 
         return (
-          <button
-            key={idx}
-            onClick={(e) => { e.stopPropagation(); onVote(postId, idx); }}
-            className={`relative w-full text-left rounded-xl border px-4 py-2.5 text-sm font-medium transition-all overflow-hidden ${
-              isMyVote
-                ? 'border-indigo-300 bg-indigo-50'
-                : hasVoted
-                  ? 'border-slate-200 bg-slate-50 hover:border-slate-300 cursor-pointer'
-                  : 'border-slate-200 bg-white hover:border-indigo-300 hover:bg-indigo-50/50 cursor-pointer'
-            }`}
-          >
-            {hasVoted && (
-              <div
-                className={`absolute inset-0 rounded-xl transition-all duration-500 ${isMyVote ? 'bg-indigo-100/60' : 'bg-slate-100/60'}`}
-                style={{ width: `${pct}%` }}
-              />
-            )}
-            <div className="relative flex items-center justify-between">
-              <span className={isMyVote ? 'text-indigo-700' : 'text-slate-700'}>{option}</span>
+          <div key={idx}>
+            <button
+              onClick={(e) => { e.stopPropagation(); onVote(postId, idx); }}
+              className={`relative w-full text-left rounded-xl border px-4 py-2.5 text-sm font-medium transition-all overflow-hidden ${
+                isMyVote
+                  ? 'border-indigo-300 bg-indigo-50'
+                  : hasVoted
+                    ? 'border-slate-200 bg-slate-50 hover:border-slate-300 cursor-pointer'
+                    : 'border-slate-200 bg-white hover:border-indigo-300 hover:bg-indigo-50/50 cursor-pointer'
+              }`}
+            >
               {hasVoted && (
-                <span className={`text-xs font-bold ${isMyVote ? 'text-indigo-600' : 'text-slate-400'}`}>{pct}%</span>
+                <div
+                  className={`absolute inset-0 rounded-xl transition-all duration-500 ${isMyVote ? 'bg-indigo-100/60' : 'bg-slate-100/60'}`}
+                  style={{ width: `${pct}%` }}
+                />
               )}
-            </div>
-            {hasVoted && voters.length > 0 && (
-              <div className="relative mt-1">
-                <p className="text-[10px] text-slate-400 truncate">
+              <div className="relative flex items-center justify-between">
+                <span className={isMyVote ? 'text-indigo-700' : 'text-slate-700'}>{option}</span>
+                <div className="flex items-center gap-2">
+                  {hasVoted && count > 0 && (
+                    <span className={`text-[10px] ${isMyVote ? 'text-indigo-400' : 'text-slate-300'}`}>
+                      {count} vote{count !== 1 ? 's' : ''}
+                    </span>
+                  )}
+                  {hasVoted && (
+                    <span className={`text-xs font-bold ${isMyVote ? 'text-indigo-600' : 'text-slate-400'}`}>{pct}%</span>
+                  )}
+                </div>
+              </div>
+            </button>
+            {/* Voter names shown when "View Voters" is toggled */}
+            {showVoters && voters.length > 0 && (
+              <div className="mt-1 ml-3 pl-3 border-l-2 border-slate-100">
+                <p className="text-[10px] text-slate-400 leading-relaxed">
                   {isAnonymousPoll
                     ? `${voters.length} anonymous vote${voters.length !== 1 ? 's' : ''}`
                     : voters.map((v) => v.full_name).join(', ')}
                 </p>
               </div>
             )}
-          </button>
+          </div>
         );
       })}
-      <p className="text-[11px] text-slate-400 text-center">
-        {totalVotes} vote{totalVotes !== 1 ? 's' : ''}{hasVoted ? ' · You voted · Tap to change' : ' · Tap to vote'}
-      </p>
+      <div className="flex items-center justify-center gap-2">
+        <p className="text-[11px] text-slate-400">
+          {totalVotes} vote{totalVotes !== 1 ? 's' : ''}{hasVoted ? ' · You voted · Tap to change' : ' · Tap to vote'}
+        </p>
+        {hasVoted && totalVotes > 0 && (
+          <button
+            onClick={(e) => { e.stopPropagation(); setShowVoters((v) => !v); }}
+            className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[10px] font-semibold transition-all ${
+              showVoters
+                ? 'bg-indigo-50 text-indigo-600 border border-indigo-200'
+                : 'bg-slate-50 text-slate-400 border border-slate-200 hover:border-slate-300'
+            }`}
+          >
+            <Users2 className="h-2.5 w-2.5" />
+            {showVoters ? 'Hide Voters' : 'View Voters'}
+          </button>
+        )}
+      </div>
     </div>
   );
 }
@@ -341,11 +366,14 @@ function PostCard({ post, myStatus, onParticipate, onDelete, onReaction, onVote,
     } catch { /* silent */ }
   };
 
+  const [pollVoters, setPollVoters] = useState(post.poll_voters || {});
+
   const handleVote = async (postId, optionIndex) => {
     try {
       const result = await onVote(postId, optionIndex);
       setPollVoteCounts(result.poll_vote_counts);
       setMyPollVote(result.my_poll_vote);
+      if (result.poll_voters) setPollVoters(result.poll_voters);
     } catch { /* silent */ }
   };
 
@@ -403,7 +431,7 @@ function PostCard({ post, myStatus, onParticipate, onDelete, onReaction, onVote,
           myVote={myPollVote}
           onVote={handleVote}
           postId={post.id}
-          pollVoters={post.poll_voters || {}}
+          pollVoters={pollVoters}
           isAnonymousPoll={post.anonymous_poll}
         />
       )}

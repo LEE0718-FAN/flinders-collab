@@ -18,7 +18,7 @@ const categoryColors = {
   other: '#94a3b8',
 };
 
-export default function ScheduleCalendar({ events = [], selectedDate, onSelectDate, onDateClick, onAddEvent, onDismissPrompt, roomId, promptResetToken = 0 }) {
+export default function ScheduleCalendar({ events = [], selectedDate, onSelectDate, onDateClick, onAddEvent, onDismissPrompt, roomId, promptResetToken = 0, scrollFollowDate }) {
   const [month, setMonth] = useState(new Date());
   const [addPrompt, setAddPrompt] = useState(null); // date to show "add event?" prompt
 
@@ -31,6 +31,15 @@ export default function ScheduleCalendar({ events = [], selectedDate, onSelectDa
   useEffect(() => {
     setAddPrompt(null);
   }, [promptResetToken]);
+
+  // Follow scroll — update displayed month when scrollFollowDate changes
+  useEffect(() => {
+    if (!scrollFollowDate) return;
+    const scrollMonth = new Date(scrollFollowDate);
+    if (scrollMonth.getFullYear() !== month.getFullYear() || scrollMonth.getMonth() !== month.getMonth()) {
+      setMonth(scrollMonth);
+    }
+  }, [scrollFollowDate]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const eventMarkersByDate = events.reduce((map, event) => {
     const rawDate = event.date || event.start_time;

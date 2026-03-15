@@ -472,7 +472,7 @@ async function votePoll(req, res, next) {
     // Verify the post exists and has poll_options
     const { data: post } = await supabaseAdmin
       .from('board_posts')
-      .select('id, poll_options')
+      .select('id, poll_options, anonymous_poll')
       .eq('id', postId)
       .maybeSingle();
 
@@ -515,18 +515,31 @@ async function votePoll(req, res, next) {
       if (insertErr) return res.status(400).json({ error: insertErr.message });
     }
 
-    // Return updated vote counts
+    // Return updated vote counts + voter names
     const { data: allVotes } = await supabaseAdmin
       .from('poll_votes')
-      .select('option_index')
+      .select('option_index, user_id, users:user_id(full_name)')
       .eq('post_id', postId);
 
     const voteCounts = {};
+    const voterMap = {};
     for (const v of allVotes || []) {
       voteCounts[v.option_index] = (voteCounts[v.option_index] || 0) + 1;
+      if (!voterMap[v.option_index]) voterMap[v.option_index] = [];
+      voterMap[v.option_index].push({
+        user_id: v.user_id,
+        full_name: v.users?.full_name || 'Unknown',
+      });
     }
 
-    res.json({ poll_vote_counts: voteCounts, my_poll_vote: newVote });
+    // Hide voter names if anonymous poll
+    if (post.anonymous_poll) {
+      for (const [optIdx, voters] of Object.entries(voterMap)) {
+        voterMap[optIdx] = voters.map((v) => ({ user_id: v.user_id, full_name: 'Anonymous' }));
+      }
+    }
+
+    res.json({ poll_vote_counts: voteCounts, my_poll_vote: newVote, poll_voters: voterMap });
   } catch (err) {
     next(err);
   }

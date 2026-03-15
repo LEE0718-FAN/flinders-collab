@@ -12,3 +12,10 @@ export async function getFlindersNews() {
   const res = await fetch(apiUrl('/api/flinders/news'), { headers });
   return parseResponse(res);
 }
+
+export async function getRecommendedEvents(interests = []) {
+  const headers = getAuthHeaders();
+  const query = interests.length > 0 ? `?interests=${interests.join(',')}` : '';
+  const res = await fetch(apiUrl(`/api/flinders/recommended-events${query}`), { headers });
+  return parseResponse(res);
+}
