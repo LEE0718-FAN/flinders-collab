@@ -51,7 +51,7 @@ export default function RoomPage() {
   const [eventFormOpen, setEventFormOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState(false);
-  const [activeTab, setActiveTab] = useState('overview');
+  const [activeTab, setActiveTab] = useState('members');
   const [activities, setActivities] = useState([]);
   const [quickLinks, setQuickLinks] = useState([]);
   const [error, setError] = useState('');
@@ -63,6 +63,7 @@ export default function RoomPage() {
   const calendarColumnRef = useRef(null);
   const calendarStickyRef = useRef(null);
   const eventListColumnRef = useRef(null);
+  const selectedDateKeyRef = useRef(null);
 
   const clearHighlight = useCallback(() => {
     if (highlightRef.current) {
@@ -166,12 +167,15 @@ export default function RoomPage() {
     if (!scrollContainer || !layoutNode || !calendarNode || !calendarColumnNode || !eventListNode) return;
 
     const containerRect = scrollContainer.getBoundingClientRect();
-    const layoutRect = layoutNode.getBoundingClientRect();
     const eventListRect = eventListNode.getBoundingClientRect();
     const viewportCenter = containerRect.top + (containerRect.height / 2);
     const trackHeight = Math.max(calendarNode.offsetHeight, eventListNode.offsetHeight);
     const availableTravel = Math.max(0, trackHeight - calendarNode.offsetHeight);
-    const desiredOffset = viewportCenter - eventListRect.top - (calendarNode.offsetHeight / 2);
+    const selectedDateKey = selectedDateKeyRef.current;
+    const selectedDateNode = selectedDateKey ? document.getElementById(`event-date-${selectedDateKey}`) : null;
+    const desiredOffset = selectedDateNode
+      ? selectedDateNode.offsetTop + (selectedDateNode.offsetHeight / 2) - (calendarNode.offsetHeight / 2)
+      : viewportCenter - eventListRect.top - (calendarNode.offsetHeight / 2);
     const nextOffset = Math.min(Math.max(0, desiredOffset), availableTravel);
 
     setCalendarTrackHeight(trackHeight);
@@ -194,6 +198,7 @@ export default function RoomPage() {
 
     scheduleUpdate();
     scrollContainer.addEventListener('scroll', scheduleUpdate, { passive: true });
+    window.addEventListener('scroll', scheduleUpdate, { passive: true });
     window.addEventListener('resize', scheduleUpdate);
 
     let observer;
@@ -207,6 +212,7 @@ export default function RoomPage() {
     return () => {
       if (frameId) cancelAnimationFrame(frameId);
       scrollContainer.removeEventListener('scroll', scheduleUpdate);
+      window.removeEventListener('scroll', scheduleUpdate);
       window.removeEventListener('resize', scheduleUpdate);
       observer?.disconnect();
     };
@@ -221,6 +227,18 @@ export default function RoomPage() {
 
     return () => window.clearTimeout(timer);
   }, [activeTab, events.length, updateCalendarOffset]);
+
+  useEffect(() => {
+    selectedDateKeyRef.current = selectedDate ? format(selectedDate, 'yyyy-MM-dd') : null;
+
+    if (activeTab !== 'schedule') return undefined;
+
+    const timer = window.setTimeout(() => {
+      updateCalendarOffset();
+    }, 40);
+
+    return () => window.clearTimeout(timer);
+  }, [activeTab, selectedDate, updateCalendarOffset]);
 
   const handleCopyInviteCode = async () => {
     if (room?.invite_code) {
@@ -407,6 +425,7 @@ export default function RoomPage() {
                     onDismissPrompt={clearHighlight}
                     onDateClick={(date) => {
                       setSelectedDate(date);
+                      selectedDateKeyRef.current = format(date, 'yyyy-MM-dd');
                       clearHighlight();
                       const dateKey = format(date, 'yyyy-MM-dd');
                       setTimeout(() => {
@@ -426,6 +445,7 @@ export default function RoomPage() {
                     onAddEvent={(date) => {
                       clearHighlight();
                       setSelectedDate(date);
+                      selectedDateKeyRef.current = null;
                       setEventFormOpen(true);
                     }}
                   />
