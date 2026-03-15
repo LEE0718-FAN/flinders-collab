@@ -26,11 +26,10 @@ export default function OnboardingTour({ tourId, steps = [], delay = 600 }) {
   const tipRef = useRef(null);
 
   // ── Should this tour show? ──
+  // Only skip if permanently dismissed via "다시 표시 하지 않음" checkbox
   useEffect(() => {
     const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
     if (saved[tourId]) return;
-    const session = JSON.parse(sessionStorage.getItem(STORAGE_KEY) || '{}');
-    if (session[tourId]) return;
     const t = setTimeout(() => {
       setActive(true);
       setCursorPos({ x: window.innerWidth / 2, y: window.innerHeight / 2 });
@@ -39,12 +38,10 @@ export default function OnboardingTour({ tourId, steps = [], delay = 600 }) {
   }, [tourId, delay]);
 
   // ── Close helpers ──
+  // Just close — will show again on next visit
   const dismiss = useCallback(() => {
-    const session = JSON.parse(sessionStorage.getItem(STORAGE_KEY) || '{}');
-    session[tourId] = true;
-    sessionStorage.setItem(STORAGE_KEY, JSON.stringify(session));
     setActive(false);
-  }, [tourId]);
+  }, []);
 
   const dismissForever = useCallback(() => {
     const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
@@ -370,12 +367,8 @@ export function resetTour(tourId) {
   const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
   delete saved[tourId];
   localStorage.setItem(STORAGE_KEY, JSON.stringify(saved));
-  const session = JSON.parse(sessionStorage.getItem(STORAGE_KEY) || '{}');
-  delete session[tourId];
-  sessionStorage.setItem(STORAGE_KEY, JSON.stringify(session));
 }
 
 export function resetAllTours() {
   localStorage.removeItem(STORAGE_KEY);
-  sessionStorage.removeItem(STORAGE_KEY);
 }
