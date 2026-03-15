@@ -15,6 +15,7 @@ import {
   Flame, Heart, Laugh, HandMetal, Brain, Eye, EyeOff, BarChart3,
   TrendingUp, Sparkles, Ghost, MessageSquare,
 } from 'lucide-react';
+import OnboardingTour from '@/components/OnboardingTour';
 import { formatDistanceToNow } from 'date-fns';
 import {
   getPosts, createPost, deletePost, toggleParticipation, getMyParticipations,
@@ -728,6 +729,17 @@ export default function BoardPage() {
 
   return (
     <MainLayout>
+      <OnboardingTour
+        tourId="board"
+        steps={[
+          {
+            target: null,
+            title: 'Free Board',
+            description: 'Post anonymously, create polls, find study groups, or just say hi. This is your campus community space.',
+            icon: '\u{1F4AC}',
+          },
+        ]}
+      />
       {/* Hero */}
       <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-500 p-6 sm:p-8 text-white mb-6 shadow-2xl shadow-purple-500/20">
         <div className="absolute -right-16 -top-16 h-56 w-56 rounded-full bg-white/10 blur-3xl" />

@@ -12,60 +12,27 @@ import { format, formatDistanceToNow } from 'date-fns';
 import { Loader2, LayoutGrid } from 'lucide-react';
 import OnboardingTour from '@/components/OnboardingTour';
 
-const DASHBOARD_TOUR_STEPS = [
-  {
-    target: null,
-    title: 'Welcome to Flinders Collab!',
-    description: "Let's take a quick tour. We'll show you how to create rooms, collaborate with teammates, and make the most of your study tools.",
-    icon: '\u{1F44B}',
-  },
+const TOUR_STEPS = [
   {
     target: '[data-tour="create-room"]',
     title: 'Create a Room',
-    description: 'Start by creating a collaboration room \u2014 enter your course code and room name. Share the invite code with your team!',
+    description: 'Tap here to start a new room. Enter your course name and share the invite code with your team.',
     position: 'bottom',
-    icon: '\u{1F3E0}',
+    icon: '\u2728',
   },
   {
     target: '[data-tour="join-room"]',
     title: 'Join a Room',
-    description: 'Got an invite code from a teammate? Paste it here to join their room instantly.',
+    description: 'Got a code from a teammate? Paste it here to jump into their room.',
     position: 'bottom',
     icon: '\u{1F517}',
   },
   {
-    target: '[data-tour="sidebar-nav"]',
-    title: 'Explore the App',
-    description: 'Navigate between Deadlines, Free Board (anonymous posts & polls), and Flinders Life (events, academic calendar, study room booking).',
-    position: 'right',
-    icon: '\u{1F9ED}',
-  },
-  {
-    target: '[data-tour="sidebar-rooms"]',
-    title: 'Your Rooms',
-    description: 'All your rooms appear here for quick access. Orange badges show unread announcements.',
-    position: 'right',
-    icon: '\u{1F4DA}',
-  },
-  {
-    target: '[data-tour="user-menu"]',
-    title: 'Your Profile',
-    description: 'Click here to update your profile picture, change your name, or sign out.',
-    position: 'bottom',
-    icon: '\u{1F464}',
-  },
-  {
     target: '[data-tour="room-grid"]',
-    title: 'Your Room Cards',
-    description: "Rooms appear as cards here. Click one to open it \u2014 inside you'll find Chat, Schedule, Tasks, Files, and Announcements. Drag cards to reorder!",
+    title: 'Your Rooms',
+    description: 'Your rooms show up here as cards. Tap to open, drag to reorder.',
     position: 'top',
-    icon: '\u{1F4CB}',
-  },
-  {
-    target: null,
-    title: "You're Ready!",
-    description: 'Create your first room or join one to start collaborating. Each room has Chat, Schedule, Tasks, Files, Announcements, and Quick Links. Enjoy!',
-    icon: '\u{1F389}',
+    icon: '\u{1F4DA}',
   },
 ];
 
@@ -363,7 +330,7 @@ export default function DashboardPage() {
 
   return (
     <MainLayout onRoomChange={fetchRooms}>
-      <OnboardingTour tourId="dashboard" steps={DASHBOARD_TOUR_STEPS} />
+      <OnboardingTour tourId="dashboard" steps={TOUR_STEPS} />
       <div className="space-y-8">
         {/* Hero Banner */}
         <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-blue-600 via-indigo-600 to-violet-700 px-4 sm:px-6 md:px-8 py-8 sm:py-10 text-white shadow-xl">

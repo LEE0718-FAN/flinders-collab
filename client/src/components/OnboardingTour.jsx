@@ -1,57 +1,66 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { X, ChevronRight, ChevronLeft, SkipForward } from 'lucide-react';
+import { ChevronRight, X } from 'lucide-react';
 
-const STORAGE_KEY = 'onboarding-completed';
+const STORAGE_KEY = 'onboarding-tours';
 
 /**
- * Spotlight onboarding tour component.
- * Shows a step-by-step tutorial highlighting specific UI elements.
+ * Premium onboarding tour with animated cursor guide.
  *
- * Usage:
- *   <OnboardingTour tourId="dashboard" steps={[...]} />
- *
- * Each step: { target: 'css-selector' | null, title, description, position? }
- * position: 'bottom' | 'top' | 'left' | 'right' | 'center' (default: 'bottom')
+ * Props:
+ *   tourId    - unique key per page (e.g. "dashboard", "deadlines")
+ *   steps     - array of { target, title, description, position? }
+ *   delay     - ms before tour starts (default 600)
  */
-export default function OnboardingTour({ tourId, steps = [], onComplete }) {
+export default function OnboardingTour({ tourId, steps = [], delay = 600 }) {
   const [active, setActive] = useState(false);
-  const [currentStep, setCurrentStep] = useState(0);
-  const [spotlightRect, setSpotlightRect] = useState(null);
-  const [tooltipStyle, setTooltipStyle] = useState({});
-  const [animating, setAnimating] = useState(false);
+  const [step, setStep] = useState(0);
+  const [spotlight, setSpotlight] = useState(null);
+  const [tipPos, setTipPos] = useState({});
+  const [cursorPos, setCursorPos] = useState({ x: 0, y: 0 });
+  const [cursorVisible, setCursorVisible] = useState(false);
+  const [phase, setPhase] = useState('idle'); // idle | cursor-moving | revealing | shown
   const overlayRef = useRef(null);
-  const tooltipRef = useRef(null);
-  const resizeObserverRef = useRef(null);
+  const tipRef = useRef(null);
+  const frameRef = useRef(null);
 
-  // Check if tour should show
+  // ── Should this tour show? ──
   useEffect(() => {
-    const completed = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
-    if (!completed[tourId]) {
-      // Small delay to let the page render first
-      const timer = setTimeout(() => setActive(true), 800);
-      return () => clearTimeout(timer);
-    }
+    const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
+    if (saved[tourId]) return;
+    // Also check sessionStorage for "closed without don't-show-again"
+    const session = JSON.parse(sessionStorage.getItem(STORAGE_KEY) || '{}');
+    if (session[tourId]) return;
+    const t = setTimeout(() => {
+      setActive(true);
+      setCursorPos({ x: window.innerWidth / 2, y: window.innerHeight / 2 });
+    }, delay);
+    return () => clearTimeout(t);
+  }, [tourId, delay]);
+
+  // ── Close helpers ──
+  const dismiss = useCallback(() => {
+    // Temporary dismiss — won't show again this session
+    const session = JSON.parse(sessionStorage.getItem(STORAGE_KEY) || '{}');
+    session[tourId] = true;
+    sessionStorage.setItem(STORAGE_KEY, JSON.stringify(session));
+    setActive(false);
   }, [tourId]);
 
-  const completeTour = useCallback((skipForever = false) => {
-    if (skipForever) {
-      const completed = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
-      completed[tourId] = Date.now();
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(completed));
-    }
+  const dismissForever = useCallback(() => {
+    const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
+    saved[tourId] = Date.now();
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(saved));
     setActive(false);
-    onComplete?.();
-  }, [tourId, onComplete]);
+  }, [tourId]);
 
-  // Position spotlight and tooltip
-  const positionElements = useCallback(() => {
-    const step = steps[currentStep];
-    if (!step) return;
+  // ── Position calculation ──
+  const computePositions = useCallback(() => {
+    const s = steps[step];
+    if (!s) return;
 
-    if (!step.target) {
-      // Center mode (no target element)
-      setSpotlightRect(null);
-      setTooltipStyle({
+    if (!s.target) {
+      setSpotlight(null);
+      setTipPos({
         position: 'fixed',
         top: '50%',
         left: '50%',
@@ -60,10 +69,10 @@ export default function OnboardingTour({ tourId, steps = [], onComplete }) {
       return;
     }
 
-    const el = document.querySelector(step.target);
+    const el = document.querySelector(s.target);
     if (!el) {
-      setSpotlightRect(null);
-      setTooltipStyle({
+      setSpotlight(null);
+      setTipPos({
         position: 'fixed',
         top: '50%',
         left: '50%',
@@ -72,280 +81,259 @@ export default function OnboardingTour({ tourId, steps = [], onComplete }) {
       return;
     }
 
-    const rect = el.getBoundingClientRect();
-    const padding = 8;
-    const spotlight = {
-      top: rect.top - padding,
-      left: rect.left - padding,
-      width: rect.width + padding * 2,
-      height: rect.height + padding * 2,
-      borderRadius: 12,
+    const r = el.getBoundingClientRect();
+    const pad = 10;
+    const sp = {
+      x: r.left - pad,
+      y: r.top - pad,
+      w: r.width + pad * 2,
+      h: r.height + pad * 2,
+      r: 14,
     };
-    setSpotlightRect(spotlight);
+    setSpotlight(sp);
 
-    // Calculate tooltip position
-    const pos = step.position || 'bottom';
-    const tooltipWidth = Math.min(340, window.innerWidth - 32);
-    const gap = 16;
-    let style = { position: 'fixed', width: tooltipWidth };
+    const pos = s.position || 'bottom';
+    const tw = Math.min(320, window.innerWidth - 24);
+    const gap = 14;
+    const style = { position: 'fixed', width: tw };
 
     if (pos === 'bottom') {
-      style.top = spotlight.top + spotlight.height + gap;
-      style.left = Math.max(16, Math.min(
-        spotlight.left + spotlight.width / 2 - tooltipWidth / 2,
-        window.innerWidth - tooltipWidth - 16
-      ));
+      style.top = sp.y + sp.h + gap;
+      style.left = clamp(sp.x + sp.w / 2 - tw / 2, 12, window.innerWidth - tw - 12);
     } else if (pos === 'top') {
-      style.bottom = window.innerHeight - spotlight.top + gap;
-      style.left = Math.max(16, Math.min(
-        spotlight.left + spotlight.width / 2 - tooltipWidth / 2,
-        window.innerWidth - tooltipWidth - 16
-      ));
+      style.bottom = window.innerHeight - sp.y + gap;
+      style.left = clamp(sp.x + sp.w / 2 - tw / 2, 12, window.innerWidth - tw - 12);
     } else if (pos === 'right') {
-      style.top = Math.max(16, spotlight.top + spotlight.height / 2 - 60);
-      style.left = Math.min(
-        spotlight.left + spotlight.width + gap,
-        window.innerWidth - tooltipWidth - 16
-      );
+      style.top = clamp(sp.y + sp.h / 2 - 50, 12, window.innerHeight - 200);
+      style.left = clamp(sp.x + sp.w + gap, 12, window.innerWidth - tw - 12);
     } else if (pos === 'left') {
-      style.top = Math.max(16, spotlight.top + spotlight.height / 2 - 60);
-      style.right = window.innerWidth - spotlight.left + gap;
+      style.top = clamp(sp.y + sp.h / 2 - 50, 12, window.innerHeight - 200);
+      style.right = window.innerWidth - sp.x + gap;
     }
 
-    // Ensure tooltip doesn't go off screen vertically
-    if (style.top && style.top > window.innerHeight - 200) {
-      style.top = undefined;
-      style.bottom = window.innerHeight - spotlight.top + gap;
+    // Clamp vertical if bottom
+    if (style.top !== undefined && style.top > window.innerHeight - 180) {
+      delete style.top;
+      style.bottom = window.innerHeight - sp.y + gap;
     }
 
-    setTooltipStyle(style);
-  }, [currentStep, steps]);
+    setTipPos(style);
+  }, [step, steps]);
 
+  // ── Animate step transitions ──
   useEffect(() => {
     if (!active) return;
-    positionElements();
+    const s = steps[step];
+    if (!s) return;
 
-    const handleResize = () => positionElements();
-    window.addEventListener('resize', handleResize);
-    window.addEventListener('scroll', handleResize, true);
+    setPhase('cursor-moving');
+
+    // 1) Scroll target into view
+    if (s.target) {
+      const el = document.querySelector(s.target);
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'nearest' });
+      }
+    }
+
+    // 2) Animate cursor to target center (or screen center)
+    const moveCursor = () => {
+      if (s.target) {
+        const el = document.querySelector(s.target);
+        if (el) {
+          const r = el.getBoundingClientRect();
+          setCursorPos({ x: r.left + r.width / 2, y: r.top + r.height / 2 });
+          setCursorVisible(true);
+        }
+      } else {
+        setCursorPos({ x: window.innerWidth / 2, y: window.innerHeight / 2 - 40 });
+        setCursorVisible(false);
+      }
+    };
+
+    const t1 = setTimeout(moveCursor, 100);
+
+    // 3) After cursor arrives, reveal spotlight + tooltip
+    const t2 = setTimeout(() => {
+      computePositions();
+      setPhase('shown');
+    }, s.target ? 500 : 200);
 
     return () => {
-      window.removeEventListener('resize', handleResize);
-      window.removeEventListener('scroll', handleResize, true);
+      clearTimeout(t1);
+      clearTimeout(t2);
     };
-  }, [active, positionElements]);
+  }, [active, step, steps, computePositions]);
 
-  // Re-position on step change with animation
+  // ── Reposition on resize/scroll ──
   useEffect(() => {
-    if (!active) return;
-    setAnimating(true);
-    const timer = setTimeout(() => {
-      positionElements();
-      setAnimating(false);
-    }, 150);
-    return () => clearTimeout(timer);
-  }, [currentStep, active, positionElements]);
-
-  // Scroll target into view
-  useEffect(() => {
-    if (!active) return;
-    const step = steps[currentStep];
-    if (!step?.target) return;
-    const el = document.querySelector(step.target);
-    if (el) {
-      el.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'nearest' });
-      // Re-position after scroll
-      setTimeout(positionElements, 400);
-    }
-  }, [currentStep, active, steps, positionElements]);
+    if (!active || phase !== 'shown') return;
+    const h = () => computePositions();
+    window.addEventListener('resize', h);
+    window.addEventListener('scroll', h, true);
+    return () => {
+      window.removeEventListener('resize', h);
+      window.removeEventListener('scroll', h, true);
+    };
+  }, [active, phase, computePositions]);
 
   const goNext = () => {
-    if (currentStep < steps.length - 1) {
-      setCurrentStep((s) => s + 1);
+    if (step < steps.length - 1) {
+      setPhase('idle');
+      setStep((s) => s + 1);
     } else {
-      completeTour(true);
-    }
-  };
-
-  const goPrev = () => {
-    if (currentStep > 0) {
-      setCurrentStep((s) => s - 1);
+      dismissForever();
     }
   };
 
   if (!active || steps.length === 0) return null;
 
-  const step = steps[currentStep];
-  const isLast = currentStep === steps.length - 1;
+  const s = steps[step];
+  const isLast = step === steps.length - 1;
+  const progress = ((step + 1) / steps.length) * 100;
 
   return (
-    <div className="onboarding-tour" style={{ zIndex: 99999 }}>
-      {/* Dark overlay with spotlight cutout */}
-      <div
-        ref={overlayRef}
-        className="fixed inset-0 transition-opacity duration-300"
-        style={{ zIndex: 99999 }}
-        onClick={(e) => {
-          // Only close if clicking the overlay itself
-          if (e.target === overlayRef.current) {
-            // Don't close on overlay click — user must use buttons
-          }
-        }}
-      >
-        <svg
-          className="absolute inset-0 w-full h-full"
-          style={{ transition: 'all 0.3s ease' }}
-        >
+    <>
+      {/* ── Overlay with spotlight cutout ── */}
+      <div ref={overlayRef} className="fixed inset-0" style={{ zIndex: 99998 }}>
+        <svg className="absolute inset-0 w-full h-full">
           <defs>
-            <mask id="spotlight-mask">
+            <mask id={`tour-mask-${tourId}`}>
               <rect x="0" y="0" width="100%" height="100%" fill="white" />
-              {spotlightRect && (
+              {spotlight && phase === 'shown' && (
                 <rect
-                  x={spotlightRect.left}
-                  y={spotlightRect.top}
-                  width={spotlightRect.width}
-                  height={spotlightRect.height}
-                  rx={spotlightRect.borderRadius}
-                  fill="black"
-                  style={{ transition: 'all 0.35s cubic-bezier(0.4, 0, 0.2, 1)' }}
+                  x={spotlight.x} y={spotlight.y}
+                  width={spotlight.w} height={spotlight.h}
+                  rx={spotlight.r} fill="black"
+                  style={{ transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)' }}
                 />
               )}
             </mask>
           </defs>
           <rect
-            x="0"
-            y="0"
-            width="100%"
-            height="100%"
-            fill="rgba(0,0,0,0.65)"
-            mask="url(#spotlight-mask)"
+            x="0" y="0" width="100%" height="100%"
+            fill="rgba(15, 23, 42, 0.6)"
+            mask={`url(#tour-mask-${tourId})`}
+            style={{ transition: 'opacity 0.3s' }}
           />
-          {/* Spotlight border glow */}
-          {spotlightRect && (
+          {/* Spotlight ring */}
+          {spotlight && phase === 'shown' && (
             <rect
-              x={spotlightRect.left}
-              y={spotlightRect.top}
-              width={spotlightRect.width}
-              height={spotlightRect.height}
-              rx={spotlightRect.borderRadius}
-              fill="none"
-              stroke="rgba(129,140,248,0.5)"
-              strokeWidth="2"
-              style={{ transition: 'all 0.35s cubic-bezier(0.4, 0, 0.2, 1)' }}
+              x={spotlight.x} y={spotlight.y}
+              width={spotlight.w} height={spotlight.h}
+              rx={spotlight.r}
+              fill="none" stroke="rgba(165,180,252,0.45)" strokeWidth="2"
+              style={{ transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)' }}
             />
           )}
         </svg>
       </div>
 
-      {/* Tooltip card */}
+      {/* ── Animated cursor ── */}
+      {cursorVisible && (
+        <div
+          className="fixed pointer-events-none"
+          style={{
+            zIndex: 100001,
+            left: cursorPos.x - 6,
+            top: cursorPos.y - 2,
+            transition: 'all 0.45s cubic-bezier(0.34, 1.56, 0.64, 1)',
+            opacity: phase === 'cursor-moving' || phase === 'shown' ? 1 : 0,
+          }}
+        >
+          {/* Cursor SVG */}
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" style={{ filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.3))' }}>
+            <path d="M5 3L19 12L12 13L9 20L5 3Z" fill="white" stroke="rgb(79,70,229)" strokeWidth="1.5" strokeLinejoin="round" />
+          </svg>
+          {/* Click ripple when arriving */}
+          {phase === 'shown' && (
+            <div className="absolute top-0 left-0 w-6 h-6 rounded-full bg-indigo-400/30 animate-ping" />
+          )}
+        </div>
+      )}
+
+      {/* ── Tooltip ── */}
       <div
-        ref={tooltipRef}
-        className={`fixed transition-all duration-300 ease-out ${animating ? 'opacity-0 scale-95' : 'opacity-100 scale-100'}`}
-        style={{ ...tooltipStyle, zIndex: 100000 }}
+        ref={tipRef}
+        className={`fixed transition-all duration-400 ease-out ${
+          phase === 'shown' ? 'opacity-100 translate-y-0 scale-100' : 'opacity-0 translate-y-2 scale-[0.97]'
+        }`}
+        style={{ ...tipPos, zIndex: 100000 }}
       >
-        <div className="rounded-2xl bg-white shadow-2xl border border-slate-200/80 overflow-hidden">
-          {/* Progress bar */}
-          <div className="h-1 bg-slate-100">
+        <div className="rounded-2xl bg-white/95 backdrop-blur-xl shadow-[0_20px_60px_-12px_rgba(0,0,0,0.25)] border border-white/60 overflow-hidden">
+          {/* Thin gradient accent line */}
+          <div className="h-[3px] bg-gradient-to-r from-indigo-500 via-violet-500 to-purple-500">
             <div
-              className="h-full bg-gradient-to-r from-indigo-500 to-violet-500 transition-all duration-500 ease-out"
-              style={{ width: `${((currentStep + 1) / steps.length) * 100}%` }}
+              className="h-full bg-white/40 transition-all duration-700 ease-out"
+              style={{ width: `${100 - progress}%`, marginLeft: 'auto' }}
             />
           </div>
 
-          <div className="px-5 pt-4 pb-2">
-            {/* Step counter */}
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-[11px] font-bold uppercase tracking-widest text-indigo-500">
-                {currentStep + 1} / {steps.length}
-              </span>
+          <div className="px-5 pt-4 pb-3">
+            {/* Header */}
+            <div className="flex items-start justify-between gap-3 mb-1">
+              <div className="flex items-center gap-2.5">
+                {s.icon && <span className="text-xl leading-none">{s.icon}</span>}
+                <h3 className="text-[15px] font-bold text-slate-900 leading-snug">{s.title}</h3>
+              </div>
               <button
-                onClick={() => completeTour(false)}
-                className="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
-                aria-label="Close tour"
+                onClick={dismiss}
+                className="mt-0.5 p-1 rounded-lg text-slate-300 hover:text-slate-500 hover:bg-slate-100 transition-colors shrink-0"
               >
-                <X className="h-4 w-4" />
+                <X className="h-3.5 w-3.5" />
               </button>
             </div>
 
-            {/* Icon */}
-            {step.icon && (
-              <div className="mb-2 text-2xl">{step.icon}</div>
-            )}
-
-            {/* Title */}
-            <h3 className="text-[15px] font-bold text-slate-900 leading-snug">
-              {step.title}
-            </h3>
-
             {/* Description */}
-            <p className="mt-1.5 text-[13px] leading-relaxed text-slate-500">
-              {step.description}
+            <p className="text-[13px] leading-relaxed text-slate-500 pl-[30px]">
+              {s.description}
             </p>
           </div>
 
-          {/* Actions */}
-          <div className="flex items-center justify-between px-5 py-3 bg-slate-50/80 border-t border-slate-100">
-            <div className="flex items-center gap-2">
-              {currentStep > 0 && (
-                <button
-                  onClick={goPrev}
-                  className="flex items-center gap-1 text-xs font-medium text-slate-400 hover:text-slate-600 transition-colors"
-                >
-                  <ChevronLeft className="h-3.5 w-3.5" />
-                  Back
-                </button>
-              )}
-            </div>
+          {/* Footer */}
+          <div className="flex items-center justify-between px-5 py-2.5 bg-slate-50/60">
+            <span className="text-[10px] font-semibold text-slate-400 tracking-wide">
+              {step + 1} of {steps.length}
+            </span>
 
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-3">
               {!isLast && (
                 <button
-                  onClick={() => completeTour(true)}
-                  className="flex items-center gap-1 text-xs font-medium text-slate-400 hover:text-slate-600 transition-colors"
+                  onClick={dismissForever}
+                  className="text-[11px] text-slate-400 hover:text-slate-600 transition-colors"
                 >
-                  <SkipForward className="h-3.5 w-3.5" />
-                  Skip all
+                  Don't show again
                 </button>
               )}
               <button
                 onClick={goNext}
-                className="flex items-center gap-1.5 rounded-lg bg-gradient-to-r from-indigo-500 to-violet-500 px-4 py-2 text-xs font-semibold text-white shadow-md hover:shadow-lg hover:brightness-110 transition-all"
+                className="flex items-center gap-1 rounded-full bg-gradient-to-r from-indigo-500 to-violet-500 pl-3.5 pr-2.5 py-1.5 text-[12px] font-semibold text-white shadow-sm hover:shadow-md hover:brightness-110 transition-all active:scale-95"
               >
-                {isLast ? 'Got it!' : 'Next'}
-                {!isLast && <ChevronRight className="h-3.5 w-3.5" />}
+                {isLast ? 'Done' : 'Next'}
+                <ChevronRight className="h-3.5 w-3.5" />
               </button>
             </div>
           </div>
-
-          {/* Don't show again - on last step */}
-          {isLast && (
-            <div className="px-5 py-2.5 bg-slate-50/50 border-t border-slate-100 text-center">
-              <button
-                onClick={() => completeTour(true)}
-                className="text-[11px] text-slate-400 hover:text-indigo-500 transition-colors"
-              >
-                Don't show this again
-              </button>
-            </div>
-          )}
         </div>
       </div>
-    </div>
+    </>
   );
 }
 
-/**
- * Reset a specific tour so it shows again.
- */
-export function resetTour(tourId) {
-  const completed = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
-  delete completed[tourId];
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(completed));
+function clamp(val, min, max) {
+  return Math.max(min, Math.min(val, max));
 }
 
-/**
- * Reset all tours.
- */
+export function resetTour(tourId) {
+  const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
+  delete saved[tourId];
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(saved));
+  const session = JSON.parse(sessionStorage.getItem(STORAGE_KEY) || '{}');
+  delete session[tourId];
+  sessionStorage.setItem(STORAGE_KEY, JSON.stringify(session));
+}
+
 export function resetAllTours() {
   localStorage.removeItem(STORAGE_KEY);
+  sessionStorage.removeItem(STORAGE_KEY);
 }

@@ -9,6 +9,7 @@ import { format, formatDistanceToNow } from 'date-fns';
 import { Loader2, CalendarDays, Clock, Filter } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import OnboardingTour from '@/components/OnboardingTour';
 
 const CATEGORY_INFO = {
   meeting:      { icon: '👥', label: 'Meeting' },
@@ -90,6 +91,17 @@ export default function DeadlinesPage() {
 
   return (
     <MainLayout>
+      <OnboardingTour
+        tourId="deadlines"
+        steps={[
+          {
+            target: null,
+            title: 'Your Deadlines',
+            description: 'Meetings, exams, submissions from all your rooms sync here automatically. Never miss anything!',
+            icon: '\u{1F4C5}',
+          },
+        ]}
+      />
       <div className="space-y-6">
         {/* Header */}
         <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-orange-500 via-rose-500 to-pink-600 px-8 py-8 text-white shadow-xl">

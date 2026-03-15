@@ -24,6 +24,7 @@ import { Loader2, Copy, Check, Plus, MessageSquare, FileUp, CalendarPlus, CheckS
 // useRef already imported above
 import { Button } from '@/components/ui/button';
 import ReportButton from '@/components/ReportButton';
+import OnboardingTour from '@/components/OnboardingTour';
 import EditRoomDialog from '@/components/room/EditRoomDialog';
 import QuickLinks from '@/components/room/QuickLinks';
 import { getAnnouncements, createAnnouncement, deleteAnnouncement as deleteAnnouncementApi, markAllRead } from '@/services/announcements';
@@ -273,6 +274,39 @@ export default function RoomPage() {
 
   return (
     <MainLayout>
+      <OnboardingTour
+        tourId="room"
+        steps={[
+          {
+            target: '[data-tour="tab-schedule"]',
+            title: 'Schedule',
+            description: 'Add meetings, deadlines, exams here. They auto-sync to your Deadlines page.',
+            position: 'bottom',
+            icon: '\u{1F4C6}',
+          },
+          {
+            target: '[data-tour="tab-tasks"]',
+            title: 'Tasks',
+            description: 'Create and track tasks for your team. Check them off as you go.',
+            position: 'bottom',
+            icon: '\u2705',
+          },
+          {
+            target: '[data-tour="tab-chat"]',
+            title: 'Chat',
+            description: 'Message your team in real time. Share images and files too.',
+            position: 'bottom',
+            icon: '\u{1F4AC}',
+          },
+          {
+            target: '[data-tour="tab-files"]',
+            title: 'Files',
+            description: 'Upload PDFs, slides, images — everything your team needs in one place.',
+            position: 'bottom',
+            icon: '\u{1F4C1}',
+          },
+        ]}
+      />
       <div className="space-y-6">
         {(() => {
           const palette = room ? getRoomPalette(room) : { headerGradient: 'linear-gradient(135deg, #0ea5e9, #7dd3fc)', accent: '#7dd3fc' };
@@ -367,10 +401,10 @@ export default function RoomPage() {
         <Tabs defaultValue="members" onValueChange={setActiveTab}>
           <TabsList className="flex flex-wrap bg-white rounded-xl p-1.5 shadow-sm border gap-1">
             <TabsTrigger value="members" className="min-h-[44px] sm:min-h-0 px-3 data-[state=active]:bg-indigo-50 data-[state=active]:text-indigo-700 data-[state=active]:font-semibold">Members</TabsTrigger>
-            <TabsTrigger value="schedule" className="min-h-[44px] sm:min-h-0 px-3 data-[state=active]:bg-indigo-50 data-[state=active]:text-indigo-700 data-[state=active]:font-semibold">Schedule</TabsTrigger>
-            <TabsTrigger value="tasks" className="min-h-[44px] sm:min-h-0 px-3 data-[state=active]:bg-indigo-50 data-[state=active]:text-indigo-700 data-[state=active]:font-semibold">Tasks</TabsTrigger>
-            <TabsTrigger value="chat" className="min-h-[44px] sm:min-h-0 px-3 data-[state=active]:bg-indigo-50 data-[state=active]:text-indigo-700 data-[state=active]:font-semibold">Chat</TabsTrigger>
-            <TabsTrigger value="files" className="min-h-[44px] sm:min-h-0 px-3 data-[state=active]:bg-indigo-50 data-[state=active]:text-indigo-700 data-[state=active]:font-semibold">Files</TabsTrigger>
+            <TabsTrigger value="schedule" data-tour="tab-schedule" className="min-h-[44px] sm:min-h-0 px-3 data-[state=active]:bg-indigo-50 data-[state=active]:text-indigo-700 data-[state=active]:font-semibold">Schedule</TabsTrigger>
+            <TabsTrigger value="tasks" data-tour="tab-tasks" className="min-h-[44px] sm:min-h-0 px-3 data-[state=active]:bg-indigo-50 data-[state=active]:text-indigo-700 data-[state=active]:font-semibold">Tasks</TabsTrigger>
+            <TabsTrigger value="chat" data-tour="tab-chat" className="min-h-[44px] sm:min-h-0 px-3 data-[state=active]:bg-indigo-50 data-[state=active]:text-indigo-700 data-[state=active]:font-semibold">Chat</TabsTrigger>
+            <TabsTrigger value="files" data-tour="tab-files" className="min-h-[44px] sm:min-h-0 px-3 data-[state=active]:bg-indigo-50 data-[state=active]:text-indigo-700 data-[state=active]:font-semibold">Files</TabsTrigger>
             <TabsTrigger value="links" className="min-h-[44px] sm:min-h-0 px-3 data-[state=active]:bg-indigo-50 data-[state=active]:text-indigo-700 data-[state=active]:font-semibold">
               <Link2 className="h-4 w-4 mr-1" />Links
             </TabsTrigger>

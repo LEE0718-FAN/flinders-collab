@@ -4,6 +4,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { GraduationCap, Calendar, BookOpen, ExternalLink, Loader2, ChevronDown, ChevronUp, MapPin, Star, Clock, ChevronLeft, ChevronRight } from 'lucide-react';
 import { getRecommendedEvents } from '@/services/flinders';
+import OnboardingTour from '@/components/OnboardingTour';
 import { format, parseISO, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isToday, isSameDay, getDay, addMonths, subMonths } from 'date-fns';
 
 function stripHtml(html) {
@@ -323,7 +324,7 @@ export default function FlindersLifePage() {
   const [favorites, setFavorites] = useState(() => {
     try { return JSON.parse(localStorage.getItem('flinders-favorites')) || []; } catch { return []; }
   });
-  const [allEventsExpanded, setAllEventsExpanded] = useState(false);
+  const [allEventsExpanded, setAllEventsExpanded] = useState(true);
   const [showFavorites, setShowFavorites] = useState(false);
 
   const fetchEvents = useCallback((interests) => {
@@ -364,6 +365,17 @@ export default function FlindersLifePage() {
 
   return (
     <MainLayout>
+      <OnboardingTour
+        tourId="flinders-life"
+        steps={[
+          {
+            target: null,
+            title: 'Flinders Life',
+            description: 'Campus events, 2026 academic calendar, and study room booking — all in one place. Select your interests to get event recommendations!',
+            icon: '\u{1F393}',
+          },
+        ]}
+      />
       {/* Hero */}
       <div className="relative mb-5 overflow-hidden rounded-2xl bg-gradient-to-br from-amber-400 via-yellow-500 to-amber-600 px-5 py-6 shadow-lg sm:px-7 sm:py-8">
         <div className="pointer-events-none absolute inset-0 opacity-20" style={{ background: 'radial-gradient(ellipse at 30% 20%, rgba(255,255,255,0.4) 0%, transparent 60%)' }} />
