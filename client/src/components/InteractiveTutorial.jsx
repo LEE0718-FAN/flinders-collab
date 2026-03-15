@@ -135,8 +135,8 @@ export default function InteractiveTutorial() {
   const showTip = useCallback((title, desc, options = {}) => {
     const tw = Math.min(340, window.innerWidth - 24);
     // Sidebar is 256px wide on md+ screens — offset center to content area
-    const sidebar = document.querySelector('aside.hidden.md\\:flex');
-    const sidebarW = sidebar ? sidebar.getBoundingClientRect().width : 0;
+    const sidebar = document.querySelector('aside');
+    const sidebarW = (sidebar && sidebar.offsetWidth > 0) ? sidebar.getBoundingClientRect().width : 0;
     const centerLeft = sidebarW + (window.innerWidth - sidebarW) / 2;
     if (options.center || !options.target) {
       setTooltip({ title, desc, style: { position: 'fixed', top: '50%', left: centerLeft, transform: 'translate(-50%, -50%)', width: tw }, icon: options.icon });
@@ -149,7 +149,9 @@ export default function InteractiveTutorial() {
     const pos = options.position || 'bottom';
     if (pos === 'bottom') { style.top = r.bottom + gap + 10; style.left = Math.max(12, Math.min(r.left + r.width / 2 - tw / 2, window.innerWidth - tw - 12)); }
     else if (pos === 'top') { style.bottom = window.innerHeight - r.top + gap; style.left = Math.max(12, Math.min(r.left + r.width / 2 - tw / 2, window.innerWidth - tw - 12)); }
-    if (style.top !== undefined && style.top > window.innerHeight - 160) { delete style.top; style.bottom = window.innerHeight - r.top + gap; }
+    else if (pos === 'right') { style.top = Math.max(12, Math.min(r.top + r.height / 2 - 50, window.innerHeight - 200)); style.left = Math.max(12, Math.min(r.right + gap, window.innerWidth - tw - 12)); }
+    else if (pos === 'left') { style.top = Math.max(12, Math.min(r.top + r.height / 2 - 50, window.innerHeight - 200)); style.right = window.innerWidth - r.left + gap; }
+    if (style.top !== undefined && style.top > window.innerHeight - 160 && pos !== 'right' && pos !== 'left') { delete style.top; style.bottom = window.innerHeight - r.top + gap; }
     setTooltip({ title, desc, style, icon: options.icon });
     spotlightEl(options.target);
   }, [spotlightEl]);
