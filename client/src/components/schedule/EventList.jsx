@@ -44,6 +44,7 @@ export default function EventList({ events = [], roomId, onEventsChange }) {
   const [activeMapEventId, setActiveMapEventId] = useState(null);
   const [locationMembers, setLocationMembers] = useState({});
   const [sharingEventIds, setSharingEventIds] = useState(new Set());
+  const [showPast, setShowPast] = useState(false);
 
   // Fetch location status for events that have location sharing enabled
   const fetchLocationStatus = useCallback(async (eventId) => {
@@ -168,22 +169,30 @@ export default function EventList({ events = [], roomId, onEventsChange }) {
     );
   }
 
-  const grouped = {};
+  const todayKey = format(new Date(), 'yyyy-MM-dd');
+
+  const upcomingGrouped = {};
+  const pastGrouped = {};
   sorted.forEach((event) => {
     const dateKey = format(new Date(event.start_time), 'yyyy-MM-dd');
-    if (!grouped[dateKey]) grouped[dateKey] = [];
-    grouped[dateKey].push(event);
+    if (dateKey < todayKey) {
+      if (!pastGrouped[dateKey]) pastGrouped[dateKey] = [];
+      pastGrouped[dateKey].push(event);
+    } else {
+      if (!upcomingGrouped[dateKey]) upcomingGrouped[dateKey] = [];
+      upcomingGrouped[dateKey].push(event);
+    }
   });
 
-  return (
-    <>
-      <div className="space-y-5">
-        {Object.entries(grouped).map(([dateKey, dayEvents]) => {
+  const pastCount = Object.values(pastGrouped).reduce((sum, arr) => sum + arr.length, 0);
+
+  const renderDateGroup = ([dateKey, dayEvents]) => {
           const date = new Date(dateKey + 'T00:00:00');
+          const isPast = dateKey < todayKey;
           return (
-            <div key={dateKey} id={`event-date-${dateKey}`} className="scroll-mt-4 rounded-xl transition-all duration-500">
+            <div key={dateKey} id={`event-date-${dateKey}`} className={`scroll-mt-4 rounded-xl transition-all duration-500 ${isPast ? 'opacity-60' : ''}`}>
               <div className="sticky top-0 z-10 flex items-center gap-3 pb-3">
-                <div className="flex flex-col items-center bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl p-3 shadow-lg shadow-blue-500/20 min-w-[64px]">
+                <div className={`flex flex-col items-center text-white rounded-xl p-3 shadow-lg min-w-[64px] ${isPast ? 'bg-gradient-to-r from-slate-400 to-slate-500 shadow-slate-300/20' : 'bg-gradient-to-r from-blue-600 to-indigo-600 shadow-blue-500/20'}`}>
                   <span className="text-[10px] font-semibold uppercase tracking-wider text-white/80">
                     {format(date, 'EEE')}
                   </span>
@@ -302,7 +311,32 @@ export default function EventList({ events = [], roomId, onEventsChange }) {
               </div>
             </div>
           );
-        })}
+  };
+
+  return (
+    <>
+      <div className="space-y-5">
+        {/* Upcoming & today events */}
+        {Object.entries(upcomingGrouped).map(renderDateGroup)}
+
+        {/* Past events section */}
+        {pastCount > 0 && (
+          <div className="pt-2">
+            <button
+              onClick={() => setShowPast(!showPast)}
+              className="w-full flex items-center gap-3 py-3 text-sm font-semibold text-slate-400 hover:text-slate-600 transition-colors"
+            >
+              <div className="h-px flex-1 bg-slate-200" />
+              <span>{showPast ? 'Hide' : 'Show'} past events ({pastCount})</span>
+              <div className="h-px flex-1 bg-slate-200" />
+            </button>
+            {showPast && (
+              <div className="space-y-5 mt-2">
+                {Object.entries(pastGrouped).reverse().map(renderDateGroup)}
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Edit event dialog */}
