@@ -22,16 +22,13 @@ function stripHtmlTags(html) {
   return (html || '').replace(/<[^>]*>/g, '').replace(/&#\d+;/g, ' ').replace(/&\w+;/g, ' ').trim();
 }
 
-function categorizeEvent(title, excerpt, classList) {
+function categorizeEvent(title, excerpt) {
+  // Only use title + excerpt for categorization — class_list CSS tags are too generic
+  // (audience tags like "future-students", "taster-days" cause false positives)
   const text = `${stripHtmlTags(title)} ${stripHtmlTags(excerpt)}`;
-  // Also include class_list tags for better categorization
-  const classText = Array.isArray(classList)
-    ? classList.map((c) => c.replace(/[-_]/g, ' ')).join(' ')
-    : '';
-  const fullText = `${text} ${classText}`;
   const matched = [];
   for (const [category, patterns] of Object.entries(categoryPatterns)) {
-    if (patterns.some((re) => re.test(fullText))) {
+    if (patterns.some((re) => re.test(text))) {
       matched.push(category);
     }
   }
@@ -280,7 +277,7 @@ function mapWpEvent(ev) {
     excerpt,
     link: ev.link || '',
     image: ev.featured_image_url || ev._embedded?.['wp:featuredmedia']?.[0]?.source_url || null,
-    categories: categorizeEvent(title, excerpt + ' ' + content, classList),
+    categories: categorizeEvent(title, excerpt + ' ' + content),
     location,
     start_time: parsed?.start_time || null,
     end_time: parsed?.end_time || null,
@@ -377,6 +374,16 @@ router.get('/flinders/recommended-events', async (req, res) => {
           end_time: row.end_time || null,
           time_display: row.time_display || '',
           cost: row.cost || '',
+          // Mark events missing time for schema enrichment
+          _needsSchemaFetch: !row.time_display && !!row.link,
+          _link: row.link || '',
+        }));
+        // Enrich cached events missing time/location from schema.org
+        events = await enrichEventsWithSchema(events);
+        // Re-categorize with updated data (strip class_list noise)
+        events = events.map((e) => ({
+          ...e,
+          categories: categorizeEvent(e.title, e.excerpt),
         }));
       }
     } catch {

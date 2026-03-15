@@ -17,15 +17,11 @@ function stripHtmlTags(html) {
   return (html || '').replace(/<[^>]*>/g, '').replace(/&#\d+;/g, ' ').replace(/&\w+;/g, ' ').trim();
 }
 
-function categorizeEvent(title, excerpt, classList) {
+function categorizeEvent(title, excerpt) {
   const text = `${stripHtmlTags(title)} ${stripHtmlTags(excerpt)}`;
-  const classText = Array.isArray(classList)
-    ? classList.map((c) => c.replace(/[-_]/g, ' ')).join(' ')
-    : '';
-  const fullText = `${text} ${classText}`;
   const matched = [];
   for (const [category, patterns] of Object.entries(categoryPatterns)) {
-    if (patterns.some((re) => re.test(fullText))) {
+    if (patterns.some((re) => re.test(text))) {
       matched.push(category);
     }
   }
@@ -263,7 +259,7 @@ async function crawlFlindersEvents() {
       const excerpt = ev.excerpt?.rendered || '';
       const content = ev.content?.rendered || '';
       const classList = ev.class_list || [];
-      const categories = categorizeEvent(title, excerpt + ' ' + content, classList);
+      const categories = categorizeEvent(title, excerpt + ' ' + content);
       let parsed = parseEventDateFromContent(content);
       let location = parseLocationFromContent(content) || parseLocationFromClassList(classList);
       let cost = null;
