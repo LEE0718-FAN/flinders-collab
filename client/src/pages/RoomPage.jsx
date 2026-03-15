@@ -179,7 +179,7 @@ export default function RoomPage() {
   }, []);
 
   useEffect(() => {
-    if (typeof window === 'undefined') return undefined;
+    if (typeof window === 'undefined' || activeTab !== 'schedule') return undefined;
 
     const scrollContainer = document.querySelector('[data-main-scroll-container="true"]');
     if (!scrollContainer) return undefined;
@@ -201,6 +201,7 @@ export default function RoomPage() {
       observer = new ResizeObserver(scheduleUpdate);
       if (scheduleLayoutRef.current) observer.observe(scheduleLayoutRef.current);
       if (calendarStickyRef.current) observer.observe(calendarStickyRef.current);
+      if (eventListColumnRef.current) observer.observe(eventListColumnRef.current);
     }
 
     return () => {
@@ -209,7 +210,17 @@ export default function RoomPage() {
       window.removeEventListener('resize', scheduleUpdate);
       observer?.disconnect();
     };
-  }, [updateCalendarOffset]);
+  }, [activeTab, updateCalendarOffset]);
+
+  useEffect(() => {
+    if (activeTab !== 'schedule') return undefined;
+
+    const timer = window.setTimeout(() => {
+      updateCalendarOffset();
+    }, 80);
+
+    return () => window.clearTimeout(timer);
+  }, [activeTab, events.length, updateCalendarOffset]);
 
   const handleCopyInviteCode = async () => {
     if (room?.invite_code) {
