@@ -9,7 +9,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { applyRoomOrder, buildOrderedIds, loadRoomOrder, persistRoomOrder } from '@/lib/room-order';
 import { useNavigate } from 'react-router-dom';
 import { format, formatDistanceToNow } from 'date-fns';
-import { Loader2, LayoutGrid } from 'lucide-react';
+import { Loader2, LayoutGrid, PlayCircle } from 'lucide-react';
 import OnboardingTour from '@/components/OnboardingTour';
 
 const TOUR_STEPS = [
@@ -499,6 +499,16 @@ export default function DashboardPage() {
             <p className="mx-auto mt-2 max-w-sm text-sm text-muted-foreground">
               Create a room to start collaborating with your team, or join an existing room with an invite code.
             </p>
+            <button
+              onClick={() => {
+                localStorage.removeItem('tutorial-completed');
+                window.dispatchEvent(new CustomEvent('start-interactive-tutorial'));
+              }}
+              className="mt-4 inline-flex items-center gap-1.5 rounded-full bg-indigo-50 px-4 py-2 text-xs font-semibold text-indigo-600 hover:bg-indigo-100 transition-colors"
+            >
+              <PlayCircle className="h-3.5 w-3.5" />
+              Watch tutorial again
+            </button>
           </div>
         )}
 
