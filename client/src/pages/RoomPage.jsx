@@ -293,7 +293,8 @@ export default function RoomPage() {
                 </Button>
               </div>
             </div>
-            <div className="grid gap-4 grid-cols-1 md:grid-cols-[280px_1fr]">
+            <div className="grid gap-4 grid-cols-1 md:grid-cols-[280px_1fr] md:items-start">
+              <div className="md:sticky md:top-4">
               <ScheduleCalendar
                 roomId={roomId}
                 events={events}
@@ -306,17 +307,18 @@ export default function RoomPage() {
                   setTimeout(() => {
                     const el = document.getElementById(`event-date-${dateKey}`);
                     if (el) {
-                      el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                      el.classList.add('ring-2', 'ring-blue-400', 'ring-offset-2');
-                      setTimeout(() => el.classList.remove('ring-2', 'ring-blue-400', 'ring-offset-2'), 2000);
+                      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                      el.classList.add('ring-2', 'ring-blue-400', 'ring-offset-4', 'bg-blue-50/50');
+                      setTimeout(() => el.classList.remove('ring-2', 'ring-blue-400', 'ring-offset-4', 'bg-blue-50/50'), 4000);
                     }
-                  }, 100);
+                  }, 150);
                 }}
                 onAddEvent={(date) => {
                   setSelectedDate(date);
                   setEventFormOpen(true);
                 }}
               />
+              </div>
               <EventList events={events} roomId={roomId} onEventsChange={handleEventsChange} />
             </div>
 
