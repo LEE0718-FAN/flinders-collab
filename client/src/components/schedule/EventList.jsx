@@ -181,7 +181,7 @@ export default function EventList({ events = [], roomId, onEventsChange }) {
         {Object.entries(grouped).map(([dateKey, dayEvents]) => {
           const date = new Date(dateKey + 'T00:00:00');
           return (
-            <div key={dateKey}>
+            <div key={dateKey} id={`event-date-${dateKey}`} className="scroll-mt-4 rounded-xl transition-all duration-500">
               <div className="sticky top-0 z-10 flex items-center gap-3 pb-3">
                 <div className="flex flex-col items-center bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl p-3 shadow-lg shadow-blue-500/20 min-w-[64px]">
                   <span className="text-[10px] font-semibold uppercase tracking-wider text-white/80">

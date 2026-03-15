@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { DayPicker } from 'react-day-picker';
 import { addMonths, subMonths, format } from 'date-fns';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Plus, X } from 'lucide-react';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
@@ -18,12 +18,14 @@ const categoryColors = {
   other: '#94a3b8',
 };
 
-export default function ScheduleCalendar({ events = [], selectedDate, onSelectDate, onDateClick, roomId }) {
+export default function ScheduleCalendar({ events = [], selectedDate, onSelectDate, onDateClick, onAddEvent, roomId }) {
   const [month, setMonth] = useState(new Date());
+  const [addPrompt, setAddPrompt] = useState(null); // date to show "add event?" prompt
 
   // Reset to current month when room changes
   useEffect(() => {
     setMonth(new Date());
+    setAddPrompt(null);
   }, [roomId]);
 
   const eventMarkersByDate = events.reduce((map, event) => {
@@ -91,10 +93,12 @@ export default function ScheduleCalendar({ events = [], selectedDate, onSelectDa
   const handleSelect = (date) => {
     onSelectDate?.(date);
     onDateClick?.(date);
+    // Show add event prompt
+    setAddPrompt(date);
   };
 
   return (
-    <div className="rounded-2xl border border-slate-200/60 bg-white shadow-xl shadow-blue-500/5 overflow-hidden">
+    <div className="rounded-2xl border border-slate-200/60 bg-white shadow-xl shadow-blue-500/5 overflow-visible">
       {/* Gradient header */}
       <div className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-t-2xl p-4 flex items-center justify-between">
         <Button
@@ -152,6 +156,41 @@ export default function ScheduleCalendar({ events = [], selectedDate, onSelectDa
         }}
       />
       </div>
+
+      {/* Add event prompt - appears below calendar */}
+      {addPrompt && (
+        <div className="border-t border-slate-100 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-b-2xl px-4 py-3 animate-fade-in">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-slate-700">
+                {format(addPrompt, 'MMM d, EEEE')}
+              </p>
+              <p className="text-xs text-slate-500">Add a new event?</p>
+            </div>
+            <div className="flex items-center gap-1.5 shrink-0">
+              <Button
+                size="sm"
+                className="h-8 bg-indigo-600 hover:bg-indigo-700 text-white shadow-md text-xs gap-1"
+                onClick={() => {
+                  onAddEvent?.(addPrompt);
+                  setAddPrompt(null);
+                }}
+              >
+                <Plus className="h-3.5 w-3.5" />
+                Add
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 text-slate-400 hover:text-slate-600"
+                onClick={() => setAddPrompt(null)}
+              >
+                <X className="h-3.5 w-3.5" />
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

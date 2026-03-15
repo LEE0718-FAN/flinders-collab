@@ -20,11 +20,8 @@ import { getTasks } from '@/services/tasks';
 import { copyToClipboard } from '@/lib/native';
 import { getRoomPalette } from '@/components/room/RoomCard';
 import { useAuth } from '@/hooks/useAuth';
-import { Loader2, Copy, Check, Plus, MessageSquare, FileUp, CalendarPlus, CheckSquare, Activity, Link2, Users, Clock, MapPin, X } from 'lucide-react';
+import { Loader2, Copy, Check, Plus, MessageSquare, FileUp, CalendarPlus, CheckSquare, Activity, Link2, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import {
-  Dialog, DialogContent, DialogHeader, DialogTitle,
-} from '@/components/ui/dialog';
 import ReportButton from '@/components/ReportButton';
 import EditRoomDialog from '@/components/room/EditRoomDialog';
 import QuickLinks from '@/components/room/QuickLinks';
@@ -51,8 +48,6 @@ export default function RoomPage() {
   const [tasks, setTasks] = useState([]);
   const [selectedDate, setSelectedDate] = useState(undefined);
   const [eventFormOpen, setEventFormOpen] = useState(false);
-  const [dayEventsOpen, setDayEventsOpen] = useState(false);
-  const [dayEventsDate, setDayEventsDate] = useState(null);
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState(false);
   const [activeTab, setActiveTab] = useState('overview');
@@ -306,106 +301,24 @@ export default function RoomPage() {
                 onSelectDate={setSelectedDate}
                 onDateClick={(date) => {
                   setSelectedDate(date);
-                  // Check if there are events on this date
-                  const dateKey = date.toISOString().split('T')[0];
-                  const dayEvents = events.filter((e) => {
-                    const eDate = new Date(e.start_time || e.date).toISOString().split('T')[0];
-                    return eDate === dateKey;
-                  });
-                  if (dayEvents.length > 0) {
-                    setDayEventsDate(date);
-                    setDayEventsOpen(true);
-                  } else {
-                    setEventFormOpen(true);
-                  }
+                  // Scroll to that date in the event list if events exist
+                  const dateKey = format(date, 'yyyy-MM-dd');
+                  setTimeout(() => {
+                    const el = document.getElementById(`event-date-${dateKey}`);
+                    if (el) {
+                      el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                      el.classList.add('ring-2', 'ring-blue-400', 'ring-offset-2');
+                      setTimeout(() => el.classList.remove('ring-2', 'ring-blue-400', 'ring-offset-2'), 2000);
+                    }
+                  }, 100);
+                }}
+                onAddEvent={(date) => {
+                  setSelectedDate(date);
+                  setEventFormOpen(true);
                 }}
               />
               <EventList events={events} roomId={roomId} onEventsChange={handleEventsChange} />
             </div>
-            {/* Day events dialog - shows events for clicked date */}
-            <Dialog open={dayEventsOpen} onOpenChange={setDayEventsOpen}>
-              <DialogContent className="sm:max-w-md rounded-2xl p-0 overflow-hidden">
-                <div className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-6 py-4">
-                  <DialogTitle className="text-lg font-bold text-white">
-                    {dayEventsDate ? format(dayEventsDate, 'EEEE, MMMM d') : ''}
-                  </DialogTitle>
-                  <p className="text-sm text-white/70 mt-0.5">
-                    {(() => {
-                      if (!dayEventsDate) return '';
-                      const dateKey = dayEventsDate.toISOString().split('T')[0];
-                      const count = events.filter((e) => new Date(e.start_time || e.date).toISOString().split('T')[0] === dateKey).length;
-                      return `${count} event${count !== 1 ? 's' : ''}`;
-                    })()}
-                  </p>
-                </div>
-                <div className="px-4 py-3 space-y-2 max-h-[50vh] overflow-y-auto">
-                  {dayEventsDate && (() => {
-                    const dateKey = dayEventsDate.toISOString().split('T')[0];
-                    const dayEvents = events
-                      .filter((e) => new Date(e.start_time || e.date).toISOString().split('T')[0] === dateKey)
-                      .sort((a, b) => new Date(a.start_time) - new Date(b.start_time));
-
-                    const categoryConfig = {
-                      meeting: { icon: '👥', label: 'Meeting', bg: 'bg-blue-50 border-blue-200 text-blue-700' },
-                      submission: { icon: '📮', label: 'Submission', bg: 'bg-pink-50 border-pink-200 text-pink-700' },
-                      quiz: { icon: '✏️', label: 'Quiz', bg: 'bg-cyan-50 border-cyan-200 text-cyan-700' },
-                      exam: { icon: '📝', label: 'Exam', bg: 'bg-rose-50 border-rose-200 text-rose-700' },
-                      presentation: { icon: '📊', label: 'Presentation', bg: 'bg-purple-50 border-purple-200 text-purple-700' },
-                      deadline: { icon: '⏰', label: 'Deadline', bg: 'bg-red-50 border-red-200 text-red-700' },
-                      study: { icon: '📚', label: 'Study', bg: 'bg-emerald-50 border-emerald-200 text-emerald-700' },
-                      lecture: { icon: '🎓', label: 'Lecture', bg: 'bg-indigo-50 border-indigo-200 text-indigo-700' },
-                      social: { icon: '🎉', label: 'Social', bg: 'bg-amber-50 border-amber-200 text-amber-700' },
-                      other: { icon: '📌', label: 'Other', bg: 'bg-gray-50 border-gray-200 text-gray-600' },
-                    };
-
-                    return dayEvents.map((event) => {
-                      const cat = categoryConfig[event.category] || categoryConfig.other;
-                      const startDt = new Date(event.start_time);
-                      const endDt = event.end_time ? new Date(event.end_time) : null;
-                      const locationName = event.location_name || event.location;
-
-                      return (
-                        <div key={event.id} className={`rounded-xl border p-3.5 ${cat.bg}`}>
-                          <div className="flex items-center gap-2 mb-1.5">
-                            <span className="text-base">{cat.icon}</span>
-                            <span className="text-[11px] font-semibold uppercase tracking-wider opacity-70">{cat.label}</span>
-                          </div>
-                          <p className="font-bold text-sm">{event.title}</p>
-                          <div className="flex items-center gap-3 mt-2 text-xs opacity-70">
-                            <span className="flex items-center gap-1">
-                              <Clock className="h-3 w-3" />
-                              {format(startDt, 'h:mm a')}
-                              {endDt && ` – ${format(endDt, 'h:mm a')}`}
-                            </span>
-                            {locationName && (
-                              <span className="flex items-center gap-1">
-                                <MapPin className="h-3 w-3" />
-                                {locationName}
-                              </span>
-                            )}
-                          </div>
-                          {event.description && (
-                            <p className="text-xs mt-2 opacity-60 leading-relaxed">{event.description}</p>
-                          )}
-                        </div>
-                      );
-                    });
-                  })()}
-                </div>
-                <div className="px-4 pb-4">
-                  <Button
-                    className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg"
-                    onClick={() => {
-                      setDayEventsOpen(false);
-                      setEventFormOpen(true);
-                    }}
-                  >
-                    <Plus className="mr-2 h-4 w-4" />
-                    Add Event
-                  </Button>
-                </div>
-              </DialogContent>
-            </Dialog>
 
             <EventForm
               roomId={roomId}
