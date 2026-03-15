@@ -247,10 +247,14 @@ export default function InteractiveTutorial() {
 
     // ── 3.5: Sidebar navigation ──
     setTooltip(null); setSpotlight(null); setCursorVisible(false);
-    const sidebarNav = await waitForEl('[data-tour="sidebar-nav"]', 3000);
-    if (sidebarNav && !bail()) {
-      showTip('Sidebar', "This sidebar is your main navigation — Dashboard, Deadlines, Free Board, Flinders Life, and your rooms all live here.", { target: '[data-tour="sidebar-nav"]', icon: '📌', position: 'right' });
-      await pause(4500); if (bail()) { await end(); return; }
+    const sidebarEl = document.querySelector('aside');
+    if (sidebarEl && !bail()) {
+      // Spotlight the whole sidebar
+      const sr = sidebarEl.getBoundingClientRect();
+      setSpotlight({ x: sr.left, y: sr.top, w: sr.width, h: sr.height, r: 0 });
+      // Show tip in the content area so it doesn't cover the sidebar
+      showTip('Sidebar', "This sidebar is your main navigation — Dashboard, Deadlines, Free Board, Flinders Life, and your rooms all live here.", { center: true, icon: '📌' });
+      await pause(5000); if (bail()) { await end(); return; }
     }
 
     // ── 4: Let's make a room ──
@@ -507,29 +511,78 @@ export default function InteractiveTutorial() {
     showTip('Free Board', "This is the community board for all Flinders students — post anything, find study groups, or organize meetups!", { center: true, icon: '📋' });
     await pause(4500); if (bail()) { await end(); return; }
 
-    // Show New Post button, click to open dialog, explain, then close
+    // Show New Post button, open dialog, demo typing, then close without posting
     setP(13); setTooltip(null); setSpotlight(null);
     const newPostBtn = await waitForEl('[data-tour="board-new-post"]', 5000);
     if (newPostBtn && !bail()) {
-      showTip('New Post', "Click here to write a post — pick a category like Meetup or Study Group, add a poll, and share with everyone!", { target: '[data-tour="board-new-post"]', icon: '✏️', position: 'bottom' });
+      showTip('New Post', "Let me show you how to create a post!", { target: '[data-tour="board-new-post"]', icon: '✏️', position: 'bottom' });
       await moveCursorTo('[data-tour="board-new-post"]');
-      await pause(5000); if (bail()) { await end(); return; }
+      await pause(3000); if (bail()) { await end(); return; }
 
-      // Open the dialog briefly to show the form
+      // Open the dialog — hide tooltip while interacting
       setTooltip(null); setShowOverlay(false);
       await clickDomEl(newPostBtn);
       await sleep(1500);
 
       const postDialog = await waitForEl('[role="dialog"]', 5000);
       if (postDialog && !bail()) {
+        await sleep(500);
+
+        // Select "Meetup" category
+        const allCatBtns2 = postDialog.querySelectorAll('button');
+        for (const btn of allCatBtns2) {
+          if (btn.textContent.includes('Meetup')) {
+            await clickDomEl(btn);
+            await sleep(600);
+            break;
+          }
+        }
+
+        // Type title
+        const postTitle = postDialog.querySelector('input[placeholder="Title"]');
+        if (postTitle && !bail()) {
+          await typeInto('[role="dialog"] input[placeholder="Title"]', 'City Campus meetup this Friday?');
+          await pause(600);
+        }
+
+        // Type content
+        const postContent = postDialog.querySelector('textarea[placeholder="What\'s on your mind?"]');
+        if (postContent && !bail()) {
+          await typeInto('[role="dialog"] textarea[placeholder="What\'s on your mind?"]', 'Anyone down to grab coffee at Victoria Square after class?');
+          await pause(600);
+        }
+
+        // Click "Add Poll" button
+        if (!bail()) {
+          const dialogBtns = postDialog.querySelectorAll('button');
+          let pollBtn = null;
+          for (const b of dialogBtns) { if (b.textContent.includes('Add Poll')) { pollBtn = b; break; } }
+          if (pollBtn) {
+            await clickDomEl(pollBtn);
+            await sleep(1000);
+
+            const pollOpt1 = postDialog.querySelector('input[placeholder="Option 1"]');
+            const pollOpt2 = postDialog.querySelector('input[placeholder="Option 2"]');
+            if (pollOpt1 && !bail()) {
+              await typeInto('[role="dialog"] input[placeholder="Option 1"]', 'Friday 3pm');
+              await sleep(400);
+            }
+            if (pollOpt2 && !bail()) {
+              await typeInto('[role="dialog"] input[placeholder="Option 2"]', 'Friday 5pm');
+              await pause(500);
+            }
+          }
+        }
+
+        // Show explanation — don't actually post
         setShowOverlay(true);
-        showTip('Post Form', "Choose a category, write your post, and even add a poll for votes. Try it out after the tour!", { center: true, icon: '📝' });
+        showTip('Almost done!', "That's how you create a post with a poll! I won't actually post this — try it yourself after the tour.", { center: true, icon: '📝' });
         await pause(4500); if (bail()) { await end(); return; }
 
-        // Close the dialog
+        // Close the dialog without posting
         setTooltip(null); setShowOverlay(false);
-        const closeBtn = postDialog.querySelector('button[type="button"]');
-        if (closeBtn) await clickDomEl(closeBtn);
+        // Press Escape to close the dialog cleanly
+        document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
         await sleep(800);
       }
       setShowOverlay(true);
@@ -545,32 +598,29 @@ export default function InteractiveTutorial() {
     await sleep(3500); if (bail()) { await end(); return; }
 
     // Events tab (default — already selected)
-    const eventsTab = await waitForEl('[value="events"]', 3000);
-    if (eventsTab && !bail()) {
-      showTip('Events', "Browse campus events, workshops, and career fairs happening at Flinders. Filter by your interests!", { target: '[value="events"]', icon: '🎪', position: 'bottom' });
-      await moveCursorTo('[value="events"]');
-      await pause(4500); if (bail()) { await end(); return; }
-    }
+    showTip('Flinders Life', "This page has three sections. Let me show you each one!", { center: true, icon: '🎓' });
+    await pause(3000); if (bail()) { await end(); return; }
+
+    // Click Events tab to make sure it's active
+    setTooltip(null); setSpotlight(null);
+    await clickEl('[value="events"]');
+    await sleep(1500);
+    showTip('Events', "Browse campus events, workshops, and career fairs happening at Flinders!", { center: true, icon: '🎪' });
+    await pause(4000); if (bail()) { await end(); return; }
 
     // Academic Calendar tab — click it
     setTooltip(null); setSpotlight(null);
-    const acadCalTab = await waitForEl('[value="academic-calendar"]', 3000);
-    if (acadCalTab && !bail()) {
-      await clickEl('[value="academic-calendar"]');
-      await sleep(1500);
-      showTip('Academic Calendar', "Semester dates, exam periods, and holidays — all in one place so you never miss a deadline!", { target: '[value="academic-calendar"]', icon: '📅', position: 'bottom' });
-      await pause(4500); if (bail()) { await end(); return; }
-    }
+    await clickEl('[value="academic-calendar"]');
+    await sleep(1500);
+    showTip('Academic Calendar', "Semester dates, exam periods, and holidays — all in one place so you never miss a deadline!", { center: true, icon: '📅' });
+    await pause(4000); if (bail()) { await end(); return; }
 
     // Study Rooms tab — click it
     setTooltip(null); setSpotlight(null);
-    const studyTab = await waitForEl('[value="study-rooms"]', 3000);
-    if (studyTab && !bail()) {
-      await clickEl('[value="study-rooms"]');
-      await sleep(1500);
-      showTip('Study Rooms', "Find and book study rooms at City Campus or Bedford Park — direct links right here!", { target: '[value="study-rooms"]', icon: '📚', position: 'bottom' });
-      await pause(4500); if (bail()) { await end(); return; }
-    }
+    await clickEl('[value="study-rooms"]');
+    await sleep(1500);
+    showTip('Study Rooms', "Find and book study rooms at City Campus or Bedford Park — direct links right here!", { center: true, icon: '📚' });
+    await pause(4000); if (bail()) { await end(); return; }
 
     // ── 15: Done ──
     setP(15); setTooltip(null); setSpotlight(null); setCursorVisible(false);
