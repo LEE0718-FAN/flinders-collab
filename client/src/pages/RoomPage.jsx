@@ -55,7 +55,6 @@ export default function RoomPage() {
   const [activities, setActivities] = useState([]);
   const [quickLinks, setQuickLinks] = useState([]);
   const [error, setError] = useState('');
-  const [calendarStickyTop, setCalendarStickyTop] = useState(24);
   const [calendarOffset, setCalendarOffset] = useState(0);
   const highlightRef = useRef(null);
   const highlightTimerRef = useRef(null);
@@ -148,45 +147,23 @@ export default function RoomPage() {
     }
   }, [roomId]);
 
-  useEffect(() => {
-    const node = calendarStickyRef.current;
-    if (!node || typeof window === 'undefined') return undefined;
-
-    const updateStickyTop = () => {
-      const nextTop = Math.max(24, Math.round((window.innerHeight - node.offsetHeight) / 2));
-      setCalendarStickyTop(nextTop);
-    };
-
-    updateStickyTop();
-    window.addEventListener('resize', updateStickyTop);
-
-    let observer;
-    if (typeof ResizeObserver !== 'undefined') {
-      observer = new ResizeObserver(updateStickyTop);
-      observer.observe(node);
-    }
-
-    return () => {
-      window.removeEventListener('resize', updateStickyTop);
-      observer?.disconnect();
-    };
-  }, []);
-
-  const alignCalendarToEvent = useCallback((target) => {
-    if (!target || typeof window === 'undefined') return;
+  const updateCalendarOffset = useCallback(() => {
+    if (typeof window === 'undefined') return;
     if (window.innerWidth < 768) {
       setCalendarOffset(0);
       return;
     }
 
+    const scrollContainer = document.querySelector('[data-main-scroll-container="true"]');
     const layoutNode = scheduleLayoutRef.current;
     const calendarNode = calendarStickyRef.current;
-    if (!layoutNode || !calendarNode) return;
+    if (!scrollContainer || !layoutNode || !calendarNode) return;
 
+    const containerRect = scrollContainer.getBoundingClientRect();
     const layoutRect = layoutNode.getBoundingClientRect();
-    const targetRect = target.getBoundingClientRect();
+    const viewportCenter = containerRect.top + (containerRect.height / 2);
     const availableTravel = Math.max(0, layoutNode.offsetHeight - calendarNode.offsetHeight);
-    const desiredOffset = (targetRect.top - layoutRect.top) + (targetRect.height / 2) - (calendarNode.offsetHeight / 2);
+    const desiredOffset = viewportCenter - layoutRect.top - (calendarNode.offsetHeight / 2);
     const nextOffset = Math.min(Math.max(0, desiredOffset), availableTravel);
 
     setCalendarOffset(nextOffset);
@@ -195,23 +172,35 @@ export default function RoomPage() {
   useEffect(() => {
     if (typeof window === 'undefined') return undefined;
 
-    const handleResize = () => {
-      if (window.innerWidth < 768) {
-        setCalendarOffset(0);
-        return;
-      }
+    const scrollContainer = document.querySelector('[data-main-scroll-container="true"]');
+    if (!scrollContainer) return undefined;
 
-      if (!selectedDate) return;
-      const dateKey = format(selectedDate, 'yyyy-MM-dd');
-      const el = document.getElementById(`event-date-${dateKey}`);
-      if (el) {
-        alignCalendarToEvent(el);
-      }
+    let frameId = null;
+    const scheduleUpdate = () => {
+      if (frameId) cancelAnimationFrame(frameId);
+      frameId = requestAnimationFrame(() => {
+        updateCalendarOffset();
+      });
     };
 
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, [alignCalendarToEvent, selectedDate]);
+    scheduleUpdate();
+    scrollContainer.addEventListener('scroll', scheduleUpdate, { passive: true });
+    window.addEventListener('resize', scheduleUpdate);
+
+    let observer;
+    if (typeof ResizeObserver !== 'undefined') {
+      observer = new ResizeObserver(scheduleUpdate);
+      if (scheduleLayoutRef.current) observer.observe(scheduleLayoutRef.current);
+      if (calendarStickyRef.current) observer.observe(calendarStickyRef.current);
+    }
+
+    return () => {
+      if (frameId) cancelAnimationFrame(frameId);
+      scrollContainer.removeEventListener('scroll', scheduleUpdate);
+      window.removeEventListener('resize', scheduleUpdate);
+      observer?.disconnect();
+    };
+  }, [updateCalendarOffset]);
 
   const handleCopyInviteCode = async () => {
     if (room?.invite_code) {
@@ -381,9 +370,8 @@ export default function RoomPage() {
               <div className="w-full md:w-[280px] shrink-0">
                 <div
                   ref={calendarStickyRef}
-                  className="z-10 transition-[top,transform] duration-500 ease-out md:sticky"
+                  className="z-10 transition-transform duration-300 ease-out md:sticky md:top-0"
                   style={{
-                    top: `${calendarStickyTop}px`,
                     transform: `translateY(${calendarOffset}px)`,
                   }}
                 >
@@ -400,8 +388,8 @@ export default function RoomPage() {
                       setTimeout(() => {
                         const el = document.getElementById(`event-date-${dateKey}`);
                         if (el) {
-                          alignCalendarToEvent(el);
                           el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                          setTimeout(() => updateCalendarOffset(), 260);
                           el.classList.add('ring-2', 'ring-blue-400', 'ring-offset-4', 'bg-blue-50/50');
                           highlightRef.current = el;
                           highlightTimerRef.current = setTimeout(() => {
@@ -414,7 +402,6 @@ export default function RoomPage() {
                     onAddEvent={(date) => {
                       clearHighlight();
                       setSelectedDate(date);
-                      setCalendarOffset(0);
                       setEventFormOpen(true);
                     }}
                   />

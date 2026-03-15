@@ -425,6 +425,7 @@ export default function MainLayout({ children }) {
 
         {/* Main Content */}
         <main
+          data-main-scroll-container="true"
           className="relative flex-1 overflow-y-auto bg-slate-50 p-3 pb-6 sm:p-4 md:p-6 custom-scrollbar animate-fade-in"
           style={{
             paddingTop: 'max(0.75rem, var(--safe-top))',
