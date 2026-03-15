@@ -770,7 +770,7 @@ function MonitoringTab() {
                     </span>
                   </div>
                   <p className="text-xs text-orange-800">
-                    <span className="font-medium">{err.action}</span> 중 오류 발생
+                    Error during <span className="font-medium">{err.action}</span>
                     <span className="text-orange-500 ml-1">({err.statusCode})</span>
                   </p>
                   {err.errorMessage && (
@@ -782,8 +782,8 @@ function MonitoringTab() {
           ) : (
             <div className="flex flex-col items-center gap-2 py-6 text-muted-foreground">
               <CheckCircle2 className="h-8 w-8 text-emerald-400" />
-              <p className="text-sm font-medium text-slate-500">오류 없음</p>
-              <p className="text-xs text-slate-400">유저 오류가 발생하면 여기에 표시됩니다</p>
+              <p className="text-sm font-medium text-slate-500">No errors</p>
+              <p className="text-xs text-slate-400">User errors will appear here</p>
             </div>
           )}
         </CardContent>

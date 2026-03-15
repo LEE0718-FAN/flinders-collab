@@ -284,19 +284,19 @@ export default function MainLayout({ children }) {
     const onUpcoming = (data) => {
       setMaintenance({
         type: 'upcoming',
-        message: `DB 최적화가 ${data.minutesUntil}분 후 진행됩니다 (약 ${data.estimatedDuration})`,
+        message: `DB optimization in ${data.minutesUntil} min (est. ${data.estimatedDuration})`,
       });
     };
     const onStarted = () => {
       setMaintenance({
         type: 'started',
-        message: 'DB 최적화 진행 중...',
+        message: 'DB optimization in progress...',
       });
     };
     const onDone = (data) => {
       setMaintenance({
         type: 'done',
-        message: `DB 최적화 완료 (${(data.duration / 1000).toFixed(1)}초)`,
+        message: `DB optimization complete (${(data.duration / 1000).toFixed(1)}s)`,
       });
       setTimeout(() => setMaintenance(null), 10000);
     };

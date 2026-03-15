@@ -182,7 +182,7 @@ export default function InteractiveTutorial() {
 
     // ── Step 2: Highlight Create Room ──
     setProgress(2);
-    showTip('방 만들기', '여기서 새 방을 만들 수 있어!\n눌러볼게 👆', {
+    showTip('Create a Room', 'You can create a new room here!\nLet me show you 👆', {
       target: '[data-tour="create-room"]', icon: '✨', position: 'bottom',
     });
     await moveCursorTo('[data-tour="create-room"]');
@@ -201,7 +201,7 @@ export default function InteractiveTutorial() {
     setProgress(4);
     const nameInput = await waitForEl('[role="dialog"] input');
     if (!nameInput || bail()) return;
-    showTip('방 이름 입력', '이름을 적어볼게!', { center: true, icon: '✏️' });
+    showTip('Room Name', "Let me type a name!", { center: true, icon: '✏️' });
     await sleep(500);
     // Find the room name input (first input in dialog)
     const dialogInputs = document.querySelectorAll('[role="dialog"] input');
@@ -262,7 +262,7 @@ export default function InteractiveTutorial() {
     setProgress(6);
     setCursorVisible(false);
     if (tutorialRoomId) {
-      showTip('방이 만들어졌어!', '들어가볼까? 🚀', { center: true, icon: '🎉' });
+      showTip('Room Created!', "Let's go inside! 🚀", { center: true, icon: '🎉' });
       await waitForNext();
       if (bail()) return;
       setTooltip(null);
@@ -275,7 +275,7 @@ export default function InteractiveTutorial() {
     setProgress(7);
     const scheduleTab = await waitForEl('[data-tour="tab-schedule"]');
     if (scheduleTab && !bail()) {
-      showTip('📆 스케줄', '팀 일정을 관리해.\n미팅, 시험, 과제 마감일을 추가할 수 있어!', {
+      showTip('Schedule', 'Manage your team calendar.\nAdd meetings, exams, and deadlines!', {
         target: '[data-tour="tab-schedule"]', icon: '📆', position: 'bottom',
       });
       await clickAt('[data-tour="tab-schedule"]');
@@ -289,7 +289,7 @@ export default function InteractiveTutorial() {
     setSpotlight(null);
     const tasksTab = await waitForEl('[data-tour="tab-tasks"]');
     if (tasksTab && !bail()) {
-      showTip('✅ 태스크', '할 일을 만들고 팀원에게 배정해.\n완료하면 체크!', {
+      showTip('Tasks', 'Create tasks and assign to teammates.\nCheck them off when done!', {
         target: '[data-tour="tab-tasks"]', icon: '✅', position: 'bottom',
       });
       await clickAt('[data-tour="tab-tasks"]');
@@ -303,7 +303,7 @@ export default function InteractiveTutorial() {
     setSpotlight(null);
     const chatTab = await waitForEl('[data-tour="tab-chat"]');
     if (chatTab && !bail()) {
-      showTip('💬 채팅', '팀원들이랑 실시간 대화!\n이미지, 파일도 보낼 수 있어.', {
+      showTip('Chat', 'Real-time messaging with your team!\nSend images and files too.', {
         target: '[data-tour="tab-chat"]', icon: '💬', position: 'bottom',
       });
       await clickAt('[data-tour="tab-chat"]');
@@ -317,7 +317,7 @@ export default function InteractiveTutorial() {
     setSpotlight(null);
     const filesTab = await waitForEl('[data-tour="tab-files"]');
     if (filesTab && !bail()) {
-      showTip('📁 파일', '강의자료, 과제 파일을 여기서 공유해!', {
+      showTip('Files', 'Share lecture notes, assignments, anything!', {
         target: '[data-tour="tab-files"]', icon: '📁', position: 'bottom',
       });
       await clickAt('[data-tour="tab-files"]');
@@ -333,7 +333,7 @@ export default function InteractiveTutorial() {
     navigate('/deadlines');
     await sleep(800);
     if (bail()) return;
-    showTip('📅 데드라인', '모든 방의 일정이 여기 한곳에 모여!\n절대 까먹을 일 없어.', { center: true, icon: '📅' });
+    showTip('Deadlines', 'All your events from every room in one place!\nNever miss a thing.', { center: true, icon: '📅' });
     await waitForNext();
     if (bail()) return;
 
@@ -343,7 +343,7 @@ export default function InteractiveTutorial() {
     navigate('/board');
     await sleep(800);
     if (bail()) return;
-    showTip('💬 자유게시판', '스터디 모집, Q&A, 익명 고백까지!\n뭐든 자유롭게 올려봐.', { center: true, icon: '💬' });
+    showTip('Free Board', 'Find study groups, Q&A, anonymous confessions!\nPost anything freely.', { center: true, icon: '💬' });
     await waitForNext();
     if (bail()) return;
 
@@ -353,7 +353,7 @@ export default function InteractiveTutorial() {
     navigate('/flinders-life');
     await sleep(800);
     if (bail()) return;
-    showTip('🎓 Flinders Life', '캠퍼스 이벤트, 학사 일정, 스터디룸 예약!\n관심사 골라서 추천도 받아봐.', { center: true, icon: '🎓' });
+    showTip('Flinders Life', 'Campus events, academic calendar, study rooms!\nPick your interests for recommendations.', { center: true, icon: '🎓' });
     await waitForNext();
     if (bail()) return;
 
@@ -361,7 +361,7 @@ export default function InteractiveTutorial() {
     setTooltip(null);
     setSpotlight(null);
     setCursorVisible(false);
-    showTip('준비 완료!', '이제 직접 해봐! 🎉\n궁금한 건 언제든 물어봐.', { center: true, icon: '🚀' });
+    showTip("You're all set!", "Now try it yourself! 🎉\nHave fun exploring.", { center: true, icon: '🚀' });
     await waitForNext();
 
     // ── Cleanup ──
@@ -435,11 +435,11 @@ export default function InteractiveTutorial() {
             <div className="mx-auto mb-4 h-16 w-16 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-lg shadow-indigo-500/30">
               <Sparkles className="h-8 w-8 text-white" />
             </div>
-            <h2 className="text-xl font-black text-slate-900">처음이야? 👋</h2>
+            <h2 className="text-xl font-black text-slate-900">First time here? 👋</h2>
             <p className="mt-2 text-sm text-slate-500 leading-relaxed">
-              앱 사용법을 직접 보여줄게!<br/>
-              커서가 알아서 클릭하고 타이핑하면서<br/>
-              하나하나 설명해줄 거야.
+              Let me show you around!<br/>
+              I'll click and type for you,<br/>
+              explaining everything step by step.
             </p>
           </div>
           <div className="mt-6 space-y-2">
@@ -447,19 +447,19 @@ export default function InteractiveTutorial() {
               onClick={startTutorial}
               className="w-full rounded-xl bg-gradient-to-r from-indigo-500 to-purple-600 py-3 text-sm font-bold text-white shadow-lg shadow-indigo-500/25 hover:shadow-xl transition-all active:scale-[0.98]"
             >
-              좋아, 보여줘! 🚀
+              Show me around! 🚀
             </button>
             <button
               onClick={handleDecline}
               className="w-full rounded-xl border border-slate-200 bg-white py-3 text-sm font-medium text-slate-500 hover:bg-slate-50 transition-all"
             >
-              괜찮아, 직접 해볼게
+              I'll figure it out myself
             </button>
             <button
               onClick={handleAcceptAndNeverShow}
               className="w-full text-[11px] text-slate-400 hover:text-slate-600 py-1 transition-colors"
             >
-              다시 묻지 않기
+              Don't ask again
             </button>
           </div>
         </div>
@@ -568,7 +568,7 @@ export default function InteractiveTutorial() {
                     onChange={(e) => setDontShowAgain(e.target.checked)}
                     className="h-3.5 w-3.5 rounded border-slate-300 text-indigo-500 cursor-pointer"
                   />
-                  <span className="text-[11px] text-slate-500">다시 표시 하지 않음</span>
+                  <span className="text-[11px] text-slate-500">Don't show again</span>
                 </label>
               )}
 

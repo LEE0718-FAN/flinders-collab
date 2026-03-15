@@ -26,7 +26,7 @@ export default function OnboardingTour({ tourId, steps = [], delay = 600 }) {
   const tipRef = useRef(null);
 
   // ── Should this tour show? ──
-  // Only skip if permanently dismissed via "다시 표시 하지 않음" checkbox
+  // Only skip if permanently dismissed via "Don't show again" checkbox
   useEffect(() => {
     const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
     if (saved[tourId]) return;
@@ -322,7 +322,7 @@ export default function OnboardingTour({ tourId, steps = [], delay = 600 }) {
                   onChange={(e) => setDontShowAgain(e.target.checked)}
                   className="h-3.5 w-3.5 rounded border-slate-300 text-indigo-500 focus:ring-indigo-500 cursor-pointer"
                 />
-                <span className="text-[11px] text-slate-500">다시 표시 하지 않음</span>
+                <span className="text-[11px] text-slate-500">Don't show again</span>
               </label>
             )}
 
