@@ -737,9 +737,12 @@ export default function InteractiveTutorial() {
         </button>
       </div>
 
-      {/* ── Overlay — blocks all clicks when visible ── */}
+      {/* ── Click blocker — ALWAYS blocks all clicks during tutorial ── */}
+      <div className="fixed inset-0" style={{ zIndex: 99998 }} />
+
+      {/* ── Dark overlay with spotlight — only when showOverlay is true ── */}
       {showOverlay && (
-        <div className="fixed inset-0" style={{ zIndex: 99998 }}>
+        <div className="fixed inset-0 pointer-events-none" style={{ zIndex: 99999 }}>
           <svg className="absolute inset-0 w-full h-full">
             <defs>
               <mask id="tutorial-mask">
