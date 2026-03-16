@@ -4,8 +4,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { UserPlus, Loader2, CheckCircle2, AlertCircle } from 'lucide-react';
 import { joinRoom } from '@/services/rooms';
+import { useNavigate } from 'react-router-dom';
 
 export default function JoinRoomDialog({ onJoined }) {
+  const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const [inviteCode, setInviteCode] = useState('');
   const [loading, setLoading] = useState(false);
@@ -36,18 +38,33 @@ export default function JoinRoomDialog({ onJoined }) {
     setLoading(true);
     try {
       const result = await joinRoom(trimmed);
-      const roomName = result?.room?.name || 'the room';
+      const joinedRoom = result?.room;
+      const roomName = joinedRoom?.name || 'the room';
       setSuccess(`Joined "${roomName}" successfully!`);
       setInviteCode('');
-      onJoined?.(result?.room);
+      onJoined?.(joinedRoom);
       // Auto-close after a brief moment so the user sees the success message
       setTimeout(() => {
         setOpen(false);
         setSuccess('');
+        if (joinedRoom?.id) {
+          navigate(`/rooms/${joinedRoom.id}`);
+        }
       }, 1200);
     } catch (err) {
       if (err?.status === 409 && err?.room) {
-        onJoined?.(err.room);
+        const joinedRoom = err.room;
+        onJoined?.(joinedRoom);
+        setSuccess(`You're already in "${joinedRoom.name || 'this room'}". Opening it now.`);
+        setInviteCode('');
+        setTimeout(() => {
+          setOpen(false);
+          setSuccess('');
+          if (joinedRoom?.id) {
+            navigate(`/rooms/${joinedRoom.id}`);
+          }
+        }, 900);
+        return;
       }
       setError(getJoinErrorMessage(err));
     } finally {
