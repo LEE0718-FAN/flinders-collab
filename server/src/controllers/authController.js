@@ -67,6 +67,15 @@ async function login(req, res, next) {
   try {
     const { email, password } = req.body;
 
+    if (!email || !password) {
+      return res.status(400).json({ error: 'Email and password are required' });
+    }
+
+    // Basic email format check
+    if (!email.includes('@') || !email.includes('.')) {
+      return res.status(400).json({ error: 'Please enter a valid email address' });
+    }
+
     const { data, error } =
       await supabasePublic.auth.signInWithPassword({ email, password });
 
@@ -269,10 +278,11 @@ async function guestLogin(req, res, next) {
     const { data: loginData, error: loginError } =
       await supabasePublic.auth.signInWithPassword({ email, password });
 
-    if (loginError) {
+    if (loginError || !loginData?.session) {
       // Clean up the created user
       await supabaseAdmin.auth.admin.deleteUser(authData.user.id).catch(() => {});
-      return res.status(500).json({ error: 'Failed to sign in tester' });
+      console.error('Guest sign-in failed:', loginError?.message || 'No session returned');
+      return res.status(500).json({ error: 'Failed to create tester session. Please try again.' });
     }
 
     res.json({

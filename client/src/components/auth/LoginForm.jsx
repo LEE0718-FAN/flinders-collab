@@ -27,6 +27,8 @@ export default function LoginForm({ onSubmit, onGuestLogin }) {
       const msg = err.message || 'Login failed';
       if (msg === 'Failed to fetch' || msg === 'Load failed') {
         setError('Server is starting up. Please try again in a few seconds.');
+      } else if (msg.toLowerCase().includes('internal server error')) {
+        setError('Something went wrong. Please check your email format and try again.');
       } else {
         setError(msg);
       }

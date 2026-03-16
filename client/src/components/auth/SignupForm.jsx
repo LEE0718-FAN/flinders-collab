@@ -90,6 +90,11 @@ export default function SignupForm({ onSubmit }) {
       return;
     }
 
+    if (accountType === 'general' && email.endsWith('@flinders.edu.au')) {
+      setError('Flinders email detected! Please go back and sign up as "Flinders Student" instead.');
+      return;
+    }
+
     if (password.length < 6) {
       setError('Password must be at least 6 characters');
       return;

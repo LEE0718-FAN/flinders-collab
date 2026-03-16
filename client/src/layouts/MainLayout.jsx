@@ -109,7 +109,7 @@ function SidebarContent({ rooms, location, isAdmin, unreadCounts = {}, user }) {
         icon={MessageSquare}
         label="Free Board"
       />
-      {user?.account_type !== 'general' && user?.user_metadata?.account_type !== 'general' && (
+      {(user?.account_type || user?.user_metadata?.account_type || 'flinders') !== 'general' && (
         <NavItem
           to="/flinders-life"
           isActive={location.pathname === '/flinders-life'}

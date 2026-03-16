@@ -36,16 +36,16 @@ export default function InteractiveTutorial() {
     const leftover = localStorage.getItem(TUTORIAL_ROOM_ID_KEY);
     if (leftover) {
       localStorage.removeItem(TUTORIAL_ROOM_ID_KEY);
-      getRoom(leftover)
-        .then((room) => {
-          const name = room?.name || room?.room?.name || '';
-          if (name === TUTORIAL_ROOM_NAME) {
+      deleteRoom(leftover)
+        .then(() => window.dispatchEvent(new CustomEvent('rooms-updated')))
+        .catch(() => {
+          // Retry once after a short delay
+          setTimeout(() => {
             deleteRoom(leftover)
               .then(() => window.dispatchEvent(new CustomEvent('rooms-updated')))
               .catch(() => {});
-          }
-        })
-        .catch(() => {});
+          }, 1000);
+        });
     }
   }, []);
 
@@ -210,17 +210,18 @@ export default function InteractiveTutorial() {
   const safeDeleteTutorialRoom = useCallback(async () => {
     const roomId = createdRoomIdRef.current;
     if (!roomId) return;
-    try {
-      await deleteRoom(roomId);
-    } catch {
+    // Try up to 3 times with short delay
+    for (let attempt = 0; attempt < 3; attempt++) {
       try {
-        const room = await getRoom(roomId);
-        const name = room?.name || room?.room?.name || '';
-        if (name === TUTORIAL_ROOM_NAME) await deleteRoom(roomId);
-      } catch { /* already gone */ }
+        await deleteRoom(roomId);
+        break; // success
+      } catch {
+        if (attempt < 2) await new Promise((r) => setTimeout(r, 500));
+      }
     }
     createdRoomIdRef.current = null;
     localStorage.removeItem(TUTORIAL_ROOM_ID_KEY);
+    // Fire multiple rooms-updated events to ensure dashboard refreshes
     window.dispatchEvent(new CustomEvent('rooms-updated'));
   }, []);
 
@@ -636,7 +637,17 @@ export default function InteractiveTutorial() {
         await pause(2500); if (bail()) { await end(); return; }
       }
 
-      // ── 13: Flinders Life — click each tab ──
+      // ── 13: Flinders Life — click each tab (skip for general users) ──
+      const acctType = user?.account_type || user?.user_metadata?.account_type || 'flinders';
+      if (acctType === 'general') {
+        // Skip Flinders Life for non-Flinders users
+        setP(14); setTooltip(null); setSpotlight(null); setCursorVisible(false);
+        showTip('All done!', "That's it! The demo room will be cleaned up. Go make your own room!", { center: true, icon: '🎉' });
+        await pause(3500);
+        await end();
+        localStorage.setItem(TUTORIAL_KEY, Date.now().toString());
+        return;
+      }
       setP(13); setTooltip(null); setSpotlight(null); setCursorVisible(false);
       navigate('/flinders-life');
       showTip('Loading...', "Opening Flinders Life...", { center: true, icon: '⏳' });
@@ -763,7 +774,7 @@ export default function InteractiveTutorial() {
   const progressPct = (progress / totalSteps) * 100;
 
   return (
-    <>
+    <div data-tutorial-root="" style={{ pointerEvents: 'auto' }}>
       {/* ── Fixed top-right control bar ── */}
       <div className="fixed top-4 right-4 z-[100002] flex items-center gap-2 animate-fade-in" style={{ pointerEvents: 'auto' }}>
         {canSkip && (
@@ -789,7 +800,12 @@ export default function InteractiveTutorial() {
         </button>
       </div>
 
-      {/* ── Click blocker — ALWAYS blocks all clicks during tutorial ── */}
+      {/* ── Global pointer-events kill — blocks ALL clicks including Radix portals ── */}
+      <style>{`
+        body > *:not([data-tutorial-root]) { pointer-events: none !important; }
+        [data-radix-portal] { pointer-events: none !important; }
+        [data-radix-portal] * { pointer-events: none !important; }
+      `}</style>
       <div className="fixed inset-0" style={{ zIndex: 99998 }} />
 
       {/* ── Dark overlay with spotlight — only when showOverlay is true ── */}
@@ -835,6 +851,6 @@ export default function InteractiveTutorial() {
           </div>
         </div>
       )}
-    </>
+    </div>
   );
 }
