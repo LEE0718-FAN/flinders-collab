@@ -295,12 +295,13 @@ export default function InteractiveTutorial() {
     await pause(3500); if (bail()) { await end(); return; }
 
     // ── 6: Navigate into room — wait for it to fully load ──
-    setP(6); setTooltip(null); setSpotlight(null);    navigate(`/rooms/${tutorialRoomId}`);
+    setP(6); setTooltip(null); setSpotlight(null);
+    navigate(`/rooms/${tutorialRoomId}`);
     window.dispatchEvent(new CustomEvent('rooms-updated'));
     showTip('Entering Room...', "Loading your new room... hang tight!", { center: true, icon: '⏳' });
     const roomTabs = await waitForEl('[data-tour="tab-schedule"]', 15000);
     if (!roomTabs || bail()) { await end(); return; }
-       await sleep(2000);
+    await sleep(2000);
     showTip('Welcome to Your Room!', "This is your room! Each tab up there has a different feature — schedule, tasks, chat, files, and more. Let me show you.", { center: true, icon: '🏠' });
     await pause(5000); if (bail()) { await end(); return; }
 
@@ -490,10 +491,10 @@ export default function InteractiveTutorial() {
     await pause(3500); if (bail()) { await end(); return; }
 
     // ── 11: Deadlines page ──
-    setP(11); setTooltip(null); setSpotlight(null); setCursorVisible(false);    navigate('/deadlines');
+    setP(11); setTooltip(null); setSpotlight(null); setCursorVisible(false);
+    navigate('/deadlines');
     showTip('Loading...', "Opening Deadlines...", { center: true, icon: '⏳' });
-    await waitForEl('main', 10000);
-    await sleep(1500); setIsLoading(false); if (bail()) { await end(); return; }
+    await sleep(3000); if (bail()) { await end(); return; }
     // Spotlight the main content area
     const deadlinesMain = document.querySelector('main');
     if (deadlinesMain) {
@@ -504,10 +505,11 @@ export default function InteractiveTutorial() {
     await pause(4000); if (bail()) { await end(); return; }
 
     // ── 12: Free Board ──
-    setP(12); setTooltip(null); setSpotlight(null); setCursorVisible(false);    navigate('/board');
+    setP(12); setTooltip(null); setSpotlight(null); setCursorVisible(false);
+    navigate('/board');
     showTip('Loading...', "Opening Free Board...", { center: true, icon: '⏳' });
     await waitForEl('[data-tour="board-new-post"]', 12000);
-    await sleep(1500); setIsLoading(false); if (bail()) { await end(); return; }
+    await sleep(1500); if (bail()) { await end(); return; }
     showTip('Free Board', "Community board for all Flinders students — post anything, find study groups, or organize meetups!", { center: true, icon: '📋' });
     await pause(3500); if (bail()) { await end(); return; }
 
@@ -589,9 +591,10 @@ export default function InteractiveTutorial() {
     }
 
     // ── 14: Flinders Life — show 3 tabs ──
-    setP(14); setTooltip(null); setSpotlight(null); setCursorVisible(false);    navigate('/flinders-life');
-    await waitForEl('button[value="events"]', 12000);
-    setIsLoading(false); if (bail()) { await end(); return; }
+    setP(14); setTooltip(null); setSpotlight(null); setCursorVisible(false);
+    navigate('/flinders-life');
+    await waitForEl('button[value="events"]', 8000);
+    if (bail()) { await end(); return; }
 
     // Events tab — already active by default
     showTip('Events', "Campus events, workshops, and career fairs at Flinders!", { target: 'button[value="events"]', icon: '🎪', position: 'bottom' });
