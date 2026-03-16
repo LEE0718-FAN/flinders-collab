@@ -33,6 +33,9 @@ const io = initSockets(server);
 // Make io accessible in routes if needed
 app.set('io', io);
 
+// Trust proxy — required on Render so rate limiters see real client IPs
+app.set('trust proxy', 1);
+
 // Global middleware
 app.use(helmet());
 app.use(cors({

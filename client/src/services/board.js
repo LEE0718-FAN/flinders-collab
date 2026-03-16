@@ -1,27 +1,28 @@
 import { getAuthHeaders, parseResponse } from '@/lib/api-headers';
+import { apiUrl } from '@/lib/api';
 
 export async function getPosts(category) {
   const headers = getAuthHeaders();
   const params = category && category !== 'all' ? `?category=${category}` : '';
-  const res = await fetch(`/api/board/posts${params}`, { headers });
+  const res = await fetch(apiUrl(`/api/board/posts${params}`), { headers });
   return parseResponse(res);
 }
 
 export async function createPost(data) {
   const headers = getAuthHeaders();
-  const res = await fetch('/api/board/posts', { method: 'POST', headers, body: JSON.stringify(data) });
+  const res = await fetch(apiUrl('/api/board/posts'), { method: 'POST', headers, body: JSON.stringify(data) });
   return parseResponse(res);
 }
 
 export async function deletePost(postId) {
   const headers = getAuthHeaders();
-  const res = await fetch(`/api/board/posts/${postId}`, { method: 'DELETE', headers });
+  const res = await fetch(apiUrl(`/api/board/posts/${postId}`), { method: 'DELETE', headers });
   return parseResponse(res);
 }
 
 export async function toggleParticipation(postId, status) {
   const headers = getAuthHeaders();
-  const res = await fetch(`/api/board/posts/${postId}/participate`, {
+  const res = await fetch(apiUrl(`/api/board/posts/${postId}/participate`), {
     method: 'POST', headers, body: JSON.stringify({ status }),
   });
   return parseResponse(res);
@@ -29,19 +30,19 @@ export async function toggleParticipation(postId, status) {
 
 export async function getMyParticipations() {
   const headers = getAuthHeaders();
-  const res = await fetch('/api/board/my-participations', { headers });
+  const res = await fetch(apiUrl('/api/board/my-participations'), { headers });
   return parseResponse(res);
 }
 
 export async function getComments(targetType, targetId) {
   const headers = getAuthHeaders();
-  const res = await fetch(`/api/comments/${targetType}/${targetId}`, { headers });
+  const res = await fetch(apiUrl(`/api/comments/${targetType}/${targetId}`), { headers });
   return parseResponse(res);
 }
 
 export async function createComment(targetType, targetId, content) {
   const headers = getAuthHeaders();
-  const res = await fetch(`/api/comments/${targetType}/${targetId}`, {
+  const res = await fetch(apiUrl(`/api/comments/${targetType}/${targetId}`), {
     method: 'POST', headers, body: JSON.stringify({ content }),
   });
   return parseResponse(res);
@@ -49,19 +50,19 @@ export async function createComment(targetType, targetId, content) {
 
 export async function deleteComment(commentId) {
   const headers = getAuthHeaders();
-  const res = await fetch(`/api/comments/${commentId}`, { method: 'DELETE', headers });
+  const res = await fetch(apiUrl(`/api/comments/${commentId}`), { method: 'DELETE', headers });
   return parseResponse(res);
 }
 
 export async function getAcademicInfo() {
   const headers = getAuthHeaders();
-  const res = await fetch('/api/academic-info', { headers });
+  const res = await fetch(apiUrl('/api/academic-info'), { headers });
   return parseResponse(res);
 }
 
 export async function updateAcademicInfo(yearLevel, semester) {
   const headers = getAuthHeaders();
-  const res = await fetch('/api/academic-info', {
+  const res = await fetch(apiUrl('/api/academic-info'), {
     method: 'PUT', headers, body: JSON.stringify({ year_level: yearLevel, semester }),
   });
   return parseResponse(res);
@@ -69,7 +70,7 @@ export async function updateAcademicInfo(yearLevel, semester) {
 
 export async function toggleReaction(postId, emoji) {
   const headers = getAuthHeaders();
-  const res = await fetch(`/api/board/posts/${postId}/react`, {
+  const res = await fetch(apiUrl(`/api/board/posts/${postId}/react`), {
     method: 'POST', headers, body: JSON.stringify({ emoji }),
   });
   return parseResponse(res);
@@ -77,7 +78,7 @@ export async function toggleReaction(postId, emoji) {
 
 export async function votePoll(postId, optionIndex) {
   const headers = getAuthHeaders();
-  const res = await fetch(`/api/board/posts/${postId}/vote`, {
+  const res = await fetch(apiUrl(`/api/board/posts/${postId}/vote`), {
     method: 'POST', headers, body: JSON.stringify({ optionIndex }),
   });
   return parseResponse(res);
@@ -85,6 +86,6 @@ export async function votePoll(postId, optionIndex) {
 
 export async function getReactions(postId) {
   const headers = getAuthHeaders();
-  const res = await fetch(`/api/board/posts/${postId}/reactions`, { headers });
+  const res = await fetch(apiUrl(`/api/board/posts/${postId}/reactions`), { headers });
   return parseResponse(res);
 }

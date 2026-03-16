@@ -2,7 +2,7 @@ const TOKEN_KEY = 'flinders_session';
 
 function getStorage() {
   if (typeof window === 'undefined') return null;
-  return window.sessionStorage || null;
+  return window.localStorage || null;
 }
 
 export function saveSession(session) {
