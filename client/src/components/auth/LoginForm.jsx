@@ -14,6 +14,12 @@ export default function LoginForm({ onSubmit, onGuestLogin }) {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+    const normalizedEmail = email.trim().toLowerCase();
+
+    if (!normalizedEmail) {
+      setError('Email is required');
+      return;
+    }
 
     if (password.length < 6) {
       setError('Password must be at least 6 characters');
@@ -22,7 +28,7 @@ export default function LoginForm({ onSubmit, onGuestLogin }) {
 
     setLoading(true);
     try {
-      await onSubmit(email, password);
+      await onSubmit(normalizedEmail, password);
     } catch (err) {
       const msg = err.message || 'Login failed';
       if (msg === 'Failed to fetch' || msg === 'Load failed') {

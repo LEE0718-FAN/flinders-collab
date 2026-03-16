@@ -1,13 +1,22 @@
 const { supabaseAdmin, supabasePublic } = require('../services/supabase');
 const { isUniversityEmail } = require('../utils/validators');
 
+async function ignoreQueryError(query) {
+  try {
+    await query;
+  } catch {
+    // Best-effort cleanup path.
+  }
+}
+
 /**
  * POST /auth/signup
  * Register a new user with Supabase Auth and create a profile.
  */
 async function signup(req, res, next) {
   try {
-    const { email, password, full_name, student_id, major, account_type } = req.body;
+    const { password, full_name, student_id, major, account_type } = req.body;
+    const email = String(req.body.email || '').trim().toLowerCase();
 
     // Flinders students must use university email
     if (account_type !== 'general' && !isUniversityEmail(email)) {
@@ -65,7 +74,8 @@ async function signup(req, res, next) {
  */
 async function login(req, res, next) {
   try {
-    const { email, password } = req.body;
+    const password = req.body.password;
+    const email = String(req.body.email || '').trim().toLowerCase();
 
     if (!email || !password) {
       return res.status(400).json({ error: 'Email and password are required' });
@@ -268,11 +278,11 @@ async function guestLogin(req, res, next) {
     }
 
     // Insert profile (is_tester stored in user_metadata, not users table)
-    await supabaseAdmin.from('users').insert({
+    await ignoreQueryError(supabaseAdmin.from('users').insert({
       id: authData.user.id,
       university_email: email,
       full_name: 'Tester',
-    }).catch(() => {});
+    }));
 
     // Sign in to get session
     const { data: loginData, error: loginError } =
@@ -280,7 +290,7 @@ async function guestLogin(req, res, next) {
 
     if (loginError || !loginData?.session) {
       // Clean up the created user
-      await supabaseAdmin.auth.admin.deleteUser(authData.user.id).catch(() => {});
+      await ignoreQueryError(supabaseAdmin.auth.admin.deleteUser(authData.user.id));
       console.error('Guest sign-in failed:', loginError?.message || 'No session returned');
       return res.status(500).json({ error: 'Failed to create tester session. Please try again.' });
     }
@@ -326,22 +336,22 @@ async function guestCleanup(req, res, next) {
 
     if (ownedRooms?.length) {
       for (const r of ownedRooms) {
-        await supabaseAdmin.from('rooms').delete().eq('id', r.room_id).catch(() => {});
+        await ignoreQueryError(supabaseAdmin.from('rooms').delete().eq('id', r.room_id));
       }
     }
 
     // Remove from any rooms as member
-    await supabaseAdmin.from('room_members').delete().eq('user_id', userId).catch(() => {});
+    await ignoreQueryError(supabaseAdmin.from('room_members').delete().eq('user_id', userId));
 
     // Delete tasks assigned to or created by this user
-    await supabaseAdmin.from('tasks').delete().eq('assigned_to', userId).catch(() => {});
-    await supabaseAdmin.from('tasks').delete().eq('created_by', userId).catch(() => {});
+    await ignoreQueryError(supabaseAdmin.from('tasks').delete().eq('assigned_to', userId));
+    await ignoreQueryError(supabaseAdmin.from('tasks').delete().eq('created_by', userId));
 
     // Delete user profile
-    await supabaseAdmin.from('users').delete().eq('id', userId).catch(() => {});
+    await ignoreQueryError(supabaseAdmin.from('users').delete().eq('id', userId));
 
     // Delete from Supabase Auth
-    await supabaseAdmin.auth.admin.deleteUser(userId).catch(() => {});
+    await ignoreQueryError(supabaseAdmin.auth.admin.deleteUser(userId));
 
     res.json({ message: 'Tester account cleaned up' });
   } catch (err) {

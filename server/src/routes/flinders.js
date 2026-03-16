@@ -11,42 +11,130 @@ const categoryPatterns = {
   'IT & Computing': [/\bcomputer\b/i, /\bI\.?T\.?\b/, /\btech\b/i, /\btechnolog/i, /\bsoftware\b/i, /\bcyber/i, /\bdata\b/i, /\bdigital\b/i, /\b(?:A\.?I\.?|artificial intelligence)\b/i, /\bmachine learning\b/i, /\bcoding\b/i, /\bprogramming\b/i, /\bhackathon\b/i, /\binformation technology\b/i, /\bSTEM\b/],
   'Engineering': [/\bengineering\b/i, /\bmechanical\b/i, /\bcivil\b/i, /\belectrical\b/i, /\brobotic/i, /\bmaritime\b/i],
   'Health & Medicine': [/\bhealth\b/i, /\bmedicin/i, /\bnursing\b/i, /\bmedical\b/i, /\bclinical\b/i, /\bnutrition/i, /\bparamedic/i, /\bphysiotherap/i, /\bwellbeing\b/i, /\bmental health\b/i],
-  'Business & Law': [/\bbusiness\b/i, /\b(?:^|\s)law(?:\s|$)/i, /\baccounting\b/i, /\bfinance\b/i, /\bcommerce\b/i, /\bMBA\b/, /\bentrepreneurship\b/i, /\bcorporate\b/i],
-  'Education': [/\beducation\b/i, /\bteaching\b/i, /\bteacher\b/i, /\bSTEM education\b/i],
-  'Arts & Creative': [/\bcreative arts?\b/i, /\bdesign\b/i, /\bfilm\b/i, /\bfashion\b/i, /\bperformance\b/i, /\bvisual art/i, /\bmusic\b/i, /\bcostume\b/i, /\btheatre\b/i, /\bdrama\b/i],
+  'Business & Law': [/\bbusiness\b/i, /\b(?:^|\s)law(?:\s|$)/i, /\baccounting\b/i, /\bfinance\b/i, /\bcommerce\b/i, /\bMBA\b/, /\bentrepreneurship\b/i, /\bcorporate\b/i, /\benterprise\b/i, /\bstartup\b/i],
+  'Education': [/\beducation\b/i, /\bteaching\b/i, /\bteacher\b/i, /\bSTEM education\b/i, /\bliteracy\b/i, /\blearning\b/i, /\bstudy skills\b/i],
+  'Arts & Creative': [/\bcreative arts?\b/i, /\bdesign\b/i, /\bfilm\b/i, /\bfashion\b/i, /\bperformance\b/i, /\bvisual art/i, /\bmusic\b/i, /\bcostume\b/i, /\btheatre\b/i, /\bdrama\b/i, /\bexhibition\b/i, /\bmuseum\b/i],
   'Science': [/\bscience\b/i, /\bbiology\b/i, /\bchemistry\b/i, /\bmarine\b/i, /\benvironmental\b/i, /\bforensic\b/i, /\bbiodiversity\b/i],
-  'Career': [/\bcareer/i, /\bemployment\b/i, /\bjob\b/i, /\binternship/i, /\bresume\b/i, /\bnetworking\b/i, /\bprofessional development\b/i, /\bwork placement\b/i, /\bcareer expo\b/i, /\bcareer fair\b/i, /\brecruit/i],
+  'Career': [/\bcareer/i, /\bemployment\b/i, /\bjob\b/i, /\binternship/i, /\bresume\b/i, /\bnetworking\b/i, /\bprofessional development\b/i, /\bwork placement\b/i, /\bcareer expo\b/i, /\bcareer fair\b/i, /\brecruit/i, /\bgraduate program/i, /\bgraduate role/i, /\bemployer/i, /\bindustry\b/i, /\bcareer pathway/i, /\bfuture career/i, /\bexpo-style\b/i, /\bopportunit(?:y|ies)\b/i],
 };
+
+const categoryPriority = [
+  'Career',
+  'IT & Computing',
+  'Engineering',
+  'Health & Medicine',
+  'Business & Law',
+  'Education',
+  'Arts & Creative',
+  'Science',
+];
 
 function stripHtmlTags(html) {
   return (html || '').replace(/<[^>]*>/g, '').replace(/&#\d+;/g, ' ').replace(/&\w+;/g, ' ').trim();
 }
 
-function categorizeEvent(title, excerpt) {
-  // Only use title + excerpt for categorization — class_list CSS tags are too generic
-  // (audience tags like "future-students", "taster-days" cause false positives)
-  const text = `${stripHtmlTags(title)} ${stripHtmlTags(excerpt)}`;
-  const matched = [];
+function categorizeEvent(title, excerpt = '', content = '') {
+  const titleText = stripHtmlTags(title);
+  const excerptText = stripHtmlTags(excerpt);
+  const contentText = stripHtmlTags(content);
+  const fullText = `${titleText} ${excerptText} ${contentText}`.trim();
+  const titleAndExcerpt = `${titleText} ${excerptText}`.trim();
+
+  const scores = new Map();
+
   for (const [category, patterns] of Object.entries(categoryPatterns)) {
-    if (patterns.some((re) => re.test(text))) {
-      matched.push(category);
+    let score = 0;
+    for (const re of patterns) {
+      if (re.test(titleText)) score += 4;
+      else if (re.test(titleAndExcerpt)) score += 2;
+      else if (re.test(fullText)) score += 1;
+    }
+    if (score > 0) {
+      scores.set(category, score);
     }
   }
-  if (matched.length === 0) matched.push('General');
-  return matched;
+
+  if (/\btaster day\b/i.test(fullText)) {
+    if (/\bbusiness\b|\blaw\b|\bcommerce\b|\bfinance\b/i.test(fullText)) {
+      scores.set('Business & Law', Math.max(scores.get('Business & Law') || 0, 3));
+    }
+    if (/\bfashion\b|\bcostume\b|\bart\b|\bdesign\b/i.test(fullText)) {
+      scores.set('Arts & Creative', Math.max(scores.get('Arts & Creative') || 0, 3));
+    }
+    if (/\bengineering\b|\brobotics?\b|\bmechanical\b|\bcivil\b|\belectrical\b/i.test(fullText)) {
+      scores.set('Engineering', Math.max(scores.get('Engineering') || 0, 3));
+    }
+  }
+
+  if (
+    /\bcareer/i.test(fullText)
+    || /\bemployer/i.test(fullText)
+    || /\binternship/i.test(fullText)
+    || /\bgraduate\b/i.test(fullText)
+    || /\bnetworking\b/i.test(fullText)
+    || /\brecruit/i.test(fullText)
+    || /\bexpo\b/i.test(fullText)
+    || /\bfestival\b/i.test(fullText)
+  ) {
+    scores.set('Career', Math.max(scores.get('Career') || 0, 3));
+  }
+
+  const matched = categoryPriority
+    .filter((category) => (scores.get(category) || 0) > 0)
+    .sort((a, b) => (scores.get(b) || 0) - (scores.get(a) || 0) || categoryPriority.indexOf(a) - categoryPriority.indexOf(b));
+
+  return matched.length > 0 ? matched : ['General'];
 }
 
 const MONTHS = { january:0, february:1, march:2, april:3, may:4, june:5, july:6, august:7, september:8, october:9, november:10, december:11 };
+const WEEKDAY_PATTERN = '(?:Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday)';
+const MONTH_PATTERN = '(?:January|February|March|April|May|June|July|August|September|October|November|December)';
 
 function parseTime(timeStr) {
   if (!timeStr) return null;
-  const m = timeStr.match(/(\d{1,2})(?::(\d{2}))?\s*(am|pm)/i);
+  const normalized = String(timeStr).trim().replace(/\.(\d{2})/g, ':$1');
+  const m = normalized.match(/(\d{1,2})(?::(\d{2}))?\s*(am|pm)/i);
   if (!m) return null;
   let h = parseInt(m[1]);
   const min = parseInt(m[2] || '0');
   if (m[3].toLowerCase() === 'pm' && h !== 12) h += 12;
   if (m[3].toLowerCase() === 'am' && h === 12) h = 0;
   return { h, m: min };
+}
+
+function extractEventJsonLd(html) {
+  const matches = [...html.matchAll(/<script[^>]*type\s*=\s*["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi)];
+
+  for (const match of matches) {
+    try {
+      const payload = JSON.parse(match[1]);
+      if (payload['@graph'] && Array.isArray(payload['@graph'])) {
+        const event = payload['@graph'].find((entry) => entry['@type'] === 'Event');
+        if (event) return event;
+      }
+      if (Array.isArray(payload)) {
+        const event = payload.find((entry) => entry?.['@type'] === 'Event');
+        if (event) return event;
+      }
+      if (payload?.['@type'] === 'Event') {
+        return payload;
+      }
+    } catch {
+      // Ignore malformed JSON-LD blocks and continue searching.
+    }
+  }
+
+  return null;
+}
+
+function extractSchemaMetaValue(html, itemprop) {
+  const regex = new RegExp(`<meta[^>]*itemprop=['"]${itemprop}['"][^>]*content=['"]([^'"]+)['"][^>]*>`, 'i');
+  return html.match(regex)?.[1] || null;
+}
+
+function extractSchemaLocation(html) {
+  const match = html.match(/<span[^>]*itemprop=['"]name['"][^>]*>([^<]+)<\/span>/i);
+  return match ? stripHtmlTags(match[1]) : '';
 }
 
 /**
@@ -59,12 +147,11 @@ function parseTime(timeStr) {
 function parseEventDateFromContent(contentHtml) {
   if (!contentHtml) return null;
   const text = stripHtmlTags(contentHtml);
-
-  const monthPattern = '(?:January|February|March|April|May|June|July|August|September|October|November|December)';
+  const datePrefix = `(?:Date:\\s*)?(?:${WEEKDAY_PATTERN}\\s+)?`;
 
   // Pattern 1: Both times have am/pm — "10am – 11:15am"
   const bothAmPm = text.match(
-    new RegExp(`(\\d{1,2})\\s+(${monthPattern})\\s+(\\d{4}),?\\s*(\\d{1,2}(?::\\d{2})?\\s*(?:am|pm))\\s*[–\\-]\\s*(\\d{1,2}(?::\\d{2})?\\s*(?:am|pm))`, 'i')
+    new RegExp(`${datePrefix}(\\d{1,2})\\s+(${MONTH_PATTERN})\\s+(\\d{4}),?[\\s\\S]{0,40}?(\\d{1,2}(?:[:.]\\d{2})?\\s*(?:am|pm))\\s*[–\\-]\\s*(\\d{1,2}(?:[:.]\\d{2})?\\s*(?:am|pm))`, 'i')
   );
   if (bothAmPm) {
     const day = parseInt(bothAmPm[1]);
@@ -81,7 +168,7 @@ function parseEventDateFromContent(contentHtml) {
 
   // Pattern 2: Only end time has am/pm — "12:15 – 1:00 pm"
   const endOnlyAmPm = text.match(
-    new RegExp(`(\\d{1,2})\\s+(${monthPattern})\\s+(\\d{4}),?\\s*(\\d{1,2}(?::\\d{2})?)\\s*[–\\-]\\s*(\\d{1,2}(?::\\d{2})?\\s*(?:am|pm))`, 'i')
+    new RegExp(`${datePrefix}(\\d{1,2})\\s+(${MONTH_PATTERN})\\s+(\\d{4}),?[\\s\\S]{0,40}?(\\d{1,2}(?:[:.]\\d{2})?)\\s*[–\\-]\\s*(\\d{1,2}(?:[:.]\\d{2})?\\s*(?:am|pm))`, 'i')
   );
   if (endOnlyAmPm) {
     const day = parseInt(endOnlyAmPm[1]);
@@ -103,7 +190,7 @@ function parseEventDateFromContent(contentHtml) {
 
   // Pattern 3: Single time — "16 March 2026, 10am"
   const singleTime = text.match(
-    new RegExp(`(\\d{1,2})\\s+(${monthPattern})\\s+(\\d{4}),?\\s*(\\d{1,2}(?::\\d{2})?\\s*(?:am|pm))`, 'i')
+    new RegExp(`${datePrefix}(\\d{1,2})\\s+(${MONTH_PATTERN})\\s+(\\d{4}),?[\\s\\S]{0,40}?(\\d{1,2}(?:[:.]\\d{2})?\\s*(?:am|pm))`, 'i')
   );
   if (singleTime) {
     const day = parseInt(singleTime[1]);
@@ -119,7 +206,7 @@ function parseEventDateFromContent(contentHtml) {
 
   // Pattern 4: Date only — "16 March 2026"
   const dateOnly = text.match(
-    new RegExp(`(\\d{1,2})\\s+(${monthPattern})\\s+(\\d{4})`, 'i')
+    new RegExp(`${datePrefix}(\\d{1,2})\\s+(${MONTH_PATTERN})\\s+(\\d{4})`, 'i')
   );
   if (dateOnly) {
     const day = parseInt(dateOnly[1]);
@@ -199,26 +286,13 @@ async function fetchEventPageSchema(eventUrl) {
     const res = await fetch(eventUrl);
     if (!res.ok) return null;
     const html = await res.text();
-    const ldMatch = html.match(/<script[^>]*type\s*=\s*["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/i);
-    if (!ldMatch) return null;
-    const ld = JSON.parse(ldMatch[1]);
-    // Handle @graph wrapper, top-level array, or single object
-    let event = null;
-    if (ld['@graph'] && Array.isArray(ld['@graph'])) {
-      event = ld['@graph'].find((o) => o['@type'] === 'Event');
-    } else if (Array.isArray(ld)) {
-      event = ld.find((o) => o['@type'] === 'Event');
-    } else if (ld['@type'] === 'Event') {
-      event = ld;
-    }
-    if (!event) return null;
-
     const result = {};
-    if (event.startDate) {
+    const event = extractEventJsonLd(html);
+    if (event?.startDate) {
       const sd = parseSchemaDate(event.startDate);
       if (sd) result.start_time = sd.toISOString();
     }
-    if (event.endDate) {
+    if (event?.endDate) {
       const ed = parseSchemaDate(event.endDate);
       if (ed) result.end_time = ed.toISOString();
     }
@@ -232,13 +306,33 @@ async function fetchEventPageSchema(eventUrl) {
         result.time_display = startStr;
       }
     }
-    if (event.location) {
+    if (event?.location) {
       const loc = Array.isArray(event.location) ? event.location[0] : event.location;
       if (loc?.name) result.location = loc.name;
     }
 
+    if (!result.start_time) {
+      const metaStart = extractSchemaMetaValue(html, 'startDate');
+      const sd = parseSchemaDate(metaStart);
+      if (sd) result.start_time = sd.toISOString();
+    }
+    if (!result.end_time) {
+      const metaEnd = extractSchemaMetaValue(html, 'endDate');
+      const ed = parseSchemaDate(metaEnd);
+      if (ed) result.end_time = ed.toISOString();
+    }
+    if (!result.location) {
+      result.location = extractSchemaLocation(html) || '';
+    }
+    if (!result.time_display && result.start_time) {
+      const s = new Date(result.start_time);
+      result.time_display = result.end_time
+        ? `${formatTimeAmPm(s)} – ${formatTimeAmPm(new Date(result.end_time))}`
+        : formatTimeAmPm(s);
+    }
+
     // Parse cost/registration info from page content
-    if (event.offers) {
+    if (event?.offers) {
       const offer = Array.isArray(event.offers) ? event.offers[0] : event.offers;
       if (offer?.price === 0 || offer?.price === '0') result.cost = 'Free';
       else if (offer?.price) result.cost = `$${offer.price}`;
@@ -285,7 +379,7 @@ function mapWpEvent(ev) {
     excerpt,
     link: ev.link || '',
     image: ev.featured_image_url || ev._embedded?.['wp:featuredmedia']?.[0]?.source_url || null,
-    categories: categorizeEvent(title, excerpt + ' ' + content),
+    categories: categorizeEvent(title, excerpt, content),
     location,
     start_time: parsed?.start_time || null,
     end_time: parsed?.end_time || null,
@@ -394,9 +488,10 @@ router.get('/flinders/recommended-events', async (req, res) => {
           title: row.title,
           date: row.start_time || row.event_date || '',
           excerpt: row.excerpt || '',
+          raw_content: row.raw_json?.content?.rendered || '',
           link: row.link || '',
           image: row.image || null,
-          categories: row.categories || categorizeEvent(row.title, row.excerpt),
+          categories: row.categories || categorizeEvent(row.title, row.excerpt, row.raw_json?.content?.rendered || ''),
           location: row.location || '',
           start_time: row.start_time || null,
           end_time: row.end_time || null,
@@ -411,8 +506,9 @@ router.get('/flinders/recommended-events', async (req, res) => {
         // Re-categorize with updated data (strip class_list noise)
         events = events.map((e) => ({
           ...e,
-          categories: categorizeEvent(e.title, e.excerpt),
+          categories: categorizeEvent(e.title, e.excerpt, e.raw_content),
         }));
+        events = events.map(({ raw_content, ...event }) => event);
       }
     } catch {
       // Cache table may not exist yet

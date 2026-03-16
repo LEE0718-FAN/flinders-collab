@@ -84,13 +84,19 @@ export default function SignupForm({ onSubmit }) {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+    const normalizedEmail = email.trim().toLowerCase();
 
-    if (accountType === 'flinders' && !email.endsWith('@flinders.edu.au')) {
+    if (!name.trim()) {
+      setError('Please enter your full name');
+      return;
+    }
+
+    if (accountType === 'flinders' && !normalizedEmail.endsWith('@flinders.edu.au')) {
       setError('Please use your @flinders.edu.au email');
       return;
     }
 
-    if (accountType === 'general' && email.endsWith('@flinders.edu.au')) {
+    if (accountType === 'general' && normalizedEmail.endsWith('@flinders.edu.au')) {
       setError('Flinders email detected! Please go back and sign up as "Flinders Student" instead.');
       return;
     }
@@ -112,8 +118,8 @@ export default function SignupForm({ onSubmit }) {
 
     setLoading(true);
     try {
-      await onSubmit(email, password, {
-        name,
+      await onSubmit(normalizedEmail, password, {
+        name: name.trim(),
         student_id: accountType === 'flinders' ? studentId : undefined,
         major: accountType === 'flinders' ? major : (university || undefined),
         account_type: accountType,
