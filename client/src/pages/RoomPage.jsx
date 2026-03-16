@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams } from 'react-router-dom';
-import MainLayout from '@/layouts/MainLayout';
+
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -271,16 +271,16 @@ export default function RoomPage() {
 
   if (loading) {
     return (
-      <MainLayout>
+      <>
         <div className="flex justify-center py-12">
           <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
         </div>
-      </MainLayout>
+      </>
     );
   }
 
   return (
-    <MainLayout>
+    <>
       <OnboardingTour
         tourId="room"
         steps={[
@@ -625,6 +625,6 @@ export default function RoomPage() {
         </Tabs>
       </div>
       <ReportButton section={activeTab} roomId={roomId} floating />
-    </MainLayout>
+    </>
   );
 }

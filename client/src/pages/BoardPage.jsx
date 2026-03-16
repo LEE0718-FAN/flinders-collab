@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import MainLayout from '@/layouts/MainLayout';
+
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -76,7 +76,7 @@ function AcademicInfoGate({ onSaved }) {
   };
 
   return (
-    <MainLayout>
+    <>
       <div className="flex items-center justify-center min-h-[60vh]">
         <div className="w-full max-w-sm rounded-3xl border bg-white/80 backdrop-blur-xl p-8 shadow-2xl shadow-indigo-500/10">
           <div className="text-center mb-6">
@@ -123,7 +123,7 @@ function AcademicInfoGate({ onSaved }) {
           </form>
         </div>
       </div>
-    </MainLayout>
+    </>
   );
 }
 
@@ -701,9 +701,9 @@ export default function BoardPage() {
 
   if (!academicChecked) {
     return (
-      <MainLayout>
+      <>
         <div className="flex justify-center py-16"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground" /></div>
-      </MainLayout>
+      </>
     );
   }
 
@@ -730,7 +730,7 @@ export default function BoardPage() {
   };
 
   return (
-    <MainLayout>
+    <>
       <OnboardingTour
         tourId="board"
         steps={[
@@ -875,6 +875,6 @@ export default function BoardPage() {
         onCreated={handlePostCreated}
         academicInfo={academicInfo}
       />
-    </MainLayout>
+    </>
   );
 }

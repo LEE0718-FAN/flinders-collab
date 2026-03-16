@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import MainLayout from '@/layouts/MainLayout';
+
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { GraduationCap, Calendar, BookOpen, ExternalLink, Loader2, ChevronDown, ChevronUp, MapPin, Star, Clock, ChevronLeft, ChevronRight } from 'lucide-react';
@@ -368,7 +368,7 @@ export default function FlindersLifePage() {
   const sortByDate = (events) => [...events].sort((a, b) => new Date(a.date || 0) - new Date(b.date || 0));
 
   return (
-    <MainLayout>
+    <>
       <OnboardingTour
         tourId="flinders-life"
         steps={[
@@ -536,6 +536,6 @@ export default function FlindersLifePage() {
           </div>
         </TabsContent>
       </Tabs>
-    </MainLayout>
+    </>
   );
 }

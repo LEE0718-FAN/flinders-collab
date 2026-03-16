@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import MainLayout from '@/layouts/MainLayout';
+
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -941,7 +941,7 @@ export default function AdminPage() {
 
   if (!user?.is_admin) {
     return (
-      <MainLayout>
+      <>
         <div className="flex items-center justify-center py-20">
           <div className="bg-gradient-to-r from-red-50 via-rose-50 to-orange-50 rounded-2xl p-12 shadow-lg flex flex-col items-center gap-4 text-center">
             <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-red-500 to-rose-600 shadow-lg">
@@ -951,12 +951,12 @@ export default function AdminPage() {
             <p className="text-sm text-muted-foreground">You do not have admin privileges to view this page.</p>
           </div>
         </div>
-      </MainLayout>
+      </>
     );
   }
 
   return (
-    <MainLayout>
+    <>
       <div className="space-y-6">
         <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-slate-900 via-slate-800 to-indigo-900 px-8 py-8 text-white shadow-xl">
           <div className="absolute -right-12 -top-12 h-40 w-40 rounded-full bg-indigo-500/20 blur-2xl" />
@@ -994,6 +994,6 @@ export default function AdminPage() {
           </TabsContent>
         </Tabs>
       </div>
-    </MainLayout>
+    </>
   );
 }

@@ -88,7 +88,7 @@ function NavItem({ to, isActive, icon: Icon, label, palette }) {
   );
 }
 
-function SidebarContent({ rooms, location, isAdmin, unreadCounts = {} }) {
+function SidebarContent({ rooms, location, isAdmin, unreadCounts = {}, user }) {
   return (
     <nav className="flex flex-col gap-1" role="navigation" aria-label="Main navigation" data-tour="sidebar-nav">
       <NavItem
@@ -347,7 +347,7 @@ export default function MainLayout({ children }) {
 
         {/* Sidebar navigation */}
         <div className="flex-1 overflow-y-auto px-3 py-4 custom-scrollbar">
-          <SidebarContent rooms={rooms} location={location} isAdmin={user?.is_admin} unreadCounts={unreadCounts} />
+          <SidebarContent rooms={rooms} location={location} isAdmin={user?.is_admin} unreadCounts={unreadCounts} user={user} />
         </div>
 
         {/* Sidebar footer / user info */}
@@ -394,7 +394,7 @@ export default function MainLayout({ children }) {
                 </SheetHeader>
                 <div className="h-px bg-gradient-to-r from-white/10 via-white/5 to-transparent mx-3" />
                 <div className="px-3 py-4">
-                  <SidebarContent rooms={rooms} location={location} isAdmin={user?.is_admin} unreadCounts={unreadCounts} />
+                  <SidebarContent rooms={rooms} location={location} isAdmin={user?.is_admin} unreadCounts={unreadCounts} user={user} />
                 </div>
               </SheetContent>
             </Sheet>

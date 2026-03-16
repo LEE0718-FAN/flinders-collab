@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback, useLayoutEffect, useRef } from 'react';
-import MainLayout from '@/layouts/MainLayout';
+
 import RoomCard, { getRoomPalette } from '@/components/room/RoomCard';
 import CreateRoomDialog from '@/components/room/CreateRoomDialog';
 import JoinRoomDialog from '@/components/room/JoinRoomDialog';
@@ -329,7 +329,7 @@ export default function DashboardPage() {
   }, [rooms, sidebarSyncDelayMs, user?.id]);
 
   return (
-    <MainLayout onRoomChange={fetchRooms}>
+    <>
       <OnboardingTour tourId="dashboard" steps={TOUR_STEPS} />
       <div className="space-y-8">
         {/* Hero Banner */}
@@ -513,6 +513,6 @@ export default function DashboardPage() {
         )}
 
       </div>
-    </MainLayout>
+    </>
   );
 }

@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import MainLayout from '@/layouts/MainLayout';
+
 import { getRooms } from '@/services/rooms';
 import { getEvents } from '@/services/events';
 import { getRoomPalette } from '@/components/room/RoomCard';
@@ -90,7 +90,7 @@ export default function DeadlinesPage() {
     : events.filter((e) => normalizeCategory(e.category) === filter);
 
   return (
-    <MainLayout>
+    <>
       <OnboardingTour
         tourId="deadlines"
         steps={[
@@ -199,6 +199,6 @@ export default function DeadlinesPage() {
           </div>
         )}
       </div>
-    </MainLayout>
+    </>
   );
 }

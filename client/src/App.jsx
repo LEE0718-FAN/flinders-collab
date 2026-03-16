@@ -1,10 +1,11 @@
 import React, { lazy, Suspense, useEffect } from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { ToastProvider } from '@/components/ui/toast';
 import ErrorBoundary from '@/components/ErrorBoundary';
 import InteractiveTutorial from '@/components/InteractiveTutorial';
+import MainLayout from '@/layouts/MainLayout';
 import { Loader2 } from 'lucide-react';
 import { loadSession, clearSession } from '@/lib/auth-token';
 import { apiGuestCleanup } from '@/services/auth';
@@ -75,6 +76,19 @@ function ProtectedRoute({ children }) {
   return children;
 }
 
+// Shared layout wrapper — MainLayout persists across page navigations
+function ProtectedLayout() {
+  return (
+    <ProtectedRoute>
+      <MainLayout>
+        <Suspense fallback={<div className="flex justify-center py-12"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground" /></div>}>
+          <Outlet />
+        </Suspense>
+      </MainLayout>
+    </ProtectedRoute>
+  );
+}
+
 function AdminRoute({ children }) {
   const { user, isLoading } = useAuth();
 
@@ -122,19 +136,20 @@ export default function App() {
         <TooltipProvider>
           <BrowserRouter>
             <InteractiveTutorial />
-            <Suspense fallback={<PageLoader />}>
-              <Routes>
-                <Route path="/" element={<Navigate to="/dashboard" replace />} />
-                <Route path="/login" element={<PublicRoute><LoginPage /></PublicRoute>} />
-                <Route path="/signup" element={<PublicRoute><SignupPage /></PublicRoute>} />
-                <Route path="/dashboard" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
-                <Route path="/deadlines" element={<ProtectedRoute><DeadlinesPage /></ProtectedRoute>} />
-                <Route path="/board" element={<ProtectedRoute><BoardPage /></ProtectedRoute>} />
-                <Route path="/flinders-life" element={<ProtectedRoute><FlindersLifePage /></ProtectedRoute>} />
-                <Route path="/rooms/:roomId" element={<ProtectedRoute><RoomPage /></ProtectedRoute>} />
+            <Routes>
+              <Route path="/" element={<Navigate to="/dashboard" replace />} />
+              <Route path="/login" element={<Suspense fallback={<PageLoader />}><PublicRoute><LoginPage /></PublicRoute></Suspense>} />
+              <Route path="/signup" element={<Suspense fallback={<PageLoader />}><PublicRoute><SignupPage /></PublicRoute></Suspense>} />
+              {/* Protected routes share MainLayout — sidebar/header persist across navigations */}
+              <Route element={<ProtectedLayout />}>
+                <Route path="/dashboard" element={<DashboardPage />} />
+                <Route path="/deadlines" element={<DeadlinesPage />} />
+                <Route path="/board" element={<BoardPage />} />
+                <Route path="/flinders-life" element={<FlindersLifePage />} />
+                <Route path="/rooms/:roomId" element={<RoomPage />} />
                 <Route path="/admin" element={<AdminRoute><AdminPage /></AdminRoute>} />
-              </Routes>
-            </Suspense>
+              </Route>
+            </Routes>
           </BrowserRouter>
         </TooltipProvider>
       </ToastProvider>
