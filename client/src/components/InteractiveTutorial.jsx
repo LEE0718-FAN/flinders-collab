@@ -32,6 +32,10 @@ export default function InteractiveTutorial() {
   const [canSkip, setCanSkip] = useState(true);
   const createdRoomIdRef = useRef(null);
   const totalSteps = 14;
+  const swallowPointer = useCallback((event) => {
+    event.preventDefault();
+    event.stopPropagation();
+  }, []);
 
   // ── Clean up any leftover tutorial room from a previous crashed session ──
   useEffect(() => {
@@ -913,7 +917,13 @@ export default function InteractiveTutorial() {
         [data-radix-portal] { pointer-events: none !important; }
         [data-radix-portal] * { pointer-events: none !important; }
       `}</style>
-      <div className="fixed inset-0" style={{ zIndex: 99998 }} />
+      <div
+        className="fixed inset-0"
+        style={{ zIndex: 99998, pointerEvents: 'auto' }}
+        onClick={swallowPointer}
+        onMouseDown={swallowPointer}
+        onPointerDown={swallowPointer}
+      />
 
       {/* ── Dark overlay with spotlight — only when showOverlay is true ── */}
       {showOverlay && (
