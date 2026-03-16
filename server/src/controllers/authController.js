@@ -1,4 +1,5 @@
 const { supabaseAdmin, supabasePublic } = require('../services/supabase');
+const { ensureUserProfile } = require('../services/userProfile');
 const { isUniversityEmail } = require('../utils/validators');
 
 async function ignoreQueryError(query) {
@@ -261,7 +262,7 @@ async function updateProfile(req, res, next) {
 async function guestLogin(req, res, next) {
   try {
     const uuid = require('crypto').randomUUID();
-    const email = `tester-${uuid}@guest.test`;
+    const email = `tester-${uuid}@flinders.edu.au`;
     const password = `guest-${uuid}-${Date.now()}`;
 
     // Create user in Supabase Auth
@@ -277,12 +278,17 @@ async function guestLogin(req, res, next) {
       return res.status(500).json({ error: 'Failed to create tester account' });
     }
 
-    // Insert profile (is_tester stored in user_metadata, not users table)
-    await ignoreQueryError(supabaseAdmin.from('users').insert({
-      id: authData.user.id,
-      university_email: email,
-      full_name: 'Tester',
-    }));
+    try {
+      await ensureUserProfile({
+        id: authData.user.id,
+        email,
+        user_metadata: authData.user.user_metadata,
+      });
+    } catch (profileError) {
+      await ignoreQueryError(supabaseAdmin.auth.admin.deleteUser(authData.user.id));
+      console.error('Guest profile creation failed:', profileError.message);
+      return res.status(500).json({ error: 'Failed to prepare tester account. Please try again.' });
+    }
 
     // Sign in to get session
     const { data: loginData, error: loginError } =

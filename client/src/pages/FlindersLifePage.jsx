@@ -302,9 +302,12 @@ function AcademicCalendar() {
   );
 }
 
-function LoadingState() {
+function LoadingState({ tutorialId = null }) {
   return (
-    <div className="flex items-center justify-center py-16">
+    <div
+      className="flex items-center justify-center py-16"
+      {...(tutorialId ? { 'data-tutorial': tutorialId } : {})}
+    >
       <Loader2 className="h-6 w-6 animate-spin text-slate-400" />
     </div>
   );
@@ -381,7 +384,10 @@ export default function FlindersLifePage() {
         ]}
       />
       {/* Hero */}
-      <div className="relative mb-5 overflow-hidden rounded-2xl bg-gradient-to-br from-amber-400 via-yellow-500 to-amber-600 px-5 py-6 shadow-lg sm:px-7 sm:py-8">
+      <div
+        className="relative mb-5 overflow-hidden rounded-2xl bg-gradient-to-br from-amber-400 via-yellow-500 to-amber-600 px-5 py-6 shadow-lg sm:px-7 sm:py-8"
+        data-tutorial="flinders-hero"
+      >
         <div className="pointer-events-none absolute inset-0 opacity-20" style={{ background: 'radial-gradient(ellipse at 30% 20%, rgba(255,255,255,0.4) 0%, transparent 60%)' }} />
         <div className="relative flex items-center gap-3">
           <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white/20 shadow-inner backdrop-blur-sm">
@@ -396,14 +402,14 @@ export default function FlindersLifePage() {
 
       <Tabs defaultValue="events" className="w-full">
         <TabsList className="mb-4 w-full sm:w-auto">
-          <TabsTrigger value="events" className="gap-1.5"><Calendar className="h-4 w-4" />Events</TabsTrigger>
-          <TabsTrigger value="academic-calendar" className="gap-1.5"><Calendar className="h-4 w-4" />Academic Calendar</TabsTrigger>
-          <TabsTrigger value="study-rooms" className="gap-1.5"><BookOpen className="h-4 w-4" />Study Rooms</TabsTrigger>
+          <TabsTrigger value="events" className="gap-1.5" data-tutorial="flinders-tab-events"><Calendar className="h-4 w-4" />Events</TabsTrigger>
+          <TabsTrigger value="academic-calendar" className="gap-1.5" data-tutorial="flinders-tab-academic-calendar"><Calendar className="h-4 w-4" />Academic Calendar</TabsTrigger>
+          <TabsTrigger value="study-rooms" className="gap-1.5" data-tutorial="flinders-tab-study-rooms"><BookOpen className="h-4 w-4" />Study Rooms</TabsTrigger>
         </TabsList>
 
         {/* ── Events ── */}
-        <TabsContent value="events">
-          <div className="mb-3">
+        <TabsContent value="events" data-tutorial="flinders-panel-events">
+          <div className="mb-3" data-tutorial="flinders-events-interest-picker">
             <p className="text-[11px] font-medium text-slate-500 mb-1.5">Select interests for recommendations</p>
             <div className="flex flex-wrap gap-1.5">
               {INTEREST_CATEGORIES.map((interest) => (
@@ -432,10 +438,10 @@ export default function FlindersLifePage() {
             </button>
           )}
 
-          {eventsLoading ? <LoadingState /> : (
-            <div className="space-y-4">
+          {eventsLoading ? <LoadingState tutorialId="flinders-events-loading" /> : (
+            <div className="space-y-4" data-tutorial="flinders-events-content">
               {showFavorites && (
-                <div>
+                <div data-tutorial="flinders-events-favorites">
                   <h2 className="text-sm font-bold text-slate-800 mb-2 flex items-center gap-2">
                     <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-500" />Favorites
                   </h2>
@@ -448,7 +454,7 @@ export default function FlindersLifePage() {
               )}
 
               {selectedInterests.length > 0 && eventData.recommended.length > 0 && (
-                <div>
+                <div data-tutorial="flinders-events-recommended">
                   <h2 className="text-sm font-bold text-slate-800 mb-2">Recommended for You</h2>
                   <div className="space-y-1.5">
                     {sortByDate(eventData.recommended).map((e) => <EventRow key={e.id} event={e} isFavorite={favorites.includes(e.id)} onToggleFavorite={toggleFavorite} />)}
@@ -463,7 +469,7 @@ export default function FlindersLifePage() {
               )}
 
               {eventData.career.length > 0 && (
-                <div>
+                <div data-tutorial="flinders-events-career">
                   <h2 className="text-sm font-bold text-slate-800 mb-2">Career & Employment</h2>
                   <div className="space-y-1.5">
                     {sortByDate(eventData.career).map((e) => <EventRow key={e.id} event={e} isFavorite={favorites.includes(e.id)} onToggleFavorite={toggleFavorite} />)}
@@ -472,7 +478,7 @@ export default function FlindersLifePage() {
               )}
 
               {eventData.all.length > 0 && (
-                <div>
+                <div data-tutorial="flinders-events-all">
                   <button
                     onClick={() => setAllEventsExpanded((v) => !v)}
                     className="flex items-center gap-2 text-sm font-bold text-slate-800 mb-2 hover:text-amber-700 transition-colors"
@@ -494,13 +500,15 @@ export default function FlindersLifePage() {
         </TabsContent>
 
         {/* ── Academic Calendar ── */}
-        <TabsContent value="academic-calendar">
-          <AcademicCalendar />
+        <TabsContent value="academic-calendar" data-tutorial="flinders-panel-academic-calendar">
+          <div data-tutorial="flinders-academic-calendar-content">
+            <AcademicCalendar />
+          </div>
         </TabsContent>
 
         {/* ── Study Rooms ── */}
-        <TabsContent value="study-rooms">
-          <div className="grid gap-4 sm:grid-cols-2">
+        <TabsContent value="study-rooms" data-tutorial="flinders-panel-study-rooms">
+          <div className="grid gap-4 sm:grid-cols-2" data-tutorial="flinders-study-rooms-content">
             <div className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
               <div className="bg-gradient-to-r from-indigo-600 to-blue-600 px-5 py-4">
                 <div className="flex items-center gap-3">

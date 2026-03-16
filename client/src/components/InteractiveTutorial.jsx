@@ -110,6 +110,27 @@ export default function InteractiveTutorial() {
       }, 150);
     }), []);
 
+  const waitForGone = useCallback((selector, timeout = 2000) =>
+    new Promise((resolve) => {
+      const start = Date.now();
+      const interval = setInterval(() => {
+        if (cancelRef.current) {
+          clearInterval(interval);
+          resolve(false);
+          return;
+        }
+        if (!document.querySelector(selector)) {
+          clearInterval(interval);
+          resolve(true);
+          return;
+        }
+        if (Date.now() - start > timeout) {
+          clearInterval(interval);
+          resolve(false);
+        }
+      }, 120);
+    }), []);
+
   const moveCursorTo = useCallback(async (target) => {
     if (cancelRef.current) return;
     let x, y;
@@ -651,8 +672,8 @@ export default function InteractiveTutorial() {
       setP(13); setTooltip(null); setSpotlight(null); setCursorVisible(false);
       navigate('/flinders-life');
       showTip('Loading...', "Opening Flinders Life...", { center: true, icon: '⏳' });
-      const flTab = await waitForEl('button[value="events"]', 10000);
-      await sleep(800); if (bail()) { await end(); return; }
+      const flTab = await waitForEl('[data-tutorial="flinders-tab-events"], button[value="events"]', 7000);
+      await sleep(450); if (bail()) { await end(); return; }
 
       if (!flTab || bail()) {
         // Flinders Life not available — skip
@@ -662,43 +683,68 @@ export default function InteractiveTutorial() {
         // Events tab
         setTooltip(null); setSpotlight(null);
         await clickDomEl(flTab);
-        await sleep(800); if (bail()) { await end(); return; }
-        const evtPanel = document.querySelector('[role="tabpanel"]');
+        await Promise.race([
+          waitForGone('[data-tutorial="flinders-events-loading"]', 1800),
+          sleep(1400),
+        ]);
+        if (bail()) { await end(); return; }
+        const evtPanel = document.querySelector('[data-tutorial="flinders-events-content"]')
+          || document.querySelector('[data-tutorial="flinders-events-interest-picker"]')
+          || document.querySelector('[data-tutorial="flinders-panel-events"]')
+          || document.querySelector('[role="tabpanel"]');
         if (evtPanel) {
           const er = evtPanel.getBoundingClientRect();
           setSpotlight({ x: er.left, y: er.top, w: er.width, h: Math.min(er.height, 350), r: 12 });
         }
-        showTip('Events', "Campus events and workshops. Never miss out.", { target: 'button[value="events"]', icon: '🎪', position: 'bottom' });
-        await pause(3000); if (bail()) { await end(); return; }
+        showTip('Events', '맞춤 추천 이벤트, 커리어 행사, 전체 캠퍼스 이벤트를 한 번에 볼 수 있어요. 관심 분야를 고르면 추천이 더 정확해집니다.', {
+          target: '[data-tutorial="flinders-tab-events"]',
+          icon: '🎪',
+          position: 'bottom',
+        });
+        await pause(2400); if (bail()) { await end(); return; }
 
         // Academic Calendar tab
         setTooltip(null); setSpotlight(null);
-        const acadTab = document.querySelector('button[value="academic-calendar"]');
+        const acadTab = document.querySelector('[data-tutorial="flinders-tab-academic-calendar"]')
+          || document.querySelector('button[value="academic-calendar"]');
         if (acadTab && !bail()) {
           await clickDomEl(acadTab);
-          await sleep(800); if (bail()) { await end(); return; }
-          const acadPanel = document.querySelector('[role="tabpanel"]');
+          await sleep(350); if (bail()) { await end(); return; }
+          const acadPanel = document.querySelector('[data-tutorial="flinders-academic-calendar-content"]')
+            || document.querySelector('[data-tutorial="flinders-panel-academic-calendar"]')
+            || document.querySelector('[role="tabpanel"]');
           if (acadPanel) {
             const ar = acadPanel.getBoundingClientRect();
             setSpotlight({ x: ar.left, y: ar.top, w: ar.width, h: Math.min(ar.height, 350), r: 12 });
           }
-          showTip('Academic Calendar', "Semester dates, exams, holidays.", { target: 'button[value="academic-calendar"]', icon: '📅', position: 'bottom' });
-          await pause(3000); if (bail()) { await end(); return; }
+          showTip('Academic Calendar', '학기 시작일, 시험 기간, 공휴일, 주요 마감일을 빠르게 확인할 수 있어요. 일정 잡을 때 기준표처럼 쓰면 됩니다.', {
+            target: '[data-tutorial="flinders-tab-academic-calendar"]',
+            icon: '📅',
+            position: 'bottom',
+          });
+          await pause(2400); if (bail()) { await end(); return; }
         }
 
         // Study Rooms tab
         setTooltip(null); setSpotlight(null);
-        const studyTab = document.querySelector('button[value="study-rooms"]');
+        const studyTab = document.querySelector('[data-tutorial="flinders-tab-study-rooms"]')
+          || document.querySelector('button[value="study-rooms"]');
         if (studyTab && !bail()) {
           await clickDomEl(studyTab);
-          await sleep(800); if (bail()) { await end(); return; }
-          const studyPanel = document.querySelector('[role="tabpanel"]');
+          await sleep(350); if (bail()) { await end(); return; }
+          const studyPanel = document.querySelector('[data-tutorial="flinders-study-rooms-content"]')
+            || document.querySelector('[data-tutorial="flinders-panel-study-rooms"]')
+            || document.querySelector('[role="tabpanel"]');
           if (studyPanel) {
             const str = studyPanel.getBoundingClientRect();
             setSpotlight({ x: str.left, y: str.top, w: str.width, h: Math.min(str.height, 350), r: 12 });
           }
-          showTip('Study Rooms', "Book study rooms on campus.", { target: 'button[value="study-rooms"]', icon: '📚', position: 'bottom' });
-          await pause(3000); if (bail()) { await end(); return; }
+          showTip('Study Rooms', '캠퍼스별 예약 링크로 바로 넘어갈 수 있어요. 팀플 전에 빈 방 찾거나 조용한 공간 잡을 때 가장 자주 쓰게 됩니다.', {
+            target: '[data-tutorial="flinders-tab-study-rooms"]',
+            icon: '📚',
+            position: 'bottom',
+          });
+          await pause(2400); if (bail()) { await end(); return; }
         }
       }
 
