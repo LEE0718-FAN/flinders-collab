@@ -5,7 +5,7 @@ import { getMessages } from '@/services/chat';
 import { uploadFile } from '@/services/files';
 import { useSocket } from '@/hooks/useSocket';
 import { useAuth } from '@/hooks/useAuth';
-import { Loader2 } from 'lucide-react';
+import { AlertCircle, Loader2 } from 'lucide-react';
 
 function normalizeMessage(message) {
   if (!message) return message;
@@ -24,6 +24,7 @@ export default function ChatPanel({ roomId, onChatFileUploaded }) {
   const [messages, setMessages] = useState([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
+  const [error, setError] = useState('');
   const bottomRef = useRef(null);
   const { emit, on, off } = useSocket();
   const { user } = useAuth();
@@ -67,11 +68,13 @@ export default function ChatPanel({ roomId, onChatFileUploaded }) {
   }, [roomId, emit, on, off]);
 
   const handleSend = (content) => {
+    setError('');
     emit('chat:message', { roomId, content });
   };
 
   const handleFileSelect = async (file, customName, customDesc) => {
     setUploading(true);
+    setError('');
     try {
       // Upload file to server with category 'chat'
       const uploaded = await uploadFile(roomId, file, {
@@ -96,10 +99,20 @@ export default function ChatPanel({ roomId, onChatFileUploaded }) {
       onChatFileUploaded?.(uploaded);
     } catch (err) {
       console.error('File upload failed:', err);
+      setError(err.message || 'Failed to upload this file.');
     } finally {
       setUploading(false);
     }
   };
+
+  useEffect(() => {
+    const handleChatError = (payload) => {
+      setError(payload?.error || 'Failed to send message.');
+    };
+
+    on('chat:error', handleChatError);
+    return () => off('chat:error', handleChatError);
+  }, [on, off]);
 
   if (loading) {
     return (
@@ -126,6 +139,12 @@ export default function ChatPanel({ roomId, onChatFileUploaded }) {
 
       {/* Messages area */}
       <div className="flex-1 space-y-3 overflow-y-auto bg-gradient-to-b from-slate-50 to-white p-3.5 sm:p-5">
+        {error && (
+          <div className="flex items-start gap-2 rounded-2xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 shadow-sm">
+            <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+            <span>{error}</span>
+          </div>
+        )}
         {messages.length === 0 && (
           <div className="py-16 text-center">
             <div className="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-100 to-indigo-100 shadow-lg shadow-blue-500/10">

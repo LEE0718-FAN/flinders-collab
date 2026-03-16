@@ -51,6 +51,18 @@ export default function ChatInput({ onSend, onFileSelect, uploading }) {
     setCustomDesc('');
   };
 
+  const downgradePreviewToFileCard = () => {
+    setPreview((prev) => {
+      if (!prev) return prev;
+      if (prev.previewUrl) URL.revokeObjectURL(prev.previewUrl);
+      return {
+        ...prev,
+        previewUrl: null,
+        isImage: false,
+      };
+    });
+  };
+
   return (
     <div className="border-t-0 bg-slate-50 rounded-b-2xl" style={{ paddingBottom: 'max(0.75rem, var(--safe-bottom))' }}>
       {preview && (
@@ -58,7 +70,12 @@ export default function ChatInput({ onSend, onFileSelect, uploading }) {
           <div className="rounded-xl border border-blue-200 bg-blue-50/50 p-3 space-y-2.5">
             <div className="flex items-center gap-3">
               {preview.isImage && preview.previewUrl ? (
-                <img src={preview.previewUrl} alt="preview" className="h-16 w-16 rounded-lg object-cover shadow-sm" />
+                <img
+                  src={preview.previewUrl}
+                  alt="preview"
+                  className="h-16 w-16 rounded-lg object-cover shadow-sm"
+                  onError={downgradePreviewToFileCard}
+                />
               ) : (
                 <div className="flex h-16 w-16 items-center justify-center rounded-lg bg-gradient-to-br from-blue-500 to-indigo-500 shadow-sm">
                   <FileText className="h-7 w-7 text-white" />
@@ -95,7 +112,7 @@ export default function ChatInput({ onSend, onFileSelect, uploading }) {
           ref={fileRef}
           type="file"
           className="hidden"
-          accept="image/*,.pdf,.pptx,.docx,.zip,.txt"
+          accept="image/*,.pdf,.pptx,.docx,.zip,.txt,.webp,.gif,.heic,.heif"
           onChange={handleFileChange}
         />
         <Button
