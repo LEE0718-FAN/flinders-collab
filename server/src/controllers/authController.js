@@ -16,14 +16,27 @@ async function ignoreQueryError(query) {
  */
 async function signup(req, res, next) {
   try {
-    const { password, full_name, student_id, major, account_type } = req.body;
+    const { password, full_name, student_id, major, university, account_type } = req.body;
     const email = String(req.body.email || '').trim().toLowerCase();
+    const normalizedAccountType = account_type || 'flinders';
+    const normalizedMajor = String(major || '').trim() || null;
+    const normalizedUniversity = normalizedAccountType === 'general'
+      ? (String(university || '').trim() || null)
+      : 'Flinders University';
 
     // Flinders students must use university email
-    if (account_type !== 'general' && !isUniversityEmail(email)) {
+    if (normalizedAccountType !== 'general' && !isUniversityEmail(email)) {
       return res.status(400).json({
         error: 'Must use a Flinders University email address',
       });
+    }
+
+    if (normalizedAccountType === 'general' && !normalizedUniversity) {
+      return res.status(400).json({ error: 'University name is required for other-university accounts' });
+    }
+
+    if (!normalizedMajor) {
+      return res.status(400).json({ error: 'Major or degree program is required' });
     }
 
     // Create user in Supabase Auth
@@ -32,7 +45,13 @@ async function signup(req, res, next) {
         email,
         password,
         email_confirm: true, // auto-confirm for MVP
-        user_metadata: { full_name, student_id, major, account_type: account_type || 'flinders' },
+        user_metadata: {
+          full_name,
+          student_id: normalizedAccountType === 'flinders' ? student_id : null,
+          major: normalizedMajor,
+          university: normalizedUniversity,
+          account_type: normalizedAccountType,
+        },
       });
 
     if (authError) {
@@ -43,16 +62,17 @@ async function signup(req, res, next) {
     const { error: profileError } = await supabaseAdmin.from('users').insert({
       id: authData.user.id,
       university_email: email,
-      student_id,
+      student_id: normalizedAccountType === 'flinders' ? student_id : null,
       full_name,
-      major: major || null,
+      major: normalizedMajor,
+      university: normalizedUniversity,
       avatar_url: null,
     });
 
     if (profileError) {
       console.error('Profile insert error:', profileError.message);
-      // User was created in auth but profile failed — still return success
-      // Profile can be created on first login
+      await ignoreQueryError(supabaseAdmin.auth.admin.deleteUser(authData.user.id));
+      return res.status(500).json({ error: 'Failed to create user profile. Please try again.' });
     }
 
     res.status(201).json({
@@ -61,7 +81,9 @@ async function signup(req, res, next) {
         id: authData.user.id,
         email: authData.user.email,
         full_name,
-        student_id,
+        student_id: normalizedAccountType === 'flinders' ? student_id : null,
+        major: normalizedMajor,
+        university: normalizedUniversity,
       },
     });
   } catch (err) {
@@ -99,10 +121,12 @@ async function login(req, res, next) {
       return res.status(401).json({ error: 'Invalid email or password' });
     }
 
+    await ensureUserProfile(data.user);
+
     // Fetch profile (admin status + avatar) from users table
     const { data: profile } = await supabaseAdmin
       .from('users')
-      .select('is_admin, avatar_url, full_name')
+      .select('is_admin, avatar_url, full_name, major, university')
       .eq('id', data.user.id)
       .single();
 
@@ -120,6 +144,8 @@ async function login(req, res, next) {
         avatar_url: profile?.avatar_url || null,
         is_admin: profile?.is_admin || false,
         account_type: data.user.user_metadata?.account_type || 'flinders',
+        major: profile?.major || data.user.user_metadata?.major || null,
+        university: profile?.university || data.user.user_metadata?.university || null,
       },
     });
   } catch (err) {
@@ -164,6 +190,7 @@ async function getMe(req, res, next) {
         full_name: req.user.user_metadata?.full_name || null,
         student_id: req.user.user_metadata?.student_id || null,
         major: req.user.user_metadata?.major || null,
+        university: req.user.user_metadata?.university || null,
         avatar_url: null,
       });
     }

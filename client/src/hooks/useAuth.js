@@ -34,6 +34,8 @@ export function useAuth() {
           full_name: result.user.full_name,
           avatar_url: result.user.avatar_url || null,
           account_type: accountType,
+          major: result.user.major || null,
+          university: result.user.university || null,
         },
       },
     };
@@ -58,6 +60,7 @@ export function useAuth() {
       full_name: metadata.name,
       student_id: metadata.student_id,
       major: metadata.major,
+      university: metadata.university,
       account_type: accountType,
     });
 
@@ -78,6 +81,8 @@ export function useAuth() {
           full_name: result.user.full_name,
           avatar_url: result.user.avatar_url || null,
           account_type: accountType,
+          major: result.user.major || metadata.major || null,
+          university: result.user.university || metadata.university || null,
         },
       },
     };

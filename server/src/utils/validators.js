@@ -37,6 +37,9 @@ const signupValidation = [
   body('major')
     .optional()
     .trim(),
+  body('university')
+    .optional()
+    .trim(),
   body('account_type')
     .optional()
     .isIn(['flinders', 'general'])

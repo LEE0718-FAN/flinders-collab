@@ -8,6 +8,8 @@ async function ensureUserProfile(authUser) {
   const fullName = authUser.user_metadata?.full_name || authUser.email.split('@')[0];
   const studentId = authUser.user_metadata?.student_id || null;
   const major = authUser.user_metadata?.major || null;
+  const university = authUser.user_metadata?.university
+    || (authUser.email.endsWith('@flinders.edu.au') ? 'Flinders University' : null);
   const avatarUrl = authUser.user_metadata?.avatar_url || null;
 
   const { error } = await supabaseAdmin.from('users').upsert({
@@ -16,6 +18,7 @@ async function ensureUserProfile(authUser) {
     student_id: studentId,
     full_name: fullName,
     major,
+    university,
     avatar_url: avatarUrl,
   });
 

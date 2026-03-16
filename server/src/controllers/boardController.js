@@ -1,5 +1,26 @@
 const { supabaseAdmin } = require('../services/supabase');
 
+function buildBoardProfile(user) {
+  if (!user) return null;
+
+  const normalizedUniversity = String(user.university || '').trim() || null;
+  const normalizedMajor = String(user.major || '').trim() || null;
+  const normalizedYear = user.year_level || null;
+  const normalizedSemester = user.semester || null;
+
+  return {
+    ...user,
+    university: normalizedUniversity,
+    major: normalizedMajor,
+    year_level: normalizedYear,
+    semester: normalizedSemester,
+    academic_label: normalizedYear && normalizedSemester
+      ? `Y${normalizedYear} · S${normalizedSemester}`
+      : null,
+    affiliation_label: [normalizedUniversity, normalizedMajor].filter(Boolean).join(' · ') || null,
+  };
+}
+
 // ── Board Posts ──
 
 async function getPosts(req, res, next) {
@@ -10,7 +31,7 @@ async function getPosts(req, res, next) {
 
     let query = supabaseAdmin
       .from('board_posts')
-      .select('*, users!board_posts_author_users_fkey(full_name, avatar_url, major, year_level, semester)')
+      .select('*, users!board_posts_author_users_fkey(full_name, avatar_url, major, university, year_level, semester)')
       .order('created_at', { ascending: false })
       .limit(pageLimit);
 
@@ -123,6 +144,8 @@ async function getPosts(req, res, next) {
         result.poll_voters = rawVoters;
       }
 
+      result.users = buildBoardProfile(result.users);
+
       // For anonymous posts, hide author info from other users
       if (post.is_anonymous && post.author_id !== userId) {
         result.users = null;
@@ -169,12 +192,23 @@ async function createPost(req, res, next) {
     const { data, error } = await supabaseAdmin
       .from('board_posts')
       .insert(insertData)
-      .select('*, users!board_posts_author_users_fkey(full_name, avatar_url, major, year_level, semester)')
+      .select('*, users!board_posts_author_users_fkey(full_name, avatar_url, major, university, year_level, semester)')
       .single();
 
     if (error) return res.status(400).json({ error: error.message });
 
-    const result = { ...data, join_count: 0, pass_count: 0, comment_count: 0, reactions: {}, my_reactions: [], poll_vote_counts: {}, my_poll_vote: null, poll_voters: {} };
+    const result = {
+      ...data,
+      users: buildBoardProfile(data.users),
+      join_count: 0,
+      pass_count: 0,
+      comment_count: 0,
+      reactions: {},
+      my_reactions: [],
+      poll_vote_counts: {},
+      my_poll_vote: null,
+      poll_voters: {},
+    };
 
     // If anonymous, hide author info in response (except to the author themselves)
     if (data.is_anonymous) {
@@ -286,13 +320,16 @@ async function getComments(req, res, next) {
 
     const { data, error } = await supabaseAdmin
       .from('comments')
-      .select('*, users!comments_author_users_fkey(full_name, avatar_url, major, year_level, semester)')
+      .select('*, users!comments_author_users_fkey(full_name, avatar_url, major, university, year_level, semester)')
       .eq('target_type', targetType)
       .eq('target_id', targetId)
       .order('created_at', { ascending: true });
 
     if (error) return res.status(400).json({ error: error.message });
-    res.json(data || []);
+    res.json((data || []).map((comment) => ({
+      ...comment,
+      users: buildBoardProfile(comment.users),
+    })));
   } catch (err) {
     next(err);
   }
@@ -312,11 +349,14 @@ async function createComment(req, res, next) {
         author_id: userId,
         content: content.trim(),
       })
-      .select('*, users!comments_author_users_fkey(full_name, avatar_url, major, year_level, semester)')
+      .select('*, users!comments_author_users_fkey(full_name, avatar_url, major, university, year_level, semester)')
       .single();
 
     if (error) return res.status(400).json({ error: error.message });
-    res.status(201).json(data);
+    res.status(201).json({
+      ...data,
+      users: buildBoardProfile(data.users),
+    });
   } catch (err) {
     next(err);
   }

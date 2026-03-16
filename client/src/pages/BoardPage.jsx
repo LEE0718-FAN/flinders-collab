@@ -291,6 +291,7 @@ function CommentSection({ postId }) {
           {comments.map((c) => {
             const authorName = c.users?.full_name || 'Anonymous';
             const initials = authorName.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2);
+            const affiliationLabel = c.users?.affiliation_label || null;
             return (
               <div key={c.id} className="group flex gap-2">
                 <Avatar className="h-6 w-6 shrink-0 mt-0.5">
@@ -304,6 +305,9 @@ function CommentSection({ postId }) {
                       {formatDistanceToNow(new Date(c.created_at), { addSuffix: true })}
                     </span>
                   </div>
+                  {affiliationLabel && (
+                    <p className="text-[10px] text-slate-400">{affiliationLabel}</p>
+                  )}
                   <p className="text-sm text-slate-600 break-words">{c.content}</p>
                 </div>
                 {c.author_id === user?.id && (
@@ -353,6 +357,7 @@ function PostCard({ post, myStatus, onParticipate, onDelete, onReaction, onVote,
   const academicLabel = (!isAnonymous && post.users?.year_level && post.users?.semester)
     ? `Y${post.users.year_level} · S${post.users.semester}`
     : null;
+  const affiliationLabel = !isAnonymous ? post.users?.affiliation_label : null;
   const catStyle = CATEGORY_STYLES[post.category] || CATEGORY_STYLES.general;
   const catLabel = CATEGORIES.find((c) => c.value === post.category)?.label || post.category;
 
@@ -397,6 +402,9 @@ function PostCard({ post, myStatus, onParticipate, onDelete, onReaction, onVote,
               <span className="text-[11px] text-slate-400 font-medium">{academicLabel}</span>
             )}
           </div>
+          {affiliationLabel && (
+            <p className="text-[11px] text-slate-400">{affiliationLabel}</p>
+          )}
           <p className="text-[11px] text-slate-400">
             {formatDistanceToNow(new Date(post.created_at), { addSuffix: true })}
           </p>
@@ -461,6 +469,7 @@ function PostCard({ post, myStatus, onParticipate, onDelete, onReaction, onVote,
 // ── Create Post Dialog ──
 
 function CreatePostDialog({ open, onOpenChange, onCreated, academicInfo }) {
+  const { user } = useAuth();
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [category, setCategory] = useState('general');
@@ -539,7 +548,7 @@ function CreatePostDialog({ open, onOpenChange, onCreated, academicInfo }) {
               <>
                 <GraduationCap className="h-4 w-4 text-indigo-500" />
                 <span className="text-xs text-slate-600">
-                  Year {academicInfo?.year_level}, Sem {academicInfo?.semester}
+                  {[user?.user_metadata?.university, user?.user_metadata?.major].filter(Boolean).join(' · ') || `Year ${academicInfo?.year_level}, Sem ${academicInfo?.semester}`}
                 </span>
               </>
             )}

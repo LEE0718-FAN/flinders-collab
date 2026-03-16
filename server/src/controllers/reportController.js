@@ -87,9 +87,14 @@ async function updateReport(req, res, next) {
 
     const { reportId } = req.params;
     const { status } = req.body;
+    const allowedStatuses = ['open', 'in_progress', 'resolved', 'closed'];
 
     if (!status) {
       return res.status(400).json({ error: 'status is required' });
+    }
+
+    if (!allowedStatuses.includes(status)) {
+      return res.status(400).json({ error: `status must be one of: ${allowedStatuses.join(', ')}` });
     }
 
     const updates = { status };
@@ -201,7 +206,7 @@ async function deleteUser(req, res, next) {
       return res.status(400).json({ error: 'Cannot delete yourself' });
     }
 
-    // Delete from users table
+    // Delete from users table first so dependent public data is removed cleanly
     const { error } = await supabaseAdmin
       .from('users')
       .delete()
@@ -209,6 +214,11 @@ async function deleteUser(req, res, next) {
 
     if (error) {
       return res.status(400).json({ error: error.message });
+    }
+
+    const { error: authError } = await supabaseAdmin.auth.admin.deleteUser(userId);
+    if (authError) {
+      return res.status(500).json({ error: 'User profile was removed, but auth account deletion failed' });
     }
 
     res.json({ success: true });

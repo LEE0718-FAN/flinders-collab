@@ -116,12 +116,23 @@ export default function SignupForm({ onSubmit }) {
       return;
     }
 
+    if (accountType === 'general' && !university.trim()) {
+      setError('Please enter your university name');
+      return;
+    }
+
+    if (accountType === 'general' && !major.trim()) {
+      setError('Please enter your major');
+      return;
+    }
+
     setLoading(true);
     try {
       await onSubmit(normalizedEmail, password, {
         name: name.trim(),
         student_id: accountType === 'flinders' ? studentId : undefined,
-        major: accountType === 'flinders' ? major : (university || undefined),
+        major: major.trim(),
+        university: accountType === 'flinders' ? 'Flinders University' : university.trim(),
         account_type: accountType,
       });
     } catch (err) {
@@ -270,11 +281,20 @@ export default function SignupForm({ onSubmit }) {
           </div>
         </div>
       ) : (
-        <div className="space-y-1.5">
-          <label className="text-[13px] font-semibold text-foreground/70">University</label>
-          <div className="relative">
-            <School className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/40" />
-            <Input placeholder="e.g. University of Adelaide" value={university} onChange={(e) => setUniversity(e.target.value)} required className="h-11 rounded-xl pl-10 bg-muted/30 border-border/40 focus:bg-white" />
+        <div className="space-y-4">
+          <div className="space-y-1.5">
+            <label className="text-[13px] font-semibold text-foreground/70">University</label>
+            <div className="relative">
+              <School className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/40" />
+              <Input placeholder="e.g. University of Adelaide" value={university} onChange={(e) => setUniversity(e.target.value)} required className="h-11 rounded-xl pl-10 bg-muted/30 border-border/40 focus:bg-white" />
+            </div>
+          </div>
+          <div className="space-y-1.5">
+            <label className="text-[13px] font-semibold text-foreground/70">Major</label>
+            <div className="relative">
+              <GraduationCap className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/40" />
+              <Input placeholder="e.g. Computer Science" value={major} onChange={(e) => setMajor(e.target.value)} required className="h-11 rounded-xl pl-10 bg-muted/30 border-border/40 focus:bg-white" />
+            </div>
           </div>
         </div>
       )}
