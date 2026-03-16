@@ -359,34 +359,15 @@ export default function InteractiveTutorial() {
         await pause(3500); if (bail()) { await end(); return; }
       }
 
-      // ── 7: Schedule — create event via API FIRST, then demo the form ──
+      // ── 7: Schedule — show tab, type demo, THEN create event via API ──
       // ** SKIP DISABLED — must create event **
       setCanSkip(false);
       setP(7); setTooltip(null); setSpotlight(null);
 
-      // Create event via API before showing schedule tab
-      if (!bail()) {
-        try {
-          const futureDate = new Date();
-          futureDate.setDate(futureDate.getDate() + 5);
-          const start = new Date(futureDate); start.setHours(14, 0, 0, 0);
-          const endT = new Date(futureDate); endT.setHours(16, 0, 0, 0);
-          await createEvent(tutorialRoomId, {
-            title: 'Team Study Session', category: 'study',
-            start_time: start.toISOString(), end_time: endT.toISOString(),
-            location_name: 'Flinders Library Room 3',
-          });
-        } catch { /* ok */ }
-      }
-      if (bail()) { await end(); return; }
-
-      // Signal RoomPage to refetch events so the new one appears immediately
-      window.dispatchEvent(new CustomEvent('events-updated'));
-
       showTip('Schedule', "Team calendar. Let me add an event.", { target: '[data-tour="tab-schedule"]', icon: '📆', position: 'bottom' });
       await pause(2500); if (bail()) { await end(); return; }
 
-      // Click schedule tab — event already exists
+      // Click schedule tab first (no event yet)
       await clickEl('[data-tour="tab-schedule"]');
       await sleep(1200); if (bail()) { await end(); return; }
 
@@ -431,10 +412,28 @@ export default function InteractiveTutorial() {
             await pause(300); if (bail()) { await end(); return; }
           }
 
-          // Close dialog — event already created via API
+          // Close dialog
           document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
           await sleep(400);
         }
+      }
+
+      // NOW create event via API (after the typing demo)
+      if (!bail()) {
+        try {
+          const futureDate = new Date();
+          futureDate.setDate(futureDate.getDate() + 5);
+          const start = new Date(futureDate); start.setHours(14, 0, 0, 0);
+          const endT = new Date(futureDate); endT.setHours(16, 0, 0, 0);
+          await createEvent(tutorialRoomId, {
+            title: 'Team Study Session', category: 'study',
+            start_time: start.toISOString(), end_time: endT.toISOString(),
+            location_name: 'Flinders Library Room 3',
+          });
+        } catch { /* ok */ }
+        // Refetch so it appears on the calendar
+        window.dispatchEvent(new CustomEvent('events-updated'));
+        await sleep(800);
       }
 
       if (!bail()) {
