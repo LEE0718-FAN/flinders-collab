@@ -28,6 +28,7 @@ export default function InteractiveTutorial() {
   const [progress, setProgress] = useState(0);
   const cancelRef = useRef(false);
   const skipRef = useRef(false);
+  const canSkipRef = useRef(true);
   const [canSkip, setCanSkip] = useState(true);
   const createdRoomIdRef = useRef(null);
   const totalSteps = 14;
@@ -105,15 +106,39 @@ export default function InteractiveTutorial() {
   }, []);
 
   // ── Utilities ──
-  const sleep = useCallback((ms) =>
+  const setSkipEnabled = useCallback((value) => {
+    canSkipRef.current = value;
+    if (!value) {
+      skipRef.current = false;
+    }
+    setCanSkip(value);
+  }, []);
+
+  const wait = useCallback((ms, allowSkip = false) =>
     new Promise((resolve) => {
       let done = false;
       const t = setTimeout(() => { if (!done) { done = true; resolve(); } }, ms);
       const check = setInterval(() => {
-        if ((cancelRef.current || skipRef.current) && !done) { done = true; clearTimeout(t); clearInterval(check); skipRef.current = false; resolve(); }
+        if (cancelRef.current && !done) {
+          done = true;
+          clearTimeout(t);
+          clearInterval(check);
+          resolve();
+          return;
+        }
+        if (allowSkip && skipRef.current && !done) {
+          done = true;
+          clearTimeout(t);
+          clearInterval(check);
+          skipRef.current = false;
+          resolve();
+        }
       }, 100);
       setTimeout(() => clearInterval(check), ms + 50);
     }), []);
+
+  const sleep = useCallback((ms) => wait(ms, false), [wait]);
+  const pauseFor = useCallback((ms) => wait(ms, true), [wait]);
 
   const waitForEl = useCallback((selector, timeout = 8000) =>
     new Promise((resolve) => {
@@ -265,8 +290,8 @@ export default function InteractiveTutorial() {
   }, []);
 
   const resetUI = useCallback(() => {
-    setTooltip(null); setSpotlight(null); setCursorVisible(false); setShowOverlay(false); setCanSkip(true);
-  }, []);
+    setTooltip(null); setSpotlight(null); setCursorVisible(false); setShowOverlay(false); setSkipEnabled(true);
+  }, [setSkipEnabled]);
 
   const logoutTester = useCallback(async () => {
     try { await apiGuestCleanup(); } catch { /* ignore */ }
@@ -300,7 +325,7 @@ export default function InteractiveTutorial() {
     cancelRef.current = false;
     const bail = () => cancelRef.current;
     const end = async () => { await cleanup(); setActive(false); };
-    const pause = (ms) => sleep(ms);
+    const pause = (ms) => pauseFor(ms);
     const setP = (n) => { setProgress(n); };
 
     try {
@@ -345,7 +370,7 @@ export default function InteractiveTutorial() {
 
       // ── 5: Open dialog, type room name + course code, create via API ──
       // ** SKIP DISABLED — must create room **
-      setCanSkip(false);
+      setSkipEnabled(false);
       setP(5); setTooltip(null); setSpotlight(null); setShowOverlay(false);
       await sleep(300); if (bail()) { await end(); return; }
       const triggerBtn = document.querySelector('[data-tour="create-room"] button');
@@ -376,7 +401,7 @@ export default function InteractiveTutorial() {
       createdRoomIdRef.current = tutorialRoomId;
       localStorage.setItem(TUTORIAL_ROOM_ID_KEY, tutorialRoomId);
 
-      setCanSkip(true);
+      setSkipEnabled(true);
       setShowOverlay(true); setCursorVisible(false);
       showTip('Room Created!', "Let's go inside.", { center: true, icon: '🎉' });
       await pause(2500); if (bail()) { await end(); return; }
@@ -405,7 +430,7 @@ export default function InteractiveTutorial() {
 
       // ── 7: Schedule — show tab, type demo, THEN create event via API ──
       // ** SKIP DISABLED — must create event **
-      setCanSkip(false);
+      setSkipEnabled(false);
       setP(7); setTooltip(null); setSpotlight(null);
 
       showTip('Schedule', "Team calendar. Let me add an event.", { target: '[data-tour="tab-schedule"]', icon: '📆', position: 'bottom' });
@@ -481,7 +506,7 @@ export default function InteractiveTutorial() {
       }
 
       if (!bail()) {
-        setCanSkip(true);
+        setSkipEnabled(true);
         setShowOverlay(true);
         showTip('Event Added!', "Everyone in the room can see it now.", { center: true, icon: '🎉' });
         await pause(3000); if (bail()) { await end(); return; }
@@ -779,7 +804,7 @@ export default function InteractiveTutorial() {
       try { await cleanup(); } catch { /* ignore */ }
       setActive(false);
     }
-  }, [navigate, sleep, waitForEl, moveCursorTo, clickEl, clickDomEl, showTip, typeInto, cleanup, findBtn, simulateClick, resetUI]);
+  }, [navigate, sleep, pauseFor, waitForEl, waitForGone, moveCursorTo, clickEl, clickDomEl, showTip, typeInto, cleanup, findBtn, simulateClick, resetUI, setSkipEnabled]);
 
   const runTutorialRef = useRef(runTutorial);
   runTutorialRef.current = runTutorial;
@@ -858,7 +883,10 @@ export default function InteractiveTutorial() {
       <div className="fixed top-4 right-4 z-[100002] flex items-center gap-2 animate-fade-in" style={{ pointerEvents: 'auto' }}>
         {canSkip && (
           <button
-            onClick={() => { skipRef.current = true; }}
+            onClick={() => {
+              if (!canSkipRef.current) return;
+              skipRef.current = true;
+            }}
             className="flex items-center gap-1.5 rounded-full bg-gradient-to-r from-indigo-500 to-violet-500 px-4 py-2 text-[12px] font-bold text-white shadow-lg hover:shadow-xl hover:brightness-110 transition-all active:scale-95"
           >
             Skip →
