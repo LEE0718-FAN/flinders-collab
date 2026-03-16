@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { X } from 'lucide-react';
 import { createRoom, deleteRoom, getRoom, getRooms } from '@/services/rooms';
 import { createEvent } from '@/services/events';
+import { updateAcademicInfo } from '@/services/board';
 import { loadSession, clearSession } from '@/lib/auth-token';
 import { apiGuestCleanup } from '@/services/auth';
 import { apiUrl } from '@/lib/api';
@@ -543,12 +544,61 @@ export default function InteractiveTutorial() {
       showTip('Deadlines', "All your room events in one place. The one we just made is here too.", { center: true, icon: '📅', keepSpotlight: true });
       await pause(3500); if (bail()) { await end(); return; }
 
-      // ── 12: Free Board — open New Post dialog, type demo ──
+      // ── 12: Free Board — set academic info first, then demo ──
       setP(12); setTooltip(null); setSpotlight(null); setCursorVisible(false);
+
+      // Pre-set academic info via API so AcademicInfoGate doesn't block
+      if (!bail()) {
+        try { await updateAcademicInfo(2, 1); } catch { /* ok */ }
+      }
+      if (bail()) { await end(); return; }
+
       navigate('/board');
+
+      // Check if AcademicInfoGate is showing — fill it out
+      await sleep(1000);
+      const yearSelect = document.querySelector('select');
+      if (yearSelect && !bail()) {
+        // Gate is showing — select year and semester
+        setShowOverlay(false);
+        showTip('Board Setup', "Let me set this up for you.", { center: true, icon: '📋' });
+
+        const selects = document.querySelectorAll('select');
+        if (selects[0]) {
+          const yearSetter = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value')?.set;
+          if (yearSetter) {
+            await moveCursorTo({ x: selects[0].getBoundingClientRect().left + selects[0].getBoundingClientRect().width / 2, y: selects[0].getBoundingClientRect().top + selects[0].getBoundingClientRect().height / 2 });
+            setCursorScale(0.75); await sleep(100); setCursorScale(1);
+            yearSetter.call(selects[0], '2');
+            selects[0].dispatchEvent(new Event('change', { bubbles: true }));
+            await sleep(400);
+          }
+        }
+        if (selects[1] && !bail()) {
+          const semSetter = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value')?.set;
+          if (semSetter) {
+            await moveCursorTo({ x: selects[1].getBoundingClientRect().left + selects[1].getBoundingClientRect().width / 2, y: selects[1].getBoundingClientRect().top + selects[1].getBoundingClientRect().height / 2 });
+            setCursorScale(0.75); await sleep(100); setCursorScale(1);
+            semSetter.call(selects[1], '1');
+            selects[1].dispatchEvent(new Event('change', { bubbles: true }));
+            await sleep(400);
+          }
+        }
+        if (!bail()) {
+          // Click Continue button
+          const continueBtn = findBtn('Continue');
+          if (continueBtn) {
+            await clickDomEl(continueBtn);
+            await sleep(1500);
+          }
+        }
+        if (bail()) { await end(); return; }
+      }
+
       const boardBtn = await waitForEl('[data-tour="board-new-post"]', 8000);
       await sleep(800); if (bail()) { await end(); return; }
 
+      setShowOverlay(true);
       showTip('Free Board', "Community board — post anything, polls, find study buddies.", { center: true, icon: '📋' });
       await pause(2500); if (bail()) { await end(); return; }
 
