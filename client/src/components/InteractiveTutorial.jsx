@@ -20,6 +20,8 @@ export default function InteractiveTutorial() {
   const [tooltip, setTooltip] = useState(null);
   const [progress, setProgress] = useState(0);
   const cancelRef = useRef(false);
+  const skipRef = useRef(false);
+  const [canSkip, setCanSkip] = useState(true);
   const createdRoomIdRef = useRef(null);
   const totalSteps = 16;
 
@@ -66,7 +68,7 @@ export default function InteractiveTutorial() {
       let done = false;
       const t = setTimeout(() => { if (!done) { done = true; resolve(); } }, ms);
       const check = setInterval(() => {
-        if (cancelRef.current && !done) { done = true; clearTimeout(t); clearInterval(check); resolve(); }
+        if ((cancelRef.current || skipRef.current) && !done) { done = true; clearTimeout(t); clearInterval(check); skipRef.current = false; resolve(); }
       }, 100);
       setTimeout(() => clearInterval(check), ms + 50);
     }), []);
@@ -250,10 +252,10 @@ export default function InteractiveTutorial() {
     setTooltip(null); setSpotlight(null); setCursorVisible(false);
     const sidebarEl = document.querySelector('aside');
     if (sidebarEl && !bail()) {
-      // Spotlight the whole sidebar and show tip in content area
+      // Spotlight the whole sidebar and show tip to the right of it
       const sr = sidebarEl.getBoundingClientRect();
       setSpotlight({ x: sr.left, y: sr.top, w: sr.width, h: sr.height, r: 0 });
-      showTip('Sidebar', "This sidebar is your main navigation — Dashboard, Deadlines, Free Board, Flinders Life, and your rooms all live here.", { center: true, icon: '📌', keepSpotlight: true });
+      showTip('Sidebar', "This sidebar is your main navigation — Dashboard, Deadlines, Free Board, Flinders Life, and your rooms all live here.", { target: '[data-tour="sidebar-nav"]', icon: '📌', position: 'right' });
       await pause(5000); if (bail()) { await end(); return; }
     }
 
@@ -263,6 +265,7 @@ export default function InteractiveTutorial() {
     await pause(3500); if (bail()) { await end(); return; }
 
     // ── 5: Open dialog, type room name, create via API ──
+    setCanSkip(false);
     setP(5); setTooltip(null); setSpotlight(null); setShowOverlay(false);
     await sleep(300);
     const triggerBtn = document.querySelector('[data-tour="create-room"] button');
@@ -286,6 +289,7 @@ export default function InteractiveTutorial() {
     createdRoomIdRef.current = tutorialRoomId;
     localStorage.setItem(TUTORIAL_ROOM_ID_KEY, tutorialRoomId);
 
+    setCanSkip(true);
     setShowOverlay(true); setCursorVisible(false);
     showTip('Room Created!', "Done! The room's ready. Let's go inside and check out what you can do.", { center: true, icon: '🎉' });
     await pause(3500); if (bail()) { await end(); return; }
@@ -330,6 +334,7 @@ export default function InteractiveTutorial() {
 
     if (addEventBtn && !bail()) {
       // Click the Add Event button
+      setCanSkip(false);
       setTooltip(null); setShowOverlay(false);
       await clickDomEl(addEventBtn);
       await sleep(1000);
@@ -363,22 +368,14 @@ export default function InteractiveTutorial() {
           await pause(600);
         }
 
-        // Click submit button inside the dialog
-        if (!bail()) {
-          const dialogBtns = document.querySelectorAll('[role="dialog"] button[type="submit"]');
-          const submitBtn = dialogBtns.length > 0 ? dialogBtns[dialogBtns.length - 1] : null;
-          if (submitBtn) {
-            await clickDomEl(submitBtn);
-            await sleep(2000);
-          }
-        }
-
-        setShowOverlay(true);
-        showTip('Event Added!', "It's on the calendar now! Everyone in this room can see it.", { center: true, icon: '🎉' });
-        await pause(3500); if (bail()) { await end(); return; }
+        // Close dialog (Escape) — form submit won't work without a selected date
+        document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+        await sleep(500);
       }
-    } else if (!bail()) {
-      // Fallback: create event via API if button not found
+    }
+
+    // Always create event via API to ensure it shows on Deadlines
+    if (!bail()) {
       try {
         const tomorrow = new Date();
         tomorrow.setDate(tomorrow.getDate() + 1);
@@ -389,9 +386,11 @@ export default function InteractiveTutorial() {
           start_time: start.toISOString(), end_time: endT.toISOString(),
           location_name: 'Flinders Library Room 3',
         });
-      } catch { /* ok */ }
-      showTip('Event Added!', "Added a study session to the calendar!", { center: true, icon: '🎉' });
-      await pause(3000); if (bail()) { await end(); return; }
+      } catch { /* ok — might already exist */ }
+      setCanSkip(true);
+      setShowOverlay(true);
+      showTip('Event Added!', "It's on the calendar now! Everyone in this room can see it.", { center: true, icon: '🎉' });
+      await pause(3500); if (bail()) { await end(); return; }
     }
 
     // ── 8: Tasks tab — click tab, add task via inline form ──
@@ -413,6 +412,7 @@ export default function InteractiveTutorial() {
 
     if (newTaskBtn && !bail()) {
       // Hide tooltip while interacting with inline form
+      setCanSkip(false);
       setTooltip(null); setShowOverlay(false);
       await clickDomEl(newTaskBtn);
       await sleep(1000);
@@ -454,6 +454,7 @@ export default function InteractiveTutorial() {
           }
         }
 
+        setCanSkip(true);
         setShowOverlay(true);
         showTip('Task Created!', "Task assigned to a teammate! Check it off when it's done.", { center: true, icon: '🎉' });
         await pause(3000); if (bail()) { await end(); return; }
@@ -499,7 +500,7 @@ export default function InteractiveTutorial() {
       const mr = deadlinesMain.getBoundingClientRect();
       setSpotlight({ x: mr.left + 10, y: mr.top + 10, w: mr.width - 20, h: Math.min(mr.height - 20, 400), r: 16 });
     }
-    showTip('Deadlines', "All events from every room show up here! The study session we just added is here too.", { center: true, icon: '📅' });
+    showTip('Deadlines', "All events from every room show up here! The study session we just added is here too.", { center: true, icon: '📅', keepSpotlight: true });
     await pause(4000); if (bail()) { await end(); return; }
 
     // ── 12: Free Board ──
@@ -519,6 +520,7 @@ export default function InteractiveTutorial() {
       await pause(3000); if (bail()) { await end(); return; }
 
       // Open the dialog — hide tooltip while interacting
+      setCanSkip(false);
       setTooltip(null); setShowOverlay(false);
       await clickDomEl(newPostBtn);
       await sleep(1500);
@@ -582,6 +584,7 @@ export default function InteractiveTutorial() {
         document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
         await sleep(800);
       }
+      setCanSkip(true);
       setShowOverlay(true);
     }
 
@@ -686,6 +689,14 @@ export default function InteractiveTutorial() {
     <>
       {/* ── Fixed top-right control bar ── */}
       <div className="fixed top-4 right-4 z-[100002] flex items-center gap-2 animate-fade-in" style={{ pointerEvents: 'auto' }}>
+        {canSkip && (
+          <button
+            onClick={() => { skipRef.current = true; }}
+            className="flex items-center gap-1.5 rounded-full bg-gradient-to-r from-indigo-500 to-violet-500 px-4 py-2 text-[12px] font-bold text-white shadow-lg hover:shadow-xl hover:brightness-110 transition-all active:scale-95"
+          >
+            Skip →
+          </button>
+        )}
         <button
           onClick={() => handleStop(true)}
           className="flex items-center gap-1.5 rounded-full bg-white/90 backdrop-blur-sm px-3 py-1.5 text-[11px] font-semibold text-slate-400 shadow-lg border border-white/60 hover:bg-white hover:text-slate-600 transition-all"
