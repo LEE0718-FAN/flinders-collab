@@ -6,6 +6,7 @@ import { createEvent } from '@/services/events';
 import { loadSession, clearSession } from '@/lib/auth-token';
 import { apiGuestCleanup } from '@/services/auth';
 import { apiUrl } from '@/lib/api';
+import { useAuthStore } from '@/store/authStore';
 
 const TUTORIAL_KEY = 'tutorial-completed';
 const TUTORIAL_ROOM_NAME = '🎓 Tutorial Room';
@@ -13,6 +14,7 @@ const TUTORIAL_ROOM_ID_KEY = 'tutorial-room-id';
 
 export default function InteractiveTutorial() {
   const navigate = useNavigate();
+  const user = useAuthStore((s) => s.user);
   const [showPrompt, setShowPrompt] = useState(false);
   const [active, setActive] = useState(false);
   const [cursorPos, setCursorPos] = useState({ x: -100, y: -100 });
@@ -47,6 +49,7 @@ export default function InteractiveTutorial() {
   }, []);
 
   useEffect(() => {
+    if (!user) return; // not logged in yet
     if (localStorage.getItem(TUTORIAL_KEY)) return;
     let cancelled = false;
     getRooms()
@@ -57,7 +60,7 @@ export default function InteractiveTutorial() {
       })
       .catch(() => {});
     return () => { cancelled = true; };
-  }, []);
+  }, [user]);
 
   useEffect(() => {
     const handler = () => { setShowPrompt(false); setActive(true); };
