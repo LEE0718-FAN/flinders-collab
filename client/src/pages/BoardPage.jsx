@@ -672,6 +672,7 @@ export default function BoardPage() {
   const [createOpen, setCreateOpen] = useState(false);
   const [academicInfo, setAcademicInfo] = useState(null);
   const [academicChecked, setAcademicChecked] = useState(false);
+  const [tutorialActive, setTutorialActive] = useState(false);
 
   const fetchPosts = useCallback(async () => {
     try {
@@ -694,6 +695,20 @@ export default function BoardPage() {
   useEffect(() => {
     if (academicChecked && academicInfo) fetchPosts();
   }, [fetchPosts, academicChecked, academicInfo]);
+
+  useEffect(() => {
+    const syncTutorialState = (event) => {
+      if (event?.detail && typeof event.detail.active === 'boolean') {
+        setTutorialActive(event.detail.active);
+        return;
+      }
+      setTutorialActive(Boolean(document.querySelector('[data-tutorial-root]')));
+    };
+
+    syncTutorialState();
+    window.addEventListener('interactive-tutorial-state', syncTutorialState);
+    return () => window.removeEventListener('interactive-tutorial-state', syncTutorialState);
+  }, []);
 
   if (academicChecked && !academicInfo) {
     return <AcademicInfoGate onSaved={(info) => setAcademicInfo(info)} />;
@@ -842,32 +857,45 @@ export default function BoardPage() {
       </div>
 
       {/* Posts */}
-      {loading ? (
-        <div className="flex justify-center py-16"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground" /></div>
-      ) : posts.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-20 text-center">
-          <div className="w-16 h-16 rounded-2xl bg-slate-100 flex items-center justify-center mb-4">
-            <BookOpen className="h-8 w-8 text-slate-300" />
+      <div className="relative" data-tutorial="board-post-feed">
+        {loading ? (
+          <div className="flex justify-center py-16"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground" /></div>
+        ) : posts.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-20 text-center">
+            <div className="w-16 h-16 rounded-2xl bg-slate-100 flex items-center justify-center mb-4">
+              <BookOpen className="h-8 w-8 text-slate-300" />
+            </div>
+            <h3 className="text-base font-bold text-slate-400">No posts yet</h3>
+            <p className="text-sm text-slate-400 mt-1">Be the first to share something!</p>
           </div>
-          <h3 className="text-base font-bold text-slate-400">No posts yet</h3>
-          <p className="text-sm text-slate-400 mt-1">Be the first to share something!</p>
-        </div>
-      ) : (
-        <div className="space-y-4">
-          {posts.map((post) => (
-            <PostCard
-              key={post.id}
-              post={post}
-              myStatus={myParticipations[post.id] || null}
-              onParticipate={handleParticipate}
-              onDelete={handleDelete}
-              onReaction={handleReaction}
-              onVote={handleVote}
-              userId={user?.id}
-            />
-          ))}
-        </div>
-      )}
+        ) : (
+          <div className={`space-y-4 transition-all ${tutorialActive ? 'blur-md select-none' : ''}`}>
+            {posts.map((post) => (
+              <PostCard
+                key={post.id}
+                post={post}
+                myStatus={myParticipations[post.id] || null}
+                onParticipate={handleParticipate}
+                onDelete={handleDelete}
+                onReaction={handleReaction}
+                onVote={handleVote}
+                userId={user?.id}
+              />
+            ))}
+          </div>
+        )}
+
+        {tutorialActive && (
+          <div className="pointer-events-none absolute inset-0 flex items-center justify-center rounded-3xl bg-white/88 backdrop-blur-sm">
+            <div className="rounded-2xl border border-slate-200 bg-white/95 px-5 py-4 text-center shadow-xl">
+              <div className="mx-auto mb-2 flex h-11 w-11 items-center justify-center rounded-2xl bg-indigo-50">
+                <EyeOff className="h-5 w-5 text-indigo-500" />
+              </div>
+              <p className="text-sm font-semibold text-slate-700">Board posts are hidden during the tutorial.</p>
+            </div>
+          </div>
+        )}
+      </div>
 
       <CreatePostDialog
         open={createOpen}

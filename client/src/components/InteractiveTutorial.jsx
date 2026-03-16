@@ -92,6 +92,18 @@ export default function InteractiveTutorial() {
     return () => window.removeEventListener('start-interactive-tutorial', handler);
   }, []);
 
+  useEffect(() => {
+    if (typeof window === 'undefined') return undefined;
+    window.dispatchEvent(new CustomEvent('interactive-tutorial-state', {
+      detail: { active },
+    }));
+    return () => {
+      window.dispatchEvent(new CustomEvent('interactive-tutorial-state', {
+        detail: { active: false },
+      }));
+    };
+  }, [active]);
+
   // If tester closes the tab/browser, try cleanup via fetch keepalive
   useEffect(() => {
     const handleBeforeUnload = () => {
@@ -743,7 +755,7 @@ export default function InteractiveTutorial() {
           const er = evtPanel.getBoundingClientRect();
           setSpotlight({ x: er.left, y: er.top, w: er.width, h: Math.min(er.height, 350), r: 12 });
         }
-        showTip('Events', '맞춤 추천 이벤트, 커리어 행사, 전체 캠퍼스 이벤트를 한 번에 볼 수 있어요. 관심 분야를 고르면 추천이 더 정확해집니다.', {
+        showTip('Events', 'See personalised picks, career events, and all campus events in one place. Your interests make the recommendations smarter.', {
           target: '[data-tutorial="flinders-tab-events"]',
           icon: '🎪',
           position: 'bottom',
@@ -764,7 +776,7 @@ export default function InteractiveTutorial() {
             const ar = acadPanel.getBoundingClientRect();
             setSpotlight({ x: ar.left, y: ar.top, w: ar.width, h: Math.min(ar.height, 350), r: 12 });
           }
-          showTip('Academic Calendar', '학기 시작일, 시험 기간, 공휴일, 주요 마감일을 빠르게 확인할 수 있어요. 일정 잡을 때 기준표처럼 쓰면 됩니다.', {
+          showTip('Academic Calendar', 'Check semester dates, exam periods, public holidays, and key deadlines here. It works like a quick planning reference.', {
             target: '[data-tutorial="flinders-tab-academic-calendar"]',
             icon: '📅',
             position: 'bottom',
@@ -786,7 +798,7 @@ export default function InteractiveTutorial() {
             const str = studyPanel.getBoundingClientRect();
             setSpotlight({ x: str.left, y: str.top, w: str.width, h: Math.min(str.height, 350), r: 12 });
           }
-          showTip('Study Rooms', '캠퍼스별 예약 링크로 바로 넘어갈 수 있어요. 팀플 전에 빈 방 찾거나 조용한 공간 잡을 때 가장 자주 쓰게 됩니다.', {
+          showTip('Study Rooms', 'Jump straight to campus booking links here. It is the fastest way to find an empty room before a group session.', {
             target: '[data-tutorial="flinders-tab-study-rooms"]',
             icon: '📚',
             position: 'bottom',
