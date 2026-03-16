@@ -74,6 +74,11 @@ async function login(req, res, next) {
       return res.status(401).json({ error: 'Invalid email or password' });
     }
 
+    if (!data?.session || !data?.user) {
+      console.error('Login: signInWithPassword returned no session/user', { data });
+      return res.status(401).json({ error: 'Invalid email or password' });
+    }
+
     // Fetch profile (admin status + avatar) from users table
     const { data: profile } = await supabaseAdmin
       .from('users')

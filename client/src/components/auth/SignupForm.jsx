@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Loader2, User, Mail, Hash, GraduationCap, Lock, ArrowLeft, School, Eye } from 'lucide-react';
+import { Loader2, User, Mail, Hash, GraduationCap, Lock, ArrowLeft, School } from 'lucide-react';
 import { FLINDERS_PROGRAMS } from '@/lib/flinders-programs';
 
 const ACCOUNT_TYPES = [
@@ -24,18 +24,9 @@ const ACCOUNT_TYPES = [
     border: 'border-violet-200 hover:border-violet-400',
     bg: 'bg-violet-50',
   },
-  {
-    id: 'tester',
-    label: 'Tester',
-    desc: 'Quick demo — tutorial only, no signup needed',
-    icon: Eye,
-    color: 'from-emerald-500 to-teal-500',
-    border: 'border-emerald-200 hover:border-emerald-400',
-    bg: 'bg-emerald-50',
-  },
 ];
 
-export default function SignupForm({ onSubmit, onGuestLogin }) {
+export default function SignupForm({ onSubmit }) {
   const [accountType, setAccountType] = useState(null); // null = choosing
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -134,23 +125,6 @@ export default function SignupForm({ onSubmit, onGuestLogin }) {
     }
   };
 
-  const handleGuestClick = async () => {
-    setLoading(true);
-    setError('');
-    try {
-      await onGuestLogin();
-    } catch (err) {
-      const msg = err.message || 'Failed';
-      if (msg === 'Failed to fetch' || msg === 'Load failed') {
-        setError('Server is starting up. Please try again in a few seconds.');
-      } else {
-        setError(msg);
-      }
-    } finally {
-      setLoading(false);
-    }
-  };
-
   // ── Step 1: Choose account type ──
   if (!accountType) {
     return (
@@ -167,7 +141,7 @@ export default function SignupForm({ onSubmit, onGuestLogin }) {
               <button
                 key={type.id}
                 type="button"
-                onClick={() => type.id === 'tester' ? handleGuestClick() : setAccountType(type.id)}
+                onClick={() => setAccountType(type.id)}
                 disabled={loading}
                 className={`w-full flex items-center gap-3.5 rounded-xl border-2 ${type.border} p-4 text-left transition-all hover:shadow-md active:scale-[0.98] disabled:opacity-50`}
               >
@@ -182,13 +156,6 @@ export default function SignupForm({ onSubmit, onGuestLogin }) {
             );
           })}
         </div>
-
-        {loading && (
-          <div className="flex items-center justify-center gap-2 py-2">
-            <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-            <span className="text-sm text-muted-foreground">Setting up tester...</span>
-          </div>
-        )}
 
         {error && (
           <div className="flex items-center gap-2 rounded-xl bg-red-50 border border-red-100 px-4 py-3">
