@@ -541,62 +541,102 @@ export default function InteractiveTutorial() {
       showTip('Deadlines', "All your room events in one place. The one we just made is here too.", { center: true, icon: '📅', keepSpotlight: true });
       await pause(3500); if (bail()) { await end(); return; }
 
-      // ── 12: Free Board — simple explanation, no post ──
+      // ── 12: Free Board — open New Post dialog, type demo ──
       setP(12); setTooltip(null); setSpotlight(null); setCursorVisible(false);
       navigate('/board');
-      await waitForEl('[data-tour="board-new-post"]', 8000);
+      const boardBtn = await waitForEl('[data-tour="board-new-post"]', 8000);
       await sleep(800); if (bail()) { await end(); return; }
-      showTip('Free Board', "Flinders community board. Post anything, make polls, find study buddies.", { center: true, icon: '📋' });
-      await pause(3500); if (bail()) { await end(); return; }
+
+      showTip('Free Board', "Community board — post anything, polls, find study buddies.", { center: true, icon: '📋' });
+      await pause(2500); if (bail()) { await end(); return; }
+
+      // Open New Post dialog and type demo
+      if (boardBtn && !bail()) {
+        setTooltip(null); setSpotlight(null); setShowOverlay(false);
+        await clickDomEl(boardBtn);
+        await sleep(600); if (bail()) { await end(); return; }
+
+        const postDialog = await waitForEl('[role="dialog"]', 5000);
+        if (postDialog && !bail()) {
+          // Type title
+          const titleInput = document.querySelector('[role="dialog"] input[placeholder="Title"]');
+          if (titleInput && !bail()) {
+            await typeInto('[role="dialog"] input[placeholder="Title"]', 'Looking for study group!');
+            await pause(300); if (bail()) { await end(); return; }
+          }
+
+          // Type content
+          const contentArea = document.querySelector('[role="dialog"] textarea[placeholder="What\'s on your mind?"]');
+          if (contentArea && !bail()) {
+            await typeInto('[role="dialog"] textarea[placeholder="What\'s on your mind?"]', 'Anyone doing COMP2342 this sem?');
+            await pause(400); if (bail()) { await end(); return; }
+          }
+
+          // Close dialog without posting
+          document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+          await sleep(400);
+        }
+      }
+
+      if (!bail()) {
+        setShowOverlay(true); setCursorVisible(false);
+        showTip('Easy!', "Post questions, find teammates, share tips.", { center: true, icon: '✨' });
+        await pause(2500); if (bail()) { await end(); return; }
+      }
 
       // ── 13: Flinders Life — click each tab ──
       setP(13); setTooltip(null); setSpotlight(null); setCursorVisible(false);
       navigate('/flinders-life');
-      await waitForEl('button[value="events"]', 8000);
-      await sleep(500); if (bail()) { await end(); return; }
+      showTip('Loading...', "Opening Flinders Life...", { center: true, icon: '⏳' });
+      const flTab = await waitForEl('button[value="events"]', 10000);
+      await sleep(800); if (bail()) { await end(); return; }
 
-      // Events tab (already active) — spotlight content
-      const eventsTab = document.querySelector('button[value="events"]');
-      if (eventsTab && !bail()) {
-        await clickDomEl(eventsTab);
-        await sleep(600); if (bail()) { await end(); return; }
+      if (!flTab || bail()) {
+        // Flinders Life not available — skip
+        showTip('Flinders Life', "Campus events, calendar, study rooms — all here.", { center: true, icon: '🎓' });
+        await pause(2500); if (bail()) { await end(); return; }
+      } else {
+        // Events tab
+        setTooltip(null); setSpotlight(null);
+        await clickDomEl(flTab);
+        await sleep(800); if (bail()) { await end(); return; }
         const evtPanel = document.querySelector('[role="tabpanel"]');
         if (evtPanel) {
           const er = evtPanel.getBoundingClientRect();
           setSpotlight({ x: er.left, y: er.top, w: er.width, h: Math.min(er.height, 350), r: 12 });
         }
-        showTip('Events', "Flinders campus events and workshops.", { target: 'button[value="events"]', icon: '🎪', position: 'bottom' });
+        showTip('Events', "Campus events and workshops. Never miss out.", { target: 'button[value="events"]', icon: '🎪', position: 'bottom' });
         await pause(3000); if (bail()) { await end(); return; }
-      }
 
-      // Academic Calendar tab
-      setTooltip(null); setSpotlight(null);
-      const acadTab = document.querySelector('button[value="academic-calendar"]');
-      if (acadTab && !bail()) {
-        await clickDomEl(acadTab);
-        await sleep(600); if (bail()) { await end(); return; }
-        const acadPanel = document.querySelector('[role="tabpanel"]');
-        if (acadPanel) {
-          const ar = acadPanel.getBoundingClientRect();
-          setSpotlight({ x: ar.left, y: ar.top, w: ar.width, h: Math.min(ar.height, 350), r: 12 });
+        // Academic Calendar tab
+        setTooltip(null); setSpotlight(null);
+        const acadTab = document.querySelector('button[value="academic-calendar"]');
+        if (acadTab && !bail()) {
+          await clickDomEl(acadTab);
+          await sleep(800); if (bail()) { await end(); return; }
+          const acadPanel = document.querySelector('[role="tabpanel"]');
+          if (acadPanel) {
+            const ar = acadPanel.getBoundingClientRect();
+            setSpotlight({ x: ar.left, y: ar.top, w: ar.width, h: Math.min(ar.height, 350), r: 12 });
+          }
+          showTip('Academic Calendar', "Semester dates, exams, holidays.", { target: 'button[value="academic-calendar"]', icon: '📅', position: 'bottom' });
+          await pause(3000); if (bail()) { await end(); return; }
         }
-        showTip('Academic Calendar', "Semester dates, exams, holidays all in one place.", { target: 'button[value="academic-calendar"]', icon: '📅', position: 'bottom' });
-        await pause(3000); if (bail()) { await end(); return; }
-      }
 
-      // Study Rooms tab
-      setTooltip(null); setSpotlight(null);
-      const studyTab = document.querySelector('button[value="study-rooms"]');
-      if (studyTab && !bail()) {
-        await clickDomEl(studyTab);
-        await sleep(600); if (bail()) { await end(); return; }
-        const studyPanel = document.querySelector('[role="tabpanel"]');
-        if (studyPanel) {
-          const str = studyPanel.getBoundingClientRect();
-          setSpotlight({ x: str.left, y: str.top, w: str.width, h: Math.min(str.height, 350), r: 12 });
+        // Study Rooms tab
+        setTooltip(null); setSpotlight(null);
+        const studyTab = document.querySelector('button[value="study-rooms"]');
+        if (studyTab && !bail()) {
+          await clickDomEl(studyTab);
+          await sleep(800); if (bail()) { await end(); return; }
+          const studyPanel = document.querySelector('[role="tabpanel"]');
+          if (studyPanel) {
+            const str = studyPanel.getBoundingClientRect();
+            setSpotlight({ x: str.left, y: str.top, w: str.width, h: Math.min(str.height, 350), r: 12 });
+          }
+          showTip('Study Rooms', "Book study rooms on campus.", { target: 'button[value="study-rooms"]', icon: '📚', position: 'bottom' });
+          await pause(3000); if (bail()) { await end(); return; }
         }
-        showTip('Study Rooms', "Book study rooms at campus. Links are right here.", { target: 'button[value="study-rooms"]', icon: '📚', position: 'bottom' });
-        await pause(3000); if (bail()) { await end(); return; }
       }
 
       // ── 14: Done ──
