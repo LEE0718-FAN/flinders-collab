@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { Download, FileText, X } from 'lucide-react';
+import { getFileDownloadUrl } from '@/services/files';
 
 function ImageLightbox({ src, alt, onClose }) {
   return (
@@ -17,13 +18,41 @@ function ImageLightbox({ src, alt, onClose }) {
 
 function FileAttachment({ fileData, isOwn }) {
   const [lightbox, setLightbox] = useState(false);
+  const [resolvedUrl, setResolvedUrl] = useState(fileData?.download_url || null);
+  const [imageFailed, setImageFailed] = useState(false);
 
   if (!fileData) return null;
 
   const isImage = fileData.file_type?.startsWith('image/');
-  const downloadUrl = fileData.download_url;
+  const downloadUrl = resolvedUrl || fileData.download_url || null;
 
-  if (isImage && downloadUrl) {
+  useEffect(() => {
+    setResolvedUrl(fileData?.download_url || null);
+    setImageFailed(false);
+  }, [fileData?.download_url, fileData?.file_id]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const refreshUrl = async () => {
+      if (!fileData?.file_id || resolvedUrl) return;
+      try {
+        const refreshed = await getFileDownloadUrl(fileData.file_id);
+        if (!cancelled && refreshed?.download_url) {
+          setResolvedUrl(refreshed.download_url);
+        }
+      } catch {
+        // Leave the file card visible without breaking the message bubble.
+      }
+    };
+
+    refreshUrl();
+    return () => {
+      cancelled = true;
+    };
+  }, [fileData?.file_id, resolvedUrl]);
+
+  if (isImage && downloadUrl && !imageFailed) {
     return (
       <>
         <div className="mt-1 cursor-pointer" onClick={() => setLightbox(true)}>
@@ -31,6 +60,7 @@ function FileAttachment({ fileData, isOwn }) {
             src={downloadUrl}
             alt={fileData.file_name}
             className="max-w-[240px] max-h-[200px] rounded-xl object-cover shadow-md hover:shadow-lg transition-shadow"
+            onError={() => setImageFailed(true)}
           />
         </div>
         <p className={cn('text-[11px] mt-1', isOwn ? 'text-white/70' : 'text-slate-400')}>{fileData.file_name}</p>
