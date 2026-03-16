@@ -168,7 +168,11 @@ export default function DashboardPage() {
       }
     };
 
-    fetchAllEvents();
+    const timer = window.setTimeout(() => {
+      fetchAllEvents();
+    }, 150);
+
+    return () => window.clearTimeout(timer);
   }, [roomIds]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useLayoutEffect(() => {
@@ -222,7 +226,10 @@ export default function DashboardPage() {
       return nextRooms;
     });
     setLoading(false);
-  }, [broadcastRoomUpdate]);
+    if (room?.id) {
+      navigate(`/rooms/${room.id}`);
+    }
+  }, [broadcastRoomUpdate, navigate]);
 
   const handleCreateError = useCallback((tempRoomId) => {
     setRooms((prev) => prev.filter((item) => item.id !== tempRoomId));

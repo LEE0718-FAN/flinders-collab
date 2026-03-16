@@ -60,6 +60,14 @@ export default function RoomPage() {
   const [announcements, setAnnouncements] = useState([]);
   const [announcementInput, setAnnouncementInput] = useState('');
   const [showAnnouncementForm, setShowAnnouncementForm] = useState(false);
+  const [eventsLoaded, setEventsLoaded] = useState(false);
+  const [filesLoaded, setFilesLoaded] = useState(false);
+  const [tasksLoaded, setTasksLoaded] = useState(false);
+  const [sectionLoading, setSectionLoading] = useState({
+    events: false,
+    files: false,
+    tasks: false,
+  });
   const highlightRef = useRef(null);
   const highlightTimerRef = useRef(null);
   const eventListColumnRef = useRef(null);
@@ -138,9 +146,16 @@ export default function RoomPage() {
 
   useEffect(() => {
     setLoading(true);
+    setEvents([]);
+    setFiles([]);
+    setTasks([]);
+    setEventsLoaded(false);
+    setFilesLoaded(false);
+    setTasksLoaded(false);
+    setSectionLoading({ events: false, files: false, tasks: false });
     const init = async () => {
       try {
-        await Promise.all([fetchRoom(), fetchMembers(), fetchEvents(), fetchFiles(), fetchTasks(), fetchActivity(), fetchAnnouncements()]);
+        await Promise.all([fetchRoom(), fetchMembers(), fetchActivity(), fetchAnnouncements()]);
       } catch {
         setError('Failed to load some data. Please refresh.');
       }
@@ -149,6 +164,53 @@ export default function RoomPage() {
     init();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [roomId]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const ensureTabData = async () => {
+      const loaders = {
+        schedule: {
+          key: 'events',
+          loaded: eventsLoaded,
+          fetcher: fetchEvents,
+          onLoaded: () => setEventsLoaded(true),
+        },
+        tasks: {
+          key: 'tasks',
+          loaded: tasksLoaded,
+          fetcher: fetchTasks,
+          onLoaded: () => setTasksLoaded(true),
+        },
+        files: {
+          key: 'files',
+          loaded: filesLoaded,
+          fetcher: fetchFiles,
+          onLoaded: () => setFilesLoaded(true),
+        },
+      };
+
+      const target = loaders[activeTab];
+      if (!target || target.loaded) return;
+
+      setSectionLoading((prev) => ({ ...prev, [target.key]: true }));
+      try {
+        await target.fetcher();
+        if (!cancelled) {
+          target.onLoaded();
+        }
+      } finally {
+        if (!cancelled) {
+          setSectionLoading((prev) => ({ ...prev, [target.key]: false }));
+        }
+      }
+    };
+
+    ensureTabData();
+    return () => {
+      cancelled = true;
+    };
+  }, [activeTab, eventsLoaded, filesLoaded, tasksLoaded, fetchEvents, fetchFiles, fetchTasks]);
 
   // Listen for external event creation (e.g. tutorial) to refetch events
   useEffect(() => {
@@ -241,6 +303,7 @@ export default function RoomPage() {
   };
 
   const handleEventCreated = useCallback((event, tempId) => {
+    setEventsLoaded(true);
     setEvents((prev) => {
       const withoutTemp = tempId ? prev.filter((item) => item.id !== tempId) : prev;
       return upsertById(withoutTemp, event, { sorter: sortEvents });
@@ -248,6 +311,7 @@ export default function RoomPage() {
   }, []);
 
   const handleEventCreateStart = useCallback((tempEvent) => {
+    setEventsLoaded(true);
     setEvents((prev) => upsertById(prev, tempEvent, { sorter: sortEvents }));
   }, []);
 
@@ -263,6 +327,7 @@ export default function RoomPage() {
   }, []);
 
   const handleFileUploaded = useCallback((file) => {
+    setFilesLoaded(true);
     setFiles((prev) => upsertById(prev, file, {
       prepend: true,
       sorter: (items) => [...items].sort((a, b) => new Date(b.created_at) - new Date(a.created_at)),
@@ -523,7 +588,13 @@ export default function RoomPage() {
                 </div>
               </div>
               <div ref={eventListColumnRef} className="flex-1 min-w-0">
-                <EventList events={events} roomId={roomId} onEventsChange={handleEventsChange} />
+                {sectionLoading.events && !eventsLoaded ? (
+                  <div className="flex min-h-[18rem] items-center justify-center rounded-2xl border border-slate-200 bg-white">
+                    <Loader2 className="h-6 w-6 animate-spin text-indigo-500" />
+                  </div>
+                ) : (
+                  <EventList events={events} roomId={roomId} onEventsChange={handleEventsChange} />
+                )}
               </div>
             </div>
 
@@ -540,14 +611,20 @@ export default function RoomPage() {
 
           <TabsContent value="tasks" className="space-y-4">
             <h2 className="text-lg font-semibold">Tasks</h2>
-            <TaskList
-              tasks={tasks}
-              members={members}
-              roomId={roomId}
-              currentUserId={user?.id}
-              onTasksChange={setTasks}
-              onUpdated={fetchTasks}
-            />
+            {sectionLoading.tasks && !tasksLoaded ? (
+              <div className="flex min-h-[14rem] items-center justify-center rounded-2xl border border-slate-200 bg-white">
+                <Loader2 className="h-6 w-6 animate-spin text-indigo-500" />
+              </div>
+            ) : (
+              <TaskList
+                tasks={tasks}
+                members={members}
+                roomId={roomId}
+                currentUserId={user?.id}
+                onTasksChange={setTasks}
+                onUpdated={fetchTasks}
+              />
+            )}
           </TabsContent>
 
           <TabsContent value="chat">
@@ -559,7 +636,11 @@ export default function RoomPage() {
           </TabsContent>
 
           <TabsContent value="files" className="space-y-6">
-            {(() => {
+            {sectionLoading.files && !filesLoaded ? (
+              <div className="flex min-h-[14rem] items-center justify-center rounded-2xl border border-slate-200 bg-white">
+                <Loader2 className="h-6 w-6 animate-spin text-indigo-500" />
+              </div>
+            ) : (() => {
               const categories = [
                 { key: 'lecture', label: 'Lecture Materials', icon: '📖', canUpload: true },
                 { key: 'submission', label: 'Team Submissions', icon: '📝', canUpload: true },
