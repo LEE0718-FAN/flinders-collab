@@ -1,4 +1,4 @@
-const { supabaseAdmin } = require('../services/supabase');
+const { supabaseAdmin, supabasePublic } = require('../services/supabase');
 const { isUniversityEmail } = require('../utils/validators');
 
 /**
@@ -68,7 +68,7 @@ async function login(req, res, next) {
     const { email, password } = req.body;
 
     const { data, error } =
-      await supabaseAdmin.auth.signInWithPassword({ email, password });
+      await supabasePublic.auth.signInWithPassword({ email, password });
 
     if (error) {
       return res.status(401).json({ error: 'Invalid email or password' });
@@ -267,7 +267,7 @@ async function guestLogin(req, res, next) {
 
     // Sign in to get session
     const { data: loginData, error: loginError } =
-      await supabaseAdmin.auth.signInWithPassword({ email, password });
+      await supabasePublic.auth.signInWithPassword({ email, password });
 
     if (loginError) {
       // Clean up the created user
