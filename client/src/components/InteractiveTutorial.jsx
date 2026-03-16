@@ -57,7 +57,7 @@ export default function InteractiveTutorial() {
       .then((rooms) => {
         if (cancelled) return;
         const list = Array.isArray(rooms) ? rooms : rooms?.rooms || [];
-        if (list.length === 0) setTimeout(() => { if (!cancelled) setShowPrompt(true); }, 1200);
+        if (list.length === 0) setShowPrompt(true);
       })
       .catch(() => {});
     return () => { cancelled = true; };

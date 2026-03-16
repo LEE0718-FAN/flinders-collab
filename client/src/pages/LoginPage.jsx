@@ -17,10 +17,6 @@ export default function LoginPage() {
   const handleGuestLogin = async () => {
     await guestLogin();
     navigate('/dashboard');
-    // Tutorial will auto-start for tester users
-    setTimeout(() => {
-      window.dispatchEvent(new CustomEvent('start-interactive-tutorial'));
-    }, 1500);
   };
 
   return (
