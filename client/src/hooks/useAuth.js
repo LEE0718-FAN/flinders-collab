@@ -1,6 +1,6 @@
 import { useEffect, useCallback } from 'react';
 import { useAuthStore } from '@/store/authStore';
-import { apiSignup, apiLogin, apiLogout, apiUpdateProfile } from '@/services/auth';
+import { apiSignup, apiLogin, apiLogout, apiUpdateProfile, apiGuestLogin, apiGuestCleanup } from '@/services/auth';
 import { saveSession, loadSession, clearSession } from '@/lib/auth-token';
 
 export function useAuth() {
@@ -17,28 +17,27 @@ export function useAuth() {
   }, [setUser, setSession, setLoading]);
 
   const login = useCallback(async (email, password) => {
-    if (!email.endsWith('@flinders.edu.au')) {
-      throw new Error('Please use your @flinders.edu.au email address');
-    }
-
     const result = await apiLogin({ email, password });
+    const accountType = result.user.account_type || (email.endsWith('@flinders.edu.au') ? 'flinders' : 'general');
 
     const sessionData = {
       access_token: result.session.access_token,
       expires_at: result.session.expires_at,
+      account_type: accountType,
       user: {
         id: result.user.id,
         email: result.user.email,
         is_admin: result.user.is_admin || false,
+        account_type: accountType,
         user_metadata: {
           name: result.user.full_name,
           full_name: result.user.full_name,
           avatar_url: result.user.avatar_url || null,
+          account_type: accountType,
         },
       },
     };
 
-    // Save to our own localStorage
     saveSession(sessionData);
     setSession(sessionData);
     setUser(sessionData.user);
@@ -47,7 +46,9 @@ export function useAuth() {
   }, [setSession, setUser]);
 
   const signup = useCallback(async (email, password, metadata) => {
-    if (!email.endsWith('@flinders.edu.au')) {
+    const accountType = metadata.account_type || 'flinders';
+
+    if (accountType === 'flinders' && !email.endsWith('@flinders.edu.au')) {
       throw new Error('Please use your @flinders.edu.au email address');
     }
 
@@ -57,6 +58,7 @@ export function useAuth() {
       full_name: metadata.name,
       student_id: metadata.student_id,
       major: metadata.major,
+      account_type: accountType,
     });
 
     // After signup, log in
@@ -65,14 +67,17 @@ export function useAuth() {
     const sessionData = {
       access_token: result.session.access_token,
       expires_at: result.session.expires_at,
+      account_type: accountType,
       user: {
         id: result.user.id,
         email: result.user.email,
         is_admin: result.user.is_admin || false,
+        account_type: accountType,
         user_metadata: {
           name: result.user.full_name,
           full_name: result.user.full_name,
           avatar_url: result.user.avatar_url || null,
+          account_type: accountType,
         },
       },
     };
@@ -108,7 +113,48 @@ export function useAuth() {
     return updated;
   }, [setSession, setUser]);
 
+  const guestLogin = useCallback(async () => {
+    const result = await apiGuestLogin();
+
+    const sessionData = {
+      access_token: result.session.access_token,
+      expires_at: result.session.expires_at,
+      is_tester: true,
+      user: {
+        id: result.user.id,
+        email: result.user.email,
+        is_admin: false,
+        is_tester: true,
+        user_metadata: {
+          name: 'Tester',
+          full_name: 'Tester',
+          avatar_url: null,
+        },
+      },
+    };
+
+    saveSession(sessionData);
+    setSession(sessionData);
+    setUser(sessionData.user);
+
+    return sessionData;
+  }, [setSession, setUser]);
+
+  const guestCleanup = useCallback(async () => {
+    try {
+      await apiGuestCleanup();
+    } catch { /* ignore */ }
+    clearSession();
+    clearAuth();
+  }, [clearAuth]);
+
   const logout = useCallback(async () => {
+    // If tester, do full cleanup instead of just logout
+    const currentSession = loadSession();
+    if (currentSession?.is_tester) {
+      await guestCleanup();
+      return;
+    }
     try {
       await apiLogout();
     } catch {
@@ -117,7 +163,7 @@ export function useAuth() {
       clearSession();
       clearAuth();
     }
-  }, [clearAuth]);
+  }, [clearAuth, guestCleanup]);
 
-  return { user, session, isLoading, login, signup, logout, updateUser };
+  return { user, session, isLoading, login, signup, logout, updateUser, guestLogin, guestCleanup };
 }

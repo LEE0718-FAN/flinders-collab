@@ -4,20 +4,16 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Loader2, Mail, Lock } from 'lucide-react';
 
-export default function LoginForm({ onSubmit }) {
+export default function LoginForm({ onSubmit, onGuestLogin }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [guestLoading, setGuestLoading] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
-
-    if (!email.endsWith('@flinders.edu.au')) {
-      setError('Please use your @flinders.edu.au email');
-      return;
-    }
 
     if (password.length < 6) {
       setError('Password must be at least 6 characters');
@@ -53,7 +49,7 @@ export default function LoginForm({ onSubmit }) {
           <Input
             id="email"
             type="email"
-            placeholder="you@flinders.edu.au"
+            placeholder="you@university.edu"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
@@ -108,6 +104,43 @@ export default function LoginForm({ onSubmit }) {
       <p className="text-center text-sm text-muted-foreground">
         Don&apos;t have an account?{' '}
         <Link to="/signup" className="font-semibold text-blue-600 hover:text-blue-700">Sign up</Link>
+      </p>
+
+      <div className="relative">
+        <div className="absolute inset-0 flex items-center">
+          <span className="w-full border-t border-border/40" />
+        </div>
+        <div className="relative flex justify-center text-xs uppercase">
+          <span className="bg-background px-2 text-muted-foreground/50">or</span>
+        </div>
+      </div>
+
+      <button
+        type="button"
+        onClick={async () => {
+          setGuestLoading(true);
+          setError('');
+          try {
+            await onGuestLogin();
+          } catch (err) {
+            const msg = err.message || 'Failed to start tester mode';
+            if (msg === 'Failed to fetch' || msg === 'Load failed') {
+              setError('Server is starting up. Please try again in a few seconds.');
+            } else {
+              setError(msg);
+            }
+          } finally {
+            setGuestLoading(false);
+          }
+        }}
+        disabled={guestLoading || loading}
+        className="w-full h-12 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 font-semibold text-[14px] shadow-lg shadow-emerald-500/20 text-white flex items-center justify-center gap-2 transition-all disabled:opacity-50"
+      >
+        {guestLoading && <Loader2 className="h-4 w-4 animate-spin" />}
+        {guestLoading ? 'Setting up...' : '🎓 Try as Tester (Tutorial Only)'}
+      </button>
+      <p className="text-center text-[11px] text-muted-foreground/50">
+        No signup needed — see a quick demo of the app
       </p>
     </form>
   );

@@ -7,10 +7,10 @@ const { isUniversityEmail } = require('../utils/validators');
  */
 async function signup(req, res, next) {
   try {
-    const { email, password, full_name, student_id, major } = req.body;
+    const { email, password, full_name, student_id, major, account_type } = req.body;
 
-    // Double-check domain on server side
-    if (!isUniversityEmail(email)) {
+    // Flinders students must use university email
+    if (account_type !== 'general' && !isUniversityEmail(email)) {
       return res.status(400).json({
         error: 'Must use a Flinders University email address',
       });
@@ -22,7 +22,7 @@ async function signup(req, res, next) {
         email,
         password,
         email_confirm: true, // auto-confirm for MVP
-        user_metadata: { full_name, student_id, major },
+        user_metadata: { full_name, student_id, major, account_type: account_type || 'flinders' },
       });
 
     if (authError) {
@@ -94,6 +94,7 @@ async function login(req, res, next) {
         full_name: profile?.full_name || data.user.user_metadata?.full_name,
         avatar_url: profile?.avatar_url || null,
         is_admin: profile?.is_admin || false,
+        account_type: data.user.user_metadata?.account_type || 'flinders',
       },
     });
   } catch (err) {
@@ -229,10 +230,116 @@ async function updateProfile(req, res, next) {
   }
 }
 
+/**
+ * POST /auth/guest
+ * Create a temporary tester account, sign in, and return session.
+ */
+async function guestLogin(req, res, next) {
+  try {
+    const uuid = require('crypto').randomUUID();
+    const email = `tester-${uuid}@guest.test`;
+    const password = `guest-${uuid}-${Date.now()}`;
+
+    // Create user in Supabase Auth
+    const { data: authData, error: authError } =
+      await supabaseAdmin.auth.admin.createUser({
+        email,
+        password,
+        email_confirm: true,
+        user_metadata: { full_name: 'Tester', is_tester: true },
+      });
+
+    if (authError) {
+      return res.status(500).json({ error: 'Failed to create tester account' });
+    }
+
+    // Insert profile (is_tester stored in user_metadata, not users table)
+    await supabaseAdmin.from('users').insert({
+      id: authData.user.id,
+      university_email: email,
+      full_name: 'Tester',
+    }).catch(() => {});
+
+    // Sign in to get session
+    const { data: loginData, error: loginError } =
+      await supabaseAdmin.auth.signInWithPassword({ email, password });
+
+    if (loginError) {
+      // Clean up the created user
+      await supabaseAdmin.auth.admin.deleteUser(authData.user.id).catch(() => {});
+      return res.status(500).json({ error: 'Failed to sign in tester' });
+    }
+
+    res.json({
+      session: {
+        access_token: loginData.session.access_token,
+        refresh_token: loginData.session.refresh_token,
+        expires_at: loginData.session.expires_at,
+      },
+      user: {
+        id: authData.user.id,
+        email,
+        full_name: 'Tester',
+        is_tester: true,
+      },
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
+/**
+ * POST /auth/guest/cleanup
+ * Delete the current tester account and all associated data.
+ */
+async function guestCleanup(req, res, next) {
+  try {
+    const userId = req.user.id;
+
+    // Verify this is actually a tester account (check auth metadata)
+    const { data: authUser } = await supabaseAdmin.auth.admin.getUserById(userId);
+    if (!authUser?.user?.user_metadata?.is_tester) {
+      return res.status(403).json({ error: 'Not a tester account' });
+    }
+
+    // Delete user's rooms (and cascade to room_members, events, tasks, etc.)
+    const { data: ownedRooms } = await supabaseAdmin
+      .from('room_members')
+      .select('room_id')
+      .eq('user_id', userId)
+      .eq('role', 'owner');
+
+    if (ownedRooms?.length) {
+      for (const r of ownedRooms) {
+        await supabaseAdmin.from('rooms').delete().eq('id', r.room_id).catch(() => {});
+      }
+    }
+
+    // Remove from any rooms as member
+    await supabaseAdmin.from('room_members').delete().eq('user_id', userId).catch(() => {});
+
+    // Delete tasks assigned to or created by this user
+    await supabaseAdmin.from('tasks').delete().eq('assigned_to', userId).catch(() => {});
+    await supabaseAdmin.from('tasks').delete().eq('created_by', userId).catch(() => {});
+
+    // Delete user profile
+    await supabaseAdmin.from('users').delete().eq('id', userId).catch(() => {});
+
+    // Delete from Supabase Auth
+    await supabaseAdmin.auth.admin.deleteUser(userId).catch(() => {});
+
+    res.json({ message: 'Tester account cleaned up' });
+  } catch (err) {
+    next(err);
+  }
+}
+
 module.exports = {
   signup,
   login,
   logout,
   getMe,
   updateProfile,
+  guestLogin,
+  guestCleanup,
 };

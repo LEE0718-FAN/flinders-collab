@@ -50,4 +50,17 @@ router.get('/me', authenticate, authController.getMe);
 // PATCH /auth/me - Update current user profile
 router.patch('/me', authenticate, upload.single('avatar'), authController.updateProfile);
 
+// POST /auth/guest - Create temp tester account (rate limited)
+const guestLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many attempts. Please try again later.' },
+});
+router.post('/guest', guestLimiter, authController.guestLogin);
+
+// POST /auth/guest/cleanup - Delete tester account (requires auth)
+router.post('/guest/cleanup', authenticate, authController.guestCleanup);
+
 module.exports = router;

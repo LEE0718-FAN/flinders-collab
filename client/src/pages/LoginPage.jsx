@@ -6,7 +6,7 @@ import ReportButton from '@/components/ReportButton';
 import { useAuth } from '@/hooks/useAuth';
 
 export default function LoginPage() {
-  const { login } = useAuth();
+  const { login, guestLogin } = useAuth();
   const navigate = useNavigate();
 
   const handleLogin = async (email, password) => {
@@ -14,9 +14,18 @@ export default function LoginPage() {
     navigate('/dashboard');
   };
 
+  const handleGuestLogin = async () => {
+    await guestLogin();
+    navigate('/dashboard');
+    // Tutorial will auto-start for tester users
+    setTimeout(() => {
+      window.dispatchEvent(new CustomEvent('start-interactive-tutorial'));
+    }, 1500);
+  };
+
   return (
     <AuthLayout>
-      <LoginForm onSubmit={handleLogin} />
+      <LoginForm onSubmit={handleLogin} onGuestLogin={handleGuestLogin} />
       <div className="mt-6 flex justify-center">
         <ReportButton section="login" />
       </div>

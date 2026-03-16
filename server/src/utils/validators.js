@@ -17,8 +17,9 @@ const signupValidation = [
   body('email')
     .isEmail()
     .withMessage('Valid email is required')
-    .custom((value) => {
-      if (!isUniversityEmail(value)) {
+    .custom((value, { req }) => {
+      // Only enforce Flinders domain for non-general accounts
+      if (req.body.account_type !== 'general' && !isUniversityEmail(value)) {
         throw new Error('Must use a Flinders University email address');
       }
       return true;
@@ -31,12 +32,15 @@ const signupValidation = [
     .notEmpty()
     .withMessage('Full name is required'),
   body('student_id')
-    .trim()
-    .notEmpty()
-    .withMessage('Student ID is required'),
+    .optional()
+    .trim(),
   body('major')
     .optional()
     .trim(),
+  body('account_type')
+    .optional()
+    .isIn(['flinders', 'general'])
+    .withMessage('Invalid account type'),
 ];
 
 const loginValidation = [

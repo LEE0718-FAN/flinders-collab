@@ -3,6 +3,9 @@ import { useNavigate } from 'react-router-dom';
 import { X } from 'lucide-react';
 import { createRoom, deleteRoom, getRoom, getRooms } from '@/services/rooms';
 import { createEvent } from '@/services/events';
+import { loadSession, clearSession } from '@/lib/auth-token';
+import { apiGuestCleanup } from '@/services/auth';
+import { apiUrl } from '@/lib/api';
 
 const TUTORIAL_KEY = 'tutorial-completed';
 const TUTORIAL_ROOM_NAME = '🎓 Tutorial Room';
@@ -23,7 +26,7 @@ export default function InteractiveTutorial() {
   const skipRef = useRef(false);
   const [canSkip, setCanSkip] = useState(true);
   const createdRoomIdRef = useRef(null);
-  const totalSteps = 16;
+  const totalSteps = 14;
 
   // ── Clean up any leftover tutorial room from a previous crashed session ──
   useEffect(() => {
@@ -62,6 +65,23 @@ export default function InteractiveTutorial() {
     return () => window.removeEventListener('start-interactive-tutorial', handler);
   }, []);
 
+  // If tester closes the tab/browser, try cleanup via fetch keepalive
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      const session = loadSession();
+      if (session?.is_tester && session?.access_token) {
+        const url = apiUrl('/api/auth/guest/cleanup');
+        fetch(url, {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${session.access_token}`, 'Content-Type': 'application/json' },
+          keepalive: true,
+        }).catch(() => {});
+      }
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, []);
+
   // ── Utilities ──
   const sleep = useCallback((ms) =>
     new Promise((resolve) => {
@@ -79,13 +99,15 @@ export default function InteractiveTutorial() {
       if (el) return resolve(el);
       const start = Date.now();
       const interval = setInterval(() => {
+        if (cancelRef.current) { clearInterval(interval); resolve(null); return; }
         const found = document.querySelector(selector);
         if (found) { clearInterval(interval); resolve(found); return; }
-        if (Date.now() - start > timeout || cancelRef.current) { clearInterval(interval); resolve(null); }
+        if (Date.now() - start > timeout) { clearInterval(interval); resolve(null); }
       }, 150);
     }), []);
 
   const moveCursorTo = useCallback(async (target) => {
+    if (cancelRef.current) return;
     let x, y;
     if (typeof target === 'string') {
       const el = document.querySelector(target);
@@ -97,8 +119,8 @@ export default function InteractiveTutorial() {
     await sleep(450);
   }, [sleep]);
 
-  // Simulate a real click — dispatch pointer/mouse events so Radix UI responds
   const simulateClick = useCallback((el) => {
+    if (!el || cancelRef.current) return;
     const r = el.getBoundingClientRect();
     const x = r.left + r.width / 2;
     const y = r.top + r.height / 2;
@@ -111,17 +133,20 @@ export default function InteractiveTutorial() {
   }, []);
 
   const clickEl = useCallback(async (selector) => {
+    if (cancelRef.current) return;
     const el = document.querySelector(selector);
     if (!el) return;
     await moveCursorTo(selector);
+    if (cancelRef.current) return;
     setCursorScale(0.75); await sleep(100); setCursorScale(1);
     simulateClick(el); await sleep(250);
   }, [moveCursorTo, sleep, simulateClick]);
 
   const clickDomEl = useCallback(async (el) => {
-    if (!el) return;
+    if (!el || cancelRef.current) return;
     const r = el.getBoundingClientRect();
     await moveCursorTo({ x: r.left + r.width / 2, y: r.top + r.height / 2 });
+    if (cancelRef.current) return;
     setCursorScale(0.75); await sleep(100); setCursorScale(1);
     simulateClick(el); await sleep(250);
   }, [moveCursorTo, sleep, simulateClick]);
@@ -135,8 +160,8 @@ export default function InteractiveTutorial() {
   }, []);
 
   const showTip = useCallback((title, desc, options = {}) => {
+    if (cancelRef.current) return;
     const tw = Math.min(340, window.innerWidth - 24);
-    // Sidebar is 256px wide on md+ screens — offset center to content area
     const sidebar = document.querySelector('aside');
     const sidebarW = (sidebar && sidebar.offsetWidth > 0) ? sidebar.getBoundingClientRect().width : 0;
     const centerLeft = sidebarW + (window.innerWidth - sidebarW) / 2;
@@ -160,6 +185,7 @@ export default function InteractiveTutorial() {
   }, [spotlightEl]);
 
   const typeInto = useCallback(async (selector, text) => {
+    if (cancelRef.current) return;
     const el = document.querySelector(selector);
     if (!el) return;
     const proto = el.tagName === 'TEXTAREA' ? HTMLTextAreaElement.prototype : HTMLInputElement.prototype;
@@ -172,7 +198,7 @@ export default function InteractiveTutorial() {
       setter.call(el, text.slice(0, i));
       el.dispatchEvent(new Event('input', { bubbles: true }));
       el.dispatchEvent(new Event('change', { bubbles: true }));
-      await sleep(30 + Math.random() * 15);
+      await sleep(18 + Math.random() * 10);
     }
     await sleep(200);
   }, [moveCursorTo, sleep]);
@@ -181,10 +207,8 @@ export default function InteractiveTutorial() {
     const roomId = createdRoomIdRef.current;
     if (!roomId) return;
     try {
-      // Try to delete directly — we know the ID, just delete it
       await deleteRoom(roomId);
     } catch {
-      // If direct delete fails, try with name verification
       try {
         const room = await getRoom(roomId);
         const name = room?.name || room?.room?.name || '';
@@ -196,443 +220,399 @@ export default function InteractiveTutorial() {
     window.dispatchEvent(new CustomEvent('rooms-updated'));
   }, []);
 
+  const resetUI = useCallback(() => {
+    setTooltip(null); setSpotlight(null); setCursorVisible(false); setShowOverlay(false); setCanSkip(true);
+  }, []);
+
+  const logoutTester = useCallback(async () => {
+    try { await apiGuestCleanup(); } catch { /* ignore */ }
+    clearSession();
+    window.location.href = '/login';
+  }, []);
+
   const cleanup = useCallback(async () => {
-    setTooltip(null); setSpotlight(null); setCursorVisible(false); setShowOverlay(false);
-    // Delete room FIRST, then navigate — so dashboard loads without the room
+    resetUI();
     await safeDeleteTutorialRoom();
+    // If tester → full cleanup and redirect to login
+    const session = loadSession();
+    if (session?.is_tester) {
+      await logoutTester();
+      return;
+    }
     navigate('/dashboard');
-    // Fire multiple times to ensure sidebar + dashboard both refresh
     window.dispatchEvent(new CustomEvent('rooms-updated'));
     setTimeout(() => window.dispatchEvent(new CustomEvent('rooms-updated')), 800);
     setTimeout(() => window.dispatchEvent(new CustomEvent('rooms-updated')), 2000);
-  }, [navigate, safeDeleteTutorialRoom]);
+  }, [navigate, safeDeleteTutorialRoom, resetUI, logoutTester]);
 
-  // ── Helper: find button by text ──
   const findBtn = useCallback((text) => {
     const btns = document.querySelectorAll('button');
     for (const b of btns) { if (b.textContent.includes(text)) return b; }
     return null;
   }, []);
 
-  // ── Auto-advancing tutorial (no Next button) ──
+  // ── Main tutorial flow ──
   const runTutorial = useCallback(async () => {
     cancelRef.current = false;
     const bail = () => cancelRef.current;
     const end = async () => { await cleanup(); setActive(false); };
     const pause = (ms) => sleep(ms);
-    const totalStepsLocal = 14;
     const setP = (n) => { setProgress(n); };
 
-    // ── 1: Welcome ──
-    setP(1); setShowOverlay(true);
-    navigate('/dashboard');
-    await waitForEl('[data-tour="create-room"]');
-    await sleep(1000);
-    showTip('Welcome!', "Hey! I'm Sean. I made this app for Flinders students. Let me show you how it works!", { center: true, icon: '👋' });
-    await pause(4000); if (bail()) { await end(); return; }
-
-    // ── 2: Create Room button ──
-    setP(2); setTooltip(null); setSpotlight(null);
-    await waitForEl('[data-tour="create-room"]');
-    if (bail()) { await end(); return; }
-    showTip('Create Room', "This button creates a study room. Think of it like a group chat, but with a calendar, tasks, files, and more!", { target: '[data-tour="create-room"]', icon: '✨', position: 'bottom' });
-    await moveCursorTo('[data-tour="create-room"]');
-    await pause(4500); if (bail()) { await end(); return; }
-
-    // ── 3: Join Room button ──
-    setP(3); setTooltip(null); setSpotlight(null);
-    const joinBtn = await waitForEl('[data-tour="join-room"]');
-    if (joinBtn && !bail()) {
-      showTip('Join Room', "If your friend already made a room, they can share an invite code with you. Just paste it here and you're in!", { target: '[data-tour="join-room"]', icon: '🔗', position: 'bottom' });
-      await moveCursorTo('[data-tour="join-room"]');
-      await pause(4000); if (bail()) { await end(); return; }
-    }
-
-    // ── 3.5: Sidebar navigation ──
-    setTooltip(null); setSpotlight(null); setCursorVisible(false);
-    const sidebarEl = document.querySelector('aside');
-    if (sidebarEl && !bail()) {
-      // Spotlight the whole sidebar and show tip to the right of it
-      const sr = sidebarEl.getBoundingClientRect();
-      setSpotlight({ x: sr.left, y: sr.top, w: sr.width, h: sr.height, r: 0 });
-      showTip('Sidebar', "This sidebar is your main navigation — Dashboard, Deadlines, Free Board, Flinders Life, and your rooms all live here.", { target: '[data-tour="sidebar-nav"]', icon: '📌', position: 'right' });
-      await pause(5000); if (bail()) { await end(); return; }
-    }
-
-    // ── 4: Let's make a room ──
-    setP(4); setTooltip(null); setSpotlight(null); setCursorVisible(false);
-    showTip("Let's try it!", "Alright, let me create a room so you can see how everything works inside.", { center: true, icon: '🚀' });
-    await pause(3500); if (bail()) { await end(); return; }
-
-    // ── 5: Open dialog, type room name, create via API ──
-    setCanSkip(false);
-    setP(5); setTooltip(null); setSpotlight(null); setShowOverlay(false);
-    await sleep(300);
-    const triggerBtn = document.querySelector('[data-tour="create-room"] button');
-    if (triggerBtn) await clickDomEl(triggerBtn);
-    await sleep(600); if (bail()) { await end(); return; }
-
-    const nameInput = await waitForEl('[role="dialog"] input');
-    if (!nameInput || bail()) { await end(); return; }
-    await typeInto('[role="dialog"] input', TUTORIAL_ROOM_NAME);
-    if (bail()) { await end(); return; }
-    await pause(1000);
-
-    // Create room via API
-    setTooltip(null);
-    let tutorialRoomId = null;
     try {
-      const result = await createRoom({ name: TUTORIAL_ROOM_NAME });
-      tutorialRoomId = result?.id || result?.room?.id;
-    } catch { /* fail */ }
-    if (!tutorialRoomId || bail()) { await end(); return; }
-    createdRoomIdRef.current = tutorialRoomId;
-    localStorage.setItem(TUTORIAL_ROOM_ID_KEY, tutorialRoomId);
+      // ── 1: Welcome ──
+      setP(1); setShowOverlay(true);
+      navigate('/dashboard');
+      await waitForEl('[data-tour="create-room"]');
+      await sleep(500);
+      if (bail()) { await end(); return; }
+      showTip('Welcome!', "Hey! I'm Sean. Let me quickly show you around.", { center: true, icon: '👋' });
+      await pause(3000); if (bail()) { await end(); return; }
 
-    setCanSkip(true);
-    setShowOverlay(true); setCursorVisible(false);
-    showTip('Room Created!', "Done! The room's ready. Let's go inside and check out what you can do.", { center: true, icon: '🎉' });
-    await pause(3500); if (bail()) { await end(); return; }
-
-    // ── 6: Navigate into room — wait for it to fully load ──
-    setP(6); setTooltip(null); setSpotlight(null);
-    navigate(`/rooms/${tutorialRoomId}`);
-    window.dispatchEvent(new CustomEvent('rooms-updated'));
-    showTip('Entering Room...', "Loading your new room... hang tight!", { center: true, icon: '⏳' });
-    const roomTabs = await waitForEl('[data-tour="tab-schedule"]', 15000);
-    if (!roomTabs || bail()) { await end(); return; }
-    await sleep(2000);
-    showTip('Welcome to Your Room!', "This is your room! Each tab up there has a different feature — schedule, tasks, chat, files, and more. Let me show you.", { center: true, icon: '🏠' });
-    await pause(5000); if (bail()) { await end(); return; }
-
-    // ── 6.5: Invite code ──
-    setTooltip(null); setSpotlight(null);
-    const inviteBtn = document.querySelector('button code.font-mono')?.closest('button');
-    if (inviteBtn && !bail()) {
-      showTip('Invite Code', "This is your room's invite code. Share it with friends so they can join instantly from the dashboard!", { center: true, icon: '🔑' });
-      const r = inviteBtn.getBoundingClientRect();
-      setSpotlight({ x: r.left - 10, y: r.top - 10, w: r.width + 20, h: r.height + 20, r: 14 });
-      await moveCursorTo({ x: r.left + r.width / 2, y: r.top + r.height / 2 });
-      await pause(4500); if (bail()) { await end(); return; }
-    }
-
-    // ── 7: Schedule tab — click tab, add event via form ──
-    setP(7); setTooltip(null); setSpotlight(null);
-    showTip('Schedule', "Your team calendar for events!", { target: '[data-tour="tab-schedule"]', icon: '📆', position: 'bottom' });
-    await pause(2500); if (bail()) { await end(); return; }
-
-    // Click schedule tab and wait for content to appear
-    await clickEl('[data-tour="tab-schedule"]');
-    await sleep(1000);
-
-    // Wait for "Add Event" button to appear in schedule content
-    let addEventBtn = null;
-    for (let i = 0; i < 15; i++) {
-      addEventBtn = findBtn('Add Event');
-      if (addEventBtn) break;
-      await sleep(300);
-    }
-
-    if (addEventBtn && !bail()) {
-      // Click the Add Event button
-      setCanSkip(false);
-      setTooltip(null); setShowOverlay(false);
-      await clickDomEl(addEventBtn);
-      await sleep(1000);
-
-      // Wait for event dialog — hide tooltip while interacting
-      const eventDialog = await waitForEl('[role="dialog"]', 5000);
-      if (eventDialog && !bail()) {
-        await sleep(500);
-
-        // Pick "study" category
-        const allCatBtns = document.querySelectorAll('[role="dialog"] button[type="button"]');
-        for (const btn of allCatBtns) {
-          if (btn.textContent.includes('Study')) {
-            await clickDomEl(btn);
-            await sleep(500);
-            break;
-          }
-        }
-
-        // Type event title
-        const titleInput = document.querySelector('[role="dialog"] input[placeholder*="Group Meeting"]');
-        if (titleInput && !bail()) {
-          await typeInto('[role="dialog"] input[placeholder*="Group Meeting"]', 'Team Study Session');
-          await pause(600);
-        }
-
-        // Type location
-        const locInput = document.querySelector('[role="dialog"] input[placeholder*="Flinders Library"]');
-        if (locInput && !bail()) {
-          await typeInto('[role="dialog"] input[placeholder*="Flinders Library"]', 'Flinders Library Room 3');
-          await pause(600);
-        }
-
-        // Close dialog (Escape) — form submit won't work without a selected date
-        document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
-        await sleep(500);
-      }
-    }
-
-    // Always create event via API to ensure it shows on Deadlines
-    if (!bail()) {
-      try {
-        const tomorrow = new Date();
-        tomorrow.setDate(tomorrow.getDate() + 1);
-        const start = new Date(tomorrow); start.setHours(14, 0, 0, 0);
-        const endT = new Date(tomorrow); endT.setHours(16, 0, 0, 0);
-        await createEvent(tutorialRoomId, {
-          title: 'Team Study Session', category: 'study',
-          start_time: start.toISOString(), end_time: endT.toISOString(),
-          location_name: 'Flinders Library Room 3',
-        });
-      } catch { /* ok — might already exist */ }
-      setCanSkip(true);
-      setShowOverlay(true);
-      showTip('Event Added!', "It's on the calendar now! Everyone in this room can see it.", { center: true, icon: '🎉' });
+      // ── 2: Create Room button ──
+      setP(2); setTooltip(null); setSpotlight(null);
+      showTip('Create Room', "Here you make a room for your team.", { target: '[data-tour="create-room"]', icon: '✨', position: 'bottom' });
+      await moveCursorTo('[data-tour="create-room"]');
       await pause(3500); if (bail()) { await end(); return; }
-    }
 
-    // ── 8: Tasks tab — click tab, add task via inline form ──
-    setP(8); setTooltip(null); setSpotlight(null);
-    showTip('Tasks', "Assign to-dos to your teammates!", { target: '[data-tour="tab-tasks"]', icon: '✅', position: 'bottom' });
-    await pause(2500); if (bail()) { await end(); return; }
+      // ── 3: Join Room button ──
+      setP(3); setTooltip(null); setSpotlight(null);
+      const joinBtn = await waitForEl('[data-tour="join-room"]');
+      if (joinBtn && !bail()) {
+        showTip('Join Room', "Got an invite code? Paste it here to join.", { target: '[data-tour="join-room"]', icon: '🔗', position: 'bottom' });
+        await moveCursorTo('[data-tour="join-room"]');
+        await pause(3000); if (bail()) { await end(); return; }
+      }
 
-    // Click tasks tab
-    await clickEl('[data-tour="tab-tasks"]');
-    await sleep(1200);
+      // ── 3.5: Sidebar navigation ──
+      setTooltip(null); setSpotlight(null); setCursorVisible(false);
+      const sidebarEl = document.querySelector('aside');
+      if (sidebarEl && !bail()) {
+        const sr = sidebarEl.getBoundingClientRect();
+        setSpotlight({ x: sr.left, y: sr.top, w: sr.width, h: sr.height, r: 0 });
+        showTip('Sidebar', "All your pages and rooms are here.", { target: '[data-tour="sidebar-nav"]', icon: '📌', position: 'right' });
+        await pause(3500); if (bail()) { await end(); return; }
+      }
 
-    // Find "New Task" button in the inline TaskList
-    let newTaskBtn = null;
-    for (let i = 0; i < 15; i++) {
-      newTaskBtn = findBtn('New Task');
-      if (newTaskBtn) break;
-      await sleep(300);
-    }
+      // ── 4: Let's make a room ──
+      setP(4); setTooltip(null); setSpotlight(null); setCursorVisible(false);
+      showTip("Let's try it!", "I'll make a room for you real quick.", { center: true, icon: '🚀' });
+      await pause(2500); if (bail()) { await end(); return; }
 
-    if (newTaskBtn && !bail()) {
-      // Hide tooltip while interacting with inline form
+      // ── 5: Open dialog, type room name + course code, create via API ──
+      // ** SKIP DISABLED — must create room **
       setCanSkip(false);
-      setTooltip(null); setShowOverlay(false);
-      await clickDomEl(newTaskBtn);
-      await sleep(1000);
+      setP(5); setTooltip(null); setSpotlight(null); setShowOverlay(false);
+      await sleep(300); if (bail()) { await end(); return; }
+      const triggerBtn = document.querySelector('[data-tour="create-room"] button');
+      if (triggerBtn) await clickDomEl(triggerBtn);
+      await sleep(600); if (bail()) { await end(); return; }
 
-      // Wait for inline form to appear — look for the task title input
-      const taskInput = await waitForEl('input[placeholder="What needs to be done?"]', 5000);
-      if (taskInput && !bail()) {
-        // Type task title
-        await typeInto('input[placeholder="What needs to be done?"]', 'Review lecture notes');
-        await pause(800);
+      const nameInput = await waitForEl('[role="dialog"] input');
+      if (!nameInput || bail()) { await end(); return; }
+      await typeInto('[role="dialog"] input', TUTORIAL_ROOM_NAME);
+      if (bail()) { await end(); return; }
+      await pause(400); if (bail()) { await end(); return; }
 
-        // Click "Select Members" to expand member picker
-        if (!bail()) {
+      // Type course code
+      const courseInput = document.querySelector('[role="dialog"] input[placeholder*="COMP"]');
+      if (courseInput && !bail()) {
+        await typeInto('[role="dialog"] input[placeholder*="COMP"]', 'COMP2342');
+        await pause(400); if (bail()) { await end(); return; }
+      }
+
+      // Create room via API
+      setTooltip(null);
+      let tutorialRoomId = null;
+      try {
+        const result = await createRoom({ name: TUTORIAL_ROOM_NAME, course_name: 'COMP2342' });
+        tutorialRoomId = result?.id || result?.room?.id;
+      } catch { /* fail */ }
+      if (!tutorialRoomId || bail()) { await end(); return; }
+      createdRoomIdRef.current = tutorialRoomId;
+      localStorage.setItem(TUTORIAL_ROOM_ID_KEY, tutorialRoomId);
+
+      setCanSkip(true);
+      setShowOverlay(true); setCursorVisible(false);
+      showTip('Room Created!', "Let's go inside.", { center: true, icon: '🎉' });
+      await pause(2500); if (bail()) { await end(); return; }
+
+      // ── 6: Navigate into room ──
+      setP(6); setTooltip(null); setSpotlight(null);
+      navigate(`/rooms/${tutorialRoomId}`);
+      window.dispatchEvent(new CustomEvent('rooms-updated'));
+      showTip('Entering Room...', "Loading your new room...", { center: true, icon: '⏳' });
+      const roomTabs = await waitForEl('[data-tour="tab-schedule"]', 15000);
+      if (!roomTabs || bail()) { await end(); return; }
+      await sleep(800); if (bail()) { await end(); return; }
+      showTip('Your Room', "Each tab has a different feature. Let me walk you through.", { center: true, icon: '🏠' });
+      await pause(3500); if (bail()) { await end(); return; }
+
+      // ── 6.5: Invite code ──
+      setTooltip(null); setSpotlight(null);
+      const inviteBtn = document.querySelector('button code.font-mono')?.closest('button');
+      if (inviteBtn && !bail()) {
+        showTip('Invite Code', "Share this code so friends can join your room.", { center: true, icon: '🔑' });
+        const ir = inviteBtn.getBoundingClientRect();
+        setSpotlight({ x: ir.left - 10, y: ir.top - 10, w: ir.width + 20, h: ir.height + 20, r: 14 });
+        await moveCursorTo({ x: ir.left + ir.width / 2, y: ir.top + ir.height / 2 });
+        await pause(3500); if (bail()) { await end(); return; }
+      }
+
+      // ── 7: Schedule — create event via API FIRST, then demo the form ──
+      // ** SKIP DISABLED — must create event **
+      setCanSkip(false);
+      setP(7); setTooltip(null); setSpotlight(null);
+
+      // Create event via API before showing schedule tab
+      if (!bail()) {
+        try {
+          const futureDate = new Date();
+          futureDate.setDate(futureDate.getDate() + 5);
+          const start = new Date(futureDate); start.setHours(14, 0, 0, 0);
+          const endT = new Date(futureDate); endT.setHours(16, 0, 0, 0);
+          await createEvent(tutorialRoomId, {
+            title: 'Team Study Session', category: 'study',
+            start_time: start.toISOString(), end_time: endT.toISOString(),
+            location_name: 'Flinders Library Room 3',
+          });
+        } catch { /* ok */ }
+      }
+      if (bail()) { await end(); return; }
+
+      // Signal RoomPage to refetch events so the new one appears immediately
+      window.dispatchEvent(new CustomEvent('events-updated'));
+
+      showTip('Schedule', "Team calendar. Let me add an event.", { target: '[data-tour="tab-schedule"]', icon: '📆', position: 'bottom' });
+      await pause(2500); if (bail()) { await end(); return; }
+
+      // Click schedule tab — event already exists
+      await clickEl('[data-tour="tab-schedule"]');
+      await sleep(1200); if (bail()) { await end(); return; }
+
+      // Wait for "Add Event" button
+      let addEventBtn = null;
+      for (let i = 0; i < 15; i++) {
+        if (bail()) break;
+        addEventBtn = findBtn('Add Event');
+        if (addEventBtn) break;
+        await sleep(300);
+      }
+
+      if (addEventBtn && !bail()) {
+        setTooltip(null); setShowOverlay(false);
+        await clickDomEl(addEventBtn);
+        await sleep(600); if (bail()) { await end(); return; }
+
+        const eventDialog = await waitForEl('[role="dialog"]', 5000);
+        if (eventDialog && !bail()) {
+          await sleep(300);
+
+          // Pick "study" category
+          const allCatBtns = document.querySelectorAll('[role="dialog"] button[type="button"]');
+          for (const btn of allCatBtns) {
+            if (btn.textContent.includes('Study')) {
+              await clickDomEl(btn); await sleep(300); break;
+            }
+          }
+          if (bail()) { await end(); return; }
+
+          // Type event title
+          const titleIn = document.querySelector('[role="dialog"] input[placeholder*="Group Meeting"]');
+          if (titleIn && !bail()) {
+            await typeInto('[role="dialog"] input[placeholder*="Group Meeting"]', 'Team Study Session');
+            await pause(300); if (bail()) { await end(); return; }
+          }
+
+          // Type location
+          const locIn = document.querySelector('[role="dialog"] input[placeholder*="Flinders Library"]');
+          if (locIn && !bail()) {
+            await typeInto('[role="dialog"] input[placeholder*="Flinders Library"]', 'Flinders Library Room 3');
+            await pause(300); if (bail()) { await end(); return; }
+          }
+
+          // Close dialog — event already created via API
+          document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+          await sleep(400);
+        }
+      }
+
+      if (!bail()) {
+        setCanSkip(true);
+        setShowOverlay(true);
+        showTip('Event Added!', "Everyone in the room can see it now.", { center: true, icon: '🎉' });
+        await pause(3000); if (bail()) { await end(); return; }
+      }
+
+      // ── 8: Tasks tab ──
+      setP(8); setTooltip(null); setSpotlight(null);
+      showTip('Tasks', "Assign tasks to teammates.", { target: '[data-tour="tab-tasks"]', icon: '✅', position: 'bottom' });
+      await pause(2500); if (bail()) { await end(); return; }
+
+      await clickEl('[data-tour="tab-tasks"]');
+      await sleep(1000); if (bail()) { await end(); return; }
+
+      // Find "New Task" button
+      let newTaskBtn = null;
+      for (let i = 0; i < 15; i++) {
+        if (bail()) break;
+        newTaskBtn = findBtn('New Task');
+        if (newTaskBtn) break;
+        await sleep(300);
+      }
+
+      if (newTaskBtn && !bail()) {
+        setTooltip(null); setShowOverlay(false);
+        await clickDomEl(newTaskBtn);
+        await sleep(800); if (bail()) { await end(); return; }
+
+        const taskInput = await waitForEl('input[placeholder="What needs to be done?"]', 5000);
+        if (taskInput && !bail()) {
+          await typeInto('input[placeholder="What needs to be done?"]', 'Review lecture notes');
+          await pause(400); if (bail()) { await end(); return; }
+
+          // Select member
           let selectMembersBtn = null;
           for (let i = 0; i < 10; i++) {
+            if (bail()) break;
             selectMembersBtn = findBtn('Select Members');
             if (selectMembersBtn) break;
             await sleep(200);
           }
-          if (selectMembersBtn) {
+          if (selectMembersBtn && !bail()) {
             await clickDomEl(selectMembersBtn);
-            await sleep(800);
-
-            // Click the first member button in the picker grid
+            await sleep(500); if (bail()) { await end(); return; }
             const memberBtns = document.querySelectorAll('.grid button[type="button"]');
             if (memberBtns.length > 0 && !bail()) {
               await clickDomEl(memberBtns[0]);
-              await sleep(600);
+              await sleep(400); if (bail()) { await end(); return; }
             }
           }
-        }
 
-        // Click "Create Task" submit button
-        if (!bail()) {
-          const submitBtn = findBtn('Create Task');
-          if (submitBtn) {
-            await clickDomEl(submitBtn);
-            await sleep(2000);
+          // Create Task
+          if (!bail()) {
+            const submitBtn = findBtn('Create Task');
+            if (submitBtn) {
+              await clickDomEl(submitBtn);
+              await sleep(1200); if (bail()) { await end(); return; }
+            }
           }
-        }
 
-        setCanSkip(true);
-        setShowOverlay(true);
-        showTip('Task Created!', "Task assigned to a teammate! Check it off when it's done.", { center: true, icon: '🎉' });
-        await pause(3000); if (bail()) { await end(); return; }
+          if (!bail()) {
+            setShowOverlay(true);
+            showTip('Task Created!', "Done! You can check it off later.", { center: true, icon: '🎉' });
+            await pause(2500); if (bail()) { await end(); return; }
+          }
+        } else if (!bail()) {
+          setShowOverlay(true);
+          showTip('Tasks', "Create and assign tasks here.", { center: true, icon: '✅' });
+          await pause(2500); if (bail()) { await end(); return; }
+        }
       } else if (!bail()) {
         setShowOverlay(true);
-        showTip('Tasks', "Create tasks and assign them to your teammates here!", { center: true, icon: '✅' });
+        showTip('Tasks', "Create and assign tasks here.", { center: true, icon: '✅' });
+        await pause(2500); if (bail()) { await end(); return; }
+      }
+
+      // ── 9: Chat tab ──
+      setP(9); setTooltip(null); setSpotlight(null);
+      await clickEl('[data-tour="tab-chat"]');
+      await sleep(600); if (bail()) { await end(); return; }
+      showTip('Chat', "Real-time messaging. Send texts, images, files.", { center: true, icon: '💬' });
+      await pause(2500); if (bail()) { await end(); return; }
+
+      // ── 10: Files tab ──
+      setP(10); setTooltip(null); setSpotlight(null);
+      await clickEl('[data-tour="tab-files"]');
+      await sleep(600); if (bail()) { await end(); return; }
+      showTip('Files', "Drag and drop to share files with your team.", { center: true, icon: '📁' });
+      await pause(2500); if (bail()) { await end(); return; }
+
+      // ── 11: Deadlines page ──
+      setP(11); setTooltip(null); setSpotlight(null); setCursorVisible(false);
+      navigate('/deadlines');
+      showTip('Loading...', "Opening Deadlines...", { center: true, icon: '⏳' });
+      await sleep(2500); if (bail()) { await end(); return; }
+      const deadlinesMain = document.querySelector('main');
+      if (deadlinesMain && !bail()) {
+        const mr = deadlinesMain.getBoundingClientRect();
+        setSpotlight({ x: mr.left + 10, y: mr.top + 10, w: mr.width - 20, h: Math.min(mr.height - 20, 400), r: 16 });
+      }
+      showTip('Deadlines', "All your room events in one place. The one we just made is here too.", { center: true, icon: '📅', keepSpotlight: true });
+      await pause(3500); if (bail()) { await end(); return; }
+
+      // ── 12: Free Board — simple explanation, no post ──
+      setP(12); setTooltip(null); setSpotlight(null); setCursorVisible(false);
+      navigate('/board');
+      await waitForEl('[data-tour="board-new-post"]', 8000);
+      await sleep(800); if (bail()) { await end(); return; }
+      showTip('Free Board', "Flinders community board. Post anything, make polls, find study buddies.", { center: true, icon: '📋' });
+      await pause(3500); if (bail()) { await end(); return; }
+
+      // ── 13: Flinders Life — click each tab ──
+      setP(13); setTooltip(null); setSpotlight(null); setCursorVisible(false);
+      navigate('/flinders-life');
+      await waitForEl('button[value="events"]', 8000);
+      await sleep(500); if (bail()) { await end(); return; }
+
+      // Events tab (already active) — spotlight content
+      const eventsTab = document.querySelector('button[value="events"]');
+      if (eventsTab && !bail()) {
+        await clickDomEl(eventsTab);
+        await sleep(600); if (bail()) { await end(); return; }
+        const evtPanel = document.querySelector('[role="tabpanel"]');
+        if (evtPanel) {
+          const er = evtPanel.getBoundingClientRect();
+          setSpotlight({ x: er.left, y: er.top, w: er.width, h: Math.min(er.height, 350), r: 12 });
+        }
+        showTip('Events', "Flinders campus events and workshops.", { target: 'button[value="events"]', icon: '🎪', position: 'bottom' });
         await pause(3000); if (bail()) { await end(); return; }
       }
-    } else if (!bail()) {
-      setShowOverlay(true);
-      showTip('Tasks', "Create tasks and assign them to your teammates here!", { center: true, icon: '✅' });
-      await pause(3000); if (bail()) { await end(); return; }
-    }
 
-    // ── 9: Chat tab ──
-    setP(9); setTooltip(null); setSpotlight(null);
-    showTip('Chat', "Real-time messaging with your team!", { target: '[data-tour="tab-chat"]', icon: '💬', position: 'bottom' });
-    await pause(2500); if (bail()) { await end(); return; }
-    await clickEl('[data-tour="tab-chat"]');
-    await sleep(1000);
-    setTooltip(null);
-    showTip('Chat', "Send messages, images, and files. Everything stays in the room!", { center: true, icon: '💬' });
-    await pause(3500); if (bail()) { await end(); return; }
-
-    // ── 10: Files tab ──
-    setP(10); setTooltip(null); setSpotlight(null);
-    showTip('Files', "Share notes, slides, PDFs here!", { target: '[data-tour="tab-files"]', icon: '📁', position: 'bottom' });
-    await pause(2500); if (bail()) { await end(); return; }
-    await clickEl('[data-tour="tab-files"]');
-    await sleep(1000);
-    setTooltip(null);
-    showTip('Files', "Drag and drop any file — the whole team can download them!", { center: true, icon: '📁' });
-    await pause(3500); if (bail()) { await end(); return; }
-
-    // ── 11: Deadlines page ──
-    setP(11); setTooltip(null); setSpotlight(null); setCursorVisible(false);
-    navigate('/deadlines');
-    showTip('Loading...', "Opening Deadlines...", { center: true, icon: '⏳' });
-    await sleep(3000); if (bail()) { await end(); return; }
-    // Spotlight the main content area
-    const deadlinesMain = document.querySelector('main');
-    if (deadlinesMain) {
-      const mr = deadlinesMain.getBoundingClientRect();
-      setSpotlight({ x: mr.left + 10, y: mr.top + 10, w: mr.width - 20, h: Math.min(mr.height - 20, 400), r: 16 });
-    }
-    showTip('Deadlines', "All events from every room show up here! The study session we just added is here too.", { center: true, icon: '📅', keepSpotlight: true });
-    await pause(4000); if (bail()) { await end(); return; }
-
-    // ── 12: Free Board ──
-    setP(12); setTooltip(null); setSpotlight(null); setCursorVisible(false);
-    navigate('/board');
-    showTip('Loading...', "Opening Free Board...", { center: true, icon: '⏳' });
-    await waitForEl('[data-tour="board-new-post"]', 12000);
-    await sleep(1500); if (bail()) { await end(); return; }
-    showTip('Free Board', "Community board for all Flinders students — post anything, find study groups, or organize meetups!", { center: true, icon: '📋' });
-    await pause(3500); if (bail()) { await end(); return; }
-
-    // Show New Post button, open dialog, demo typing, then close without posting
-    setP(13); setTooltip(null); setSpotlight(null);
-    const newPostBtn = await waitForEl('[data-tour="board-new-post"]', 5000);
-    if (newPostBtn && !bail()) {
-      showTip('New Post', "Let me show you how to create a post!", { target: '[data-tour="board-new-post"]', icon: '✏️', position: 'bottom' });
-      await moveCursorTo('[data-tour="board-new-post"]');
-      await pause(3000); if (bail()) { await end(); return; }
-
-      // Open the dialog — hide tooltip while interacting
-      setCanSkip(false);
-      setTooltip(null); setShowOverlay(false);
-      await clickDomEl(newPostBtn);
-      await sleep(1500);
-
-      const postDialog = await waitForEl('[role="dialog"]', 5000);
-      if (postDialog && !bail()) {
-        await sleep(500);
-
-        // Select "Meetup" category
-        const allCatBtns2 = postDialog.querySelectorAll('button');
-        for (const btn of allCatBtns2) {
-          if (btn.textContent.includes('Meetup')) {
-            await clickDomEl(btn);
-            await sleep(600);
-            break;
-          }
+      // Academic Calendar tab
+      setTooltip(null); setSpotlight(null);
+      const acadTab = document.querySelector('button[value="academic-calendar"]');
+      if (acadTab && !bail()) {
+        await clickDomEl(acadTab);
+        await sleep(600); if (bail()) { await end(); return; }
+        const acadPanel = document.querySelector('[role="tabpanel"]');
+        if (acadPanel) {
+          const ar = acadPanel.getBoundingClientRect();
+          setSpotlight({ x: ar.left, y: ar.top, w: ar.width, h: Math.min(ar.height, 350), r: 12 });
         }
-
-        // Type title
-        const postTitle = postDialog.querySelector('input[placeholder="Title"]');
-        if (postTitle && !bail()) {
-          await typeInto('[role="dialog"] input[placeholder="Title"]', 'City Campus meetup this Friday?');
-          await pause(600);
-        }
-
-        // Type content
-        const postContent = postDialog.querySelector('textarea[placeholder="What\'s on your mind?"]');
-        if (postContent && !bail()) {
-          await typeInto('[role="dialog"] textarea[placeholder="What\'s on your mind?"]', 'Anyone down to grab coffee at Victoria Square after class?');
-          await pause(600);
-        }
-
-        // Click "Add Poll" button
-        if (!bail()) {
-          const dialogBtns = postDialog.querySelectorAll('button');
-          let pollBtn = null;
-          for (const b of dialogBtns) { if (b.textContent.includes('Add Poll')) { pollBtn = b; break; } }
-          if (pollBtn) {
-            await clickDomEl(pollBtn);
-            await sleep(1000);
-
-            const pollOpt1 = postDialog.querySelector('input[placeholder="Option 1"]');
-            const pollOpt2 = postDialog.querySelector('input[placeholder="Option 2"]');
-            if (pollOpt1 && !bail()) {
-              await typeInto('[role="dialog"] input[placeholder="Option 1"]', 'Friday 3pm');
-              await sleep(400);
-            }
-            if (pollOpt2 && !bail()) {
-              await typeInto('[role="dialog"] input[placeholder="Option 2"]', 'Friday 5pm');
-              await pause(500);
-            }
-          }
-        }
-
-        // Brief pause then close
-        await pause(1500); if (bail()) { await end(); return; }
-
-        // Close the dialog without posting
-        setTooltip(null); setShowOverlay(false);
-        // Press Escape to close the dialog cleanly
-        document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
-        await sleep(800);
+        showTip('Academic Calendar', "Semester dates, exams, holidays all in one place.", { target: 'button[value="academic-calendar"]', icon: '📅', position: 'bottom' });
+        await pause(3000); if (bail()) { await end(); return; }
       }
-      setCanSkip(true);
-      setShowOverlay(true);
+
+      // Study Rooms tab
+      setTooltip(null); setSpotlight(null);
+      const studyTab = document.querySelector('button[value="study-rooms"]');
+      if (studyTab && !bail()) {
+        await clickDomEl(studyTab);
+        await sleep(600); if (bail()) { await end(); return; }
+        const studyPanel = document.querySelector('[role="tabpanel"]');
+        if (studyPanel) {
+          const str = studyPanel.getBoundingClientRect();
+          setSpotlight({ x: str.left, y: str.top, w: str.width, h: Math.min(str.height, 350), r: 12 });
+        }
+        showTip('Study Rooms', "Book study rooms at campus. Links are right here.", { target: 'button[value="study-rooms"]', icon: '📚', position: 'bottom' });
+        await pause(3000); if (bail()) { await end(); return; }
+      }
+
+      // ── 14: Done ──
+      setP(14); setTooltip(null); setSpotlight(null); setCursorVisible(false);
+      showTip('All done!', "That's it! The demo room will be cleaned up. Go make your own room!", { center: true, icon: '🎉' });
+      await pause(3500);
+
+      await end();
+      localStorage.setItem(TUTORIAL_KEY, Date.now().toString());
+    } catch (err) {
+      // Safety net — if anything crashes, clean up gracefully
+      console.warn('Tutorial error:', err);
+      try { await cleanup(); } catch { /* ignore */ }
+      setActive(false);
     }
-
-    // ── 14: Flinders Life — show 3 tabs ──
-    setP(14); setTooltip(null); setSpotlight(null); setCursorVisible(false);
-    navigate('/flinders-life');
-    await waitForEl('button[value="events"]', 8000);
-    if (bail()) { await end(); return; }
-
-    // Events tab — already active by default
-    showTip('Events', "Campus events, workshops, and career fairs at Flinders!", { target: 'button[value="events"]', icon: '🎪', position: 'bottom' });
-    await pause(3000); if (bail()) { await end(); return; }
-
-    // Academic Calendar tab — click it and highlight content
-    setTooltip(null); setSpotlight(null);
-    await clickEl('button[value="academic-calendar"]');
-    await sleep(800);
-    // Spotlight the tab content area
-    const acadContent = document.querySelector('[role="tabpanel"]');
-    if (acadContent) {
-      const cr = acadContent.getBoundingClientRect();
-      setSpotlight({ x: cr.left, y: cr.top, w: cr.width, h: Math.min(cr.height, 350), r: 12 });
-    }
-    showTip('Academic Calendar', "Semester dates, exam periods, and holidays — never miss a deadline!", { target: 'button[value="academic-calendar"]', icon: '📅', position: 'bottom' });
-    await pause(3500); if (bail()) { await end(); return; }
-
-    // Study Rooms tab — click it and highlight content
-    setTooltip(null); setSpotlight(null);
-    await clickEl('button[value="study-rooms"]');
-    await sleep(800);
-    const studyContent = document.querySelector('[role="tabpanel"]');
-    if (studyContent) {
-      const cr2 = studyContent.getBoundingClientRect();
-      setSpotlight({ x: cr2.left, y: cr2.top, w: cr2.width, h: Math.min(cr2.height, 350), r: 12 });
-    }
-    showTip('Study Rooms', "Book study rooms at City Campus or Bedford Park — links right here!", { target: 'button[value="study-rooms"]', icon: '📚', position: 'bottom' });
-    await pause(3500); if (bail()) { await end(); return; }
-
-    // ── 15: Done ──
-    setP(15); setTooltip(null); setSpotlight(null); setCursorVisible(false);
-    showTip('All done!', "That's everything! The demo room will be cleaned up. Now go create your own room and start collaborating!", { center: true, icon: '🎉' });
-    await pause(3500);
-
-    await end();
-    localStorage.setItem(TUTORIAL_KEY, Date.now().toString());
-  }, [navigate, sleep, waitForEl, moveCursorTo, clickEl, clickDomEl, showTip, typeInto, cleanup, findBtn, simulateClick]);
+  }, [navigate, sleep, waitForEl, moveCursorTo, clickEl, clickDomEl, showTip, typeInto, cleanup, findBtn, simulateClick, resetUI]);
 
   const runTutorialRef = useRef(runTutorial);
   runTutorialRef.current = runTutorial;
@@ -645,7 +625,9 @@ export default function InteractiveTutorial() {
 
   const handleStop = useCallback(async (permanent) => {
     cancelRef.current = true;
-    await cleanup();
+    // Small delay to let any in-flight sleeps resolve
+    await new Promise((r) => setTimeout(r, 200));
+    try { await cleanup(); } catch { /* ignore */ }
     setActive(false); setShowPrompt(false);
     if (permanent) localStorage.setItem(TUTORIAL_KEY, Date.now().toString());
   }, [cleanup]);
@@ -715,9 +697,9 @@ export default function InteractiveTutorial() {
         </button>
       </div>
 
-      {/* ── Overlay ── */}
+      {/* ── Overlay — blocks all clicks when visible ── */}
       {showOverlay && (
-        <div className="fixed inset-0 pointer-events-none" style={{ zIndex: 99998 }}>
+        <div className="fixed inset-0" style={{ zIndex: 99998 }}>
           <svg className="absolute inset-0 w-full h-full">
             <defs>
               <mask id="tutorial-mask">

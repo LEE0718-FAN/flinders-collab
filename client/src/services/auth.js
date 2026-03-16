@@ -27,6 +27,22 @@ export async function apiLogout() {
   return parseResponse(res);
 }
 
+export async function apiGuestLogin() {
+  const res = await fetch(apiUrl('/api/auth/guest'), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+  });
+  return parseResponse(res);
+}
+
+export async function apiGuestCleanup() {
+  const res = await fetch(apiUrl('/api/auth/guest/cleanup'), {
+    method: 'POST',
+    headers: getAuthHeaders(),
+  });
+  return parseResponse(res);
+}
+
 export async function apiUpdateProfile(formData) {
   const headers = getAuthHeaders(false); // Don't set Content-Type for FormData
   const res = await fetch(apiUrl('/api/auth/me'), {

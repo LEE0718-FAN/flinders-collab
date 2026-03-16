@@ -1,4 +1,4 @@
-import React, { lazy, Suspense } from 'react';
+import React, { lazy, Suspense, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { TooltipProvider } from '@/components/ui/tooltip';
@@ -6,6 +6,8 @@ import { ToastProvider } from '@/components/ui/toast';
 import ErrorBoundary from '@/components/ErrorBoundary';
 import InteractiveTutorial from '@/components/InteractiveTutorial';
 import { Loader2 } from 'lucide-react';
+import { loadSession, clearSession } from '@/lib/auth-token';
+import { apiGuestCleanup } from '@/services/auth';
 
 // Retry dynamic imports with page reload on chunk mismatch (after new deployments)
 function lazyRetry(importFn) {
@@ -32,6 +34,20 @@ const AdminPage = lazyRetry(() => import('@/pages/AdminPage'));
 const DeadlinesPage = lazyRetry(() => import('@/pages/DeadlinesPage'));
 const BoardPage = lazyRetry(() => import('@/pages/BoardPage'));
 const FlindersLifePage = lazyRetry(() => import('@/pages/FlindersLifePage'));
+
+// If a tester session exists on page load (e.g. refresh), clean up and redirect
+if (typeof window !== 'undefined') {
+  const session = loadSession();
+  if (session?.is_tester) {
+    // Call cleanup BEFORE clearing session (needs auth token)
+    apiGuestCleanup().catch(() => {}).finally(() => {
+      clearSession();
+      if (window.location.pathname !== '/login') {
+        window.location.href = '/login';
+      }
+    });
+  }
+}
 
 function PageLoader() {
   return (

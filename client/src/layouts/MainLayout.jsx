@@ -109,12 +109,14 @@ function SidebarContent({ rooms, location, isAdmin, unreadCounts = {} }) {
         icon={MessageSquare}
         label="Free Board"
       />
-      <NavItem
-        to="/flinders-life"
-        isActive={location.pathname === '/flinders-life'}
-        icon={GraduationCap}
-        label="Flinders Life"
-      />
+      {user?.account_type !== 'general' && user?.user_metadata?.account_type !== 'general' && (
+        <NavItem
+          to="/flinders-life"
+          isActive={location.pathname === '/flinders-life'}
+          icon={GraduationCap}
+          label="Flinders Life"
+        />
+      )}
 
       {/* Room section divider */}
       <div className="mt-5 mb-1 flex items-center gap-2 px-3">

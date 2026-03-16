@@ -198,13 +198,13 @@ function AcademicCalendar() {
   return (
     <div className="space-y-4">
       {/* Month navigation */}
-      <div className="flex items-center justify-between">
-        <button onClick={() => setCurrentMonth(subMonths(currentMonth, 1))} className="p-1.5 rounded-lg hover:bg-slate-100 transition">
-          <ChevronLeft className="h-4 w-4 text-slate-600" />
+      <div className="flex items-center justify-center gap-4">
+        <button onClick={() => setCurrentMonth(subMonths(currentMonth, 1))} className="p-2 rounded-lg hover:bg-slate-100 transition">
+          <ChevronLeft className="h-5 w-5 text-slate-600" />
         </button>
-        <h2 className="text-base font-bold text-slate-800">{format(currentMonth, 'MMMM yyyy')}</h2>
-        <button onClick={() => setCurrentMonth(addMonths(currentMonth, 1))} className="p-1.5 rounded-lg hover:bg-slate-100 transition">
-          <ChevronRight className="h-4 w-4 text-slate-600" />
+        <h2 className="text-base font-bold text-slate-800 min-w-[140px] text-center">{format(currentMonth, 'MMMM yyyy')}</h2>
+        <button onClick={() => setCurrentMonth(addMonths(currentMonth, 1))} className="p-2 rounded-lg hover:bg-slate-100 transition">
+          <ChevronRight className="h-5 w-5 text-slate-600" />
         </button>
       </div>
 
@@ -248,14 +248,18 @@ function AcademicCalendar() {
               <div
                 key={key}
                 className={`h-12 border-b border-r border-slate-100 p-0.5 relative ${
-                  isHoliday ? 'bg-red-50' : today2026 ? 'bg-blue-50' : ''
+                  isHoliday ? 'bg-red-50' : today2026 ? 'bg-indigo-50' : ''
                 }`}
                 title={entries.map((e) => e.label).join('\n')}
               >
                 <span className={`text-[11px] font-medium block text-center mt-0.5 ${
-                  isHoliday ? 'text-red-600 font-bold' : today2026 ? 'text-blue-600 font-bold' : 'text-slate-700'
+                  isHoliday ? 'text-red-600 font-bold' : today2026 ? 'text-white font-bold' : 'text-slate-700'
                 }`}>
-                  {format(day, 'd')}
+                  {today2026 ? (
+                    <span className="inline-flex items-center justify-center h-5 w-5 rounded-full bg-indigo-600 text-white text-[11px] font-bold">
+                      {format(day, 'd')}
+                    </span>
+                  ) : format(day, 'd')}
                 </span>
                 {hasEvent && (
                   <div className="flex justify-center gap-0.5 mt-0.5">

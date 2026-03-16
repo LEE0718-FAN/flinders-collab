@@ -150,6 +150,13 @@ export default function RoomPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [roomId]);
 
+  // Listen for external event creation (e.g. tutorial) to refetch events
+  useEffect(() => {
+    const handler = () => fetchEvents();
+    window.addEventListener('events-updated', handler);
+    return () => window.removeEventListener('events-updated', handler);
+  }, [fetchEvents]);
+
   useEffect(() => {
     try {
       const saved = JSON.parse(localStorage.getItem(`quick-links:${roomId}`) || '[]');
