@@ -53,7 +53,7 @@ router.patch('/me', authenticate, upload.single('avatar'), authController.update
 // POST /auth/guest - Create temp tester account (rate limited)
 const guestLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 10,
+  max: 50,
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: 'Too many attempts. Please try again later.' },

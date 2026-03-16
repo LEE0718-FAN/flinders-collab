@@ -16,6 +16,7 @@ const TUTORIAL_ROOM_ID_KEY = 'tutorial-room-id';
 export default function InteractiveTutorial() {
   const navigate = useNavigate();
   const user = useAuthStore((s) => s.user);
+  const session = useAuthStore((s) => s.session);
   const [showPrompt, setShowPrompt] = useState(false);
   const [active, setActive] = useState(false);
   const [cursorPos, setCursorPos] = useState({ x: -100, y: -100 });
@@ -51,17 +52,34 @@ export default function InteractiveTutorial() {
 
   useEffect(() => {
     if (!user) return; // not logged in yet
-    if (localStorage.getItem(TUTORIAL_KEY)) return;
     let cancelled = false;
+    const testerMode = Boolean(session?.is_tester || user?.is_tester);
+    let fallbackTimer = null;
+
+    if (!testerMode && localStorage.getItem(TUTORIAL_KEY)) return;
+
+    if (testerMode) {
+      fallbackTimer = setTimeout(() => {
+        if (!cancelled) setShowPrompt(true);
+      }, 250);
+    }
+
     getRooms()
       .then((rooms) => {
         if (cancelled) return;
         const list = Array.isArray(rooms) ? rooms : rooms?.rooms || [];
-        if (list.length === 0) setShowPrompt(true);
+        setShowPrompt(list.length === 0);
       })
-      .catch(() => {});
-    return () => { cancelled = true; };
-  }, [user]);
+      .catch(() => {
+        if (!cancelled && testerMode) {
+          setShowPrompt(true);
+        }
+      });
+    return () => {
+      cancelled = true;
+      if (fallbackTimer) clearTimeout(fallbackTimer);
+    };
+  }, [session?.is_tester, user]);
 
   useEffect(() => {
     const handler = () => { setShowPrompt(false); setActive(true); };
@@ -781,8 +799,21 @@ export default function InteractiveTutorial() {
     if (permanent) localStorage.setItem(TUTORIAL_KEY, Date.now().toString());
   }, [cleanup]);
 
-  const handleDecline = () => setShowPrompt(false);
-  const handleNeverShow = () => { setShowPrompt(false); localStorage.setItem(TUTORIAL_KEY, Date.now().toString()); };
+  const handleDecline = () => {
+    if (session?.is_tester) {
+      logoutTester();
+      return;
+    }
+    setShowPrompt(false);
+  };
+  const handleNeverShow = () => {
+    if (session?.is_tester) {
+      logoutTester();
+      return;
+    }
+    setShowPrompt(false);
+    localStorage.setItem(TUTORIAL_KEY, Date.now().toString());
+  };
   const startTutorial = () => { setShowPrompt(false); setActive(true); };
 
   // ── Prompt modal ──
@@ -805,11 +836,13 @@ export default function InteractiveTutorial() {
               Show me around!
             </button>
             <button onClick={handleDecline} className="w-full rounded-xl border border-slate-200 bg-white py-3 text-sm font-medium text-slate-500 hover:bg-slate-50 transition-all">
-              I'll figure it out myself
+              {session?.is_tester ? 'Exit tester mode' : "I'll figure it out myself"}
             </button>
-            <button onClick={handleNeverShow} className="w-full text-[11px] text-slate-400 hover:text-slate-600 py-1 transition-colors">
-              Don't ask again
-            </button>
+            {!session?.is_tester && (
+              <button onClick={handleNeverShow} className="w-full text-[11px] text-slate-400 hover:text-slate-600 py-1 transition-colors">
+                Don't ask again
+              </button>
+            )}
           </div>
         </div>
       </div>
