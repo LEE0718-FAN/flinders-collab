@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { GraduationCap, Calendar, BookOpen, ExternalLink, Loader2, ChevronDown, ChevronUp, MapPin, Star, Clock, ChevronLeft, ChevronRight } from 'lucide-react';
 import { getRecommendedEvents } from '@/services/flinders';
 import OnboardingTour from '@/components/OnboardingTour';
-import { format, parseISO, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isToday, isSameDay, getDay, addMonths, subMonths } from 'date-fns';
+import { format, parseISO, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isToday, getDay, addMonths, subMonths, isWithinInterval } from 'date-fns';
 
 function stripHtml(html) {
   if (!html) return '';
@@ -49,8 +49,7 @@ const ACADEMIC_DATES = [
   { date: '2026-04-04', label: 'Easter Saturday', type: 'holiday' },
   { date: '2026-04-06', label: 'Easter Monday', type: 'holiday' },
   { date: '2026-04-03', label: 'Census Date (Sem 1)', type: 'deadline' },
-  { date: '2026-04-13', label: 'Mid-Semester Break Begins', type: 'break' },
-  { date: '2026-04-17', label: 'Mid-Semester Break Ends', type: 'break' },
+  { startDate: '2026-04-13', endDate: '2026-04-24', label: 'Mid-Semester 1 Break', type: 'break' },
   { date: '2026-04-25', label: 'ANZAC Day', type: 'holiday' },
   { date: '2026-05-15', label: 'Last Day to Withdraw (WN)', type: 'deadline' },
   { date: '2026-06-05', label: 'Semester 1 Teaching Ends', type: 'semester' },
@@ -59,14 +58,14 @@ const ACADEMIC_DATES = [
   { date: '2026-06-19', label: 'Last Day to Withdraw (WF)', type: 'deadline' },
   { date: '2026-06-22', label: 'Exam Period Begins (Sem 1)', type: 'exam' },
   { date: '2026-07-04', label: 'Exam Period Ends (Sem 1)', type: 'exam' },
+  { startDate: '2026-07-06', endDate: '2026-07-19', label: 'Mid-Year Break', type: 'break' },
   { date: '2026-07-20', label: 'Deferred Exams (Sem 1)', type: 'exam' },
   // Semester 2
   { date: '2026-07-20', label: 'Semester 2 Orientation Week', type: 'orientation' },
   { date: '2026-07-27', label: 'Semester 2 Teaching Begins', type: 'semester' },
   { date: '2026-08-07', label: 'Last Day to Enrol (Sem 2)', type: 'deadline' },
   { date: '2026-08-28', label: 'Census Date (Sem 2)', type: 'deadline' },
-  { date: '2026-09-28', label: 'Mid-Semester Break Begins', type: 'break' },
-  { date: '2026-10-02', label: 'Mid-Semester Break Ends', type: 'break' },
+  { startDate: '2026-09-21', endDate: '2026-10-02', label: 'Mid-Semester 2 Break', type: 'break' },
   { date: '2026-10-05', label: 'Labour Day', type: 'holiday' },
   { date: '2026-10-09', label: 'Last Day to Withdraw (WN)', type: 'deadline' },
   { date: '2026-10-30', label: 'Semester 2 Teaching Ends', type: 'semester' },
@@ -90,6 +89,31 @@ const DATE_TYPE_COLORS = {
   break: { bg: 'bg-green-500', text: 'text-green-700', light: 'bg-green-50 border-green-200', dot: 'bg-green-500' },
   orientation: { bg: 'bg-teal-500', text: 'text-teal-700', light: 'bg-teal-50 border-teal-200', dot: 'bg-teal-500' },
 };
+
+function getAcademicEntryStart(entry) {
+  return entry.startDate || entry.date;
+}
+
+function getAcademicEntryEnd(entry) {
+  return entry.endDate || entry.startDate || entry.date;
+}
+
+function expandAcademicEntryDates(entry) {
+  const start = getAcademicEntryStart(entry);
+  const end = getAcademicEntryEnd(entry);
+  return eachDayOfInterval({ start: parseISO(start), end: parseISO(end) }).map((day) => format(day, 'yyyy-MM-dd'));
+}
+
+function formatAcademicEntryRange(entry) {
+  const start = parseISO(getAcademicEntryStart(entry));
+  const end = parseISO(getAcademicEntryEnd(entry));
+
+  if (format(start, 'yyyy-MM-dd') === format(end, 'yyyy-MM-dd')) {
+    return format(start, 'EEEE, d MMMM yyyy');
+  }
+
+  return `${format(start, 'EEEE, d MMM')} - ${format(end, 'EEEE, d MMM yyyy')}`;
+}
 
 function EventRow({ event, isFavorite, onToggleFavorite }) {
   const title = stripHtml(event.title);
@@ -175,9 +199,10 @@ function AcademicCalendar() {
   const dateMap = useMemo(() => {
     const map = {};
     for (const entry of ACADEMIC_DATES) {
-      const key = entry.date;
-      if (!map[key]) map[key] = [];
-      map[key].push(entry);
+      for (const key of expandAcademicEntryDates(entry)) {
+        if (!map[key]) map[key] = [];
+        map[key].push(entry);
+      }
     }
     return map;
   }, []);
@@ -187,10 +212,14 @@ function AcademicCalendar() {
     return ACADEMIC_DATES
       .filter((e) => {
         try {
-          return isSameMonth(parseISO(e.date), currentMonth);
+          const start = parseISO(getAcademicEntryStart(e));
+          const end = parseISO(getAcademicEntryEnd(e));
+          return isSameMonth(start, currentMonth)
+            || isSameMonth(end, currentMonth)
+            || isWithinInterval(currentMonth, { start, end });
         } catch { return false; }
       })
-      .sort((a, b) => a.date.localeCompare(b.date));
+      .sort((a, b) => getAcademicEntryStart(a).localeCompare(getAcademicEntryStart(b)));
   }, [currentMonth]);
 
   const startDow = getDay(days[0]); // 0=Sun
@@ -279,15 +308,16 @@ function AcademicCalendar() {
         <div className="space-y-1.5">
           {monthEvents.map((entry, i) => {
             const colors = DATE_TYPE_COLORS[entry.type] || DATE_TYPE_COLORS.deadline;
+            const startDate = parseISO(getAcademicEntryStart(entry));
             return (
               <div key={i} className={`flex items-center gap-3 rounded-lg border p-2.5 ${colors.light}`}>
                 <div className="shrink-0 text-center w-10">
-                  <p className={`text-lg font-black ${colors.text}`}>{format(parseISO(entry.date), 'd')}</p>
-                  <p className="text-[9px] text-slate-500 font-medium">{format(parseISO(entry.date), 'EEE')}</p>
+                  <p className={`text-lg font-black ${colors.text}`}>{format(startDate, 'd')}</p>
+                  <p className="text-[9px] text-slate-500 font-medium">{format(startDate, 'EEE')}</p>
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className={`text-xs font-semibold ${colors.text}`}>{entry.label}</p>
-                  <p className="text-[10px] text-slate-400">{format(parseISO(entry.date), 'EEEE, d MMMM yyyy')}</p>
+                  <p className="text-[10px] text-slate-400">{formatAcademicEntryRange(entry)}</p>
                 </div>
                 <span className={`h-2 w-2 rounded-full shrink-0 ${colors.dot}`} />
               </div>
