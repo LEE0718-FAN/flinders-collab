@@ -29,7 +29,6 @@ const ACCOUNT_TYPES = [
 const ADELAIDE_UNIVERSITIES = [
   'University of Adelaide',
   'Adelaide University',
-  'Flinders University',
   'University of South Australia',
   'UniSA',
   'Torrens University Australia',
@@ -163,6 +162,11 @@ export default function SignupForm({ onSubmit }) {
 
     if (accountType === 'general' && !university.trim()) {
       setError('Please enter your university name');
+      return;
+    }
+
+    if (accountType === 'general' && university.trim().toLowerCase().includes('flinders')) {
+      setError('Flinders University students must sign up with the "Flinders Student" option.');
       return;
     }
 
@@ -336,9 +340,15 @@ export default function SignupForm({ onSubmit }) {
                 placeholder="e.g. University of Adelaide"
                 value={university}
                 onChange={(e) => {
-                  setUniversity(e.target.value);
+                  const nextUniversity = e.target.value;
+                  setUniversity(nextUniversity);
                   setShowUniversitySuggestions(true);
                   setHighlightUniversityIndex(-1);
+                  if (nextUniversity.trim().toLowerCase().includes('flinders')) {
+                    setError('Flinders University students must sign up with the "Flinders Student" option.');
+                  } else if (error.includes('Flinders University students must sign up')) {
+                    setError('');
+                  }
                 }}
                 onFocus={() => setShowUniversitySuggestions(true)}
                 onKeyDown={handleUniversityKeyDown}
