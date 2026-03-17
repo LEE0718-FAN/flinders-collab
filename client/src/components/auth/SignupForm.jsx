@@ -26,6 +26,17 @@ const ACCOUNT_TYPES = [
   },
 ];
 
+const ADELAIDE_UNIVERSITIES = [
+  'University of Adelaide',
+  'Adelaide University',
+  'Flinders University',
+  'University of South Australia',
+  'UniSA',
+  'Torrens University Australia',
+  'Carnegie Mellon University Australia',
+  'CQUniversity Adelaide',
+];
+
 export default function SignupForm({ onSubmit }) {
   const [accountType, setAccountType] = useState(null); // null = choosing
   const [name, setName] = useState('');
@@ -38,10 +49,14 @@ export default function SignupForm({ onSubmit }) {
   const [majorQuery, setMajorQuery] = useState('');
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [highlightIndex, setHighlightIndex] = useState(-1);
+  const [showUniversitySuggestions, setShowUniversitySuggestions] = useState(false);
+  const [highlightUniversityIndex, setHighlightUniversityIndex] = useState(-1);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const suggestionsRef = useRef(null);
   const majorInputRef = useRef(null);
+  const universitySuggestionsRef = useRef(null);
+  const universityInputRef = useRef(null);
 
   const filtered = majorQuery.length > 0
     ? FLINDERS_PROGRAMS.filter((p) =>
@@ -49,11 +64,21 @@ export default function SignupForm({ onSubmit }) {
       ).slice(0, 8)
     : [];
 
+  const filteredUniversities = university.trim().length > 0
+    ? ADELAIDE_UNIVERSITIES.filter((school) =>
+        school.toLowerCase().includes(university.trim().toLowerCase())
+      ).slice(0, 8)
+    : ADELAIDE_UNIVERSITIES.slice(0, 6);
+
   useEffect(() => {
     const handleClickOutside = (e) => {
       if (suggestionsRef.current && !suggestionsRef.current.contains(e.target) &&
           majorInputRef.current && !majorInputRef.current.contains(e.target)) {
         setShowSuggestions(false);
+      }
+      if (universitySuggestionsRef.current && !universitySuggestionsRef.current.contains(e.target) &&
+          universityInputRef.current && !universityInputRef.current.contains(e.target)) {
+        setShowUniversitySuggestions(false);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
@@ -78,6 +103,26 @@ export default function SignupForm({ onSubmit }) {
     } else if (e.key === 'Enter' && highlightIndex >= 0) {
       e.preventDefault();
       selectProgram(filtered[highlightIndex]);
+    }
+  };
+
+  const selectUniversity = (school) => {
+    setUniversity(school);
+    setShowUniversitySuggestions(false);
+    setHighlightUniversityIndex(-1);
+  };
+
+  const handleUniversityKeyDown = (e) => {
+    if (!showUniversitySuggestions || filteredUniversities.length === 0) return;
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      setHighlightUniversityIndex((prev) => (prev + 1) % filteredUniversities.length);
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setHighlightUniversityIndex((prev) => (prev <= 0 ? filteredUniversities.length - 1 : prev - 1));
+    } else if (e.key === 'Enter' && highlightUniversityIndex >= 0) {
+      e.preventDefault();
+      selectUniversity(filteredUniversities[highlightUniversityIndex]);
     }
   };
 
@@ -286,7 +331,35 @@ export default function SignupForm({ onSubmit }) {
             <label className="text-[13px] font-semibold text-foreground/70">University</label>
             <div className="relative">
               <School className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/40" />
-              <Input placeholder="e.g. University of Adelaide" value={university} onChange={(e) => setUniversity(e.target.value)} required className="h-11 rounded-xl pl-10 bg-muted/30 border-border/40 focus:bg-white" />
+              <Input
+                ref={universityInputRef}
+                placeholder="e.g. University of Adelaide"
+                value={university}
+                onChange={(e) => {
+                  setUniversity(e.target.value);
+                  setShowUniversitySuggestions(true);
+                  setHighlightUniversityIndex(-1);
+                }}
+                onFocus={() => setShowUniversitySuggestions(true)}
+                onKeyDown={handleUniversityKeyDown}
+                required
+                className="h-11 rounded-xl pl-10 bg-muted/30 border-border/40 focus:bg-white"
+              />
+              {showUniversitySuggestions && filteredUniversities.length > 0 && (
+                <div ref={universitySuggestionsRef} className="absolute left-0 right-0 top-full mt-1 z-50 max-h-44 overflow-y-auto rounded-xl bg-white border shadow-lg">
+                  {filteredUniversities.map((school, i) => (
+                    <button
+                      key={school}
+                      type="button"
+                      className={`w-full text-left px-4 py-2 text-sm transition-colors ${i === highlightUniversityIndex ? 'bg-violet-50 text-violet-700 font-medium' : 'hover:bg-slate-50'}`}
+                      onMouseEnter={() => setHighlightUniversityIndex(i)}
+                      onClick={() => selectUniversity(school)}
+                    >
+                      {school}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
           <div className="space-y-1.5">

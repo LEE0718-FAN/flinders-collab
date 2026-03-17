@@ -18,7 +18,7 @@ function ImageLightbox({ src, alt, onClose }) {
 
 function FileAttachment({ fileData, isOwn }) {
   const [lightbox, setLightbox] = useState(false);
-  const [resolvedUrl, setResolvedUrl] = useState(fileData?.download_url || null);
+  const [resolvedUrl, setResolvedUrl] = useState(null);
   const [imageFailed, setImageFailed] = useState(false);
 
   if (!fileData) return null;
@@ -27,22 +27,28 @@ function FileAttachment({ fileData, isOwn }) {
   const downloadUrl = resolvedUrl || fileData.download_url || null;
 
   useEffect(() => {
-    setResolvedUrl(fileData?.download_url || null);
-    setImageFailed(false);
-  }, [fileData?.download_url, fileData?.file_id]);
-
-  useEffect(() => {
     let cancelled = false;
 
     const refreshUrl = async () => {
-      if (!fileData?.file_id || resolvedUrl) return;
+      setImageFailed(false);
+
+      if (!fileData?.file_id) {
+        setResolvedUrl(fileData?.download_url || null);
+        return;
+      }
+
       try {
         const refreshed = await getFileDownloadUrl(fileData.file_id);
         if (!cancelled && refreshed?.download_url) {
           setResolvedUrl(refreshed.download_url);
+          return;
         }
       } catch {
-        // Leave the file card visible without breaking the message bubble.
+        // Fall back to the persisted URL if a refresh request fails.
+      }
+
+      if (!cancelled) {
+        setResolvedUrl(fileData?.download_url || null);
       }
     };
 
@@ -50,7 +56,26 @@ function FileAttachment({ fileData, isOwn }) {
     return () => {
       cancelled = true;
     };
-  }, [fileData?.file_id, resolvedUrl]);
+  }, [fileData?.download_url, fileData?.file_id]);
+
+  const handleImageError = async () => {
+    if (!fileData?.file_id) {
+      setImageFailed(true);
+      return;
+    }
+
+    try {
+      const refreshed = await getFileDownloadUrl(fileData.file_id);
+      if (refreshed?.download_url && refreshed.download_url !== resolvedUrl) {
+        setResolvedUrl(refreshed.download_url);
+        return;
+      }
+    } catch {
+      // Fall through to the file card fallback.
+    }
+
+    setImageFailed(true);
+  };
 
   if (isImage && downloadUrl && !imageFailed) {
     return (
@@ -60,7 +85,7 @@ function FileAttachment({ fileData, isOwn }) {
             src={downloadUrl}
             alt={fileData.file_name}
             className="max-w-[240px] max-h-[200px] rounded-xl object-cover shadow-md hover:shadow-lg transition-shadow"
-            onError={() => setImageFailed(true)}
+            onError={handleImageError}
           />
         </div>
         <p className={cn('text-[11px] mt-1', isOwn ? 'text-white/70' : 'text-slate-400')}>{fileData.file_name}</p>
