@@ -3,6 +3,47 @@ const { ensureUserProfile } = require('../services/userProfile');
 const { isUniversityEmail } = require('../utils/validators');
 const config = require('../config');
 
+function getConfiguredClientOrigins() {
+  return String(process.env.CLIENT_URL || config.clientUrl || '')
+    .split(',')
+    .map((value) => value.trim().replace(/\/$/, ''))
+    .filter(Boolean);
+}
+
+function getRequestClientOrigin(req) {
+  const directOrigin = String(req.get('origin') || '').trim().replace(/\/$/, '');
+  if (directOrigin) return directOrigin;
+
+  const referer = String(req.get('referer') || '').trim();
+  if (!referer) return '';
+
+  try {
+    return new URL(referer).origin.replace(/\/$/, '');
+  } catch {
+    return '';
+  }
+}
+
+function resolvePasswordResetBaseUrl(req) {
+  const configuredOrigins = getConfiguredClientOrigins();
+  const requestOrigin = getRequestClientOrigin(req);
+
+  if (requestOrigin && configuredOrigins.includes(requestOrigin)) {
+    return requestOrigin;
+  }
+
+  const preferredConfiguredOrigin = configuredOrigins.find((origin) => {
+    if (!/^https?:\/\//.test(origin)) return false;
+    return !origin.includes('localhost') && !origin.includes('127.0.0.1');
+  });
+  if (preferredConfiguredOrigin) return preferredConfiguredOrigin;
+
+  const fallbackConfiguredOrigin = configuredOrigins.find((origin) => /^https?:\/\//.test(origin));
+  if (fallbackConfiguredOrigin) return fallbackConfiguredOrigin;
+
+  return 'http://localhost:5173';
+}
+
 async function ignoreQueryError(query) {
   try {
     await query;
@@ -166,11 +207,7 @@ async function requestPasswordReset(req, res, next) {
       return res.status(400).json({ error: 'Email is required' });
     }
 
-    const configuredClientUrl = String(process.env.CLIENT_URL || config.clientUrl || '')
-      .split(',')
-      .map((value) => value.trim())
-      .find(Boolean) || 'http://localhost:5173';
-    const redirectTo = `${configuredClientUrl.replace(/\/$/, '')}/reset-password`;
+    const redirectTo = `${resolvePasswordResetBaseUrl(req)}/reset-password`;
     const { error } = await supabasePublic.auth.resetPasswordForEmail(email, { redirectTo });
 
     if (error) {
