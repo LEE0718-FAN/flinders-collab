@@ -224,17 +224,31 @@ export default function QuickLinks({ roomId, links = [], onLinksChange }) {
         <DialogContent className="sm:max-w-sm">
           <DialogHeader>
             <DialogTitle>{selectedLink?.label || 'Quick Link'}</DialogTitle>
-            <DialogDescription className="truncate">{selectedLink?.url || ''}</DialogDescription>
+            <DialogDescription className="break-all pr-8">{selectedLink?.url || ''}</DialogDescription>
           </DialogHeader>
-          <div className="grid gap-2">
-            <Button type="button" className="gap-2" onClick={handleLinkOpen}>
-              <ExternalLink className="h-4 w-4" />
-              Open link
-            </Button>
-            <Button type="button" variant="outline" className="gap-2" onClick={handleLinkCopy}>
-              <Copy className="h-4 w-4" />
-              Copy link
-            </Button>
+          <div className="grid gap-3">
+            <button
+              type="button"
+              onClick={handleLinkOpen}
+              className="flex items-center justify-between rounded-2xl bg-gradient-to-r from-indigo-600 to-blue-600 px-4 py-3 text-left text-white shadow-md transition hover:shadow-lg"
+            >
+              <div className="min-w-0">
+                <p className="text-sm font-semibold">Open link</p>
+                <p className="text-xs text-white/75">Go to the original page in a new tab</p>
+              </div>
+              <ExternalLink className="h-4 w-4 shrink-0" />
+            </button>
+            <button
+              type="button"
+              onClick={handleLinkCopy}
+              className="flex items-center justify-between rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-left text-slate-900 shadow-sm transition hover:border-slate-300 hover:bg-white"
+            >
+              <div className="min-w-0">
+                <p className="text-sm font-semibold">Copy link</p>
+                <p className="text-xs text-slate-500">Copy the full URL to your clipboard</p>
+              </div>
+              <Copy className="h-4 w-4 shrink-0 text-slate-500" />
+            </button>
           </div>
         </DialogContent>
       </Dialog>

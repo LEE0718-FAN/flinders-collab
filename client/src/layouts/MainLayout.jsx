@@ -110,7 +110,7 @@ function SidebarContent({ rooms, location, isAdmin, roomBadgeCounts = {}, user, 
         isActive={location.pathname === '/deadlines'}
         icon={CalendarClock}
         label="Deadlines"
-        badgeLabel={deadlineCount > 0 ? `${deadlineCount} left` : ''}
+        badgeCount={deadlineCount}
       />
       <NavItem
         to="/board"
