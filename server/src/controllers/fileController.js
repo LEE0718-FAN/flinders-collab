@@ -97,7 +97,7 @@ async function getEventContext(eventId) {
   return data;
 }
 
-async function buildSignedDownloadUrl(storagePath) {
+async function buildSignedDownloadUrl(storagePath, fileName = null) {
   const bucket = config.upload.storageBucket;
   const normalizedPath = extractStoragePath(storagePath, bucket);
 
@@ -107,7 +107,7 @@ async function buildSignedDownloadUrl(storagePath) {
 
   const { data, error } = await supabaseAdmin.storage
     .from(bucket)
-    .createSignedUrl(normalizedPath, SIGNED_URL_TTL_SECONDS);
+    .createSignedUrl(normalizedPath, SIGNED_URL_TTL_SECONDS, fileName ? { download: fileName } : undefined);
 
   if (error) {
     throw error;
@@ -251,7 +251,7 @@ async function uploadFile(req, res, next) {
       return res.status(400).json({ error: dbError.message });
     }
 
-    const download_url = await buildSignedDownloadUrl(data.file_url).catch(() => null);
+    const download_url = await buildSignedDownloadUrl(data.file_url, data.file_name).catch(() => null);
     res.status(201).json({
       ...data,
       download_url,
@@ -295,7 +295,7 @@ async function getFiles(req, res, next) {
     const filesWithSignedUrls = await Promise.all(
       data.map(async (file) => ({
         ...file,
-        download_url: await buildSignedDownloadUrl(file.file_url).catch(() => null),
+        download_url: await buildSignedDownloadUrl(file.file_url, file.file_name).catch(() => null),
       }))
     );
 
@@ -325,7 +325,7 @@ async function getFileDownloadUrl(req, res, next) {
       return res.status(403).json({ error: 'You are not a member of this room' });
     }
 
-    const download_url = await buildSignedDownloadUrl(file.file_url);
+    const download_url = await buildSignedDownloadUrl(file.file_url, file.file_name);
 
     res.json({
       file_id: file.id,

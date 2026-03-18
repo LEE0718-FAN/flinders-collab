@@ -64,7 +64,7 @@ async function refreshFileUrls(messages) {
         }
         const { data: signedData } = await supabaseAdmin.storage
           .from(bucket)
-          .createSignedUrl(storagePath, 60 * 60);
+          .createSignedUrl(storagePath, 60 * 60, file.file_name ? { download: file.file_name } : undefined);
         if (signedData?.signedUrl) {
           urlMap.set(file.id, signedData.signedUrl);
         }
