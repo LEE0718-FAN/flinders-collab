@@ -2,6 +2,14 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { ChevronRight, X } from 'lucide-react';
 
 const STORAGE_KEY = 'onboarding-tours';
+const getInteractiveTutorialPhase = () => {
+  if (typeof window === 'undefined') return 'idle';
+  return window.__interactiveTutorialState?.phase || 'idle';
+};
+const getActiveOnboardingTourId = () => {
+  if (typeof window === 'undefined') return null;
+  return window.__activeOnboardingTourId || null;
+};
 
 /**
  * Premium onboarding tour with animated cursor that actually clicks elements.
@@ -24,36 +32,69 @@ export default function OnboardingTour({ tourId, steps = [], delay = 600 }) {
   const [dontShowAgain, setDontShowAgain] = useState(false);
   const overlayRef = useRef(null);
   const tipRef = useRef(null);
+  const isBlockedByOtherTutorial = useCallback(() => {
+    const interactivePhase = getInteractiveTutorialPhase();
+    const otherOnboardingTourId = getActiveOnboardingTourId();
+    return interactivePhase !== 'idle' || Boolean(otherOnboardingTourId && otherOnboardingTourId !== tourId);
+  }, [tourId]);
 
   // ── Should this tour show? ──
   // Only skip if permanently dismissed via "Don't show again" checkbox
   useEffect(() => {
     const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
-    if (saved[tourId]) return;
+    if (saved[tourId] || isBlockedByOtherTutorial()) return;
     const t = setTimeout(() => {
+      if (isBlockedByOtherTutorial()) return;
+      window.__activeOnboardingTourId = tourId;
       setActive(true);
       setCursorPos({ x: window.innerWidth / 2, y: window.innerHeight / 2 });
     }, delay);
     return () => clearTimeout(t);
-  }, [tourId, delay]);
+  }, [delay, isBlockedByOtherTutorial, tourId]);
 
   // ── Close helpers ──
   // Just close — will show again on next visit
   const dismiss = useCallback(() => {
+    if (window.__activeOnboardingTourId === tourId) {
+      window.__activeOnboardingTourId = null;
+    }
     setActive(false);
-  }, []);
+  }, [tourId]);
 
   const dismissForever = useCallback(() => {
     const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
     saved[tourId] = Date.now();
     localStorage.setItem(STORAGE_KEY, JSON.stringify(saved));
+    if (window.__activeOnboardingTourId === tourId) {
+      window.__activeOnboardingTourId = null;
+    }
     setActive(false);
   }, [tourId]);
 
   // Skip all steps of THIS tour only
   const skipAll = useCallback(() => {
+    if (window.__activeOnboardingTourId === tourId) {
+      window.__activeOnboardingTourId = null;
+    }
     setActive(false);
-  }, []);
+  }, [tourId]);
+
+  useEffect(() => {
+    const syncWithInteractiveTutorial = (event) => {
+      const phase = event?.detail?.phase || getInteractiveTutorialPhase();
+      if (phase !== 'idle') {
+        dismiss();
+      }
+    };
+    window.addEventListener('interactive-tutorial-state', syncWithInteractiveTutorial);
+    return () => window.removeEventListener('interactive-tutorial-state', syncWithInteractiveTutorial);
+  }, [dismiss]);
+
+  useEffect(() => () => {
+    if (window.__activeOnboardingTourId === tourId) {
+      window.__activeOnboardingTourId = null;
+    }
+  }, [tourId]);
 
   // ── Position calculation ──
   const computePositions = useCallback(() => {

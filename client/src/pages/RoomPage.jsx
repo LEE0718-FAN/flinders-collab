@@ -31,6 +31,7 @@ import { getAnnouncements, createAnnouncement, deleteAnnouncement as deleteAnnou
 import { formatDistanceToNow, format } from 'date-fns';
 import { isFlindersUser } from '@/lib/flinders-week';
 import { getFlindersScheduleOverlayEvents } from '@/lib/flinders-academic-overlay';
+import { markRoomVisited } from '@/lib/room-activity';
 
 function sortEvents(items) {
   return [...items].sort((a, b) => new Date(a.start_time) - new Date(b.start_time));
@@ -238,6 +239,35 @@ export default function RoomPage() {
       // ignore
     }
   }, [roomId]);
+
+  useEffect(() => {
+    if (!user?.id || !roomId) return undefined;
+
+    const syncVisitedAt = () => {
+      markRoomVisited(user.id, roomId);
+      window.dispatchEvent(new CustomEvent('room-activity-visited', {
+        detail: { roomId },
+      }));
+    };
+
+    syncVisitedAt();
+    const intervalId = window.setInterval(syncVisitedAt, 15000);
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        syncVisitedAt();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('beforeunload', syncVisitedAt);
+
+    return () => {
+      syncVisitedAt();
+      window.clearInterval(intervalId);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('beforeunload', syncVisitedAt);
+    };
+  }, [roomId, user?.id]);
 
   useEffect(() => {
     if (!loading && announcements.some(a => !a.is_read)) {

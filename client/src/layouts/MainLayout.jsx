@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { LayoutDashboard, LogOut, Menu, Users, ChevronRight, Shield, User, CalendarClock, MessageSquare, Wrench, GraduationCap } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -14,9 +14,10 @@ import { useAuth } from '@/hooks/useAuth';
 import { socket } from '@/lib/socket';
 import ProfileDialog from '@/components/ProfileDialog';
 
-import { getRooms } from '@/services/rooms';
+import { getRoomActivity, getRooms } from '@/services/rooms';
 import { getEvents } from '@/services/events';
 import { applyRoomOrder, loadRoomOrder } from '@/lib/room-order';
+import { readRoomLastVisited } from '@/lib/room-activity';
 
 const ROOM_NAVIGATION_UPDATED_EVENT = 'rooms-updated';
 
@@ -94,7 +95,7 @@ function NavItem({ to, isActive, icon: Icon, label, palette, badgeCount = 0 }) {
   );
 }
 
-function SidebarContent({ rooms, location, isAdmin, unreadCounts = {}, user, deadlineCount = 0 }) {
+function SidebarContent({ rooms, location, isAdmin, roomBadgeCounts = {}, user, deadlineCount = 0 }) {
   return (
     <nav className="flex flex-col gap-1" role="navigation" aria-label="Main navigation" data-tour="sidebar-nav">
       <NavItem
@@ -141,7 +142,7 @@ function SidebarContent({ rooms, location, isAdmin, unreadCounts = {}, user, dea
       {/* Room list */}
       <div className="flex flex-col gap-0.5" data-tour="sidebar-rooms">
         {rooms.map((room) => {
-          const unread = unreadCounts[room.id] || 0;
+          const unread = roomBadgeCounts[room.id] || 0;
           return (
             <div key={room.id} className="relative">
               <NavItem
@@ -192,7 +193,8 @@ export default function MainLayout({ children }) {
   const [logoutOpen, setLogoutOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [maintenance, setMaintenance] = useState(null); // { type, message, minutesUntil }
-  const [unreadCounts, setUnreadCounts] = useState({});
+  const [announcementUnreadCounts, setAnnouncementUnreadCounts] = useState({});
+  const [recentActivityCounts, setRecentActivityCounts] = useState({});
   const [deadlineCount, setDeadlineCount] = useState(0);
 
   const refreshRooms = async () => {
@@ -228,10 +230,69 @@ export default function MainLayout({ children }) {
     }
   };
 
+  const refreshRecentActivityCounts = async (targetRooms = rooms) => {
+    if (!user?.id) {
+      setRecentActivityCounts({});
+      return;
+    }
+
+    try {
+      const results = await Promise.allSettled(
+        targetRooms.map(async (room) => {
+          const activity = await getRoomActivity(room.id);
+          const items = Array.isArray(activity) ? activity : [];
+          const lastVisited = readRoomLastVisited(user.id, room.id);
+          const count = items.filter((entry) => {
+            const createdAt = new Date(entry.created_at).getTime();
+            return Number.isFinite(createdAt) && createdAt > lastVisited;
+          }).length;
+          return [room.id, count];
+        })
+      );
+
+      const next = {};
+      results.forEach((result) => {
+        if (result.status !== 'fulfilled') return;
+        const [roomId, count] = result.value;
+        if (count > 0) next[roomId] = count;
+      });
+      setRecentActivityCounts(next);
+    } catch {
+      setRecentActivityCounts({});
+    }
+  };
+
+  const roomBadgeCounts = useMemo(() => {
+    const next = {};
+    const roomIds = new Set([
+      ...Object.keys(announcementUnreadCounts || {}),
+      ...Object.keys(recentActivityCounts || {}),
+    ]);
+
+    roomIds.forEach((roomId) => {
+      const count = (announcementUnreadCounts[roomId] || 0) + (recentActivityCounts[roomId] || 0);
+      if (count > 0) next[roomId] = count;
+    });
+
+    return next;
+  }, [announcementUnreadCounts, recentActivityCounts]);
+
   useEffect(() => {
     refreshRooms().catch(() => {});
     refreshDeadlineCount().catch(() => {});
   }, [user?.id]);
+
+  useEffect(() => {
+    if (!user?.id) {
+      setRecentActivityCounts({});
+      return;
+    }
+    if (rooms.length === 0) {
+      setRecentActivityCounts({});
+      return;
+    }
+    refreshRecentActivityCounts(rooms).catch(() => {});
+  }, [rooms, user?.id]);
 
   useEffect(() => {
     const handleRoomOrderUpdated = (event) => {
@@ -262,11 +323,13 @@ export default function MainLayout({ children }) {
       if (Array.isArray(detail.rooms)) {
         setRooms(applyRoomOrder(detail.rooms, loadRoomOrder(user?.id)));
         refreshDeadlineCount().catch(() => {});
+        refreshRecentActivityCounts(detail.rooms).catch(() => {});
         return;
       }
 
       refreshRooms().catch(() => {});
       refreshDeadlineCount().catch(() => {});
+      refreshRecentActivityCounts().catch(() => {});
     };
 
     // Debounce window focus to avoid excessive refetches (min 30s between)
@@ -278,11 +341,24 @@ export default function MainLayout({ children }) {
       lastFocusRefresh = now;
       refreshRooms().catch(() => {});
       refreshDeadlineCount().catch(() => {});
+      refreshRecentActivityCounts().catch(() => {});
+    };
+
+    const handleRoomActivityVisited = (event) => {
+      const { roomId } = event.detail || {};
+      if (!roomId) return;
+      setRecentActivityCounts((prev) => {
+        if (!(roomId in prev)) return prev;
+        const next = { ...prev };
+        delete next[roomId];
+        return next;
+      });
     };
 
     window.addEventListener('room-order-updated', handleRoomOrderUpdated);
     window.addEventListener('storage', handleStorage);
     window.addEventListener(ROOM_NAVIGATION_UPDATED_EVENT, handleRoomsUpdated);
+    window.addEventListener('room-activity-visited', handleRoomActivityVisited);
     window.addEventListener('focus', handleWindowFocus);
     document.addEventListener('visibilitychange', handleWindowFocus);
 
@@ -290,10 +366,11 @@ export default function MainLayout({ children }) {
       window.removeEventListener('room-order-updated', handleRoomOrderUpdated);
       window.removeEventListener('storage', handleStorage);
       window.removeEventListener(ROOM_NAVIGATION_UPDATED_EVENT, handleRoomsUpdated);
+      window.removeEventListener('room-activity-visited', handleRoomActivityVisited);
       window.removeEventListener('focus', handleWindowFocus);
       document.removeEventListener('visibilitychange', handleWindowFocus);
     };
-  }, [user?.id]);
+  }, [rooms, user?.id]);
 
   // Fetch unread announcement counts for sidebar badges
   useEffect(() => {
@@ -301,7 +378,7 @@ export default function MainLayout({ children }) {
       try {
         const { getUnreadCounts } = await import('@/services/announcements');
         const counts = await getUnreadCounts();
-        setUnreadCounts(counts || {});
+        setAnnouncementUnreadCounts(counts || {});
       } catch { /* silent */ }
     };
     fetchUnreadCounts();
@@ -309,7 +386,7 @@ export default function MainLayout({ children }) {
     const handleAnnouncementsRead = (e) => {
       const { roomId } = e.detail || {};
       if (roomId) {
-        setUnreadCounts(prev => {
+        setAnnouncementUnreadCounts(prev => {
           const next = { ...prev };
           delete next[roomId];
           return next;
@@ -386,7 +463,7 @@ export default function MainLayout({ children }) {
 
         {/* Sidebar navigation */}
         <div className="flex-1 overflow-y-auto px-3 py-4 custom-scrollbar">
-          <SidebarContent rooms={rooms} location={location} isAdmin={user?.is_admin} unreadCounts={unreadCounts} user={user} deadlineCount={deadlineCount} />
+          <SidebarContent rooms={rooms} location={location} isAdmin={user?.is_admin} roomBadgeCounts={roomBadgeCounts} user={user} deadlineCount={deadlineCount} />
         </div>
 
         {/* Sidebar footer / user info */}
@@ -433,7 +510,7 @@ export default function MainLayout({ children }) {
                 </SheetHeader>
                 <div className="h-px bg-gradient-to-r from-white/10 via-white/5 to-transparent mx-3" />
                 <div className="px-3 py-4">
-                  <SidebarContent rooms={rooms} location={location} isAdmin={user?.is_admin} unreadCounts={unreadCounts} user={user} deadlineCount={deadlineCount} />
+                  <SidebarContent rooms={rooms} location={location} isAdmin={user?.is_admin} roomBadgeCounts={roomBadgeCounts} user={user} deadlineCount={deadlineCount} />
                 </div>
               </SheetContent>
             </Sheet>

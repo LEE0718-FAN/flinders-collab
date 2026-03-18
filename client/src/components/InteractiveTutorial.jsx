@@ -12,9 +12,14 @@ import { useAuthStore } from '@/store/authStore';
 const TUTORIAL_KEY = 'tutorial-completed';
 const TUTORIAL_ROOM_NAME = '🎓 Tutorial Room';
 const TUTORIAL_ROOM_ID_KEY = 'tutorial-room-id';
+const TUTORIAL_SESSION_DISMISS_KEY = 'tutorial-dismissed-session';
 const hasTutorialSuppression = () => {
   if (typeof window === 'undefined') return false;
   return Boolean(window.localStorage.getItem(TUTORIAL_KEY));
+};
+const hasTutorialSessionDismissed = () => {
+  if (typeof window === 'undefined') return false;
+  return Boolean(window.sessionStorage.getItem(TUTORIAL_SESSION_DISMISS_KEY));
 };
 
 export default function InteractiveTutorial() {
@@ -36,6 +41,9 @@ export default function InteractiveTutorial() {
   const [canSkip, setCanSkip] = useState(true);
   const createdRoomIdRef = useRef(null);
   const suppressedRef = useRef(hasTutorialSuppression());
+  const sessionDismissedRef = useRef(hasTutorialSessionDismissed());
+  const activeRef = useRef(false);
+  const showPromptRef = useRef(false);
   const totalSteps = 14;
   const swallowPointer = useCallback((event) => {
     event.preventDefault();
@@ -46,28 +54,47 @@ export default function InteractiveTutorial() {
     suppressedRef.current = value;
     return value;
   }, []);
+  const isTutorialSessionDismissed = useCallback(() => {
+    const value = hasTutorialSessionDismissed();
+    sessionDismissedRef.current = value;
+    return value;
+  }, []);
   const rememberSuppressed = useCallback((value) => {
     suppressedRef.current = value;
+  }, []);
+  const rememberSessionDismissed = useCallback((value) => {
+    sessionDismissedRef.current = value;
   }, []);
   const persistTutorialSuppression = useCallback(() => {
     localStorage.setItem(TUTORIAL_KEY, Date.now().toString());
     rememberSuppressed(true);
-  }, [rememberSuppressed]);
+    sessionStorage.setItem(TUTORIAL_SESSION_DISMISS_KEY, Date.now().toString());
+    rememberSessionDismissed(true);
+  }, [rememberSessionDismissed, rememberSuppressed]);
   const clearTutorialSuppression = useCallback(() => {
     localStorage.removeItem(TUTORIAL_KEY);
     rememberSuppressed(false);
   }, [rememberSuppressed]);
+  const persistTutorialSessionDismiss = useCallback(() => {
+    sessionStorage.setItem(TUTORIAL_SESSION_DISMISS_KEY, Date.now().toString());
+    rememberSessionDismissed(true);
+  }, [rememberSessionDismissed]);
+  const clearTutorialSessionDismiss = useCallback(() => {
+    sessionStorage.removeItem(TUTORIAL_SESSION_DISMISS_KEY);
+    rememberSessionDismissed(false);
+  }, [rememberSessionDismissed]);
   const guardedSetShowPrompt = useCallback((value, options = {}) => {
     const { force = false } = options;
-    if (value && !force && isTutorialSuppressed()) return;
+    if (value && !force && (isTutorialSuppressed() || isTutorialSessionDismissed() || activeRef.current)) return;
     setShowPrompt(value);
-  }, [isTutorialSuppressed]);
+  }, [isTutorialSessionDismissed, isTutorialSuppressed]);
   const guardedStartTutorial = useCallback((options = {}) => {
     const { force = false } = options;
-    if (!force && isTutorialSuppressed()) return;
+    if (activeRef.current) return;
+    if (!force && (isTutorialSuppressed() || isTutorialSessionDismissed())) return;
     setShowPrompt(false);
     setActive(true);
-  }, [isTutorialSuppressed]);
+  }, [isTutorialSessionDismissed, isTutorialSuppressed]);
 
   // ── Clean up any leftover tutorial room from a previous crashed session ──
   useEffect(() => {
@@ -93,7 +120,7 @@ export default function InteractiveTutorial() {
     const testerMode = Boolean(session?.is_tester || user?.is_tester);
     let fallbackTimer = null;
 
-    if (!testerMode && isTutorialSuppressed()) return;
+    if (!testerMode && (isTutorialSuppressed() || isTutorialSessionDismissed())) return;
 
     if (testerMode) {
       fallbackTimer = setTimeout(() => {
@@ -116,7 +143,26 @@ export default function InteractiveTutorial() {
       cancelled = true;
       if (fallbackTimer) clearTimeout(fallbackTimer);
     };
-  }, [guardedSetShowPrompt, isTutorialSuppressed, session?.is_tester, user]);
+  }, [guardedSetShowPrompt, isTutorialSessionDismissed, isTutorialSuppressed, session?.is_tester, user]);
+
+  useEffect(() => {
+    const syncPromptVisibility = async () => {
+      if (!showPromptRef.current || activeRef.current) return;
+      if (isTutorialSuppressed() || isTutorialSessionDismissed()) {
+        setShowPrompt(false);
+        return;
+      }
+      try {
+        const rooms = await getRooms();
+        const list = Array.isArray(rooms) ? rooms : rooms?.rooms || [];
+        if (list.length > 0) setShowPrompt(false);
+      } catch {
+        // Ignore sync failures; prompt suppression guards still apply.
+      }
+    };
+    window.addEventListener('rooms-updated', syncPromptVisibility);
+    return () => window.removeEventListener('rooms-updated', syncPromptVisibility);
+  }, [isTutorialSessionDismissed, isTutorialSuppressed]);
 
   useEffect(() => {
     const handler = (event) => {
@@ -128,16 +174,28 @@ export default function InteractiveTutorial() {
   }, [guardedStartTutorial]);
 
   useEffect(() => {
-    if (typeof window === 'undefined') return undefined;
-    window.dispatchEvent(new CustomEvent('interactive-tutorial-state', {
-      detail: { active },
-    }));
-    return () => {
-      window.dispatchEvent(new CustomEvent('interactive-tutorial-state', {
-        detail: { active: false },
-      }));
-    };
+    activeRef.current = active;
   }, [active]);
+
+  useEffect(() => {
+    showPromptRef.current = showPrompt;
+  }, [showPrompt]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return undefined;
+    const detail = {
+      active,
+      promptVisible: showPrompt && !active,
+      phase: active ? 'active' : showPrompt ? 'prompt' : 'idle',
+    };
+    window.__interactiveTutorialState = detail;
+    window.dispatchEvent(new CustomEvent('interactive-tutorial-state', { detail }));
+    return () => {
+      const idleDetail = { active: false, promptVisible: false, phase: 'idle' };
+      window.__interactiveTutorialState = idleDetail;
+      window.dispatchEvent(new CustomEvent('interactive-tutorial-state', { detail: idleDetail }));
+    };
+  }, [active, showPrompt]);
 
   // If tester closes the tab/browser, try cleanup via fetch keepalive
   useEffect(() => {
@@ -890,6 +948,7 @@ export default function InteractiveTutorial() {
       return;
     }
     setShowPrompt(false);
+    persistTutorialSessionDismiss();
   };
   const handleNeverShow = () => {
     if (session?.is_tester) {
@@ -901,6 +960,7 @@ export default function InteractiveTutorial() {
   };
   const startTutorial = () => {
     clearTutorialSuppression();
+    clearTutorialSessionDismiss();
     guardedStartTutorial({ force: true });
   };
 

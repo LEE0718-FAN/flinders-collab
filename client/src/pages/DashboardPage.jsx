@@ -509,7 +509,10 @@ export default function DashboardPage() {
             <button
               onClick={() => {
                 localStorage.removeItem('tutorial-completed');
-                window.dispatchEvent(new CustomEvent('start-interactive-tutorial'));
+                sessionStorage.removeItem('tutorial-dismissed-session');
+                window.dispatchEvent(new CustomEvent('start-interactive-tutorial', {
+                  detail: { force: true },
+                }));
               }}
               className="mt-4 inline-flex items-center gap-1.5 rounded-full bg-indigo-50 px-4 py-2 text-xs font-semibold text-indigo-600 hover:bg-indigo-100 transition-colors"
             >
