@@ -17,11 +17,12 @@ import {
   AlertDialogContent, AlertDialogDescription, AlertDialogFooter,
   AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { getReports, updateReport, getAdminUsers, toggleUserAdmin, deleteAdminUser, getMonitorStats, resolveAlert, triggerHealthCheck } from '@/services/reports';
+import { getReports, updateReport, getAdminUsers, toggleUserAdmin, deleteAdminUser, getMonitorStats, resolveAlert, triggerHealthCheck, getDeletedFiles, restoreDeletedFile, getFileIntegrityReport } from '@/services/reports';
 import { useAuth } from '@/hooks/useAuth';
 import {
   Loader2, ChevronDown, Shield, ShieldOff, AlertCircle, User, ShieldAlert, Search, Trash2, Mail, GraduationCap, Calendar,
   Activity, Server, Database, Clock, Zap, AlertTriangle, CheckCircle2, XCircle, RefreshCw, Cpu, HardDrive, TrendingUp, Eye, Bell,
+  ArchiveRestore, ShieldCheck,
 } from 'lucide-react';
 import { format, formatDistanceToNow } from 'date-fns';
 
@@ -936,6 +937,164 @@ function MonitoringTab() {
   );
 }
 
+function FileBackupsTab() {
+  const [deletedFiles, setDeletedFiles] = useState([]);
+  const [integrity, setIntegrity] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [restoringId, setRestoringId] = useState(null);
+  const [error, setError] = useState('');
+
+  const fetchBackupData = async (isRefresh = false) => {
+    if (isRefresh) setRefreshing(true);
+    setError('');
+    try {
+      const [deleted, report] = await Promise.all([
+        getDeletedFiles(),
+        getFileIntegrityReport(),
+      ]);
+      setDeletedFiles(Array.isArray(deleted) ? deleted : deleted.files || []);
+      setIntegrity(report || null);
+    } catch (err) {
+      setError(err.message || 'Failed to load backup status.');
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchBackupData();
+  }, []);
+
+  const handleRestore = async (fileId) => {
+    setRestoringId(fileId);
+    setError('');
+    try {
+      await restoreDeletedFile(fileId);
+      setDeletedFiles((prev) => prev.filter((file) => file.id !== fileId));
+      await fetchBackupData(true);
+    } catch (err) {
+      setError(err.message || 'Failed to restore file.');
+    } finally {
+      setRestoringId(null);
+    }
+  };
+
+  if (loading) {
+    return <div className="flex justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>;
+  }
+
+  const summary = integrity?.summary || {};
+
+  return (
+    <div className="space-y-5">
+      <div className="flex items-center justify-between">
+        <div>
+          <h3 className="text-lg font-bold text-slate-800">File Backup Integrity</h3>
+          <p className="text-sm text-slate-500">Restore deleted files and verify backup coverage.</p>
+        </div>
+        <Button variant="outline" size="sm" onClick={() => fetchBackupData(true)} disabled={refreshing} className="h-8 gap-1.5 text-xs rounded-full">
+          <RefreshCw className={`h-3 w-3 ${refreshing ? 'animate-spin' : ''}`} />
+          Refresh
+        </Button>
+      </div>
+
+      {error && (
+        <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          {error}
+        </div>
+      )}
+
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div className="rounded-xl bg-gradient-to-br from-indigo-500 to-blue-600 p-4 text-white shadow-lg">
+          <p className="text-xs text-white/70">Checked Files</p>
+          <p className="mt-1 text-2xl font-black">{summary.total || 0}</p>
+        </div>
+        <div className="rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 p-4 text-white shadow-lg">
+          <p className="text-xs text-white/70">Healthy</p>
+          <p className="mt-1 text-2xl font-black">{summary.healthy || 0}</p>
+        </div>
+        <div className="rounded-xl bg-gradient-to-br from-amber-500 to-orange-600 p-4 text-white shadow-lg">
+          <p className="text-xs text-white/70">Restorable</p>
+          <p className="mt-1 text-2xl font-black">{summary.restorable || 0}</p>
+        </div>
+        <div className="rounded-xl bg-gradient-to-br from-rose-500 to-red-600 p-4 text-white shadow-lg">
+          <p className="text-xs text-white/70">Missing Backup</p>
+          <p className="mt-1 text-2xl font-black">{summary.missingBackup || 0}</p>
+        </div>
+      </div>
+
+      <Card className="shadow-sm">
+        <CardContent className="p-4">
+          <h4 className="mb-3 flex items-center gap-2 text-sm font-semibold text-slate-700">
+            <ShieldCheck className="h-4 w-4 text-emerald-500" />
+            Deleted Files
+            <Badge className="rounded-full text-[10px] bg-slate-100 text-slate-700 border-slate-200">
+              {deletedFiles.length}
+            </Badge>
+          </h4>
+          {deletedFiles.length === 0 ? (
+            <div className="py-8 text-center text-sm text-slate-400">No deleted files waiting for restore.</div>
+          ) : (
+            <div className="space-y-2">
+              {deletedFiles.map((file) => (
+                <div key={file.id} className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between">
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-semibold text-slate-800">{file.file_name}</p>
+                    <p className="mt-1 text-xs text-slate-500">
+                      {file.rooms?.name || 'Unknown room'} · {file.users?.full_name || file.users?.university_email || 'Unknown uploader'}
+                    </p>
+                    <p className="mt-1 text-[11px] text-slate-400">
+                      Deleted {file.deleted_at ? formatDistanceToNow(new Date(file.deleted_at), { addSuffix: true }) : 'recently'}
+                    </p>
+                  </div>
+                  <Button size="sm" className="h-8 gap-1.5 rounded-full bg-gradient-to-r from-emerald-500 to-teal-600 text-xs text-white" onClick={() => handleRestore(file.id)} disabled={restoringId === file.id}>
+                    {restoringId === file.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <ArchiveRestore className="h-3.5 w-3.5" />}
+                    Restore
+                  </Button>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card className="shadow-sm">
+        <CardContent className="p-4">
+          <h4 className="mb-3 flex items-center gap-2 text-sm font-semibold text-slate-700">
+            <Database className="h-4 w-4 text-indigo-500" />
+            Integrity Report
+          </h4>
+          {integrity?.files?.length ? (
+            <div className="space-y-2 max-h-[28rem] overflow-y-auto">
+              {integrity.files.slice(0, 80).map((file) => (
+                <div key={file.id} className="flex items-center justify-between gap-3 rounded-lg border border-slate-100 px-3 py-2 text-xs">
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate font-medium text-slate-700">{file.file_name}</p>
+                    <p className="truncate text-slate-400">{file.room_id}</p>
+                  </div>
+                  <Badge className={`rounded-full text-[10px] ${
+                    file.integrity_status === 'healthy'
+                      ? 'bg-emerald-100 text-emerald-700 border-emerald-200'
+                      : file.integrity_status === 'restorable'
+                        ? 'bg-amber-100 text-amber-700 border-amber-200'
+                        : 'bg-red-100 text-red-700 border-red-200'
+                  }`}>
+                    {file.integrity_status}
+                  </Badge>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="py-8 text-center text-sm text-slate-400">No integrity data available.</div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
 export default function AdminPage() {
   const { user } = useAuth();
 
@@ -979,6 +1138,10 @@ export default function AdminPage() {
             </TabsTrigger>
             <TabsTrigger value="reports" className="rounded-xl data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-600 data-[state=active]:to-indigo-600 data-[state=active]:text-white data-[state=active]:shadow-md text-slate-500">Reports</TabsTrigger>
             <TabsTrigger value="users" className="rounded-xl data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-600 data-[state=active]:to-indigo-600 data-[state=active]:text-white data-[state=active]:shadow-md text-slate-500">Users</TabsTrigger>
+            <TabsTrigger value="files" className="rounded-xl data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-600 data-[state=active]:to-indigo-600 data-[state=active]:text-white data-[state=active]:shadow-md text-slate-500 gap-1.5">
+              <ArchiveRestore className="h-3.5 w-3.5" />
+              File Backup
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="monitoring" className="mt-4">
@@ -991,6 +1154,10 @@ export default function AdminPage() {
 
           <TabsContent value="users" className="mt-4">
             <UsersTab />
+          </TabsContent>
+
+          <TabsContent value="files" className="mt-4">
+            <FileBackupsTab />
           </TabsContent>
         </Tabs>
       </div>

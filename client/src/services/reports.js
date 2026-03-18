@@ -55,3 +55,21 @@ export async function triggerHealthCheck() {
   const res = await fetch(apiUrl('/api/admin/health'), { headers });
   return parseResponse(res);
 }
+
+export async function getDeletedFiles() {
+  const headers = getAuthHeaders();
+  const res = await fetch(apiUrl('/api/admin/files/deleted'), { headers });
+  return parseResponse(res);
+}
+
+export async function restoreDeletedFile(fileId) {
+  const headers = getAuthHeaders();
+  const res = await fetch(apiUrl(`/api/admin/files/${fileId}/restore`), { method: 'POST', headers });
+  return parseResponse(res);
+}
+
+export async function getFileIntegrityReport() {
+  const headers = getAuthHeaders();
+  const res = await fetch(apiUrl('/api/admin/files/integrity'), { headers });
+  return parseResponse(res);
+}

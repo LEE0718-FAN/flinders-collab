@@ -338,6 +338,53 @@ async function getFileDownloadUrl(req, res, next) {
   }
 }
 
+async function downloadFile(req, res, next) {
+  try {
+    const { fileId } = req.params;
+    const userId = req.user.id;
+    const bucket = config.upload.storageBucket;
+
+    const { data: file, error } = await supabaseAdmin
+      .from('files')
+      .select('id, room_id, file_name, file_url, file_type, deleted_at')
+      .eq('id', fileId)
+      .maybeSingle();
+
+    if (error || !file || file.deleted_at) {
+      return res.status(404).json({ error: 'File not found' });
+    }
+
+    const role = await getMembershipRole(file.room_id, userId);
+    if (!role) {
+      return res.status(403).json({ error: 'You are not a member of this room' });
+    }
+
+    const storagePath = extractStoragePath(file.file_url, bucket);
+    if (!storagePath) {
+      return res.status(500).json({ error: 'Stored file path is invalid and could not be downloaded' });
+    }
+
+    const { data: blob, error: downloadError } = await supabaseAdmin.storage
+      .from(bucket)
+      .download(storagePath);
+
+    if (downloadError || !blob) {
+      return res.status(500).json({ error: downloadError?.message || 'Failed to download file from storage' });
+    }
+
+    const arrayBuffer = await blob.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+    const encodedFileName = encodeURIComponent(file.file_name || 'download').replace(/['()]/g, escape).replace(/\*/g, '%2A');
+
+    res.setHeader('Content-Type', file.file_type || 'application/octet-stream');
+    res.setHeader('Content-Length', buffer.length);
+    res.setHeader('Content-Disposition', `attachment; filename*=UTF-8''${encodedFileName}`);
+    res.send(buffer);
+  } catch (err) {
+    next(err);
+  }
+}
+
 /**
  * DELETE /files/:fileId
  * Soft-delete a file. The file is hidden from the UI but remains in the
@@ -478,6 +525,7 @@ module.exports = {
   uploadFile,
   getFiles,
   getFileDownloadUrl,
+  downloadFile,
   deleteFile,
   updateFile,
 };
