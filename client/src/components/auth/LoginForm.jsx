@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -6,6 +6,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Loader2, Mail, Lock } from 'lucide-react';
 
 export default function LoginForm({ onSubmit, onGuestLogin, onRequestPasswordReset }) {
+  const RESET_COOLDOWN_SECONDS = 60;
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -16,6 +17,22 @@ export default function LoginForm({ onSubmit, onGuestLogin, onRequestPasswordRes
   const [resetOpen, setResetOpen] = useState(false);
   const [resetEmail, setResetEmail] = useState('');
   const [resetMessage, setResetMessage] = useState('');
+  const [resetCooldown, setResetCooldown] = useState(0);
+
+  useEffect(() => {
+    if (resetCooldown <= 0) return undefined;
+    const timer = window.setInterval(() => {
+      setResetCooldown((prev) => (prev <= 1 ? 0 : prev - 1));
+    }, 1000);
+    return () => window.clearInterval(timer);
+  }, [resetCooldown]);
+
+  const formatCooldown = (seconds) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    if (mins <= 0) return `${secs}s`;
+    return `${mins}:${String(secs).padStart(2, '0')}`;
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -60,14 +77,23 @@ export default function LoginForm({ onSubmit, onGuestLogin, onRequestPasswordRes
       return;
     }
 
+    if (resetCooldown > 0) {
+      setError(`Please wait ${formatCooldown(resetCooldown)} before sending another reset email.`);
+      return;
+    }
+
     setResetLoading(true);
     try {
       await onRequestPasswordReset?.(normalizedEmail);
+      setResetCooldown(RESET_COOLDOWN_SECONDS);
       setResetMessage(`An email has been sent to ${normalizedEmail}. Please use the reset link in that email.`);
     } catch (err) {
       const msg = err.message || 'Failed to send password reset email';
       if (msg === 'Failed to fetch' || msg === 'Load failed') {
         setError('Server is starting up. Please try again in a few seconds.');
+      } else if (msg.toLowerCase().includes('rate limit')) {
+        setResetCooldown(RESET_COOLDOWN_SECONDS);
+        setError(`Too many reset requests. Please wait ${formatCooldown(RESET_COOLDOWN_SECONDS)} before trying again.`);
       } else {
         setError(msg);
       }
@@ -241,15 +267,25 @@ export default function LoginForm({ onSubmit, onGuestLogin, onRequestPasswordRes
                 <p className="text-sm text-emerald-700">{resetMessage}</p>
               </div>
             )}
+
+            {resetCooldown > 0 && (
+              <div className="rounded-xl border border-blue-100 bg-blue-50 px-4 py-3">
+                <p className="text-sm text-blue-700">
+                  You can send another reset email in <span className="font-semibold">{formatCooldown(resetCooldown)}</span>.
+                </p>
+              </div>
+            )}
           </div>
 
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => setResetOpen(false)} disabled={resetLoading}>
               Cancel
             </Button>
-            <Button type="button" onClick={handlePasswordReset} disabled={resetLoading}>
+            <Button type="button" onClick={handlePasswordReset} disabled={resetLoading || resetCooldown > 0}>
               {resetLoading ? (
                 <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Sending...</>
+              ) : resetCooldown > 0 ? (
+                `Resend in ${formatCooldown(resetCooldown)}`
               ) : (
                 'Send reset email'
               )}

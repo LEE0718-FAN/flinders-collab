@@ -7,8 +7,6 @@ import { DateField, TimeField } from '@/components/ui/date-time-field';
 import { Loader2, MapPin } from 'lucide-react';
 import { createEvent } from '@/services/events';
 import { format } from 'date-fns';
-import { useAuth } from '@/hooks/useAuth';
-import { getFlindersWeekContext, isFlindersUser } from '@/lib/flinders-week';
 
 const CATEGORIES = [
   { value: 'meeting', label: 'Meeting', icon: '👥' },
@@ -24,7 +22,6 @@ const CATEGORIES = [
 ];
 
 export default function EventForm({ roomId, onCreateStart, onCreated, onCreateError, selectedDate, open, onOpenChange }) {
-  const { user } = useAuth();
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState('meeting');
@@ -50,7 +47,6 @@ export default function EventForm({ roomId, onCreateStart, onCreated, onCreateEr
 
   const dateStr = selectedDate ? format(selectedDate, 'yyyy-MM-dd') : '';
   const displayDate = selectedDate ? format(selectedDate, 'EEEE, MMMM d, yyyy') : '';
-  const weekHint = isFlindersUser(user) ? getFlindersWeekContext(selectedDate) : null;
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -158,7 +154,6 @@ export default function EventForm({ roomId, onCreateStart, onCreated, onCreateEr
             <div className="grid gap-3 md:grid-cols-[minmax(0,1.25fr)_minmax(0,1fr)_minmax(0,1fr)]">
               <DateField
                 label="Date"
-                hint={weekHint || undefined}
                 value={dateStr}
                 readOnly
                 disabled

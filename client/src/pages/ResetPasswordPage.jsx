@@ -21,6 +21,11 @@ export default function ResetPasswordPage() {
     return new URLSearchParams(window.location.search).get('code') || '';
   }, []);
 
+  const hashParams = useMemo(() => {
+    if (typeof window === 'undefined') return new URLSearchParams();
+    return new URLSearchParams(window.location.hash.replace(/^#/, ''));
+  }, []);
+
   useEffect(() => {
     let active = true;
 
@@ -30,6 +35,14 @@ export default function ResetPasswordPage() {
           const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(window.location.href);
           if (exchangeError) {
             throw exchangeError;
+          }
+        } else if (hashParams.has('access_token') && hashParams.has('refresh_token')) {
+          const { error: sessionError } = await supabase.auth.setSession({
+            access_token: hashParams.get('access_token'),
+            refresh_token: hashParams.get('refresh_token'),
+          });
+          if (sessionError) {
+            throw sessionError;
           }
         }
 
@@ -65,7 +78,7 @@ export default function ResetPasswordPage() {
       active = false;
       authListener.subscription.unsubscribe();
     };
-  }, [recoveryCode]);
+  }, [hashParams, recoveryCode]);
 
   const handleSubmit = async (event) => {
     event.preventDefault();

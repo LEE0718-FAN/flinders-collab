@@ -86,7 +86,11 @@ const FLINDERS_WEEK_STARTS = [
 
 function normalizeDate(dateLike) {
   if (!dateLike) return null;
-  const value = dateLike instanceof Date ? dateLike : new Date(dateLike);
+  const value = dateLike instanceof Date
+    ? dateLike
+    : typeof dateLike === 'string'
+      ? parseISO(dateLike)
+      : new Date(dateLike);
   if (!isValid(value)) return null;
   return startOfDay(value);
 }
@@ -143,6 +147,15 @@ export function getFlindersWeekLabelForDates(dates, options = {}) {
   const labels = dates
     .map((date) => ({ date, info: getFlindersWeekInfo(date) }))
     .filter((entry) => entry.info);
+
+  const weekdayTeachingWeek = labels.find((entry) => {
+    const normalized = normalizeDate(entry.date);
+    const day = normalized?.getDay();
+    return !entry.info.isBreak && day >= 1 && day <= 5;
+  });
+  if (weekdayTeachingWeek) {
+    return options.short ? weekdayTeachingWeek.info.shortLabel : weekdayTeachingWeek.info.label;
+  }
 
   const teachingWeek = labels.find((entry) => !entry.info.isBreak);
   if (teachingWeek) return options.short ? teachingWeek.info.shortLabel : teachingWeek.info.label;

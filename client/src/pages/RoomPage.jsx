@@ -65,6 +65,7 @@ export default function RoomPage() {
   const [eventsLoaded, setEventsLoaded] = useState(false);
   const [filesLoaded, setFilesLoaded] = useState(false);
   const [tasksLoaded, setTasksLoaded] = useState(false);
+  const [showAcademicInList, setShowAcademicInList] = useState(true);
   const [sectionLoading, setSectionLoading] = useState({
     events: false,
     files: false,
@@ -333,6 +334,11 @@ export default function RoomPage() {
     return sortEvents([...events, ...getFlindersScheduleOverlayEvents()]);
   }, [events, user]);
 
+  const scheduleListEvents = useMemo(() => {
+    if (!showAcademicInList) return events;
+    return scheduleEvents;
+  }, [events, scheduleEvents, showAcademicInList]);
+
   const handleFileUploaded = useCallback((file) => {
     setFilesLoaded(true);
     setFiles((prev) => upsertById(prev, file, {
@@ -547,13 +553,26 @@ export default function RoomPage() {
           </TabsContent>
 
           <TabsContent value="schedule" className="space-y-4" style={{ overflow: 'visible' }}>
-            <div className="flex items-center justify-between rounded-xl bg-gradient-to-r from-slate-50 to-indigo-50 px-5 py-4">
+            <div className="flex items-start justify-between rounded-xl bg-gradient-to-r from-slate-50 to-indigo-50 px-5 py-4 gap-4">
               <h2 className="text-lg font-bold text-indigo-900">Schedule</h2>
-              <div className="flex items-center gap-2">
+              <div className="flex flex-col items-end gap-2">
                 <Button size="sm" className="bg-indigo-600 hover:bg-indigo-700 shadow-md" onClick={() => { if (!selectedDate) setSelectedDate(new Date()); setEventFormOpen(true); }}>
                   <Plus className="mr-2 h-4 w-4" />
                   Add Event
                 </Button>
+                {isFlindersUser(user) && (
+                  <button
+                    type="button"
+                    onClick={() => setShowAcademicInList((prev) => !prev)}
+                    className={`rounded-full px-3 py-1.5 text-[11px] font-semibold transition-colors ${
+                      showAcademicInList
+                        ? 'bg-indigo-100 text-indigo-700 hover:bg-indigo-200'
+                        : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
+                    }`}
+                  >
+                    {showAcademicInList ? 'List: Academic + Team' : 'List: Team Only'}
+                  </button>
+                )}
               </div>
             </div>
             <div className="flex flex-col md:flex-row gap-4" style={{ overflow: 'visible' }}>
@@ -600,7 +619,7 @@ export default function RoomPage() {
                     <Loader2 className="h-6 w-6 animate-spin text-indigo-500" />
                   </div>
                 ) : (
-                  <EventList events={scheduleEvents} roomId={roomId} onEventsChange={handleEventsChange} />
+                  <EventList events={scheduleListEvents} roomId={roomId} onEventsChange={handleEventsChange} />
                 )}
               </div>
             </div>

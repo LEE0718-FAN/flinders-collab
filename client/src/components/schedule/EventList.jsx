@@ -20,7 +20,6 @@ import { getLocationStatus } from '@/services/location';
 import { useAuth } from '@/hooks/useAuth';
 import LocationToggle from '@/components/location/LocationToggle';
 import LocationMap from '@/components/location/LocationMap';
-import { getFlindersWeekContext, getFlindersWeekLabel, isFlindersUser } from '@/lib/flinders-week';
 
 const categoryConfig = {
   meeting:      { label: 'Meeting',       icon: '👥', color: 'bg-blue-500',    badgeBg: 'bg-blue-100 text-blue-800 border-blue-300', borderColor: 'border-l-blue-500' },
@@ -39,7 +38,6 @@ const categoryConfig = {
 
 export default function EventList({ events = [], roomId, onEventsChange }) {
   const { user } = useAuth();
-  const showFlindersWeeks = isFlindersUser(user);
   const [expandedId, setExpandedId] = useState(null);
   const [deletingId, setDeletingId] = useState(null);
   const [confirmDelete, setConfirmDelete] = useState(null);
@@ -195,7 +193,6 @@ export default function EventList({ events = [], roomId, onEventsChange }) {
           const date = new Date(dateKey + 'T00:00:00');
           const isPast = dateKey < todayKey;
           const isToday = dateKey === todayKey;
-          const dateWeekLabel = showFlindersWeeks ? getFlindersWeekLabel(date) : null;
           return (
             <div key={dateKey} id={`event-date-${dateKey}`} className={`scroll-mt-4 rounded-2xl p-3 transition-all duration-500 ${isPast ? 'opacity-50' : ''}`}>
               {/* Date header row */}
@@ -226,11 +223,6 @@ export default function EventList({ events = [], roomId, onEventsChange }) {
                   </div>
                 </div>
                 <div className={`h-px flex-1 ${isToday ? 'bg-blue-300' : isPast ? 'bg-slate-100' : 'bg-indigo-100'}`} />
-                {dateWeekLabel && (
-                  <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wider ${isToday ? 'bg-white/90 text-blue-600' : isPast ? 'bg-slate-100 text-slate-500' : 'bg-indigo-50 text-indigo-600'}`}>
-                    {dateWeekLabel}
-                  </span>
-                )}
                 {isToday && <span className="text-[10px] font-bold text-blue-500 bg-blue-50 px-2 py-0.5 rounded-full uppercase tracking-wider">Today</span>}
               </div>
 
@@ -243,7 +235,6 @@ export default function EventList({ events = [], roomId, onEventsChange }) {
                   const locationName = event.location_name || event.location;
                   const isExpanded = expandedId === event.id;
                   const hasDetails = Boolean(locationName || event.enable_location_sharing);
-                  const eventWeekContext = showFlindersWeeks ? getFlindersWeekContext(startDt) : null;
                   const isAcademicOverlay = Boolean(event.isAcademicOverlay);
                   const timeLabel = isAcademicOverlay && event.all_day
                     ? 'All day'
@@ -262,11 +253,6 @@ export default function EventList({ events = [], roomId, onEventsChange }) {
                               <Clock className="h-3 w-3" />
                               {timeLabel}
                             </span>
-                            {eventWeekContext && (
-                              <span className="rounded-full bg-indigo-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-indigo-600">
-                                {eventWeekContext}
-                              </span>
-                            )}
                           </div>
                           <p className="mt-1.5 text-[19px] font-bold leading-tight tracking-[-0.01em] text-slate-900">
                             {event.title}
@@ -404,7 +390,6 @@ export default function EventList({ events = [], roomId, onEventsChange }) {
             <div className="grid gap-3 md:grid-cols-[minmax(0,1.25fr)_minmax(0,1fr)_minmax(0,1fr)]">
               <DateField
                 label="Date"
-                hint={showFlindersWeeks ? getFlindersWeekContext(editForm.start_date) : undefined}
                 value={editForm.start_date || ''}
                 onChange={(e) => setEditForm({ ...editForm, start_date: e.target.value })}
                 disabled={editLoading}
