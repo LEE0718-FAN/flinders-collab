@@ -32,7 +32,7 @@ export default function ResetPasswordPage() {
     const initRecovery = async () => {
       try {
         if (recoveryCode) {
-          const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(window.location.href);
+          const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(recoveryCode);
           if (exchangeError) {
             throw exchangeError;
           }
@@ -52,6 +52,9 @@ export default function ResetPasswordPage() {
         if (data.session) {
           setReady(true);
           setError('');
+          if (window.location.hash || window.location.search) {
+            window.history.replaceState({}, document.title, '/reset-password');
+          }
         } else {
           setError('This reset link is invalid or has expired. Please request a new one.');
         }

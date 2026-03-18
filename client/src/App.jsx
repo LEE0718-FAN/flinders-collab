@@ -10,6 +10,16 @@ import { Loader2 } from 'lucide-react';
 import { loadSession, clearSession } from '@/lib/auth-token';
 import { apiGuestCleanup } from '@/services/auth';
 
+function hasRecoveryParams() {
+  if (typeof window === 'undefined') return false;
+  const search = new URLSearchParams(window.location.search);
+  const hash = new URLSearchParams(window.location.hash.replace(/^#/, ''));
+  return search.get('type') === 'recovery'
+    || hash.get('type') === 'recovery'
+    || hash.has('access_token')
+    || search.has('code');
+}
+
 // Retry dynamic imports with page reload on chunk mismatch (after new deployments)
 function lazyRetry(importFn) {
   return lazy(() =>
@@ -121,6 +131,10 @@ function PublicRoute({ children }) {
         <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
       </div>
     );
+  }
+
+  if (hasRecoveryParams()) {
+    return children;
   }
 
   if (user) {

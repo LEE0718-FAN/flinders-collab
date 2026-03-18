@@ -81,15 +81,17 @@ function NavItem({ to, isActive, icon: Icon, label, palette, badgeCount = 0 }) {
               : 'text-slate-500 group-hover:text-slate-300'
           }`}
         />
-        <span className="truncate">{label}</span>
-        {badgeCount > 0 && (
-          <span className="ml-auto inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-rose-500 px-1.5 text-[10px] font-bold text-white shadow-sm">
-            {badgeCount > 99 ? '99+' : badgeCount}
-          </span>
-        )}
-        {isActive && (
-          <ChevronRight className="ml-auto h-3.5 w-3.5 opacity-40 text-slate-400" />
-        )}
+        <span className="min-w-0 flex-1 truncate">{label}</span>
+        <span className="ml-auto flex min-w-[2.25rem] items-center justify-end gap-2">
+          {badgeCount > 0 && (
+            <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-rose-500 px-1.5 text-[10px] font-bold text-white shadow-sm">
+              {badgeCount > 99 ? '99+' : badgeCount}
+            </span>
+          )}
+          {isActive && (
+            <ChevronRight className="h-3.5 w-3.5 shrink-0 opacity-40 text-slate-400" />
+          )}
+        </span>
       </button>
     </Link>
   );
