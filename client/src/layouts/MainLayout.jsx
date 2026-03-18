@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { LayoutDashboard, LogOut, Menu, Users, ChevronRight, Shield, User, CalendarClock, MessageSquare, Wrench, GraduationCap } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -13,11 +13,14 @@ import {
 import { useAuth } from '@/hooks/useAuth';
 import { socket } from '@/lib/socket';
 import ProfileDialog from '@/components/ProfileDialog';
+import { useToast } from '@/components/ui/toast';
 
 import { getRoomActivity, getRooms } from '@/services/rooms';
 import { getEvents } from '@/services/events';
+import { getPosts } from '@/services/board';
 import { applyRoomOrder, loadRoomOrder } from '@/lib/room-order';
 import { readRoomLastVisited } from '@/lib/room-activity';
+import { getLatestBoardTimestamp, readBoardLastSeen, writeBoardLastSeen } from '@/lib/board-notifications';
 
 const ROOM_NAVIGATION_UPDATED_EVENT = 'rooms-updated';
 
@@ -45,6 +48,11 @@ function NavItem({ to, isActive, icon: Icon, label, palette, badgeCount = 0, bad
 
   const activeAccentColor = palette ? palette.icon : '#818cf8';
   const hasBadge = Boolean(badgeLabel) || badgeCount > 0;
+  const badgeSlotClass = badgeLabel
+    ? 'w-[6.75rem]'
+    : badgeCount > 0
+      ? 'w-[3.5rem]'
+      : 'w-4';
 
   return (
     <Link to={to}>
@@ -83,7 +91,7 @@ function NavItem({ to, isActive, icon: Icon, label, palette, badgeCount = 0, bad
           }`}
         />
         <span className="min-w-0 flex-1 truncate">{label}</span>
-        <span className={`ml-auto flex shrink-0 items-center justify-end gap-2 ${hasBadge ? 'w-[6.75rem]' : 'w-4'}`}>
+        <span className={`ml-auto flex shrink-0 items-center justify-end gap-2 ${badgeSlotClass}`}>
           {hasBadge && (
             <span className="inline-flex h-5 min-w-5 max-w-[5.5rem] items-center justify-center rounded-full bg-rose-500 px-2 text-[10px] font-bold tabular-nums text-white shadow-sm whitespace-nowrap">
               {badgeLabel || (badgeCount > 99 ? '99+' : badgeCount)}
@@ -96,7 +104,7 @@ function NavItem({ to, isActive, icon: Icon, label, palette, badgeCount = 0, bad
   );
 }
 
-function SidebarContent({ rooms, location, isAdmin, roomBadgeCounts = {}, user, deadlineCount = 0 }) {
+function SidebarContent({ rooms, location, isAdmin, roomBadgeCounts = {}, user, deadlineCount = 0, boardUnreadCount = 0 }) {
   return (
     <nav className="flex flex-col gap-1" role="navigation" aria-label="Main navigation" data-tour="sidebar-nav">
       <NavItem
@@ -117,6 +125,7 @@ function SidebarContent({ rooms, location, isAdmin, roomBadgeCounts = {}, user, 
         isActive={location.pathname === '/board'}
         icon={MessageSquare}
         label="Free Board"
+        badgeCount={boardUnreadCount}
       />
       {(user?.account_type || user?.user_metadata?.account_type || 'flinders') !== 'general' && (
         <NavItem
@@ -187,6 +196,7 @@ function SidebarContent({ rooms, location, isAdmin, roomBadgeCounts = {}, user, 
 
 export default function MainLayout({ children }) {
   const { user, logout } = useAuth();
+  const { addToast, removeToast } = useToast();
   const navigate = useNavigate();
   const location = useLocation();
   const [rooms, setRooms] = useState([]);
@@ -197,6 +207,8 @@ export default function MainLayout({ children }) {
   const [announcementUnreadCounts, setAnnouncementUnreadCounts] = useState({});
   const [recentActivityCounts, setRecentActivityCounts] = useState({});
   const [deadlineCount, setDeadlineCount] = useState(0);
+  const [boardUnreadCount, setBoardUnreadCount] = useState(0);
+  const boardToastIdsRef = useRef(new Set());
 
   const refreshRooms = async () => {
     const data = await getRooms();
@@ -278,10 +290,133 @@ export default function MainLayout({ children }) {
     return next;
   }, [announcementUnreadCounts, recentActivityCounts]);
 
+  const clearBoardToasts = useCallback(() => {
+    boardToastIdsRef.current.forEach((toastId) => removeToast(toastId));
+    boardToastIdsRef.current.clear();
+  }, [removeToast]);
+
+  const markBoardSeen = useCallback((posts = []) => {
+    if (!user?.id) return;
+
+    const latestTimestamp = getLatestBoardTimestamp(posts);
+    writeBoardLastSeen(user.id, latestTimestamp || Date.now());
+    setBoardUnreadCount(0);
+    clearBoardToasts();
+  }, [clearBoardToasts, user?.id]);
+
   useEffect(() => {
     refreshRooms().catch(() => {});
     refreshDeadlineCount().catch(() => {});
   }, [user?.id]);
+
+  useEffect(() => {
+    if (!user?.id) {
+      setBoardUnreadCount(0);
+      clearBoardToasts();
+      return;
+    }
+
+    let cancelled = false;
+
+    const syncBoardNotifications = async ({ suppressToast = false } = {}) => {
+      try {
+        const data = await getPosts('all');
+        if (cancelled) return;
+
+        const posts = Array.isArray(data) ? data : [];
+        const latestTimestamp = getLatestBoardTimestamp(posts);
+        const lastSeen = readBoardLastSeen(user.id);
+
+        if (!lastSeen) {
+          if (latestTimestamp > 0) {
+            writeBoardLastSeen(user.id, latestTimestamp);
+          }
+          setBoardUnreadCount(0);
+          return;
+        }
+
+        if (location.pathname === '/board') {
+          markBoardSeen(posts);
+          return;
+        }
+
+        const unseenPosts = posts.filter((post) => {
+          const createdAt = new Date(post?.created_at).getTime();
+          return Number.isFinite(createdAt) && createdAt > lastSeen && post?.author_id !== user.id;
+        });
+
+        setBoardUnreadCount(unseenPosts.length);
+
+        if (suppressToast || unseenPosts.length === 0) return;
+
+        unseenPosts
+          .slice(0, 3)
+          .reverse()
+          .forEach((post) => {
+            const authorName = post?.is_anonymous ? 'Anonymous' : (post?.users?.full_name || 'Someone');
+            const toastId = addToast({
+              key: `board-post:${post.id}`,
+              title: `${authorName} posted on Free Board`,
+              message: post?.title || 'New Free Board post',
+              type: 'info',
+              duration: 8000,
+              actionLabel: 'View',
+              onAction: () => {
+                markBoardSeen(posts);
+                navigate('/board');
+              },
+              onClick: () => {
+                markBoardSeen(posts);
+                navigate('/board');
+              },
+            });
+
+            if (toastId) {
+              boardToastIdsRef.current.add(toastId);
+            }
+          });
+      } catch {
+        if (!cancelled) {
+          setBoardUnreadCount(0);
+        }
+      }
+    };
+
+    syncBoardNotifications({ suppressToast: true }).catch(() => {});
+
+    const intervalId = window.setInterval(() => {
+      if (document.visibilityState === 'hidden') return;
+      syncBoardNotifications().catch(() => {});
+    }, 15000);
+
+    const handleBoardRead = (event) => {
+      if (event.detail?.userId && event.detail.userId !== user.id) return;
+      setBoardUnreadCount(0);
+      clearBoardToasts();
+    };
+
+    const handleBoardRefresh = () => {
+      syncBoardNotifications().catch(() => {});
+    };
+
+    const handleFocus = () => {
+      if (document.visibilityState === 'hidden') return;
+      syncBoardNotifications().catch(() => {});
+    };
+
+    window.addEventListener('board-notifications-read', handleBoardRead);
+    window.addEventListener('board-post-created', handleBoardRefresh);
+    window.addEventListener('focus', handleFocus);
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(intervalId);
+      window.removeEventListener('board-notifications-read', handleBoardRead);
+      window.removeEventListener('board-post-created', handleBoardRefresh);
+      window.removeEventListener('focus', handleFocus);
+      clearBoardToasts();
+    };
+  }, [addToast, clearBoardToasts, location.pathname, markBoardSeen, navigate, user?.id]);
 
   useEffect(() => {
     if (!user?.id) {
@@ -464,7 +599,7 @@ export default function MainLayout({ children }) {
 
         {/* Sidebar navigation */}
         <div className="flex-1 overflow-y-auto px-3 py-4 custom-scrollbar">
-          <SidebarContent rooms={rooms} location={location} isAdmin={user?.is_admin} roomBadgeCounts={roomBadgeCounts} user={user} deadlineCount={deadlineCount} />
+          <SidebarContent rooms={rooms} location={location} isAdmin={user?.is_admin} roomBadgeCounts={roomBadgeCounts} user={user} deadlineCount={deadlineCount} boardUnreadCount={boardUnreadCount} />
         </div>
 
         {/* Sidebar footer / user info */}
@@ -511,7 +646,7 @@ export default function MainLayout({ children }) {
                 </SheetHeader>
                 <div className="h-px bg-gradient-to-r from-white/10 via-white/5 to-transparent mx-3" />
                 <div className="px-3 py-4">
-                  <SidebarContent rooms={rooms} location={location} isAdmin={user?.is_admin} roomBadgeCounts={roomBadgeCounts} user={user} deadlineCount={deadlineCount} />
+                  <SidebarContent rooms={rooms} location={location} isAdmin={user?.is_admin} roomBadgeCounts={roomBadgeCounts} user={user} deadlineCount={deadlineCount} boardUnreadCount={boardUnreadCount} />
                 </div>
               </SheetContent>
             </Sheet>

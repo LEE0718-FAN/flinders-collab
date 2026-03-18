@@ -22,6 +22,7 @@ import {
   getComments, createComment, deleteComment, getAcademicInfo, updateAcademicInfo,
   toggleReaction as apiToggleReaction, votePoll as apiVotePoll,
 } from '@/services/board';
+import { getLatestBoardTimestamp, writeBoardLastSeen } from '@/lib/board-notifications';
 
 const CATEGORIES = [
   { value: 'all', label: 'All', icon: Sparkles },
@@ -507,6 +508,9 @@ function CreatePostDialog({ open, onOpenChange, onCreated, academicInfo }) {
         data.anonymous_poll = anonymousPoll;
       }
       const post = await createPost(data);
+      const createdAt = new Date(post?.created_at).getTime();
+      writeBoardLastSeen(user?.id, Number.isFinite(createdAt) ? createdAt : Date.now());
+      window.dispatchEvent(new CustomEvent('board-post-created', { detail: { postId: post.id } }));
       onCreated?.(post);
       onOpenChange(false);
     } catch (err) {
@@ -687,8 +691,11 @@ export default function BoardPage() {
     try {
       const data = await getPosts(category);
       setPosts(data || []);
+      if (category === 'all') {
+        writeBoardLastSeen(user?.id, getLatestBoardTimestamp(data || []));
+      }
     } catch { /* silent */ } finally { setLoading(false); }
-  }, [category]);
+  }, [category, user?.id]);
 
   useEffect(() => {
     getAcademicInfo()
