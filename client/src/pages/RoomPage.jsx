@@ -73,6 +73,7 @@ export default function RoomPage() {
   });
   const highlightRef = useRef(null);
   const highlightTimerRef = useRef(null);
+  const academicFilterRestoreTimerRef = useRef(null);
   const eventListColumnRef = useRef(null);
 
   const clearHighlight = useCallback(() => {
@@ -83,6 +84,13 @@ export default function RoomPage() {
     if (highlightTimerRef.current) {
       clearTimeout(highlightTimerRef.current);
       highlightTimerRef.current = null;
+    }
+  }, []);
+
+  const clearAcademicFilterRestore = useCallback(() => {
+    if (academicFilterRestoreTimerRef.current) {
+      clearTimeout(academicFilterRestoreTimerRef.current);
+      academicFilterRestoreTimerRef.current = null;
     }
   }, []);
 
@@ -339,6 +347,14 @@ export default function RoomPage() {
     return scheduleEvents;
   }, [events, scheduleEvents, showAcademicInList]);
 
+  const eventCoversDate = useCallback((event, date) => {
+    const dateKey = format(date, 'yyyy-MM-dd');
+    const clickedTime = new Date(`${dateKey}T12:00:00`).getTime();
+    const start = new Date(event.start_time).getTime();
+    const end = new Date(event.end_time || event.start_time).getTime();
+    return Number.isFinite(start) && Number.isFinite(end) && clickedTime >= start && clickedTime <= end;
+  }, []);
+
   const findScheduleScrollTarget = useCallback((date) => {
     const exactDateKey = format(date, 'yyyy-MM-dd');
     const exactElement = document.getElementById(`event-date-${exactDateKey}`);
@@ -346,16 +362,13 @@ export default function RoomPage() {
       return exactDateKey;
     }
 
-    const clickedTime = new Date(`${exactDateKey}T12:00:00`).getTime();
-    const spanningEvent = scheduleListEvents.find((event) => {
-      const start = new Date(event.start_time).getTime();
-      const end = new Date(event.end_time || event.start_time).getTime();
-      return Number.isFinite(start) && Number.isFinite(end) && clickedTime >= start && clickedTime <= end;
-    });
+    const spanningEvent = scheduleEvents.find((event) => eventCoversDate(event, date));
 
     if (!spanningEvent) return exactDateKey;
     return format(new Date(spanningEvent.start_time), 'yyyy-MM-dd');
-  }, [scheduleListEvents]);
+  }, [eventCoversDate, scheduleEvents]);
+
+  useEffect(() => () => clearAcademicFilterRestore(), [clearAcademicFilterRestore]);
 
   const handleFileUploaded = useCallback((file) => {
     setFilesLoaded(true);
@@ -596,7 +609,17 @@ export default function RoomPage() {
                     onDateClick={(date) => {
                       setSelectedDate(date);
                       clearHighlight();
+                      clearAcademicFilterRestore();
                       const targetDateKey = findScheduleScrollTarget(date);
+                      const needsTemporaryAcademicReveal = isFlindersUser(user)
+                        && !showAcademicInList
+                        && scheduleEvents.some((event) => event.isAcademicOverlay && eventCoversDate(event, date))
+                        && !scheduleListEvents.some((event) => eventCoversDate(event, date));
+
+                      if (needsTemporaryAcademicReveal) {
+                        setShowAcademicInList(true);
+                      }
+
                       setTimeout(() => {
                         const el = document.getElementById(`event-date-${targetDateKey}`);
                         if (el) {
@@ -608,7 +631,13 @@ export default function RoomPage() {
                             highlightRef.current = null;
                           }, 4000);
                         }
-                      }, 150);
+                        if (needsTemporaryAcademicReveal) {
+                          academicFilterRestoreTimerRef.current = setTimeout(() => {
+                            setShowAcademicInList(false);
+                            academicFilterRestoreTimerRef.current = null;
+                          }, 4200);
+                        }
+                      }, needsTemporaryAcademicReveal ? 260 : 150);
                     }}
                     onAddEvent={(date) => {
                       clearHighlight();

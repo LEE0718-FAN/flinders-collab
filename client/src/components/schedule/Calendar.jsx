@@ -181,7 +181,7 @@ export default function ScheduleCalendar({ events = [], selectedDate, onSelectDa
       setAddPrompt(date);
     } else if (date && hasAcademicOverlay(date)) {
       onDateClick?.(date);
-      setAddPrompt(null);
+      setAddPrompt(date);
     } else {
       setAddPrompt(null);
       onAddEvent?.(date);
