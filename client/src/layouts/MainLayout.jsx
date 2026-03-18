@@ -36,7 +36,7 @@ function getRoomPalette(room) {
   return roomPalettes[Math.abs(hash) % roomPalettes.length];
 }
 
-function NavItem({ to, isActive, icon: Icon, label, palette, badgeCount = 0 }) {
+function NavItem({ to, isActive, icon: Icon, label, palette, badgeCount = 0, badgeLabel = '' }) {
   const roomStyle = palette
     ? isActive
       ? { background: palette.icon + '22' }
@@ -44,6 +44,7 @@ function NavItem({ to, isActive, icon: Icon, label, palette, badgeCount = 0 }) {
     : undefined;
 
   const activeAccentColor = palette ? palette.icon : '#818cf8';
+  const hasBadge = Boolean(badgeLabel) || badgeCount > 0;
 
   return (
     <Link to={to}>
@@ -82,15 +83,13 @@ function NavItem({ to, isActive, icon: Icon, label, palette, badgeCount = 0 }) {
           }`}
         />
         <span className="min-w-0 flex-1 truncate">{label}</span>
-        <span className="ml-auto flex min-w-[2.25rem] items-center justify-end gap-2">
-          {badgeCount > 0 && (
-            <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-rose-500 px-1.5 text-[10px] font-bold text-white shadow-sm">
-              {badgeCount > 99 ? '99+' : badgeCount}
+        <span className={`ml-auto flex shrink-0 items-center justify-end gap-2 ${hasBadge ? 'w-[6.75rem]' : 'w-4'}`}>
+          {hasBadge && (
+            <span className="inline-flex h-5 min-w-5 max-w-[5.5rem] items-center justify-center rounded-full bg-rose-500 px-2 text-[10px] font-bold tabular-nums text-white shadow-sm whitespace-nowrap">
+              {badgeLabel || (badgeCount > 99 ? '99+' : badgeCount)}
             </span>
           )}
-          {isActive && (
-            <ChevronRight className="h-3.5 w-3.5 shrink-0 opacity-40 text-slate-400" />
-          )}
+          <ChevronRight className={`h-3.5 w-3.5 shrink-0 text-slate-400 transition-opacity ${isActive ? 'opacity-40' : 'opacity-0'}`} />
         </span>
       </button>
     </Link>
@@ -111,7 +110,7 @@ function SidebarContent({ rooms, location, isAdmin, roomBadgeCounts = {}, user, 
         isActive={location.pathname === '/deadlines'}
         icon={CalendarClock}
         label="Deadlines"
-        badgeCount={deadlineCount}
+        badgeLabel={deadlineCount > 0 ? `${deadlineCount} left` : ''}
       />
       <NavItem
         to="/board"
