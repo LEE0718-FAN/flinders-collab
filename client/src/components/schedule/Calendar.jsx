@@ -1,9 +1,10 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { DayPicker } from 'react-day-picker';
 import { addDays, addMonths, eachDayOfInterval, endOfMonth, endOfWeek, format, startOfMonth, startOfWeek, subMonths } from 'date-fns';
-import { ChevronLeft, ChevronRight, Plus, X } from 'lucide-react';
+import { CalendarRange, ChevronLeft, ChevronRight, Plus, X } from 'lucide-react';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { formatFlindersWeekContext } from '@/lib/flinders-week';
 
 const categoryColors = {
   meeting: '#3b82f6',
@@ -23,6 +24,8 @@ const categoryColors = {
 export default function ScheduleCalendar({ events = [], selectedDate, onSelectDate, onDateClick, onAddEvent, onDismissPrompt, roomId, promptResetToken = 0, scrollFollowDate }) {
   const [month, setMonth] = useState(new Date());
   const [addPrompt, setAddPrompt] = useState(null); // date to show "add event?" prompt
+  const showWeekSummary = events.some((event) => event.isAcademicOverlay);
+  const selectedWeekContext = selectedDate ? formatFlindersWeekContext(selectedDate) : null;
 
   // Reset to current month when room changes
   useEffect(() => {
@@ -46,6 +49,7 @@ export default function ScheduleCalendar({ events = [], selectedDate, onSelectDa
   const eventMarkersByDate = events.reduce((map, event) => {
     const rawDate = event.date || event.start_time;
     if (!rawDate) return map;
+    if (event.isAcademicOverlay) return map;
     const color = categoryColors[event.category] || categoryColors.other;
     const startDate = new Date(rawDate);
     const endDate = event.end_time ? new Date(event.end_time) : startDate;
@@ -85,6 +89,18 @@ export default function ScheduleCalendar({ events = [], selectedDate, onSelectDa
     const dateKey = format(day.date, 'yyyy-MM-dd');
     const markerColors = eventMarkersByDate.get(dateKey) || [];
     const overlayType = overlayTypeByDate.get(dateKey);
+    const prevDateKey = format(addDays(day.date, -1), 'yyyy-MM-dd');
+    const nextDateKey = format(addDays(day.date, 1), 'yyyy-MM-dd');
+    const connectsLeft = Boolean(
+      overlayType
+      && day.date.getDay() !== 0
+      && overlayTypeByDate.get(prevDateKey) === overlayType
+    );
+    const connectsRight = Boolean(
+      overlayType
+      && day.date.getDay() !== 6
+      && overlayTypeByDate.get(nextDateKey) === overlayType
+    );
     const buttonRef = useRef(null);
 
     useEffect(() => {
@@ -101,15 +117,20 @@ export default function ScheduleCalendar({ events = [], selectedDate, onSelectDa
         data-calendar-date={dateKey}
         className={cn(
           className,
-          'flex h-10 w-10 sm:h-9 sm:w-9 flex-col items-center justify-center gap-0.5 overflow-visible rounded-xl transition-all duration-150',
+          'relative flex h-10 w-10 sm:h-9 sm:w-9 flex-col items-center justify-center gap-0.5 overflow-visible transition-all duration-150',
+          overlayType && 'rounded-none',
+          overlayType && !connectsLeft && 'rounded-l-xl',
+          overlayType && !connectsRight && 'rounded-r-xl',
           overlayType === 'holiday' && 'bg-red-50 text-red-700 hover:bg-red-100 ring-1 ring-red-200/70',
           overlayType === 'break' && 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100 ring-1 ring-emerald-200/80',
+          overlayType && connectsLeft && '-ml-1 pl-1',
+          overlayType && connectsRight && '-mr-1 pr-1',
           !overlayType && 'hover:bg-blue-50'
         )}
       >
-        <span className="leading-none">{children}</span>
+        <span className="relative z-[1] leading-none">{children}</span>
         {markerColors.length > 0 && (
-          <span className="flex items-center gap-0.5" aria-hidden="true">
+          <span className="relative z-[1] flex items-center gap-0.5" aria-hidden="true">
             {markerColors.map((color) => (
               <span
                 key={color}
@@ -176,6 +197,19 @@ export default function ScheduleCalendar({ events = [], selectedDate, onSelectDa
           <ChevronRight className="h-4 w-4" />
         </Button>
       </div>
+      {showWeekSummary && selectedWeekContext && (
+        <div className="border-b border-slate-100 bg-indigo-50/80 px-4 py-2.5">
+          <div className="flex items-center gap-2 text-indigo-700">
+            <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-white shadow-sm">
+              <CalendarRange className="h-3.5 w-3.5" />
+            </span>
+            <div className="min-w-0">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-indigo-500">Selected Date</p>
+              <p className="text-sm font-semibold">{selectedWeekContext}</p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Calendar body */}
       <div className="bg-white rounded-b-2xl p-4">

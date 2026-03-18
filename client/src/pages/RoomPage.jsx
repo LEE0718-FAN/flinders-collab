@@ -20,7 +20,7 @@ import { getTasks } from '@/services/tasks';
 import { copyToClipboard } from '@/lib/native';
 import { getRoomPalette } from '@/components/room/RoomCard';
 import { useAuth } from '@/hooks/useAuth';
-import { Loader2, Copy, Check, Plus, MessageSquare, FileUp, CalendarPlus, CheckSquare, Activity, Link2, Users, Megaphone, X } from 'lucide-react';
+import { Loader2, Copy, Check, Plus, MessageSquare, FileUp, CalendarPlus, CheckSquare, Activity, Link2, Users, Megaphone, X, Filter, GraduationCap } from 'lucide-react';
 // useRef already imported above
 import { Button } from '@/components/ui/button';
 import ReportButton from '@/components/ReportButton';
@@ -339,6 +339,24 @@ export default function RoomPage() {
     return scheduleEvents;
   }, [events, scheduleEvents, showAcademicInList]);
 
+  const findScheduleScrollTarget = useCallback((date) => {
+    const exactDateKey = format(date, 'yyyy-MM-dd');
+    const exactElement = document.getElementById(`event-date-${exactDateKey}`);
+    if (exactElement) {
+      return exactDateKey;
+    }
+
+    const clickedTime = new Date(`${exactDateKey}T12:00:00`).getTime();
+    const spanningEvent = scheduleListEvents.find((event) => {
+      const start = new Date(event.start_time).getTime();
+      const end = new Date(event.end_time || event.start_time).getTime();
+      return Number.isFinite(start) && Number.isFinite(end) && clickedTime >= start && clickedTime <= end;
+    });
+
+    if (!spanningEvent) return exactDateKey;
+    return format(new Date(spanningEvent.start_time), 'yyyy-MM-dd');
+  }, [scheduleListEvents]);
+
   const handleFileUploaded = useCallback((file) => {
     setFilesLoaded(true);
     setFiles((prev) => upsertById(prev, file, {
@@ -555,24 +573,11 @@ export default function RoomPage() {
           <TabsContent value="schedule" className="space-y-4" style={{ overflow: 'visible' }}>
             <div className="flex items-start justify-between rounded-xl bg-gradient-to-r from-slate-50 to-indigo-50 px-5 py-4 gap-4">
               <h2 className="text-lg font-bold text-indigo-900">Schedule</h2>
-              <div className="flex flex-col items-end gap-2">
+              <div className="flex items-center gap-2">
                 <Button size="sm" className="bg-indigo-600 hover:bg-indigo-700 shadow-md" onClick={() => { if (!selectedDate) setSelectedDate(new Date()); setEventFormOpen(true); }}>
                   <Plus className="mr-2 h-4 w-4" />
                   Add Event
                 </Button>
-                {isFlindersUser(user) && (
-                  <button
-                    type="button"
-                    onClick={() => setShowAcademicInList((prev) => !prev)}
-                    className={`rounded-full px-3 py-1.5 text-[11px] font-semibold transition-colors ${
-                      showAcademicInList
-                        ? 'bg-indigo-100 text-indigo-700 hover:bg-indigo-200'
-                        : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
-                    }`}
-                  >
-                    {showAcademicInList ? 'List: Academic + Team' : 'List: Team Only'}
-                  </button>
-                )}
               </div>
             </div>
             <div className="flex flex-col md:flex-row gap-4" style={{ overflow: 'visible' }}>
@@ -591,9 +596,9 @@ export default function RoomPage() {
                     onDateClick={(date) => {
                       setSelectedDate(date);
                       clearHighlight();
-                      const dateKey = format(date, 'yyyy-MM-dd');
+                      const targetDateKey = findScheduleScrollTarget(date);
                       setTimeout(() => {
-                        const el = document.getElementById(`event-date-${dateKey}`);
+                        const el = document.getElementById(`event-date-${targetDateKey}`);
                         if (el) {
                           el.scrollIntoView({ behavior: 'smooth', block: 'center' });
                           el.classList.add('ring-2', 'ring-blue-400', 'ring-offset-4', 'bg-blue-50/50');
@@ -614,6 +619,47 @@ export default function RoomPage() {
                 </div>
               </div>
               <div ref={eventListColumnRef} className="flex-1 min-w-0">
+                {isFlindersUser(user) && (
+                  <div className="mb-3 rounded-2xl border border-slate-200 bg-white/90 p-3 shadow-sm">
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                      <div className="flex items-start gap-2.5">
+                        <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600">
+                          <Filter className="h-4 w-4" />
+                        </span>
+                        <div>
+                          <p className="text-sm font-semibold text-slate-800">List Filter</p>
+                          <p className="text-xs text-slate-500">Choose whether the list shows only team events or also Flinders academic overlays.</p>
+                        </div>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setShowAcademicInList(false)}
+                          className={`inline-flex items-center gap-2 rounded-full px-3.5 py-2 text-xs font-semibold transition-colors ${
+                            !showAcademicInList
+                              ? 'bg-slate-900 text-white shadow-sm'
+                              : 'border border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
+                          }`}
+                        >
+                          <Users className="h-3.5 w-3.5" />
+                          Team Events
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setShowAcademicInList(true)}
+                          className={`inline-flex items-center gap-2 rounded-full px-3.5 py-2 text-xs font-semibold transition-colors ${
+                            showAcademicInList
+                              ? 'bg-indigo-600 text-white shadow-sm'
+                              : 'border border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
+                          }`}
+                        >
+                          <GraduationCap className="h-3.5 w-3.5" />
+                          Academic + Team
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
                 {sectionLoading.events && !eventsLoaded ? (
                   <div className="flex min-h-[18rem] items-center justify-center rounded-2xl border border-slate-200 bg-white">
                     <Loader2 className="h-6 w-6 animate-spin text-indigo-500" />

@@ -390,8 +390,8 @@ export default function MainLayout({ children }) {
         </div>
 
         {/* Sidebar footer / user info */}
-        <div className="px-3 py-3">
-          <div className="flex items-center gap-3 bg-white/5 border border-white/5 rounded-xl px-3 py-3">
+        <div className="mt-auto border-t border-white/5 bg-gradient-to-t from-indigo-950 via-slate-900 to-slate-900/95 px-3 py-3 backdrop-blur">
+          <div className="flex items-center gap-3 rounded-xl border border-white/5 bg-white/5 px-3 py-3 shadow-inner shadow-black/10">
             <Avatar className="h-8 w-8 ring-2 ring-indigo-500/50 shadow-lg shadow-indigo-500/20">
               {user?.user_metadata?.avatar_url && (
                 <AvatarImage src={user.user_metadata.avatar_url} alt="Profile" className="object-cover" />
