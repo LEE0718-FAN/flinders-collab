@@ -12,6 +12,10 @@ import { useAuthStore } from '@/store/authStore';
 const TUTORIAL_KEY = 'tutorial-completed';
 const TUTORIAL_ROOM_NAME = '🎓 Tutorial Room';
 const TUTORIAL_ROOM_ID_KEY = 'tutorial-room-id';
+const hasTutorialSuppression = () => {
+  if (typeof window === 'undefined') return false;
+  return Boolean(window.localStorage.getItem(TUTORIAL_KEY));
+};
 
 export default function InteractiveTutorial() {
   const navigate = useNavigate();
@@ -31,11 +35,39 @@ export default function InteractiveTutorial() {
   const canSkipRef = useRef(true);
   const [canSkip, setCanSkip] = useState(true);
   const createdRoomIdRef = useRef(null);
+  const suppressedRef = useRef(hasTutorialSuppression());
   const totalSteps = 14;
   const swallowPointer = useCallback((event) => {
     event.preventDefault();
     event.stopPropagation();
   }, []);
+  const isTutorialSuppressed = useCallback(() => {
+    const value = hasTutorialSuppression();
+    suppressedRef.current = value;
+    return value;
+  }, []);
+  const rememberSuppressed = useCallback((value) => {
+    suppressedRef.current = value;
+  }, []);
+  const persistTutorialSuppression = useCallback(() => {
+    localStorage.setItem(TUTORIAL_KEY, Date.now().toString());
+    rememberSuppressed(true);
+  }, [rememberSuppressed]);
+  const clearTutorialSuppression = useCallback(() => {
+    localStorage.removeItem(TUTORIAL_KEY);
+    rememberSuppressed(false);
+  }, [rememberSuppressed]);
+  const guardedSetShowPrompt = useCallback((value, options = {}) => {
+    const { force = false } = options;
+    if (value && !force && isTutorialSuppressed()) return;
+    setShowPrompt(value);
+  }, [isTutorialSuppressed]);
+  const guardedStartTutorial = useCallback((options = {}) => {
+    const { force = false } = options;
+    if (!force && isTutorialSuppressed()) return;
+    setShowPrompt(false);
+    setActive(true);
+  }, [isTutorialSuppressed]);
 
   // ── Clean up any leftover tutorial room from a previous crashed session ──
   useEffect(() => {
@@ -61,11 +93,11 @@ export default function InteractiveTutorial() {
     const testerMode = Boolean(session?.is_tester || user?.is_tester);
     let fallbackTimer = null;
 
-    if (!testerMode && localStorage.getItem(TUTORIAL_KEY)) return;
+    if (!testerMode && isTutorialSuppressed()) return;
 
     if (testerMode) {
       fallbackTimer = setTimeout(() => {
-        if (!cancelled) setShowPrompt(true);
+        if (!cancelled) guardedSetShowPrompt(true);
       }, 250);
     }
 
@@ -73,24 +105,27 @@ export default function InteractiveTutorial() {
       .then((rooms) => {
         if (cancelled) return;
         const list = Array.isArray(rooms) ? rooms : rooms?.rooms || [];
-        setShowPrompt(list.length === 0);
+        guardedSetShowPrompt(list.length === 0);
       })
       .catch(() => {
         if (!cancelled && testerMode) {
-          setShowPrompt(true);
+          guardedSetShowPrompt(true);
         }
       });
     return () => {
       cancelled = true;
       if (fallbackTimer) clearTimeout(fallbackTimer);
     };
-  }, [session?.is_tester, user]);
+  }, [guardedSetShowPrompt, isTutorialSuppressed, session?.is_tester, user]);
 
   useEffect(() => {
-    const handler = () => { setShowPrompt(false); setActive(true); };
+    const handler = (event) => {
+      const force = Boolean(event?.detail?.force);
+      guardedStartTutorial({ force });
+    };
     window.addEventListener('start-interactive-tutorial', handler);
     return () => window.removeEventListener('start-interactive-tutorial', handler);
-  }, []);
+  }, [guardedStartTutorial]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return undefined;
@@ -735,7 +770,7 @@ export default function InteractiveTutorial() {
         showTip('All done!', "That's it! The demo room will be cleaned up. Go make your own room!", { center: true, icon: '🎉' });
         await pause(3500);
         await end();
-        localStorage.setItem(TUTORIAL_KEY, Date.now().toString());
+        persistTutorialSuppression();
         return;
       }
       setP(13); setTooltip(null); setSpotlight(null); setCursorVisible(false);
@@ -823,14 +858,14 @@ export default function InteractiveTutorial() {
       await pause(3500);
 
       await end();
-      localStorage.setItem(TUTORIAL_KEY, Date.now().toString());
+      persistTutorialSuppression();
     } catch (err) {
       // Safety net — if anything crashes, clean up gracefully
       console.warn('Tutorial error:', err);
       try { await cleanup(); } catch { /* ignore */ }
       setActive(false);
     }
-  }, [navigate, sleep, pauseFor, waitForEl, waitForGone, moveCursorTo, clickEl, clickDomEl, showTip, typeInto, cleanup, deactivateTutorial, findBtn, simulateClick, resetUI, setSkipEnabled]);
+  }, [navigate, sleep, pauseFor, waitForEl, waitForGone, moveCursorTo, clickEl, clickDomEl, showTip, typeInto, cleanup, deactivateTutorial, findBtn, simulateClick, resetUI, setSkipEnabled, persistTutorialSuppression]);
 
   const runTutorialRef = useRef(runTutorial);
   runTutorialRef.current = runTutorial;
@@ -842,12 +877,12 @@ export default function InteractiveTutorial() {
   }, [active]);
 
   const handleStop = useCallback(async (permanent) => {
+    if (permanent) persistTutorialSuppression();
     deactivateTutorial();
     // Small delay to let any in-flight sleeps resolve
     await new Promise((r) => setTimeout(r, 200));
     try { await cleanup(); } catch { /* ignore */ }
-    if (permanent) localStorage.setItem(TUTORIAL_KEY, Date.now().toString());
-  }, [cleanup, deactivateTutorial]);
+  }, [cleanup, deactivateTutorial, persistTutorialSuppression]);
 
   const handleDecline = () => {
     if (session?.is_tester) {
@@ -862,9 +897,12 @@ export default function InteractiveTutorial() {
       return;
     }
     setShowPrompt(false);
-    localStorage.setItem(TUTORIAL_KEY, Date.now().toString());
+    persistTutorialSuppression();
   };
-  const startTutorial = () => { setShowPrompt(false); setActive(true); };
+  const startTutorial = () => {
+    clearTutorialSuppression();
+    guardedStartTutorial({ force: true });
+  };
 
   // ── Prompt modal ──
   if (showPrompt && !active) {
