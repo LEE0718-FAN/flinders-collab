@@ -582,7 +582,7 @@ export default function RoomPage() {
             </div>
             <div className="flex flex-col md:flex-row gap-4" style={{ overflow: 'visible' }}>
               {/* Calendar sidebar — sticky on desktop */}
-              <div className="w-full shrink-0 md:w-[320px]">
+              <div className="w-full shrink-0 md:w-[344px]">
                 <div className="md:sticky md:top-4 z-10">
                   <ScheduleCalendar
                     roomId={roomId}
@@ -642,7 +642,7 @@ export default function RoomPage() {
                           }`}
                         >
                           <Users className="h-3.5 w-3.5" />
-                          Team Events
+                          Only Team Events
                         </button>
                         <button
                           type="button"
