@@ -26,9 +26,7 @@ export default function LoginPage() {
   return (
     <AuthLayout>
       <LoginForm onSubmit={handleLogin} onGuestLogin={handleGuestLogin} onRequestPasswordReset={handlePasswordReset} />
-      <div className="mt-6 flex justify-center">
-        <ReportButton section="login" />
-      </div>
+      <ReportButton section="login" floating />
     </AuthLayout>
   );
 }

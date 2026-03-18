@@ -234,7 +234,17 @@ async function deletePost(req, res, next) {
       .maybeSingle();
 
     if (!post) return res.status(404).json({ error: 'Post not found' });
-    if (post.author_id !== userId) return res.status(403).json({ error: 'Not authorized' });
+
+    const { data: profile } = await supabaseAdmin
+      .from('users')
+      .select('is_admin')
+      .eq('id', userId)
+      .maybeSingle();
+
+    const isAdmin = Boolean(profile?.is_admin);
+    if (post.author_id !== userId && !isAdmin) {
+      return res.status(403).json({ error: 'Not authorized' });
+    }
 
     const { error } = await supabaseAdmin.from('board_posts').delete().eq('id', postId);
     if (error) return res.status(400).json({ error: error.message });

@@ -3,6 +3,7 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import { DateField, TimeField } from '@/components/ui/date-time-field';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel,
   AlertDialogContent, AlertDialogDescription, AlertDialogFooter,
@@ -53,6 +54,7 @@ function getInitials(name) {
 function TaskCreateForm({ roomId, members = [], currentUserId, onCreated, onError }) {
   const [title, setTitle] = useState('');
   const [dueDate, setDueDate] = useState('');
+  const [dueTime, setDueTime] = useState('');
   const [priority, setPriority] = useState('medium');
   const [assignedMembers, setAssignedMembers] = useState([]);
   const [submitting, setSubmitting] = useState(false);
@@ -77,12 +79,13 @@ function TaskCreateForm({ roomId, members = [], currentUserId, onCreated, onErro
       const createdTask = await createTask(roomId, {
         title: title.trim(),
         assignees: assigneeIds,
-        due_date: dueDate ? new Date(`${dueDate}T23:59`).toISOString() : undefined,
+        due_date: dueDate ? new Date(`${dueDate}T${dueTime || '23:59'}`).toISOString() : undefined,
         priority,
       });
 
       setTitle('');
       setDueDate('');
+      setDueTime('');
       setPriority('medium');
       setAssignedMembers([]);
       setShowMemberPicker(false);
@@ -109,19 +112,21 @@ function TaskCreateForm({ roomId, members = [], currentUserId, onCreated, onErro
         className="text-base h-11 font-medium"
       />
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        <div className="space-y-1.5">
-          <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
-            <CalendarDays className="h-3.5 w-3.5" />
-            Due Date
-          </label>
-          <Input
-            type="date"
-            lang="en"
+      <div className="grid grid-cols-1 gap-3">
+        <div className="grid gap-3 md:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]">
+          <DateField
+            label="Due Date"
+            hint="Optional"
             value={dueDate}
             onChange={(e) => setDueDate(e.target.value)}
             disabled={submitting}
-            className="h-10"
+          />
+          <TimeField
+            label="Due Time"
+            hint="Optional"
+            value={dueTime}
+            onChange={(e) => setDueTime(e.target.value)}
+            disabled={submitting}
           />
         </div>
         <div className="space-y-1.5">
@@ -557,10 +562,13 @@ export default function TaskList({ tasks = [], members = [], roomId, currentUser
 
   const handleEditOpen = (task) => {
     setEditTask(task);
-    const dueDate = task.due_date ? new Date(task.due_date).toISOString().split('T')[0] : '';
+    const dueDateValue = task.due_date ? new Date(task.due_date) : null;
+    const dueDate = dueDateValue ? dueDateValue.toISOString().split('T')[0] : '';
+    const dueTime = dueDateValue ? dueDateValue.toISOString().slice(11, 16) : '';
     setEditForm({
       title: task.title || '',
       due_date: dueDate,
+      due_time: dueTime,
       priority: task.priority || 'medium',
     });
   };
@@ -571,7 +579,7 @@ export default function TaskList({ tasks = [], members = [], roomId, currentUser
     try {
       const updates = { title: editForm.title.trim() };
       if (editForm.due_date) {
-        updates.due_date = new Date(`${editForm.due_date}T23:59`).toISOString();
+        updates.due_date = new Date(`${editForm.due_date}T${editForm.due_time || '23:59'}`).toISOString();
       } else {
         updates.due_date = null;
       }
@@ -715,7 +723,7 @@ export default function TaskList({ tasks = [], members = [], roomId, currentUser
 
       {/* Edit task dialog */}
       <Dialog open={!!editTask} onOpenChange={(open) => !open && setEditTask(null)}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-[560px] rounded-2xl">
           <DialogHeader>
             <DialogTitle>Edit Task</DialogTitle>
           </DialogHeader>
@@ -729,17 +737,22 @@ export default function TaskList({ tasks = [], members = [], roomId, currentUser
                 className="text-base font-medium"
               />
             </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <label className="text-sm font-medium">Due Date</label>
-                <Input
-                  type="date"
-                  lang="en"
-                  value={editForm.due_date || ''}
-                  onChange={(e) => setEditForm({ ...editForm, due_date: e.target.value })}
-                  disabled={editLoading}
-                />
-              </div>
+            <div className="grid gap-3 md:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]">
+              <DateField
+                label="Due Date"
+                value={editForm.due_date || ''}
+                onChange={(e) => setEditForm({ ...editForm, due_date: e.target.value })}
+                disabled={editLoading}
+              />
+              <TimeField
+                label="Due Time"
+                hint="Optional"
+                value={editForm.due_time || ''}
+                onChange={(e) => setEditForm({ ...editForm, due_time: e.target.value })}
+                disabled={editLoading}
+              />
+            </div>
+            <div className="grid grid-cols-1 gap-3">
               <div className="space-y-1.5">
                 <label className="text-sm font-medium">Priority</label>
                 <select

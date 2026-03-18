@@ -3,6 +3,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import { DateField, TimeField } from '@/components/ui/date-time-field';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel,
   AlertDialogContent, AlertDialogDescription, AlertDialogFooter,
@@ -19,6 +20,7 @@ import { getLocationStatus } from '@/services/location';
 import { useAuth } from '@/hooks/useAuth';
 import LocationToggle from '@/components/location/LocationToggle';
 import LocationMap from '@/components/location/LocationMap';
+import { getFlindersWeekContext, getFlindersWeekLabel, isFlindersUser } from '@/lib/flinders-week';
 
 const categoryConfig = {
   meeting:      { label: 'Meeting',       icon: '👥', color: 'bg-blue-500',    badgeBg: 'bg-blue-100 text-blue-800 border-blue-300', borderColor: 'border-l-blue-500' },
@@ -30,11 +32,14 @@ const categoryConfig = {
   study:        { label: 'Study Session',  icon: '📚', color: 'bg-emerald-500', badgeBg: 'bg-emerald-50 text-emerald-700 border-emerald-200/60', borderColor: 'border-l-emerald-500' },
   lecture:      { label: 'Lecture',        icon: '🎓', color: 'bg-indigo-500',  badgeBg: 'bg-indigo-50 text-indigo-700 border-indigo-200/60', borderColor: 'border-l-indigo-500' },
   social:       { label: 'Social',        icon: '🎉', color: 'bg-amber-500',   badgeBg: 'bg-amber-50 text-amber-700 border-amber-200/60', borderColor: 'border-l-amber-500' },
+  holiday:      { label: 'Holiday',       icon: '🏖️', color: 'bg-red-500',     badgeBg: 'bg-red-50 text-red-700 border-red-200/60', borderColor: 'border-l-red-500' },
+  break:        { label: 'Break',         icon: '🌿', color: 'bg-emerald-500', badgeBg: 'bg-emerald-50 text-emerald-700 border-emerald-200/60', borderColor: 'border-l-emerald-500' },
   other:        { label: 'Other',         icon: '📌', color: 'bg-gray-400',    badgeBg: 'bg-gray-50 text-gray-600 border-gray-200/60', borderColor: 'border-l-gray-400' },
 };
 
 export default function EventList({ events = [], roomId, onEventsChange }) {
   const { user } = useAuth();
+  const showFlindersWeeks = isFlindersUser(user);
   const [expandedId, setExpandedId] = useState(null);
   const [deletingId, setDeletingId] = useState(null);
   const [confirmDelete, setConfirmDelete] = useState(null);
@@ -190,6 +195,7 @@ export default function EventList({ events = [], roomId, onEventsChange }) {
           const date = new Date(dateKey + 'T00:00:00');
           const isPast = dateKey < todayKey;
           const isToday = dateKey === todayKey;
+          const dateWeekLabel = showFlindersWeeks ? getFlindersWeekLabel(date) : null;
           return (
             <div key={dateKey} id={`event-date-${dateKey}`} className={`scroll-mt-4 rounded-2xl p-3 transition-all duration-500 ${isPast ? 'opacity-50' : ''}`}>
               {/* Date header row */}
@@ -220,6 +226,11 @@ export default function EventList({ events = [], roomId, onEventsChange }) {
                   </div>
                 </div>
                 <div className={`h-px flex-1 ${isToday ? 'bg-blue-300' : isPast ? 'bg-slate-100' : 'bg-indigo-100'}`} />
+                {dateWeekLabel && (
+                  <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wider ${isToday ? 'bg-white/90 text-blue-600' : isPast ? 'bg-slate-100 text-slate-500' : 'bg-indigo-50 text-indigo-600'}`}>
+                    {dateWeekLabel}
+                  </span>
+                )}
                 {isToday && <span className="text-[10px] font-bold text-blue-500 bg-blue-50 px-2 py-0.5 rounded-full uppercase tracking-wider">Today</span>}
               </div>
 
@@ -231,6 +242,12 @@ export default function EventList({ events = [], roomId, onEventsChange }) {
                   const endDt = event.end_time ? new Date(event.end_time) : null;
                   const locationName = event.location_name || event.location;
                   const isExpanded = expandedId === event.id;
+                  const hasDetails = Boolean(locationName || event.enable_location_sharing);
+                  const eventWeekContext = showFlindersWeeks ? getFlindersWeekContext(startDt) : null;
+                  const isAcademicOverlay = Boolean(event.isAcademicOverlay);
+                  const timeLabel = isAcademicOverlay && event.all_day
+                    ? 'All day'
+                    : `${format(startDt, 'h:mm a')}${endDt ? ` – ${format(endDt, 'h:mm a')}` : ''}`;
 
                   return (
                     <div key={event.id} className={`group relative rounded-xl border border-slate-100 border-l-[3px] ${cat.borderColor} bg-white px-3.5 py-3 shadow-sm hover:shadow-md transition-all duration-200 hover:-translate-y-px`}>
@@ -243,86 +260,98 @@ export default function EventList({ events = [], roomId, onEventsChange }) {
                             </Badge>
                             <span className="flex items-center gap-1 text-[11px] text-slate-400 font-medium">
                               <Clock className="h-3 w-3" />
-                              {format(startDt, 'h:mm a')}
-                              {endDt && <> – {format(endDt, 'h:mm a')}</>}
+                              {timeLabel}
                             </span>
+                            {eventWeekContext && (
+                              <span className="rounded-full bg-indigo-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-indigo-600">
+                                {eventWeekContext}
+                              </span>
+                            )}
                           </div>
-                          <p className="font-semibold text-[13px] leading-snug text-slate-800 mt-1">{event.title}</p>
-                          {locationName && (
-                            <p className="flex items-center gap-1 text-[11px] text-slate-400 mt-1">
-                              <MapPin className="h-3 w-3 shrink-0 text-blue-400" />
-                              {locationName}
+                          <p className="mt-1.5 text-[19px] font-bold leading-tight tracking-[-0.01em] text-slate-900">
+                            {event.title}
+                          </p>
+                          {event.description && (
+                            <p className="mt-2 text-[14px] leading-6 text-slate-600 whitespace-pre-wrap">
+                              {event.description}
                             </p>
                           )}
-                          {event.description && (
+                          {hasDetails && (
                             <>
                               <button
                                 type="button"
                                 onClick={() => setExpandedId(isExpanded ? null : event.id)}
-                                className="flex items-center gap-1 text-[11px] text-blue-500 hover:text-blue-700 mt-1.5 transition-colors duration-150 font-medium"
+                                className="mt-2 flex items-center gap-1 text-[12px] text-blue-500 hover:text-blue-700 transition-colors duration-150 font-medium"
                               >
-                                {isExpanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
-                                {isExpanded ? 'Hide' : 'Details'}
+                                {isExpanded ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+                                {isExpanded ? 'Hide details' : 'Details'}
                               </button>
                               {isExpanded && (
-                                <p className="text-xs text-slate-600 mt-1 pl-3 border-l-2 border-blue-200 leading-relaxed">
-                                  {event.description}
-                                </p>
+                                <div className="mt-2 space-y-2.5 rounded-xl border border-blue-100 bg-blue-50/40 p-3">
+                                  {locationName && (
+                                    <p className="flex items-center gap-2 text-[13px] text-slate-600">
+                                      <MapPin className="h-3.5 w-3.5 shrink-0 text-blue-500" />
+                                      <span className="font-medium">{locationName}</span>
+                                    </p>
+                                  )}
+                                  {event.enable_location_sharing && (
+                                    <div className="space-y-2">
+                                      <div className="flex items-center gap-2 flex-wrap">
+                                        <LocationToggle
+                                          roomId={roomId}
+                                          eventId={event.id}
+                                          isSharing={sharingEventIds.has(event.id)}
+                                          onToggle={(sharing) => handleLocationToggle(event.id, sharing)}
+                                        />
+                                        {(locationMembers[event.id]?.length || 0) > 0 && (
+                                          <Button
+                                            variant="outline"
+                                            size="sm"
+                                            className="text-xs"
+                                            onClick={() => setActiveMapEventId(activeMapEventId === event.id ? null : event.id)}
+                                          >
+                                            <Navigation className="mr-1.5 h-3 w-3" />
+                                            {activeMapEventId === event.id ? 'Hide Map' : `Map (${locationMembers[event.id].length})`}
+                                          </Button>
+                                        )}
+                                      </div>
+                                      {activeMapEventId === event.id && (
+                                        <LocationMap members={locationMembers[event.id] || []} />
+                                      )}
+                                    </div>
+                                  )}
+                                </div>
                               )}
                             </>
                           )}
-                          {event.enable_location_sharing && (
-                            <div className="mt-2 space-y-2">
-                              <div className="flex items-center gap-2 flex-wrap">
-                                <LocationToggle
-                                  roomId={roomId}
-                                  eventId={event.id}
-                                  isSharing={sharingEventIds.has(event.id)}
-                                  onToggle={(sharing) => handleLocationToggle(event.id, sharing)}
-                                />
-                                {(locationMembers[event.id]?.length || 0) > 0 && (
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    className="text-xs"
-                                    onClick={() => setActiveMapEventId(activeMapEventId === event.id ? null : event.id)}
-                                  >
-                                    <Navigation className="mr-1.5 h-3 w-3" />
-                                    {activeMapEventId === event.id ? 'Hide Map' : `Map (${locationMembers[event.id].length})`}
-                                  </Button>
-                                )}
-                              </div>
-                              {activeMapEventId === event.id && (
-                                <LocationMap members={locationMembers[event.id] || []} />
-                              )}
-                            </div>
-                          )}
                         </div>
 
-                        <div className="flex items-center gap-0.5 shrink-0 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity duration-150">
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Button variant="ghost" size="icon" className="h-8 w-8 sm:h-7 sm:w-7 rounded-lg hover:bg-blue-50" onClick={() => handleEditOpen(event)}>
-                                <Pencil className="h-3.5 w-3.5 text-blue-500 sm:text-slate-400 sm:group-hover:text-blue-500 transition-colors" />
-                              </Button>
-                            </TooltipTrigger>
-                            <TooltipContent side="top"><p>Edit</p></TooltipContent>
-                          </Tooltip>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-8 w-8 sm:h-7 sm:w-7 rounded-lg hover:bg-red-50"
-                                onClick={() => setConfirmDelete({ id: event.id, title: event.title })}
-                                disabled={deletingId === event.id}
-                              >
-                                <Trash2 className="h-3.5 w-3.5 text-red-500 sm:text-slate-400 sm:group-hover:text-red-500 transition-colors" />
-                              </Button>
-                            </TooltipTrigger>
-                            <TooltipContent side="top"><p>Delete</p></TooltipContent>
-                          </Tooltip>
-                        </div>
+                        {!isAcademicOverlay && (
+                          <div className="flex items-center gap-0.5 shrink-0 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity duration-150">
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button variant="ghost" size="icon" className="h-8 w-8 sm:h-7 sm:w-7 rounded-lg hover:bg-blue-50" onClick={() => handleEditOpen(event)}>
+                                  <Pencil className="h-3.5 w-3.5 text-blue-500 sm:text-slate-400 sm:group-hover:text-blue-500 transition-colors" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent side="top"><p>Edit</p></TooltipContent>
+                            </Tooltip>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8 sm:h-7 sm:w-7 rounded-lg hover:bg-red-50"
+                                  onClick={() => setConfirmDelete({ id: event.id, title: event.title })}
+                                  disabled={deletingId === event.id}
+                                >
+                                  <Trash2 className="h-3.5 w-3.5 text-red-500 sm:text-slate-400 sm:group-hover:text-red-500 transition-colors" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent side="top"><p>Delete</p></TooltipContent>
+                            </Tooltip>
+                          </div>
+                        )}
                       </div>
                     </div>
                   );
@@ -363,7 +392,7 @@ export default function EventList({ events = [], roomId, onEventsChange }) {
 
       {/* Edit event dialog */}
       <Dialog open={!!editEvent} onOpenChange={(open) => !open && setEditEvent(null)}>
-        <DialogContent className="sm:max-w-md rounded-2xl">
+      <DialogContent className="sm:max-w-[560px] rounded-2xl">
           <DialogHeader>
             <DialogTitle className="text-lg font-bold">Edit Event</DialogTitle>
           </DialogHeader>
@@ -372,19 +401,26 @@ export default function EventList({ events = [], roomId, onEventsChange }) {
               <label className="text-sm font-semibold text-slate-700">Title</label>
               <Input className="rounded-xl border-slate-200" value={editForm.title || ''} onChange={(e) => setEditForm({ ...editForm, title: e.target.value })} disabled={editLoading} />
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-              <div className="space-y-1.5">
-                <label className="text-sm font-semibold text-slate-700">Date</label>
-                <Input className="rounded-xl border-slate-200" type="date" lang="en" value={editForm.start_date || ''} onChange={(e) => setEditForm({ ...editForm, start_date: e.target.value })} disabled={editLoading} />
-              </div>
-              <div className="space-y-1.5">
-                <label className="text-sm font-semibold text-slate-700">Start</label>
-                <Input className="rounded-xl border-slate-200" type="time" lang="en" value={editForm.start_time || ''} onChange={(e) => setEditForm({ ...editForm, start_time: e.target.value })} disabled={editLoading} />
-              </div>
-              <div className="space-y-1.5">
-                <label className="text-sm font-semibold text-slate-700">End</label>
-                <Input className="rounded-xl border-slate-200" type="time" lang="en" value={editForm.end_time || ''} onChange={(e) => setEditForm({ ...editForm, end_time: e.target.value })} disabled={editLoading} />
-              </div>
+            <div className="grid gap-3 md:grid-cols-[minmax(0,1.25fr)_minmax(0,1fr)_minmax(0,1fr)]">
+              <DateField
+                label="Date"
+                hint={showFlindersWeeks ? getFlindersWeekContext(editForm.start_date) : undefined}
+                value={editForm.start_date || ''}
+                onChange={(e) => setEditForm({ ...editForm, start_date: e.target.value })}
+                disabled={editLoading}
+              />
+              <TimeField
+                label="Start"
+                value={editForm.start_time || ''}
+                onChange={(e) => setEditForm({ ...editForm, start_time: e.target.value })}
+                disabled={editLoading}
+              />
+              <TimeField
+                label="End"
+                value={editForm.end_time || ''}
+                onChange={(e) => setEditForm({ ...editForm, end_time: e.target.value })}
+                disabled={editLoading}
+              />
             </div>
             <div className="space-y-1.5">
               <label className="text-sm font-semibold text-slate-700">Location</label>

@@ -3,6 +3,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import { DateField, TimeField } from '@/components/ui/date-time-field';
 import { Plus, Loader2 } from 'lucide-react';
 import { createTask } from '@/services/tasks';
 
@@ -69,7 +70,7 @@ export default function TaskForm({ roomId, members = [], onCreated }) {
           Assign Task
         </Button>
       </DialogTrigger>
-      <DialogContent>
+      <DialogContent className="sm:max-w-[560px] rounded-2xl">
         <DialogHeader>
           <DialogTitle>Create Task</DialogTitle>
           <DialogDescription>Assign a new task to a team member.</DialogDescription>
@@ -102,18 +103,17 @@ export default function TaskForm({ roomId, members = [], onCreated }) {
             </select>
           </div>
 
-          <div className="space-y-2">
-            <label className="text-sm font-medium">Due Date (optional)</label>
-            <div className="grid grid-cols-2 gap-2">
-              <Input
-                type="date"
-                lang="en"
+          <div className="space-y-3">
+            <div className="grid gap-3 md:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]">
+              <DateField
+                label="Due Date"
+                hint="Optional"
                 value={dueDate}
                 onChange={(e) => setDueDate(e.target.value)}
               />
-              <Input
-                type="time"
-                lang="en"
+              <TimeField
+                label="Due Time"
+                hint="Optional"
                 value={dueTime}
                 onChange={(e) => setDueTime(e.target.value)}
               />

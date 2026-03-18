@@ -3,9 +3,12 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import { DateField, TimeField } from '@/components/ui/date-time-field';
 import { Loader2, MapPin } from 'lucide-react';
 import { createEvent } from '@/services/events';
 import { format } from 'date-fns';
+import { useAuth } from '@/hooks/useAuth';
+import { getFlindersWeekContext, isFlindersUser } from '@/lib/flinders-week';
 
 const CATEGORIES = [
   { value: 'meeting', label: 'Meeting', icon: '👥' },
@@ -21,6 +24,7 @@ const CATEGORIES = [
 ];
 
 export default function EventForm({ roomId, onCreateStart, onCreated, onCreateError, selectedDate, open, onOpenChange }) {
+  const { user } = useAuth();
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState('meeting');
@@ -46,6 +50,7 @@ export default function EventForm({ roomId, onCreateStart, onCreated, onCreateEr
 
   const dateStr = selectedDate ? format(selectedDate, 'yyyy-MM-dd') : '';
   const displayDate = selectedDate ? format(selectedDate, 'EEEE, MMMM d, yyyy') : '';
+  const weekHint = isFlindersUser(user) ? getFlindersWeekContext(selectedDate) : null;
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -104,7 +109,7 @@ export default function EventForm({ roomId, onCreateStart, onCreated, onCreateEr
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[440px] rounded-2xl">
+      <DialogContent className="sm:max-w-[520px] rounded-2xl">
         <DialogHeader>
           <DialogTitle className="text-lg font-bold">New Event</DialogTitle>
           <DialogDescription className="text-slate-500">{displayDate}</DialogDescription>
@@ -148,14 +153,29 @@ export default function EventForm({ roomId, onCreateStart, onCreated, onCreateEr
             />
           </div>
 
-          {/* Time */}
-          <div className="space-y-2">
-            <label className="text-sm font-semibold text-slate-700">Time</label>
-            <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3">
-              <Input type="time" lang="en" value={startTime} onChange={(e) => setStartTime(e.target.value)} className="rounded-xl border-slate-200" />
-              <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">to</span>
-              <Input type="time" lang="en" value={endTime} onChange={(e) => setEndTime(e.target.value)} className="rounded-xl border-slate-200" />
+          {/* Date and Time */}
+          <div className="space-y-3">
+            <div className="grid gap-3 md:grid-cols-[minmax(0,1.25fr)_minmax(0,1fr)_minmax(0,1fr)]">
+              <DateField
+                label="Date"
+                hint={weekHint || undefined}
+                value={dateStr}
+                readOnly
+                disabled
+                inputClassName="cursor-default"
+              />
+              <TimeField
+                label="Start"
+                value={startTime}
+                onChange={(e) => setStartTime(e.target.value)}
+              />
+              <TimeField
+                label="End"
+                value={endTime}
+                onChange={(e) => setEndTime(e.target.value)}
+              />
             </div>
+            <p className="text-xs text-slate-400">Choose a precise start and end time for this event.</p>
           </div>
 
           {/* Location */}

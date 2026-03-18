@@ -344,7 +344,7 @@ function CommentSection({ postId }) {
 
 // ── Post Card ──
 
-function PostCard({ post, myStatus, onParticipate, onDelete, onReaction, onVote, userId }) {
+function PostCard({ post, myStatus, onParticipate, onDelete, onReaction, onVote, userId, isAdmin }) {
   const [showComments, setShowComments] = useState(false);
   const [reactions, setReactions] = useState(post.reactions || {});
   const [myReactions, setMyReactions] = useState(post.my_reactions || []);
@@ -419,7 +419,7 @@ function PostCard({ post, myStatus, onParticipate, onDelete, onReaction, onVote,
           <Badge variant="outline" className={`text-[10px] rounded-full ${catStyle.bg} ${catStyle.text} ${catStyle.border}`}>
             {catLabel}
           </Badge>
-          {post.author_id === userId && (
+          {(post.author_id === userId || isAdmin) && (
             <button onClick={(e) => { e.stopPropagation(); onDelete(post.id); }} className="text-slate-300 hover:text-destructive transition-colors">
               <Trash2 className="h-3.5 w-3.5" />
             </button>
@@ -889,6 +889,7 @@ export default function BoardPage() {
                 onReaction={handleReaction}
                 onVote={handleVote}
                 userId={user?.id}
+                isAdmin={Boolean(user?.is_admin)}
               />
             ))}
           </div>

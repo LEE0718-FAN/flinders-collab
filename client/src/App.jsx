@@ -141,7 +141,7 @@ export default function App() {
               <Route path="/" element={<Navigate to="/dashboard" replace />} />
               <Route path="/login" element={<Suspense fallback={<PageLoader />}><PublicRoute><LoginPage /></PublicRoute></Suspense>} />
               <Route path="/signup" element={<Suspense fallback={<PageLoader />}><PublicRoute><SignupPage /></PublicRoute></Suspense>} />
-              <Route path="/reset-password" element={<Suspense fallback={<PageLoader />}><PublicRoute><ResetPasswordPage /></PublicRoute></Suspense>} />
+              <Route path="/reset-password" element={<Suspense fallback={<PageLoader />}><ResetPasswordPage /></Suspense>} />
               {/* Protected routes share MainLayout — sidebar/header persist across navigations */}
               <Route element={<ProtectedLayout />}>
                 <Route path="/dashboard" element={<DashboardPage />} />

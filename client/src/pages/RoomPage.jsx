@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -29,6 +29,8 @@ import EditRoomDialog from '@/components/room/EditRoomDialog';
 import QuickLinks from '@/components/room/QuickLinks';
 import { getAnnouncements, createAnnouncement, deleteAnnouncement as deleteAnnouncementApi, markAllRead } from '@/services/announcements';
 import { formatDistanceToNow, format } from 'date-fns';
+import { isFlindersUser } from '@/lib/flinders-week';
+import { getFlindersScheduleOverlayEvents } from '@/lib/flinders-academic-overlay';
 
 function sortEvents(items) {
   return [...items].sort((a, b) => new Date(a.start_time) - new Date(b.start_time));
@@ -326,6 +328,11 @@ export default function RoomPage() {
     });
   }, []);
 
+  const scheduleEvents = useMemo(() => {
+    if (!isFlindersUser(user)) return events;
+    return sortEvents([...events, ...getFlindersScheduleOverlayEvents()]);
+  }, [events, user]);
+
   const handleFileUploaded = useCallback((file) => {
     setFilesLoaded(true);
     setFiles((prev) => upsertById(prev, file, {
@@ -555,7 +562,7 @@ export default function RoomPage() {
                 <div className="md:sticky md:top-4 z-10">
                   <ScheduleCalendar
                     roomId={roomId}
-                    events={events}
+                    events={scheduleEvents}
                     selectedDate={selectedDate}
                     onSelectDate={setSelectedDate}
                     scrollFollowDate={scrollFollowDate}
@@ -593,7 +600,7 @@ export default function RoomPage() {
                     <Loader2 className="h-6 w-6 animate-spin text-indigo-500" />
                   </div>
                 ) : (
-                  <EventList events={events} roomId={roomId} onEventsChange={handleEventsChange} />
+                  <EventList events={scheduleEvents} roomId={roomId} onEventsChange={handleEventsChange} />
                 )}
               </div>
             </div>
