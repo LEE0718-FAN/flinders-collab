@@ -1,10 +1,10 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { DayPicker } from 'react-day-picker';
 import { addDays, addMonths, eachDayOfInterval, endOfMonth, endOfWeek, format, startOfMonth, startOfWeek, subMonths } from 'date-fns';
-import { CalendarRange, ChevronLeft, ChevronRight, Plus, X } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Plus, X } from 'lucide-react';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { formatFlindersWeekContext } from '@/lib/flinders-week';
+import { getFlindersWeekLabelForDates } from '@/lib/flinders-week';
 
 const categoryColors = {
   meeting: '#3b82f6',
@@ -24,8 +24,7 @@ const categoryColors = {
 export default function ScheduleCalendar({ events = [], selectedDate, onSelectDate, onDateClick, onAddEvent, onDismissPrompt, roomId, promptResetToken = 0, scrollFollowDate }) {
   const [month, setMonth] = useState(new Date());
   const [addPrompt, setAddPrompt] = useState(null); // date to show "add event?" prompt
-  const showWeekSummary = events.some((event) => event.isAcademicOverlay);
-  const selectedWeekContext = selectedDate ? formatFlindersWeekContext(selectedDate) : null;
+  const showWeekColumn = events.some((event) => event.isAcademicOverlay);
 
   // Reset to current month when room changes
   useEffect(() => {
@@ -83,6 +82,19 @@ export default function ScheduleCalendar({ events = [], selectedDate, onSelectDa
 
   const eventDateKeys = new Set(eventMarkersByDate.keys());
   const hasEvent = (date) => eventDateKeys.has(format(date, 'yyyy-MM-dd'));
+  const hasAcademicOverlay = (date) => overlayTypeByDate.has(format(date, 'yyyy-MM-dd'));
+
+  const calendarRows = [];
+  let rowStart = startOfWeek(startOfMonth(month));
+  const lastRowEnd = endOfWeek(endOfMonth(month));
+  while (rowStart <= lastRowEnd) {
+    const dates = Array.from({ length: 7 }, (_, index) => addDays(rowStart, index));
+    calendarRows.push({
+      key: format(rowStart, 'yyyy-MM-dd'),
+      label: getFlindersWeekLabelForDates(dates, { short: true }),
+    });
+    rowStart = addDays(rowStart, 7);
+  }
 
   const EventDayButton = (props) => {
     const { modifiers, day, className, children, ...buttonProps } = props;
@@ -165,11 +177,12 @@ export default function ScheduleCalendar({ events = [], selectedDate, onSelectDa
 
     onSelectDate?.(date);
     if (date && hasEvent(date)) {
-      // Date has events: scroll to them + show add prompt
       onDateClick?.(date);
       setAddPrompt(date);
+    } else if (date && hasAcademicOverlay(date)) {
+      onDateClick?.(date);
+      setAddPrompt(null);
     } else {
-      // No events on this date: open form directly
       setAddPrompt(null);
       onAddEvent?.(date);
     }
@@ -197,55 +210,59 @@ export default function ScheduleCalendar({ events = [], selectedDate, onSelectDa
           <ChevronRight className="h-4 w-4" />
         </Button>
       </div>
-      {showWeekSummary && selectedWeekContext && (
-        <div className="border-b border-slate-100 bg-indigo-50/80 px-4 py-2.5">
-          <div className="flex items-center gap-2 text-indigo-700">
-            <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-white shadow-sm">
-              <CalendarRange className="h-3.5 w-3.5" />
-            </span>
-            <div className="min-w-0">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-indigo-500">Selected Date</p>
-              <p className="text-sm font-semibold">{selectedWeekContext}</p>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* Calendar body */}
       <div className="bg-white rounded-b-2xl p-4">
-        <DayPicker
-          mode="single"
-          selected={selectedDate}
-          onSelect={handleSelect}
-          month={month}
-          onMonthChange={setMonth}
-          hideNavigation
-          modifiers={modifiers}
-          modifiersStyles={modifiersStyles}
-          components={{
-            DayButton: EventDayButton,
-          }}
-          showOutsideDays
-          classNames={{
-            months: 'flex flex-col',
-            month: 'space-y-2',
-            month_caption: 'hidden',
-            month_grid: 'w-full border-collapse space-y-1',
-            weekdays: 'flex',
-            weekday: 'w-10 sm:w-9 rounded-md text-[0.75rem] font-bold uppercase tracking-wider text-blue-600/60',
-            week: 'mt-2 flex w-full',
-            day: 'relative h-10 w-10 sm:h-9 sm:w-9 p-0 text-center text-sm',
-            day_button: cn(
-              buttonVariants({ variant: 'ghost' }),
-              'h-10 w-10 sm:h-9 sm:w-9 p-0 font-normal rounded-xl transition-all duration-150 aria-selected:opacity-100'
-            ),
-            selected: 'rounded-xl bg-blue-600 text-white shadow-lg shadow-blue-500/30 hover:bg-blue-600 hover:text-white focus:bg-blue-600 focus:text-white font-bold',
-            today: 'rounded-xl bg-blue-50 text-blue-700 font-bold ring-2 ring-blue-200',
-            outside: 'text-slate-300 opacity-50',
-            disabled: 'text-muted-foreground opacity-50',
-            hidden: 'invisible',
-          }}
-        />
+        <div className="flex gap-3">
+          {showWeekColumn && (
+            <div className="hidden w-11 shrink-0 sm:block">
+              <div className="h-7" />
+              {calendarRows.map((row) => (
+                <div key={row.key} className="mt-2 flex h-10 items-center justify-center sm:h-9">
+                  {row.label ? (
+                    <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-indigo-500">
+                      {row.label}
+                    </span>
+                  ) : null}
+                </div>
+              ))}
+            </div>
+          )}
+          <div className="min-w-0 flex-1">
+            <DayPicker
+              mode="single"
+              selected={selectedDate}
+              onSelect={handleSelect}
+              month={month}
+              onMonthChange={setMonth}
+              hideNavigation
+              modifiers={modifiers}
+              modifiersStyles={modifiersStyles}
+              components={{
+                DayButton: EventDayButton,
+              }}
+              showOutsideDays
+              classNames={{
+                months: 'flex flex-col',
+                month: 'space-y-2',
+                month_caption: 'hidden',
+                month_grid: 'w-full border-collapse space-y-1',
+                weekdays: 'flex',
+                weekday: 'w-10 sm:w-9 rounded-md text-[0.75rem] font-bold uppercase tracking-wider text-blue-600/60',
+                week: 'mt-2 flex w-full',
+                day: 'relative h-10 w-10 sm:h-9 sm:w-9 p-0 text-center text-sm',
+                day_button: cn(
+                  buttonVariants({ variant: 'ghost' }),
+                  'h-10 w-10 sm:h-9 sm:w-9 p-0 font-normal rounded-xl transition-all duration-150 aria-selected:opacity-100'
+                ),
+                selected: 'rounded-xl bg-blue-600 text-white shadow-lg shadow-blue-500/30 hover:bg-blue-600 hover:text-white focus:bg-blue-600 focus:text-white font-bold',
+                today: 'rounded-xl bg-blue-50 text-blue-700 font-bold ring-2 ring-blue-200',
+                outside: 'text-slate-300 opacity-50',
+                disabled: 'text-muted-foreground opacity-50',
+                hidden: 'invisible',
+              }}
+            />
+          </div>
+        </div>
       </div>
 
       {/* Add event prompt - appears below calendar */}

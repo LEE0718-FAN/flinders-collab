@@ -65,7 +65,7 @@ export default function RoomPage() {
   const [eventsLoaded, setEventsLoaded] = useState(false);
   const [filesLoaded, setFilesLoaded] = useState(false);
   const [tasksLoaded, setTasksLoaded] = useState(false);
-  const [showAcademicInList, setShowAcademicInList] = useState(true);
+  const [showAcademicInList, setShowAcademicInList] = useState(false);
   const [sectionLoading, setSectionLoading] = useState({
     events: false,
     files: false,
@@ -582,7 +582,7 @@ export default function RoomPage() {
             </div>
             <div className="flex flex-col md:flex-row gap-4" style={{ overflow: 'visible' }}>
               {/* Calendar sidebar — sticky on desktop */}
-              <div className="w-full shrink-0 md:w-[280px]">
+              <div className="w-full shrink-0 md:w-[320px]">
                 <div className="md:sticky md:top-4 z-10">
                   <ScheduleCalendar
                     roomId={roomId}
