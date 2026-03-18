@@ -55,6 +55,12 @@ const loginValidation = [
     .withMessage('Password is required'),
 ];
 
+const passwordResetValidation = [
+  body('email')
+    .isEmail()
+    .withMessage('Valid email is required'),
+];
+
 // Room validators
 const createRoomValidation = [
   body('name')
@@ -273,6 +279,7 @@ module.exports = {
   ALLOWED_DOMAINS,
   signupValidation,
   loginValidation,
+  passwordResetValidation,
   createRoomValidation,
   joinRoomValidation,
   createEventValidation,

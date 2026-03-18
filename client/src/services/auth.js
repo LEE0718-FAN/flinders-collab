@@ -19,6 +19,15 @@ export async function apiLogin(credentials) {
   return parseResponse(res);
 }
 
+export async function apiRequestPasswordReset(email) {
+  const res = await fetch(apiUrl('/api/auth/password/reset'), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email }),
+  });
+  return parseResponse(res);
+}
+
 export async function apiLogout() {
   const res = await fetch(apiUrl('/api/auth/logout'), {
     method: 'POST',

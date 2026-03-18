@@ -15,6 +15,7 @@ import { socket } from '@/lib/socket';
 import ProfileDialog from '@/components/ProfileDialog';
 
 import { getRooms } from '@/services/rooms';
+import { getEvents } from '@/services/events';
 import { applyRoomOrder, loadRoomOrder } from '@/lib/room-order';
 
 const ROOM_NAVIGATION_UPDATED_EVENT = 'rooms-updated';
@@ -34,7 +35,7 @@ function getRoomPalette(room) {
   return roomPalettes[Math.abs(hash) % roomPalettes.length];
 }
 
-function NavItem({ to, isActive, icon: Icon, label, palette }) {
+function NavItem({ to, isActive, icon: Icon, label, palette, badgeCount = 0 }) {
   const roomStyle = palette
     ? isActive
       ? { background: palette.icon + '22' }
@@ -80,6 +81,11 @@ function NavItem({ to, isActive, icon: Icon, label, palette }) {
           }`}
         />
         <span className="truncate">{label}</span>
+        {badgeCount > 0 && (
+          <span className="ml-auto inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-rose-500 px-1.5 text-[10px] font-bold text-white shadow-sm">
+            {badgeCount > 99 ? '99+' : badgeCount}
+          </span>
+        )}
         {isActive && (
           <ChevronRight className="ml-auto h-3.5 w-3.5 opacity-40 text-slate-400" />
         )}
@@ -88,7 +94,7 @@ function NavItem({ to, isActive, icon: Icon, label, palette }) {
   );
 }
 
-function SidebarContent({ rooms, location, isAdmin, unreadCounts = {}, user }) {
+function SidebarContent({ rooms, location, isAdmin, unreadCounts = {}, user, deadlineCount = 0 }) {
   return (
     <nav className="flex flex-col gap-1" role="navigation" aria-label="Main navigation" data-tour="sidebar-nav">
       <NavItem
@@ -102,6 +108,7 @@ function SidebarContent({ rooms, location, isAdmin, unreadCounts = {}, user }) {
         isActive={location.pathname === '/deadlines'}
         icon={CalendarClock}
         label="Deadlines"
+        badgeCount={deadlineCount}
       />
       <NavItem
         to="/board"
@@ -186,6 +193,7 @@ export default function MainLayout({ children }) {
   const [profileOpen, setProfileOpen] = useState(false);
   const [maintenance, setMaintenance] = useState(null); // { type, message, minutesUntil }
   const [unreadCounts, setUnreadCounts] = useState({});
+  const [deadlineCount, setDeadlineCount] = useState(0);
 
   const refreshRooms = async () => {
     const data = await getRooms();
@@ -193,8 +201,36 @@ export default function MainLayout({ children }) {
     setRooms(applyRoomOrder(nextRooms, loadRoomOrder(user?.id)));
   };
 
+  const refreshDeadlineCount = async () => {
+    try {
+      const data = await getRooms();
+      const nextRooms = data.rooms || data || [];
+      const results = await Promise.allSettled(
+        nextRooms.map(async (room) => {
+          const roomEvents = await getEvents(room.id);
+          return Array.isArray(roomEvents) ? roomEvents : roomEvents?.events || [];
+        })
+      );
+
+      const now = Date.now();
+      const count = results.reduce((total, result) => {
+        if (result.status !== 'fulfilled') return total;
+        const futureCount = result.value.filter((event) => {
+          const startTime = new Date(event.start_time).getTime();
+          return Number.isFinite(startTime) && startTime > now;
+        }).length;
+        return total + futureCount;
+      }, 0);
+
+      setDeadlineCount(count);
+    } catch {
+      setDeadlineCount(0);
+    }
+  };
+
   useEffect(() => {
     refreshRooms().catch(() => {});
+    refreshDeadlineCount().catch(() => {});
   }, [user?.id]);
 
   useEffect(() => {
@@ -225,10 +261,12 @@ export default function MainLayout({ children }) {
 
       if (Array.isArray(detail.rooms)) {
         setRooms(applyRoomOrder(detail.rooms, loadRoomOrder(user?.id)));
+        refreshDeadlineCount().catch(() => {});
         return;
       }
 
       refreshRooms().catch(() => {});
+      refreshDeadlineCount().catch(() => {});
     };
 
     // Debounce window focus to avoid excessive refetches (min 30s between)
@@ -239,6 +277,7 @@ export default function MainLayout({ children }) {
       if (now - lastFocusRefresh < 30000) return;
       lastFocusRefresh = now;
       refreshRooms().catch(() => {});
+      refreshDeadlineCount().catch(() => {});
     };
 
     window.addEventListener('room-order-updated', handleRoomOrderUpdated);
@@ -347,7 +386,7 @@ export default function MainLayout({ children }) {
 
         {/* Sidebar navigation */}
         <div className="flex-1 overflow-y-auto px-3 py-4 custom-scrollbar">
-          <SidebarContent rooms={rooms} location={location} isAdmin={user?.is_admin} unreadCounts={unreadCounts} user={user} />
+          <SidebarContent rooms={rooms} location={location} isAdmin={user?.is_admin} unreadCounts={unreadCounts} user={user} deadlineCount={deadlineCount} />
         </div>
 
         {/* Sidebar footer / user info */}
@@ -394,7 +433,7 @@ export default function MainLayout({ children }) {
                 </SheetHeader>
                 <div className="h-px bg-gradient-to-r from-white/10 via-white/5 to-transparent mx-3" />
                 <div className="px-3 py-4">
-                  <SidebarContent rooms={rooms} location={location} isAdmin={user?.is_admin} unreadCounts={unreadCounts} user={user} />
+                  <SidebarContent rooms={rooms} location={location} isAdmin={user?.is_admin} unreadCounts={unreadCounts} user={user} deadlineCount={deadlineCount} />
                 </div>
               </SheetContent>
             </Sheet>

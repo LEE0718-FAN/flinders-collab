@@ -1,6 +1,6 @@
 import { useEffect, useCallback } from 'react';
 import { useAuthStore } from '@/store/authStore';
-import { apiSignup, apiLogin, apiLogout, apiUpdateProfile, apiGuestLogin, apiGuestCleanup } from '@/services/auth';
+import { apiSignup, apiLogin, apiLogout, apiUpdateProfile, apiGuestLogin, apiGuestCleanup, apiRequestPasswordReset } from '@/services/auth';
 import { saveSession, loadSession, clearSession } from '@/lib/auth-token';
 
 export function useAuth() {
@@ -118,6 +118,14 @@ export function useAuth() {
     return updated;
   }, [setSession, setUser]);
 
+  const requestPasswordReset = useCallback(async (email) => {
+    const normalizedEmail = String(email || '').trim().toLowerCase();
+    if (!normalizedEmail) {
+      throw new Error('Email is required');
+    }
+    return apiRequestPasswordReset(normalizedEmail);
+  }, []);
+
   const guestLogin = useCallback(async () => {
     const result = await apiGuestLogin();
 
@@ -170,5 +178,5 @@ export function useAuth() {
     }
   }, [clearAuth, guestCleanup]);
 
-  return { user, session, isLoading, login, signup, logout, updateUser, guestLogin, guestCleanup };
+  return { user, session, isLoading, login, signup, logout, updateUser, requestPasswordReset, guestLogin, guestCleanup };
 }

@@ -1,6 +1,7 @@
 const { supabaseAdmin, supabasePublic } = require('../services/supabase');
 const { ensureUserProfile } = require('../services/userProfile');
 const { isUniversityEmail } = require('../utils/validators');
+const config = require('../config');
 
 async function ignoreQueryError(query) {
   try {
@@ -147,6 +148,37 @@ async function login(req, res, next) {
         major: profile?.major || data.user.user_metadata?.major || null,
         university: profile?.university || data.user.user_metadata?.university || null,
       },
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
+/**
+ * POST /auth/password/reset
+ * Send a password reset email via Supabase Auth.
+ */
+async function requestPasswordReset(req, res, next) {
+  try {
+    const email = String(req.body.email || '').trim().toLowerCase();
+
+    if (!email) {
+      return res.status(400).json({ error: 'Email is required' });
+    }
+
+    const configuredClientUrl = String(process.env.CLIENT_URL || config.clientUrl || '')
+      .split(',')
+      .map((value) => value.trim())
+      .find(Boolean) || 'http://localhost:5173';
+    const redirectTo = `${configuredClientUrl.replace(/\/$/, '')}/reset-password`;
+    const { error } = await supabasePublic.auth.resetPasswordForEmail(email, { redirectTo });
+
+    if (error) {
+      return res.status(400).json({ error: error.message });
+    }
+
+    res.json({
+      message: 'If an account exists for that email, a password reset link has been sent.',
     });
   } catch (err) {
     next(err);
@@ -395,6 +427,7 @@ async function guestCleanup(req, res, next) {
 module.exports = {
   signup,
   login,
+  requestPasswordReset,
   logout,
   getMe,
   updateProfile,

@@ -4,16 +4,19 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Loader2, Mail, Lock } from 'lucide-react';
 
-export default function LoginForm({ onSubmit, onGuestLogin }) {
+export default function LoginForm({ onSubmit, onGuestLogin, onRequestPasswordReset }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
   const [guestLoading, setGuestLoading] = useState(false);
+  const [resetLoading, setResetLoading] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+    setSuccess('');
     const normalizedEmail = email.trim().toLowerCase();
 
     if (!normalizedEmail) {
@@ -43,6 +46,32 @@ export default function LoginForm({ onSubmit, onGuestLogin }) {
     }
   };
 
+  const handlePasswordReset = async () => {
+    setError('');
+    setSuccess('');
+    const normalizedEmail = email.trim().toLowerCase();
+
+    if (!normalizedEmail) {
+      setError('Enter your email address first to receive a reset link.');
+      return;
+    }
+
+    setResetLoading(true);
+    try {
+      await onRequestPasswordReset?.(normalizedEmail);
+      setSuccess('Password reset email sent. Please check your inbox.');
+    } catch (err) {
+      const msg = err.message || 'Failed to send password reset email';
+      if (msg === 'Failed to fetch' || msg === 'Load failed') {
+        setError('Server is starting up. Please try again in a few seconds.');
+      } else {
+        setError(msg);
+      }
+    } finally {
+      setResetLoading(false);
+    }
+  };
+
   return (
     <form onSubmit={handleSubmit} className="space-y-5">
       <div className="text-center space-y-1">
@@ -66,7 +95,17 @@ export default function LoginForm({ onSubmit, onGuestLogin }) {
         </div>
       </div>
       <div className="space-y-2">
-        <label htmlFor="password" className="text-[13px] font-semibold text-foreground/70">Password</label>
+        <div className="flex items-center justify-between gap-3">
+          <label htmlFor="password" className="text-[13px] font-semibold text-foreground/70">Password</label>
+          <button
+            type="button"
+            onClick={handlePasswordReset}
+            disabled={loading || guestLoading || resetLoading}
+            className="text-[12px] font-semibold text-blue-600 hover:text-blue-700 disabled:opacity-50"
+          >
+            {resetLoading ? 'Sending...' : 'Forgot password?'}
+          </button>
+        </div>
         <div className="relative">
           <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/40" />
           <Input
@@ -80,6 +119,12 @@ export default function LoginForm({ onSubmit, onGuestLogin }) {
           />
         </div>
       </div>
+
+      {success && (
+        <div className="rounded-xl border border-emerald-100 bg-emerald-50 px-4 py-3">
+          <p className="text-sm text-emerald-700">{success}</p>
+        </div>
+      )}
 
       {error && (
         <div className="flex items-center gap-2 rounded-xl bg-red-50 border border-red-100 px-4 py-3">
@@ -128,6 +173,7 @@ export default function LoginForm({ onSubmit, onGuestLogin }) {
         onClick={async () => {
           setGuestLoading(true);
           setError('');
+          setSuccess('');
           try {
             await onGuestLogin();
           } catch (err) {

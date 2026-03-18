@@ -330,6 +330,13 @@ export default function InteractiveTutorial() {
     setTimeout(() => window.dispatchEvent(new CustomEvent('rooms-updated')), 2000);
   }, [navigate, safeDeleteTutorialRoom, resetUI, logoutTester]);
 
+  const deactivateTutorial = useCallback(() => {
+    cancelRef.current = true;
+    setActive(false);
+    setShowPrompt(false);
+    resetUI();
+  }, [resetUI]);
+
   const findBtn = useCallback((text) => {
     const btns = document.querySelectorAll('button');
     for (const b of btns) { if (b.textContent.includes(text)) return b; }
@@ -340,7 +347,10 @@ export default function InteractiveTutorial() {
   const runTutorial = useCallback(async () => {
     cancelRef.current = false;
     const bail = () => cancelRef.current;
-    const end = async () => { await cleanup(); setActive(false); };
+    const end = async () => {
+      deactivateTutorial();
+      await cleanup();
+    };
     const pause = (ms) => pauseFor(ms);
     const setP = (n) => { setProgress(n); };
 
@@ -820,7 +830,7 @@ export default function InteractiveTutorial() {
       try { await cleanup(); } catch { /* ignore */ }
       setActive(false);
     }
-  }, [navigate, sleep, pauseFor, waitForEl, waitForGone, moveCursorTo, clickEl, clickDomEl, showTip, typeInto, cleanup, findBtn, simulateClick, resetUI, setSkipEnabled]);
+  }, [navigate, sleep, pauseFor, waitForEl, waitForGone, moveCursorTo, clickEl, clickDomEl, showTip, typeInto, cleanup, deactivateTutorial, findBtn, simulateClick, resetUI, setSkipEnabled]);
 
   const runTutorialRef = useRef(runTutorial);
   runTutorialRef.current = runTutorial;
@@ -832,13 +842,12 @@ export default function InteractiveTutorial() {
   }, [active]);
 
   const handleStop = useCallback(async (permanent) => {
-    cancelRef.current = true;
+    deactivateTutorial();
     // Small delay to let any in-flight sleeps resolve
     await new Promise((r) => setTimeout(r, 200));
     try { await cleanup(); } catch { /* ignore */ }
-    setActive(false); setShowPrompt(false);
     if (permanent) localStorage.setItem(TUTORIAL_KEY, Date.now().toString());
-  }, [cleanup]);
+  }, [cleanup, deactivateTutorial]);
 
   const handleDecline = () => {
     if (session?.is_tester) {

@@ -5,7 +5,7 @@ const router = express.Router();
 const authController = require('../controllers/authController');
 const { authenticate } = require('../middleware/auth');
 const { validate } = require('../middleware/validate');
-const { signupValidation, loginValidation } = require('../utils/validators');
+const { signupValidation, loginValidation, passwordResetValidation } = require('../utils/validators');
 
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -40,6 +40,9 @@ router.post('/signup', signupLimiter, signupValidation, validate, authController
 
 // POST /auth/login - Sign in
 router.post('/login', loginLimiter, loginValidation, validate, authController.login);
+
+// POST /auth/password/reset - Send password reset email
+router.post('/password/reset', loginLimiter, passwordResetValidation, validate, authController.requestPasswordReset);
 
 // POST /auth/logout - Sign out (requires auth)
 router.post('/logout', authenticate, authController.logout);

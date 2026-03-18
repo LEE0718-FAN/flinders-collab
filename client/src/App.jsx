@@ -29,6 +29,7 @@ function lazyRetry(importFn) {
 
 const LoginPage = lazyRetry(() => import('@/pages/LoginPage'));
 const SignupPage = lazyRetry(() => import('@/pages/SignupPage'));
+const ResetPasswordPage = lazyRetry(() => import('@/pages/ResetPasswordPage'));
 const DashboardPage = lazyRetry(() => import('@/pages/DashboardPage'));
 const RoomPage = lazyRetry(() => import('@/pages/RoomPage'));
 const AdminPage = lazyRetry(() => import('@/pages/AdminPage'));
@@ -140,6 +141,7 @@ export default function App() {
               <Route path="/" element={<Navigate to="/dashboard" replace />} />
               <Route path="/login" element={<Suspense fallback={<PageLoader />}><PublicRoute><LoginPage /></PublicRoute></Suspense>} />
               <Route path="/signup" element={<Suspense fallback={<PageLoader />}><PublicRoute><SignupPage /></PublicRoute></Suspense>} />
+              <Route path="/reset-password" element={<Suspense fallback={<PageLoader />}><PublicRoute><ResetPasswordPage /></PublicRoute></Suspense>} />
               {/* Protected routes share MainLayout — sidebar/header persist across navigations */}
               <Route element={<ProtectedLayout />}>
                 <Route path="/dashboard" element={<DashboardPage />} />
