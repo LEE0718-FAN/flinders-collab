@@ -2,9 +2,10 @@ import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription,
 } from '@/components/ui/dialog';
-import { ExternalLink, Plus, Trash2, Link2 } from 'lucide-react';
+import { ExternalLink, Plus, Trash2, Link2, Copy, Check } from 'lucide-react';
+import { copyToClipboard } from '@/lib/native';
 
 const TOOL_PRESETS = [
   { name: 'Google Docs', icon: '📄', color: 'bg-blue-50 border-blue-200 text-blue-700' },
@@ -29,6 +30,8 @@ export default function QuickLinks({ roomId, links = [], onLinksChange }) {
   const [url, setUrl] = useState('');
   const [label, setLabel] = useState('');
   const [error, setError] = useState('');
+  const [selectedLink, setSelectedLink] = useState(null);
+  const [copiedLinkId, setCopiedLinkId] = useState(null);
 
   // Links are stored in localStorage per room
   const storageKey = `quick-links:${roomId}`;
@@ -90,6 +93,28 @@ export default function QuickLinks({ roomId, links = [], onLinksChange }) {
     saveLinks(next);
   };
 
+  const handleLinkActionOpen = (link) => {
+    setSelectedLink(link);
+  };
+
+  const handleLinkOpen = () => {
+    if (!selectedLink?.url) return;
+    window.open(selectedLink.url, '_blank', 'noopener,noreferrer');
+    setSelectedLink(null);
+  };
+
+  const handleLinkCopy = async () => {
+    if (!selectedLink?.url) return;
+    try {
+      await copyToClipboard(selectedLink.url);
+      setCopiedLinkId(selectedLink.id);
+      window.setTimeout(() => setCopiedLinkId((current) => (current === selectedLink.id ? null : current)), 1500);
+      setSelectedLink(null);
+    } catch {
+      setError('Failed to copy link');
+    }
+  };
+
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
@@ -114,11 +139,10 @@ export default function QuickLinks({ roomId, links = [], onLinksChange }) {
           {savedLinks.map((link) => {
             const preset = getPreset(link.tool);
             return (
-              <a
+              <button
                 key={link.id}
-                href={link.url}
-                target="_blank"
-                rel="noopener noreferrer"
+                type="button"
+                onClick={() => handleLinkActionOpen(link)}
                 className={`group flex items-center gap-3 rounded-xl border p-3 transition-all hover:shadow-md hover:-translate-y-0.5 ${preset.color}`}
               >
                 <span className="text-xl">{preset.icon}</span>
@@ -126,14 +150,19 @@ export default function QuickLinks({ roomId, links = [], onLinksChange }) {
                   <p className="text-sm font-medium truncate">{link.label}</p>
                   <p className="text-[11px] opacity-60 truncate">{link.url}</p>
                 </div>
-                <ExternalLink className="h-3.5 w-3.5 opacity-0 group-hover:opacity-60 transition-opacity shrink-0" />
+                {copiedLinkId === link.id ? (
+                  <Check className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
+                ) : (
+                  <ExternalLink className="h-3.5 w-3.5 opacity-0 group-hover:opacity-60 transition-opacity shrink-0" />
+                )}
                 <button
+                  type="button"
                   onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleRemove(link.id); }}
                   className="opacity-0 group-hover:opacity-60 hover:!opacity-100 transition-opacity shrink-0"
                 >
                   <Trash2 className="h-3.5 w-3.5 text-red-500" />
                 </button>
-              </a>
+              </button>
             );
           })}
         </div>
@@ -188,6 +217,25 @@ export default function QuickLinks({ roomId, links = [], onLinksChange }) {
             <Button variant="outline" onClick={() => setAddOpen(false)}>Cancel</Button>
             <Button onClick={handleAdd}>Add Link</Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!selectedLink} onOpenChange={(open) => !open && setSelectedLink(null)}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>{selectedLink?.label || 'Quick Link'}</DialogTitle>
+            <DialogDescription className="truncate">{selectedLink?.url || ''}</DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-2">
+            <Button type="button" className="gap-2" onClick={handleLinkOpen}>
+              <ExternalLink className="h-4 w-4" />
+              Open link
+            </Button>
+            <Button type="button" variant="outline" className="gap-2" onClick={handleLinkCopy}>
+              <Copy className="h-4 w-4" />
+              Copy link
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
     </div>
