@@ -9,6 +9,9 @@
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
 
+    <!-- Camera permission for future photo capture support -->
+    <uses-permission android:name="android.permission.CAMERA" />
+
     <!-- File download / read storage (Android < 13) -->
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"
         android:maxSdkVersion="32" />
