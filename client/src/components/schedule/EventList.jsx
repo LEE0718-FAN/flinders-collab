@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, lazy, Suspense } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -19,7 +19,7 @@ import { deleteEvent, updateEvent } from '@/services/events';
 import { getLocationStatus } from '@/services/location';
 import { useAuth } from '@/hooks/useAuth';
 import LocationToggle from '@/components/location/LocationToggle';
-import LocationMap from '@/components/location/LocationMap';
+const LocationMap = lazy(() => import('@/components/location/LocationMap'));
 
 const categoryConfig = {
   meeting:      { label: 'Meeting',       icon: '👥', color: 'bg-blue-500',    badgeBg: 'bg-blue-100 text-blue-800 border-blue-300', borderColor: 'border-l-blue-500' },
@@ -302,7 +302,9 @@ export default function EventList({ events = [], roomId, onEventsChange }) {
                                         )}
                                       </div>
                                       {activeMapEventId === event.id && (
-                                        <LocationMap members={locationMembers[event.id] || []} />
+                                        <Suspense fallback={<div className="flex items-center justify-center py-4"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>}>
+                                          <LocationMap members={locationMembers[event.id] || []} />
+                                        </Suspense>
                                       )}
                                     </div>
                                   )}

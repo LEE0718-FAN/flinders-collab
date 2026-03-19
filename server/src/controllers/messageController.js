@@ -1,6 +1,27 @@
 const { supabaseAdmin } = require('../services/supabase');
 const config = require('../config');
 
+// Cache signed URLs for 30 minutes (they expire in 60 min)
+const SIGNED_URL_CACHE_TTL = 30 * 60 * 1000;
+const signedUrlCache = new Map();
+
+function getCachedSignedUrl(storagePath) {
+  const cached = signedUrlCache.get(storagePath);
+  if (cached && Date.now() - cached.ts < SIGNED_URL_CACHE_TTL) return cached.url;
+  return null;
+}
+
+function setCachedSignedUrl(storagePath, url) {
+  signedUrlCache.set(storagePath, { url, ts: Date.now() });
+  // Evict old entries periodically
+  if (signedUrlCache.size > 500) {
+    const now = Date.now();
+    for (const [key, val] of signedUrlCache) {
+      if (now - val.ts > SIGNED_URL_CACHE_TTL) signedUrlCache.delete(key);
+    }
+  }
+}
+
 function formatMessage(message) {
   return {
     ...message,
@@ -48,7 +69,7 @@ async function refreshFileUrls(messages) {
     fileMap.set(f.id, f);
   }
 
-  // Batch generate signed URLs
+  // Batch generate signed URLs (with caching)
   const urlMap = new Map();
   await Promise.all(
     (files || []).map(async (file) => {
@@ -62,10 +83,19 @@ async function refreshFileUrls(messages) {
           const match = storagePath.match(/\/object\/(?:public|sign|authenticated)\/[^/]+\/(.+)/);
           if (match) storagePath = match[1];
         }
+
+        // Check cache first
+        const cachedUrl = getCachedSignedUrl(storagePath);
+        if (cachedUrl) {
+          urlMap.set(file.id, cachedUrl);
+          return;
+        }
+
         const { data: signedData } = await supabaseAdmin.storage
           .from(bucket)
           .createSignedUrl(storagePath, 60 * 60, file.file_name ? { download: file.file_name } : undefined);
         if (signedData?.signedUrl) {
+          setCachedSignedUrl(storagePath, signedData.signedUrl);
           urlMap.set(file.id, signedData.signedUrl);
         }
       } catch { /* skip */ }

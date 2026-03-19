@@ -27,13 +27,17 @@ const ACTION_MAP = {
   'GET /api/rooms/:roomId/members': 'List members',
 };
 
+// Pre-compile regexes at module load time (avoid re-creating on every request)
+const COMPILED_ACTIONS = Object.entries(ACTION_MAP).map(([pattern, label]) => {
+  const [method, path] = pattern.split(' ');
+  const regex = new RegExp('^' + path.replace(/:[^/]+/g, '[^/]+') + '(\\?.*)?$');
+  return { method, regex, label };
+});
+
 function matchAction(method, path) {
-  for (const [pattern, label] of Object.entries(ACTION_MAP)) {
-    const [pMethod, pPath] = pattern.split(' ');
-    if (method !== pMethod) continue;
-    // Convert route pattern to regex
-    const regex = new RegExp('^' + pPath.replace(/:[^/]+/g, '[^/]+') + '(\\?.*)?$');
-    if (regex.test(path)) return label;
+  for (const entry of COMPILED_ACTIONS) {
+    if (method !== entry.method) continue;
+    if (entry.regex.test(path)) return entry.label;
   }
   return null;
 }
