@@ -25,7 +25,6 @@ import { Loader2, Copy, Check, Plus, MessageSquare, FileUp, CalendarPlus, CheckS
 // useRef already imported above
 import { Button } from '@/components/ui/button';
 import ReportButton from '@/components/ReportButton';
-import OnboardingTour from '@/components/OnboardingTour';
 import EditRoomDialog from '@/components/room/EditRoomDialog';
 import QuickLinks from '@/components/room/QuickLinks';
 import { getAnnouncements, createAnnouncement, deleteAnnouncement as deleteAnnouncementApi, markAllRead } from '@/services/announcements';
@@ -425,43 +424,6 @@ export default function RoomPage() {
 
   return (
     <>
-      <OnboardingTour
-        tourId="room"
-        steps={[
-          {
-            target: '[data-tour="tab-schedule"]',
-            title: 'Schedule',
-            description: 'Your team calendar — add meetings, deadlines, exams.',
-            position: 'bottom',
-            icon: '\u{1F4C6}',
-            action: { click: true },
-          },
-          {
-            target: '[data-tour="tab-tasks"]',
-            title: 'Tasks',
-            description: 'Track to-dos, assign work, check things off.',
-            position: 'bottom',
-            icon: '\u2705',
-            action: { click: true },
-          },
-          {
-            target: '[data-tour="tab-chat"]',
-            title: 'Chat',
-            description: 'Real-time messaging with your team.',
-            position: 'bottom',
-            icon: '\u{1F4AC}',
-            action: { click: true },
-          },
-          {
-            target: '[data-tour="tab-files"]',
-            title: 'Files',
-            description: 'Share docs, slides, anything your team needs.',
-            position: 'bottom',
-            icon: '\u{1F4C1}',
-            action: { click: true },
-          },
-        ]}
-      />
       <div className="space-y-6">
         {(() => {
           const palette = room ? getRoomPalette(room) : { headerGradient: 'linear-gradient(135deg, #0ea5e9, #7dd3fc)', accent: '#7dd3fc' };

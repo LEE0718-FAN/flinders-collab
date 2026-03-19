@@ -11,31 +11,6 @@ import { hydratePreferences, updatePreferences } from '@/lib/preferences';
 import { useNavigate } from 'react-router-dom';
 import { format, formatDistanceToNow } from 'date-fns';
 import { Loader2, LayoutGrid, PlayCircle } from 'lucide-react';
-import OnboardingTour from '@/components/OnboardingTour';
-
-const TOUR_STEPS = [
-  {
-    target: '[data-tour="create-room"]',
-    title: 'Create a Room',
-    description: 'Make a room for your course or project team!',
-    position: 'bottom',
-    icon: '\u2728',
-  },
-  {
-    target: '[data-tour="join-room"]',
-    title: 'Join a Room',
-    description: 'Got an invite code? Paste it here to join.',
-    position: 'bottom',
-    icon: '\u{1F517}',
-  },
-  {
-    target: '[data-tour="room-grid"]',
-    title: 'Your Rooms',
-    description: 'All your rooms live here. Tap to open, drag to reorder.',
-    position: 'top',
-    icon: '\u{1F4DA}',
-  },
-];
 
 const TEMP_ROOM_PREFIX = 'temp-room-';
 const ROOM_NAVIGATION_UPDATED_EVENT = 'rooms-updated';
@@ -350,7 +325,6 @@ export default function DashboardPage() {
 
   return (
     <>
-      <OnboardingTour tourId="dashboard" steps={TOUR_STEPS} />
       <div className="space-y-8">
         {/* Hero Banner */}
         <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-blue-600 via-indigo-600 to-violet-700 px-4 sm:px-6 md:px-8 py-8 sm:py-10 text-white shadow-xl">

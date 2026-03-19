@@ -114,36 +114,37 @@ export default function InteractiveTutorial() {
     }
   }, []);
 
+  // Show welcome modal for new users, full tutorial only for testers
+  const [showWelcome, setShowWelcome] = useState(false);
+  const WELCOME_KEY = 'welcome-shown';
+
   useEffect(() => {
-    if (!user) return; // not logged in yet
+    if (!user) return;
     let cancelled = false;
     const testerMode = Boolean(session?.is_tester || user?.is_tester);
-    let fallbackTimer = null;
 
-    if (!testerMode && (isTutorialSuppressed() || isTutorialSessionDismissed())) return;
-
+    // Testers always get the full tutorial prompt
     if (testerMode) {
-      fallbackTimer = setTimeout(() => {
+      const fallbackTimer = setTimeout(() => {
         if (!cancelled) guardedSetShowPrompt(true);
       }, 250);
+      getRooms()
+        .then((rooms) => {
+          if (cancelled) return;
+          guardedSetShowPrompt(true);
+        })
+        .catch(() => {
+          if (!cancelled) guardedSetShowPrompt(true);
+        });
+      return () => { cancelled = true; clearTimeout(fallbackTimer); };
     }
 
-    getRooms()
-      .then((rooms) => {
-        if (cancelled) return;
-        const list = Array.isArray(rooms) ? rooms : rooms?.rooms || [];
-        guardedSetShowPrompt(list.length === 0);
-      })
-      .catch(() => {
-        if (!cancelled && testerMode) {
-          guardedSetShowPrompt(true);
-        }
-      });
-    return () => {
-      cancelled = true;
-      if (fallbackTimer) clearTimeout(fallbackTimer);
-    };
-  }, [guardedSetShowPrompt, isTutorialSessionDismissed, isTutorialSuppressed, session?.is_tester, user]);
+    // Regular users: show welcome modal once, no tutorial
+    if (!localStorage.getItem(WELCOME_KEY)) {
+      setShowWelcome(true);
+    }
+    return () => { cancelled = true; };
+  }, [guardedSetShowPrompt, session?.is_tester, user]);
 
   useEffect(() => {
     const syncPromptVisibility = async () => {
@@ -967,7 +968,37 @@ export default function InteractiveTutorial() {
     guardedStartTutorial({ force: true });
   };
 
-  // ── Prompt modal ──
+  // ── Welcome modal for regular users (shown once) ──
+  if (showWelcome && !active && !showPrompt) {
+    const dismissWelcome = () => {
+      localStorage.setItem(WELCOME_KEY, Date.now().toString());
+      setShowWelcome(false);
+    };
+    return (
+      <div className="fixed inset-0 z-[99999] flex items-center justify-center bg-black/50 backdrop-blur-sm animate-fade-in">
+        <div className="mx-4 w-full max-w-sm rounded-3xl bg-white p-8 shadow-2xl animate-scale-in">
+          <div className="text-center">
+            <div className="mx-auto mb-4 h-20 w-20 rounded-full overflow-hidden shadow-lg shadow-indigo-500/30 ring-3 ring-indigo-100">
+              <img src="/images/seungyun.png" alt="Sean Lee" className="h-full w-full object-cover" />
+            </div>
+            <h2 className="text-xl font-black text-slate-900">Welcome! 👋</h2>
+            <p className="mt-2 text-sm text-slate-500 leading-relaxed">
+              Hey <strong>{user?.full_name?.split(' ')[0] || 'there'}</strong>!<br/>
+              I'm Sean — I built this app for Flinders students.<br/>
+              Hope it helps your team collaboration!
+            </p>
+          </div>
+          <div className="mt-6">
+            <button onClick={dismissWelcome} className="w-full rounded-xl bg-gradient-to-r from-indigo-500 to-purple-600 py-3 text-sm font-bold text-white shadow-lg shadow-indigo-500/25 hover:shadow-xl transition-all active:scale-[0.98]">
+              Let's go!
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Tutorial prompt modal (testers only) ──
   if (showPrompt && !active) {
     return (
       <div className="fixed inset-0 z-[99999] flex items-center justify-center bg-black/50 backdrop-blur-sm animate-fade-in">
@@ -987,13 +1018,8 @@ export default function InteractiveTutorial() {
               Show me around!
             </button>
             <button onClick={handleDecline} className="w-full rounded-xl border border-slate-200 bg-white py-3 text-sm font-medium text-slate-500 hover:bg-slate-50 transition-all">
-              {session?.is_tester ? 'Exit tester mode' : "I'll figure it out myself"}
+              Exit tester mode
             </button>
-            {!session?.is_tester && (
-              <button onClick={handleNeverShow} className="w-full text-[11px] text-slate-400 hover:text-slate-600 py-1 transition-colors">
-                Don't ask again
-              </button>
-            )}
           </div>
         </div>
       </div>
