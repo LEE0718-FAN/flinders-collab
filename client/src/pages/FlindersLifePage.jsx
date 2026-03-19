@@ -4,7 +4,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { GraduationCap, Calendar, BookOpen, ExternalLink, Loader2, ChevronDown, ChevronUp, MapPin, Star, Clock, ChevronLeft, ChevronRight } from 'lucide-react';
 import { getRecommendedEvents } from '@/services/flinders';
-import { apiGetPreferences, apiUpdatePreferences } from '@/services/auth';
+import { hydratePreferences, updatePreferences } from '@/lib/preferences';
 import OnboardingTour from '@/components/OnboardingTour';
 import { format, parseISO, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isToday, getDay, addMonths, subMonths, isWithinInterval } from 'date-fns';
 
@@ -375,7 +375,7 @@ export default function FlindersLifePage() {
   }, []);
 
   useEffect(() => {
-    apiGetPreferences()
+    hydratePreferences()
       .then((data) => {
         setSelectedInterests(Array.isArray(data?.flinders_interests) ? data.flinders_interests : []);
         setFavorites(Array.isArray(data?.flinders_favorites) ? data.flinders_favorites : []);
@@ -392,7 +392,7 @@ export default function FlindersLifePage() {
   const toggleInterest = (interest) => {
     setSelectedInterests((prev) => {
       const next = prev.includes(interest) ? prev.filter((i) => i !== interest) : [...prev, interest];
-      apiUpdatePreferences({ flinders_interests: next }).catch(() => {});
+      updatePreferences({ flinders_interests: next }).catch(() => {});
       fetchEvents(next);
       return next;
     });
@@ -402,7 +402,7 @@ export default function FlindersLifePage() {
     const normalizedId = String(eventId);
     setFavorites((prev) => {
       const next = prev.includes(normalizedId) ? prev.filter((id) => id !== normalizedId) : [...prev, normalizedId];
-      apiUpdatePreferences({ flinders_favorites: next }).catch(() => {});
+      updatePreferences({ flinders_favorites: next }).catch(() => {});
       return next;
     });
   };

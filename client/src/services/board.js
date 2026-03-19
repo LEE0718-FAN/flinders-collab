@@ -14,6 +14,12 @@ export async function getBoardState() {
   return parseResponse(res);
 }
 
+export async function getBoardNotifications() {
+  const headers = getAuthHeaders();
+  const res = await fetch(apiUrl('/api/board/notifications'), { headers });
+  return parseResponse(res);
+}
+
 export async function updateBoardState(lastSeenAt) {
   const headers = getAuthHeaders();
   const body = lastSeenAt ? { last_seen_at: lastSeenAt } : {};

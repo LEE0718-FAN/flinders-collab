@@ -15,12 +15,12 @@ import { socket } from '@/lib/socket';
 import ProfileDialog from '@/components/ProfileDialog';
 import { useToast } from '@/components/ui/toast';
 
-import { getRoomActivity, getRooms } from '@/services/rooms';
+import { getRoomActivitySummary, getRooms } from '@/services/rooms';
 import { getEvents } from '@/services/events';
-import { getBoardState, getPosts, updateBoardState } from '@/services/board';
-import { apiGetPreferences } from '@/services/auth';
+import { getBoardNotifications, updateBoardState } from '@/services/board';
 import { applyRoomOrder } from '@/lib/room-order';
 import { getLatestBoardTimestamp } from '@/lib/board-notifications';
+import { getCachedPreferences, hydratePreferences } from '@/lib/preferences';
 
 const ROOM_NAVIGATION_UPDATED_EVENT = 'rooms-updated';
 
@@ -260,32 +260,17 @@ export default function MainLayout({ children }) {
     }
 
     try {
-      const results = await Promise.allSettled(
-        targetRooms.map(async (room) => {
-          const activity = await getRoomActivity(room.id);
-          const items = Array.isArray(activity) ? activity : [];
-          const roomVisitedAt = roomLastVisitedMap[room.id];
-          const roomLastVisited = room?.last_visited_at ? new Date(room.last_visited_at).getTime() : 0;
-          const lastVisited = roomVisitedAt ?? (Number.isFinite(roomLastVisited) ? roomLastVisited : 0);
-          const count = items.filter((entry) => {
-            const createdAt = new Date(entry.created_at).getTime();
-            return Number.isFinite(createdAt) && createdAt > lastVisited;
-          }).length;
-          return [room.id, count];
-        })
-      );
-
+      const summary = await getRoomActivitySummary();
       const next = {};
-      results.forEach((result) => {
-        if (result.status !== 'fulfilled') return;
-        const [roomId, count] = result.value;
-        if (count > 0) next[roomId] = count;
+      targetRooms.forEach((room) => {
+        const count = Number(summary?.[room.id] || 0);
+        if (count > 0) next[room.id] = count;
       });
       setRecentActivityCounts(next);
     } catch {
       setRecentActivityCounts({});
     }
-  }, [roomLastVisitedMap, rooms, user?.id]);
+  }, [rooms, user?.id]);
 
   const roomBadgeCounts = useMemo(() => {
     const next = {};
@@ -327,7 +312,7 @@ export default function MainLayout({ children }) {
     let cancelled = false;
 
     const hydrateInitialState = async () => {
-      const preferences = await apiGetPreferences().catch(() => null);
+      const preferences = await hydratePreferences().catch(() => getCachedPreferences());
       if (cancelled) return;
       const orderedIds = Array.isArray(preferences?.room_order) ? preferences.room_order : [];
       setRoomOrderIds(orderedIds);
@@ -360,12 +345,13 @@ export default function MainLayout({ children }) {
 
     const syncBoardNotifications = async ({ suppressToast = false } = {}) => {
       try {
-        const data = await getPosts('all');
+        const data = await getBoardNotifications();
         if (cancelled) return;
 
-        const posts = Array.isArray(data) ? data : [];
+        const posts = Array.isArray(data?.posts) ? data.posts : [];
         const latestTimestamp = getLatestBoardTimestamp(posts);
-        const lastSeen = boardLastSeenAtRef.current;
+        const lastSeen = data?.last_seen_at ? new Date(data.last_seen_at).getTime() : boardLastSeenAtRef.current;
+        boardLastSeenAtRef.current = Number.isFinite(lastSeen) ? lastSeen : 0;
 
         if (!lastSeen) {
           if (latestTimestamp > 0) {
@@ -380,17 +366,12 @@ export default function MainLayout({ children }) {
           return;
         }
 
-        const unseenPosts = posts.filter((post) => {
-          const createdAt = new Date(post?.created_at).getTime();
-          return Number.isFinite(createdAt) && createdAt > lastSeen && post?.author_id !== user.id;
-        });
+        const unreadCount = Number(data?.unread_count || 0);
+        setBoardUnreadCount(unreadCount);
 
-        setBoardUnreadCount(unseenPosts.length);
+        if (suppressToast || unreadCount === 0 || posts.length === 0) return;
 
-        if (suppressToast || unseenPosts.length === 0) return;
-
-        unseenPosts
-          .slice(0, 3)
+        posts
           .reverse()
           .forEach((post) => {
             const authorName = post?.is_anonymous ? 'Anonymous' : (post?.users?.full_name || 'Someone');
@@ -422,15 +403,7 @@ export default function MainLayout({ children }) {
       }
     };
 
-    const hydrateBoardState = async () => {
-      const state = await getBoardState();
-      if (cancelled) return;
-      const timestamp = state?.last_seen_at ? new Date(state.last_seen_at).getTime() : 0;
-      boardLastSeenAtRef.current = Number.isFinite(timestamp) ? timestamp : 0;
-      await syncBoardNotifications({ suppressToast: true });
-    };
-
-    hydrateBoardState().catch(() => {
+    syncBoardNotifications({ suppressToast: true }).catch(() => {
       if (!cancelled) {
         boardLastSeenAtRef.current = 0;
         setBoardUnreadCount(0);

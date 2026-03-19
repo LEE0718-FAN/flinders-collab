@@ -21,6 +21,11 @@ router.get(
   boardController.getBoardState
 );
 
+router.get(
+  '/board/notifications',
+  boardController.getBoardNotifications
+);
+
 router.put(
   '/board/state',
   [

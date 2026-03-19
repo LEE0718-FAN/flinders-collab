@@ -40,6 +40,54 @@ async function getBoardState(req, res, next) {
   }
 }
 
+async function getBoardNotifications(req, res, next) {
+  try {
+    const userId = req.user.id;
+
+    const { data: state, error: stateError } = await supabaseAdmin
+      .from('users')
+      .select('board_last_seen_at')
+      .eq('id', userId)
+      .maybeSingle();
+
+    if (stateError) return res.status(400).json({ error: stateError.message });
+
+    const lastSeenAt = state?.board_last_seen_at || null;
+    if (!lastSeenAt) {
+      return res.json({ last_seen_at: null, unread_count: 0, posts: [] });
+    }
+
+    const [{ count, error: countError }, { data: posts, error: postsError }] = await Promise.all([
+      supabaseAdmin
+        .from('board_posts')
+        .select('id', { count: 'exact', head: true })
+        .gt('created_at', lastSeenAt)
+        .neq('author_id', userId),
+      supabaseAdmin
+        .from('board_posts')
+        .select('id, title, created_at, author_id, is_anonymous, users!board_posts_author_users_fkey(full_name)')
+        .gt('created_at', lastSeenAt)
+        .neq('author_id', userId)
+        .order('created_at', { ascending: false })
+        .limit(3),
+    ]);
+
+    if (countError) return res.status(400).json({ error: countError.message });
+    if (postsError) return res.status(400).json({ error: postsError.message });
+
+    res.json({
+      last_seen_at: lastSeenAt,
+      unread_count: count || 0,
+      posts: (posts || []).map((post) => ({
+        ...post,
+        users: post.is_anonymous ? null : post.users,
+      })),
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
 async function updateBoardState(req, res, next) {
   try {
     const userId = req.user.id;
@@ -644,6 +692,7 @@ async function votePoll(req, res, next) {
 
 module.exports = {
   getBoardState,
+  getBoardNotifications,
   updateBoardState,
   getPosts,
   createPost,

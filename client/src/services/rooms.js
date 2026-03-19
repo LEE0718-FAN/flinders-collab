@@ -75,6 +75,12 @@ export async function getRoomActivity(roomId) {
   return parseResponse(res);
 }
 
+export async function getRoomActivitySummary() {
+  const headers = getAuthHeaders();
+  const res = await fetch(apiUrl('/api/rooms/activity-summary'), { headers });
+  return parseResponse(res);
+}
+
 export async function markRoomVisited(roomId) {
   const headers = getAuthHeaders();
   const res = await fetch(apiUrl(`/api/rooms/${roomId}/visit`), {

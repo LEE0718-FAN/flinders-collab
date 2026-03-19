@@ -20,6 +20,9 @@ router.post('/', createRoomValidation, validate, roomController.createRoom);
 // GET /rooms - List my rooms
 router.get('/', roomController.getRooms);
 
+// GET /rooms/activity-summary - unread recent activity counts across my rooms
+router.get('/activity-summary', activityController.getActivitySummary);
+
 // POST /rooms/join - Primary join flow from the dashboard using only an invite code
 router.post('/join', joinRoomValidation, validate, roomController.joinRoomByCode);
 

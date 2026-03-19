@@ -5,9 +5,9 @@ import CreateRoomDialog from '@/components/room/CreateRoomDialog';
 import JoinRoomDialog from '@/components/room/JoinRoomDialog';
 import { getRooms } from '@/services/rooms';
 import { getEvents } from '@/services/events';
-import { apiGetPreferences, apiUpdatePreferences } from '@/services/auth';
 import { useAuth } from '@/hooks/useAuth';
 import { applyRoomOrder, buildOrderedIds } from '@/lib/room-order';
+import { hydratePreferences, updatePreferences } from '@/lib/preferences';
 import { useNavigate } from 'react-router-dom';
 import { format, formatDistanceToNow } from 'date-fns';
 import { Loader2, LayoutGrid, PlayCircle } from 'lucide-react';
@@ -107,7 +107,7 @@ export default function DashboardPage() {
   const fetchRooms = useCallback(async () => {
     setError('');
     try {
-      const preferences = await apiGetPreferences().catch(() => null);
+      const preferences = await hydratePreferences().catch(() => null);
       const orderedIds = Array.isArray(preferences?.room_order) ? preferences.room_order : [];
       setRoomOrderIds(orderedIds);
       const data = await getRooms();
@@ -352,7 +352,7 @@ export default function DashboardPage() {
 
       orderPersistTimerRef.current = window.setTimeout(() => {
         const finalOrderedIds = latestOrderRef.current;
-        apiUpdatePreferences({ room_order: finalOrderedIds }).catch(() => {});
+        updatePreferences({ room_order: finalOrderedIds }).catch(() => {});
         orderPersistTimerRef.current = null;
       }, sidebarSyncDelayMs);
     }
