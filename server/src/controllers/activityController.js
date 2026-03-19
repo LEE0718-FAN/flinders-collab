@@ -94,24 +94,45 @@ async function getUnreadActivityCounts(memberships) {
     ])
   );
 
+  // Find the earliest last_visited_at to use as a date floor filter
+  // This avoids fetching ALL historical rows — only rows newer than the oldest visit matter
+  const visitTimestamps = memberships
+    .map((m) => (m.last_visited_at ? new Date(m.last_visited_at).getTime() : 0))
+    .filter((t) => t > 0);
+  const earliestVisit = visitTimestamps.length > 0
+    ? new Date(Math.min(...visitTimestamps)).toISOString()
+    : null;
+
+  const applyDateFloor = (query) => {
+    return earliestVisit ? query.gte('created_at', earliestVisit) : query;
+  };
+
   const [messagesResult, filesResult, eventsResult, tasksResult] = await Promise.all([
-    supabaseAdmin
-      .from('messages')
-      .select('room_id, created_at')
-      .in('room_id', roomIds),
-    supabaseAdmin
-      .from('files')
-      .select('room_id, created_at')
-      .in('room_id', roomIds)
-      .is('deleted_at', null),
-    supabaseAdmin
-      .from('events')
-      .select('room_id, created_at')
-      .in('room_id', roomIds),
-    supabaseAdmin
-      .from('tasks')
-      .select('room_id, created_at')
-      .in('room_id', roomIds),
+    applyDateFloor(
+      supabaseAdmin
+        .from('messages')
+        .select('room_id, created_at')
+        .in('room_id', roomIds)
+    ),
+    applyDateFloor(
+      supabaseAdmin
+        .from('files')
+        .select('room_id, created_at')
+        .in('room_id', roomIds)
+        .is('deleted_at', null)
+    ),
+    applyDateFloor(
+      supabaseAdmin
+        .from('events')
+        .select('room_id, created_at')
+        .in('room_id', roomIds)
+    ),
+    applyDateFloor(
+      supabaseAdmin
+        .from('tasks')
+        .select('room_id, created_at')
+        .in('room_id', roomIds)
+    ),
   ]);
 
   const errors = [messagesResult, filesResult, eventsResult, tasksResult]

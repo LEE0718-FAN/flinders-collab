@@ -107,10 +107,13 @@ export default function DashboardPage() {
   const fetchRooms = useCallback(async () => {
     setError('');
     try {
-      const preferences = await hydratePreferences().catch(() => null);
+      // Fetch preferences and rooms in parallel instead of sequentially
+      const [preferences, data] = await Promise.all([
+        hydratePreferences().catch(() => null),
+        getRooms(),
+      ]);
       const orderedIds = Array.isArray(preferences?.room_order) ? preferences.room_order : [];
       setRoomOrderIds(orderedIds);
-      const data = await getRooms();
       const nextRooms = data.rooms || data || [];
       const orderedRooms = applyRoomOrder(nextRooms, orderedIds);
       setRooms(orderedRooms);
@@ -165,11 +168,8 @@ export default function DashboardPage() {
       }
     };
 
-    const timer = window.setTimeout(() => {
-      fetchAllEvents();
-    }, 150);
-
-    return () => window.clearTimeout(timer);
+    // Fetch immediately — no artificial delay
+    fetchAllEvents();
   }, [roomIds]);
 
   useLayoutEffect(() => {

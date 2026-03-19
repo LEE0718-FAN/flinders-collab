@@ -22,6 +22,7 @@ import { applyRoomOrder } from '@/lib/room-order';
 import { getLatestBoardTimestamp } from '@/lib/board-notifications';
 import { getCachedPreferences, hydratePreferences } from '@/lib/preferences';
 import { preloadRoute } from '@/lib/route-preload';
+import { getUnreadCounts } from '@/services/announcements';
 
 const ROOM_NAVIGATION_UPDATED_EVENT = 'rooms-updated';
 
@@ -244,16 +245,20 @@ export default function MainLayout({ children }) {
     }
   };
 
-  const refreshRecentActivityCounts = useCallback(async (targetRooms = rooms) => {
+  const roomsRef = useRef(rooms);
+  roomsRef.current = rooms;
+
+  const refreshRecentActivityCounts = useCallback(async (targetRooms) => {
     if (!user?.id) {
       setRecentActivityCounts({});
       return;
     }
 
+    const resolvedRooms = targetRooms || roomsRef.current;
     try {
       const summary = await getRoomActivitySummary();
       const next = {};
-      targetRooms.forEach((room) => {
+      resolvedRooms.forEach((room) => {
         const count = Number(summary?.[room.id] || 0);
         if (count > 0) next[room.id] = count;
       });
@@ -261,7 +266,7 @@ export default function MainLayout({ children }) {
     } catch {
       setRecentActivityCounts({});
     }
-  }, [rooms, user?.id]);
+  }, [user?.id]);
 
   const roomBadgeCounts = useMemo(() => {
     const next = {};
@@ -303,13 +308,15 @@ export default function MainLayout({ children }) {
     let cancelled = false;
 
     const hydrateInitialState = async () => {
-      const preferences = await hydratePreferences().catch(() => getCachedPreferences());
+      // Fetch preferences and rooms in parallel instead of sequentially
+      const [preferences, data] = await Promise.all([
+        hydratePreferences().catch(() => getCachedPreferences()),
+        getRooms(),
+      ]);
       if (cancelled) return;
       const orderedIds = Array.isArray(preferences?.room_order) ? preferences.room_order : [];
       setRoomOrderIds(orderedIds);
 
-      const data = await getRooms();
-      if (cancelled) return;
       const nextRooms = data.rooms || data || [];
       syncRoomVisitState(nextRooms);
       setRooms(applyRoomOrder(nextRooms, orderedIds));
@@ -491,9 +498,11 @@ export default function MainLayout({ children }) {
       const now = Date.now();
       if (now - lastFocusRefresh < 30000) return;
       lastFocusRefresh = now;
-      refreshRooms().catch(() => {});
-      refreshDeadlineCount().catch(() => {});
-      refreshRecentActivityCounts().catch(() => {});
+      Promise.all([
+        refreshRooms(),
+        refreshDeadlineCount(),
+        refreshRecentActivityCounts(),
+      ]).catch(() => {});
     };
 
     const handleRoomActivityVisited = (event) => {
@@ -528,7 +537,6 @@ export default function MainLayout({ children }) {
   useEffect(() => {
     const fetchUnreadCounts = async () => {
       try {
-        const { getUnreadCounts } = await import('@/services/announcements');
         const counts = await getUnreadCounts();
         setAnnouncementUnreadCounts(counts || {});
       } catch { /* silent */ }

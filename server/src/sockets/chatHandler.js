@@ -1,7 +1,17 @@
 const { saveMessage } = require('../controllers/messageController');
 const { supabaseAdmin } = require('../services/supabase');
 
+// Cache room membership checks for 60 seconds to avoid per-message DB queries
+const membershipCache = new Map();
+const MEMBERSHIP_CACHE_TTL = 60_000;
+
 async function isRoomMember(roomId, userId) {
+  const cacheKey = `${roomId}:${userId}`;
+  const cached = membershipCache.get(cacheKey);
+  if (cached && Date.now() - cached.ts < MEMBERSHIP_CACHE_TTL) {
+    return cached.result;
+  }
+
   const { data } = await supabaseAdmin
     .from('room_members')
     .select('id')
@@ -9,8 +19,18 @@ async function isRoomMember(roomId, userId) {
     .eq('user_id', userId)
     .maybeSingle();
 
-  return !!data;
+  const result = !!data;
+  membershipCache.set(cacheKey, { result, ts: Date.now() });
+  return result;
 }
+
+// Prune stale entries every 2 minutes
+setInterval(() => {
+  const now = Date.now();
+  for (const [key, entry] of membershipCache) {
+    if (now - entry.ts > MEMBERSHIP_CACHE_TTL) membershipCache.delete(key);
+  }
+}, 120_000).unref();
 
 /**
  * Handle chat-related socket events for a connected user.

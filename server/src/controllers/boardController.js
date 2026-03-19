@@ -160,7 +160,7 @@ async function getPosts(req, res, next) {
       postIds.length
         ? supabaseAdmin
             .from('poll_votes')
-            .select('post_id, option_index, user_id, users:user_id(full_name)')
+            .select('post_id, option_index, user_id')
             .in('post_id', postIds)
         : { data: [] },
     ]);
@@ -199,12 +199,11 @@ async function getPosts(req, res, next) {
       if (v.user_id === userId) {
         myPollVoteMap[v.post_id] = v.option_index;
       }
-      // Build voter names map: { postId: { optionIndex: [{ user_id, full_name }] } }
+      // Build voter map: { postId: { optionIndex: [{ user_id }] } }
       if (!pollVoterMap[v.post_id]) pollVoterMap[v.post_id] = {};
       if (!pollVoterMap[v.post_id][v.option_index]) pollVoterMap[v.post_id][v.option_index] = [];
       pollVoterMap[v.post_id][v.option_index].push({
         user_id: v.user_id,
-        full_name: v.users?.full_name || 'Unknown',
       });
     }
 
@@ -220,13 +219,12 @@ async function getPosts(req, res, next) {
         my_poll_vote: myPollVoteMap[post.id] !== undefined ? myPollVoteMap[post.id] : null,
       };
 
-      // Build poll_voters — hide names for anonymous polls (unless viewer is the post author)
+      // Build poll_voters — hide user IDs for anonymous polls (unless viewer is the post author)
       const rawVoters = pollVoterMap[post.id] || {};
       if (post.anonymous_poll && post.author_id !== userId) {
-        // Show structure but replace names with "Anonymous"
         const anonVoters = {};
         for (const [optIdx, voters] of Object.entries(rawVoters)) {
-          anonVoters[optIdx] = voters.map((v) => ({ user_id: v.user_id, full_name: 'Anonymous' }));
+          anonVoters[optIdx] = voters.map(() => ({ user_id: null }));
         }
         result.poll_voters = anonVoters;
       } else {

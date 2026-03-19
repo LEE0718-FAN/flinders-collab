@@ -29,7 +29,6 @@ export default function OnboardingTour({ tourId, steps = [], delay = 600 }) {
   const [cursorPos, setCursorPos] = useState({ x: 0, y: 0 });
   const [cursorVisible, setCursorVisible] = useState(false);
   const [phase, setPhase] = useState('idle'); // idle | cursor-moving | clicking | shown
-  const [dontShowAgain, setDontShowAgain] = useState(false);
   const overlayRef = useRef(null);
   const tipRef = useRef(null);
   const isBlockedByOtherTutorial = useCallback(() => {
@@ -53,14 +52,7 @@ export default function OnboardingTour({ tourId, steps = [], delay = 600 }) {
   }, [delay, isBlockedByOtherTutorial, tourId]);
 
   // ── Close helpers ──
-  // Just close — will show again on next visit
-  const dismiss = useCallback(() => {
-    if (window.__activeOnboardingTourId === tourId) {
-      window.__activeOnboardingTourId = null;
-    }
-    setActive(false);
-  }, [tourId]);
-
+  // All dismissals are permanent — user clearly doesn't want to see it again
   const dismissForever = useCallback(() => {
     const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
     saved[tourId] = Date.now();
@@ -71,13 +63,9 @@ export default function OnboardingTour({ tourId, steps = [], delay = 600 }) {
     setActive(false);
   }, [tourId]);
 
-  // Skip all steps of THIS tour only
-  const skipAll = useCallback(() => {
-    if (window.__activeOnboardingTourId === tourId) {
-      window.__activeOnboardingTourId = null;
-    }
-    setActive(false);
-  }, [tourId]);
+  // All close actions (X, skip, complete) permanently dismiss
+  const dismiss = dismissForever;
+  const skipAll = dismissForever;
 
   useEffect(() => {
     const syncWithInteractiveTutorial = (event) => {
@@ -241,12 +229,8 @@ export default function OnboardingTour({ tourId, steps = [], delay = 600 }) {
       setPhase('idle');
       setStep((s) => s + 1);
     } else {
-      // Last step — check if "don't show again" is checked
-      if (dontShowAgain) {
-        dismissForever();
-      } else {
-        dismiss();
-      }
+      // Last step — always permanently dismiss
+      dismissForever();
     }
   };
 
@@ -354,19 +338,6 @@ export default function OnboardingTour({ tourId, steps = [], delay = 600 }) {
 
           {/* Footer */}
           <div className="px-5 py-2.5 bg-slate-50/60">
-            {/* Last step: checkbox */}
-            {isLast && (
-              <label className="flex items-center gap-2 mb-2 cursor-pointer select-none">
-                <input
-                  type="checkbox"
-                  checked={dontShowAgain}
-                  onChange={(e) => setDontShowAgain(e.target.checked)}
-                  className="h-3.5 w-3.5 rounded border-slate-300 text-indigo-500 focus:ring-indigo-500 cursor-pointer"
-                />
-                <span className="text-[11px] text-slate-500">Don't show again</span>
-              </label>
-            )}
-
             <div className="flex items-center justify-between">
               <span className="text-[10px] font-semibold text-slate-400 tracking-wide">
                 {step + 1} / {steps.length}

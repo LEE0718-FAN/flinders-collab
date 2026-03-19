@@ -827,8 +827,8 @@ export default function InteractiveTutorial() {
         setP(14); setTooltip(null); setSpotlight(null); setCursorVisible(false);
         showTip('All done!', "That's it! The demo room will be cleaned up. Go make your own room!", { center: true, icon: '🎉' });
         await pause(3500);
-        await end();
         persistTutorialSuppression();
+        await end();
         return;
       }
       setP(13); setTooltip(null); setSpotlight(null); setCursorVisible(false);
@@ -915,11 +915,13 @@ export default function InteractiveTutorial() {
       showTip('All done!', "That's it! The demo room will be cleaned up. Go make your own room!", { center: true, icon: '🎉' });
       await pause(3500);
 
-      await end();
+      // Persist suppression BEFORE cleanup to avoid race conditions
       persistTutorialSuppression();
+      await end();
     } catch (err) {
-      // Safety net — if anything crashes, clean up gracefully
+      // Safety net — if anything crashes, clean up gracefully and suppress future prompts
       console.warn('Tutorial error:', err);
+      persistTutorialSuppression();
       try { await cleanup(); } catch { /* ignore */ }
       setActive(false);
     }
@@ -948,7 +950,8 @@ export default function InteractiveTutorial() {
       return;
     }
     setShowPrompt(false);
-    persistTutorialSessionDismiss();
+    // Permanently suppress — user said they don't want a tour
+    persistTutorialSuppression();
   };
   const handleNeverShow = () => {
     if (session?.is_tester) {
@@ -1022,7 +1025,7 @@ export default function InteractiveTutorial() {
           Don't show again
         </button>
         <button
-          onClick={() => handleStop(false)}
+          onClick={() => handleStop(true)}
           className="flex items-center gap-1.5 rounded-full bg-white/90 backdrop-blur-sm px-3 py-1.5 text-[11px] font-semibold text-slate-500 shadow-lg border border-white/60 hover:bg-white hover:text-slate-700 transition-all"
         >
           <X className="h-3 w-3" />
