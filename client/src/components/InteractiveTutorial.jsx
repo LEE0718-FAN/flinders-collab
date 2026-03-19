@@ -133,12 +133,13 @@ export default function InteractiveTutorial() {
     const testerMode = Boolean(session?.is_tester || user?.is_tester);
     testerModeRef.current = testerMode;
 
-    // Testers always get the full tutorial prompt
+    // Testers always get the full tutorial prompt — clear any cached suppression
     if (testerMode) {
       setShowWelcome(false);
-      // Single reliable timer — no getRooms() race
+      clearTutorialSuppression();
+      clearTutorialSessionDismiss();
       const timer = setTimeout(() => {
-        if (!cancelled) guardedSetShowPrompt(true);
+        if (!cancelled) setShowPrompt(true);
       }, 300);
       return () => { cancelled = true; clearTimeout(timer); };
     }
