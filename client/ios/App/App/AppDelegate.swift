@@ -8,6 +8,13 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
         // Override point for customization after application launch.
+
+        // SplashScreen auto-hide is controlled by the Capacitor SplashScreen plugin config
+        // in capacitor.config.json (launchAutoHide). No manual dismissal needed here.
+
+        // Ensure the idle timer is enabled (screen can sleep normally)
+        UIApplication.shared.isIdleTimerDisabled = false
+
         return true
     }
 

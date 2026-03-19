@@ -24,6 +24,12 @@
 	<string>$(CURRENT_PROJECT_VERSION)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>NSCameraUsageDescription</key>
+	<string>Flinders Collab needs camera access to take photos for file sharing.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Flinders Collab needs photo library access to share images with your team.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>Flinders Collab needs permission to save images to your photo library.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>Flinders Collab uses your location only when you choose to share it for a team event.</string>
 	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
