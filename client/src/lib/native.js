@@ -202,3 +202,97 @@ export async function copyToClipboard(text) {
 
 // Legacy alias
 export const writeClipboardText = copyToClipboard;
+
+/**
+ * Set the status bar style ('DARK' or 'LIGHT').
+ * No-op on web.
+ */
+export async function setStatusBarStyle(style) {
+  const statusBar = getCapPlugin('StatusBar');
+  if (statusBar) {
+    try {
+      await statusBar.setStyle({ style });
+    } catch {
+      // plugin not available
+    }
+  }
+}
+
+/**
+ * Hide the status bar. No-op on web.
+ */
+export async function hideStatusBar() {
+  const statusBar = getCapPlugin('StatusBar');
+  if (statusBar) {
+    try {
+      await statusBar.hide();
+    } catch {
+      // plugin not available
+    }
+  }
+}
+
+/**
+ * Show the status bar. No-op on web.
+ */
+export async function showStatusBar() {
+  const statusBar = getCapPlugin('StatusBar');
+  if (statusBar) {
+    try {
+      await statusBar.show();
+    } catch {
+      // plugin not available
+    }
+  }
+}
+
+/**
+ * Hide the splash screen. No-op on web.
+ */
+export async function hideSplashScreen() {
+  const splashScreen = getCapPlugin('SplashScreen');
+  if (splashScreen) {
+    try {
+      await splashScreen.hide();
+    } catch {
+      // plugin not available
+    }
+  }
+}
+
+/**
+ * Trigger haptic feedback. No-op on web.
+ * @param {'impact'|'notification'|'vibrate'} type - Type of haptic feedback.
+ */
+export async function triggerHaptic(type = 'impact') {
+  const haptics = getCapPlugin('Haptics');
+  if (haptics) {
+    try {
+      if (type === 'impact') {
+        await haptics.impact({ style: 'medium' });
+      } else if (type === 'notification') {
+        await haptics.notification({ type: 'SUCCESS' });
+      } else if (type === 'vibrate') {
+        await haptics.vibrate();
+      }
+    } catch {
+      // plugin not available
+    }
+  }
+}
+
+/**
+ * Listen for app state changes (foreground/background).
+ * No-op on web. Returns a remove listener handle if available.
+ */
+export async function onAppStateChange(callback) {
+  const app = getCapPlugin('App');
+  if (app) {
+    try {
+      return await app.addListener('appStateChange', callback);
+    } catch {
+      // plugin not available
+    }
+  }
+  return null;
+}
