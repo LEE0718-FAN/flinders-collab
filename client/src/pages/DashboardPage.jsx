@@ -91,6 +91,8 @@ export default function DashboardPage() {
   const swapTimerRef = useRef(null);
   const pendingSwapTargetRef = useRef(null);
   const lastSwapAtRef = useRef(0);
+  const orderPersistTimerRef = useRef(null);
+  const latestOrderRef = useRef([]);
 
   const broadcastRoomUpdate = useCallback((nextRooms, orderedIds = roomOrderIds) => {
     window.dispatchEvent(new CustomEvent(ROOM_NAVIGATION_UPDATED_EVENT, {
@@ -140,6 +142,9 @@ export default function DashboardPage() {
   useEffect(() => () => {
     if (swapTimerRef.current) {
       window.clearTimeout(swapTimerRef.current);
+    }
+    if (orderPersistTimerRef.current) {
+      window.clearTimeout(orderPersistTimerRef.current);
     }
   }, []);
 
@@ -318,29 +323,44 @@ export default function DashboardPage() {
   }, [draggedRoomId, dropTargetId, swapCooldownMs, swapDelayMs]);
 
   const handleDragEnd = useCallback(() => {
+    let nextRooms = rooms;
+
     if (swapTimerRef.current) {
       window.clearTimeout(swapTimerRef.current);
       swapTimerRef.current = null;
+      if (draggedRoomId && pendingSwapTargetRef.current) {
+        nextRooms = swapRoomOrder(rooms, draggedRoomId, pendingSwapTargetRef.current);
+        setRooms(nextRooms);
+      }
     }
+
     pendingSwapTargetRef.current = null;
-    const nextOrderedIds = buildOrderedIds(rooms, TEMP_ROOM_PREFIX);
+    const nextOrderedIds = buildOrderedIds(nextRooms, TEMP_ROOM_PREFIX);
     if (user?.id) {
       setRoomOrderIds(nextOrderedIds);
-      apiUpdatePreferences({ room_order: nextOrderedIds }).catch(() => {});
-      window.setTimeout(() => {
-        window.dispatchEvent(new CustomEvent('room-order-updated', {
-          detail: {
-            userId: user.id,
-            orderedIds: nextOrderedIds,
-          },
-        }));
+      latestOrderRef.current = nextOrderedIds;
+      window.dispatchEvent(new CustomEvent('room-order-updated', {
+        detail: {
+          userId: user.id,
+          orderedIds: nextOrderedIds,
+        },
+      }));
+
+      if (orderPersistTimerRef.current) {
+        window.clearTimeout(orderPersistTimerRef.current);
+      }
+
+      orderPersistTimerRef.current = window.setTimeout(() => {
+        const finalOrderedIds = latestOrderRef.current;
+        apiUpdatePreferences({ room_order: finalOrderedIds }).catch(() => {});
+        orderPersistTimerRef.current = null;
       }, sidebarSyncDelayMs);
     }
     setDraggedRoomId(null);
     setDropTargetId(null);
     setSuppressNavigation(true);
     window.setTimeout(() => setSuppressNavigation(false), 150);
-  }, [rooms, sidebarSyncDelayMs, user?.id]);
+  }, [draggedRoomId, rooms, sidebarSyncDelayMs, user?.id]);
 
   return (
     <>

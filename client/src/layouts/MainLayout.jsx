@@ -220,15 +220,10 @@ export default function MainLayout({ children }) {
   }, []);
 
   const refreshRooms = async () => {
-    const [data, preferences] = await Promise.all([
-      getRooms(),
-      apiGetPreferences().catch(() => null),
-    ]);
+    const data = await getRooms();
     const nextRooms = data.rooms || data || [];
-    const orderedIds = Array.isArray(preferences?.room_order) ? preferences.room_order : roomOrderIds;
-    setRoomOrderIds(orderedIds);
     syncRoomVisitState(nextRooms);
-    setRooms(applyRoomOrder(nextRooms, orderedIds));
+    setRooms(applyRoomOrder(nextRooms, roomOrderIds));
   };
 
   const refreshDeadlineCount = async () => {
@@ -327,9 +322,31 @@ export default function MainLayout({ children }) {
   }, [clearBoardToasts, user?.id]);
 
   useEffect(() => {
-    refreshRooms().catch(() => {});
-    refreshDeadlineCount().catch(() => {});
-  }, [user?.id]);
+    if (!user?.id) return;
+
+    let cancelled = false;
+
+    const hydrateInitialState = async () => {
+      const preferences = await apiGetPreferences().catch(() => null);
+      if (cancelled) return;
+      const orderedIds = Array.isArray(preferences?.room_order) ? preferences.room_order : [];
+      setRoomOrderIds(orderedIds);
+
+      const data = await getRooms();
+      if (cancelled) return;
+      const nextRooms = data.rooms || data || [];
+      syncRoomVisitState(nextRooms);
+      setRooms(applyRoomOrder(nextRooms, orderedIds));
+
+      refreshDeadlineCount().catch(() => {});
+    };
+
+    hydrateInitialState().catch(() => {});
+
+    return () => {
+      cancelled = true;
+    };
+  }, [refreshDeadlineCount, syncRoomVisitState, user?.id]);
 
   useEffect(() => {
     if (!user?.id) {
