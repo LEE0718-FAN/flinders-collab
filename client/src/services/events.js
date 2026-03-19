@@ -19,6 +19,16 @@ export async function getUpcomingEventCount() {
   return parseResponse(res);
 }
 
+export async function getUpcomingEvents({ category, limit } = {}) {
+  const headers = getAuthHeaders();
+  const params = new URLSearchParams();
+  if (category) params.set('category', category);
+  if (limit) params.set('limit', String(limit));
+  const query = params.toString();
+  const res = await fetch(apiUrl(`/api/events/upcoming${query ? `?${query}` : ''}`), { headers });
+  return parseResponse(res);
+}
+
 export async function updateEvent(roomId, eventId, eventData) {
   const headers = getAuthHeaders();
   const res = await fetch(apiUrl(`/api/events/${eventId}`), { method: 'PATCH', headers, body: JSON.stringify(eventData) });

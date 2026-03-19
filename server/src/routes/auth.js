@@ -42,6 +42,9 @@ router.post('/signup', signupLimiter, signupValidation, validate, authController
 // POST /auth/login - Sign in
 router.post('/login', loginLimiter, loginValidation, validate, authController.login);
 
+// POST /auth/refresh - Refresh session using refresh token
+router.post('/refresh', authController.refreshSession);
+
 // POST /auth/password/reset - Send password reset email
 router.post('/password/reset', loginLimiter, passwordResetValidation, validate, authController.requestPasswordReset);
 

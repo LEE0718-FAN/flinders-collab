@@ -188,6 +188,64 @@ async function getUpcomingEventCount(req, res, next) {
   }
 }
 
+async function getUpcomingEvents(req, res, next) {
+  try {
+    const userId = req.user.id;
+    const now = new Date().toISOString();
+    const normalizedCategory = String(req.query.category || '').trim().toLowerCase();
+    const parsedLimit = Number.parseInt(req.query.limit, 10);
+    const limit = Number.isFinite(parsedLimit) && parsedLimit > 0
+      ? Math.min(parsedLimit, 100)
+      : 200;
+
+    const { data: memberships, error: membershipError } = await supabaseAdmin
+      .from('room_members')
+      .select('room_id, rooms(name)')
+      .eq('user_id', userId);
+
+    if (membershipError) {
+      return res.status(400).json({ error: membershipError.message });
+    }
+
+    const rooms = memberships || [];
+    const roomIds = rooms.map((membership) => membership.room_id).filter(Boolean);
+    if (roomIds.length === 0) {
+      return res.json({ events: [] });
+    }
+
+    let query = supabaseAdmin
+      .from('events')
+      .select('id, room_id, title, description, category, location_name, start_time, end_time, enable_location_sharing')
+      .in('room_id', roomIds)
+      .gt('start_time', now)
+      .order('start_time', { ascending: true })
+      .limit(limit);
+
+    if (normalizedCategory) {
+      query = query.eq('category', normalizedCategory);
+    }
+
+    const { data, error } = await query;
+
+    if (error) {
+      return res.status(400).json({ error: error.message });
+    }
+
+    const roomNameById = new Map(
+      rooms.map((membership) => [membership.room_id, membership.rooms?.name || 'Room'])
+    );
+
+    res.json({
+      events: (data || []).map((event) => ({
+        ...event,
+        room_name: roomNameById.get(event.room_id) || 'Room',
+      })),
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
 /**
  * PATCH /events/:eventId
  * Update an existing event. Only owner/admin or event creator can update.
@@ -360,6 +418,7 @@ module.exports = {
   createEvent,
   getEvents,
   getUpcomingEventCount,
+  getUpcomingEvents,
   updateEvent,
   deleteEvent,
 };

@@ -16,6 +16,7 @@ router.use(authenticate);
 
 // GET /events/upcoming-count - Count upcoming events across my rooms
 router.get('/events/upcoming-count', eventController.getUpcomingEventCount);
+router.get('/events/upcoming', eventController.getUpcomingEvents);
 
 // POST /rooms/:roomId/events - Create event in a room
 router.post(

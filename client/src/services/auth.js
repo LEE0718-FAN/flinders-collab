@@ -19,6 +19,15 @@ export async function apiLogin(credentials) {
   return parseResponse(res);
 }
 
+export async function apiRefreshSession(refreshToken) {
+  const res = await fetch(apiUrl('/api/auth/refresh'), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ refresh_token: refreshToken }),
+  });
+  return parseResponse(res);
+}
+
 export async function apiRequestPasswordReset(email) {
   const res = await fetch(apiUrl('/api/auth/password/reset'), {
     method: 'POST',

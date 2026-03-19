@@ -1,8 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 
-import { getRooms } from '@/services/rooms';
-import { getEvents } from '@/services/events';
+import { getUpcomingEvents } from '@/services/events';
 import { getRoomPalette } from '@/components/room/RoomCard';
 import { useAuth } from '@/hooks/useAuth';
 import { format, formatDistanceToNow } from 'date-fns';
@@ -51,32 +50,14 @@ export default function DeadlinesPage() {
   useEffect(() => {
     const fetchAll = async () => {
       try {
-        const roomsData = await getRooms();
-        const rooms = roomsData.rooms || roomsData || [];
-        const allEvents = [];
-        const results = await Promise.allSettled(
-          rooms.map(async (room) => {
-            const data = await getEvents(room.id);
-            const evts = Array.isArray(data) ? data : data.events || [];
-            return evts.map(e => ({ ...e, room_name: room.name, room_id: room.id }));
-          })
-        );
-        results.forEach((r) => {
-          if (r.status === 'fulfilled') {
-            allEvents.push(...r.value.map((event) => ({
-              ...event,
-              category: normalizeCategory(event.category),
-            })));
-          }
-        });
-
-        const now = new Date();
-        const future = allEvents
-          .filter(e => new Date(e.start_time) > now)
-          .sort((a, b) => new Date(a.start_time) - new Date(b.start_time));
+        const data = await getUpcomingEvents();
+        const future = (Array.isArray(data?.events) ? data.events : []).map((event) => ({
+          ...event,
+          category: normalizeCategory(event.category),
+        }));
         setEvents(future);
       } catch {
-        // silently fail
+        setEvents([]);
       } finally {
         setLoading(false);
       }

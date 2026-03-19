@@ -21,6 +21,7 @@ import { getBoardNotifications, updateBoardState } from '@/services/board';
 import { applyRoomOrder } from '@/lib/room-order';
 import { getLatestBoardTimestamp } from '@/lib/board-notifications';
 import { getCachedPreferences, hydratePreferences } from '@/lib/preferences';
+import { preloadRoute, preloadSidebarRoutes } from '@/lib/route-preload';
 
 const ROOM_NAVIGATION_UPDATED_EVENT = 'rooms-updated';
 
@@ -39,7 +40,7 @@ function getRoomPalette(room) {
   return roomPalettes[Math.abs(hash) % roomPalettes.length];
 }
 
-function NavItem({ to, isActive, icon: Icon, label, palette, badgeCount = 0, badgeLabel = '' }) {
+function NavItem({ to, isActive, icon: Icon, label, palette, badgeCount = 0, badgeLabel = '', onIntent }) {
   const roomStyle = palette
     ? isActive
       ? { background: palette.icon + '22' }
@@ -52,6 +53,9 @@ function NavItem({ to, isActive, icon: Icon, label, palette, badgeCount = 0, bad
   return (
     <Link to={to}>
       <button
+        onMouseEnter={onIntent}
+        onFocus={onIntent}
+        onTouchStart={onIntent}
         className={`
           group relative flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-smooth
           ${isActive
@@ -107,6 +111,7 @@ function SidebarContent({ rooms, location, isAdmin, roomBadgeCounts = {}, user, 
         isActive={location.pathname === '/dashboard'}
         icon={LayoutDashboard}
         label="Dashboard"
+        onIntent={() => preloadRoute('/dashboard')}
       />
       <NavItem
         to="/deadlines"
@@ -114,6 +119,7 @@ function SidebarContent({ rooms, location, isAdmin, roomBadgeCounts = {}, user, 
         icon={CalendarClock}
         label="Deadlines"
         badgeCount={deadlineCount}
+        onIntent={() => preloadRoute('/deadlines')}
       />
       <NavItem
         to="/board"
@@ -121,6 +127,7 @@ function SidebarContent({ rooms, location, isAdmin, roomBadgeCounts = {}, user, 
         icon={MessageSquare}
         label="Free Board"
         badgeCount={boardUnreadCount}
+        onIntent={() => preloadRoute('/board')}
       />
       {(user?.account_type || user?.user_metadata?.account_type || 'flinders') !== 'general' && (
         <NavItem
@@ -128,6 +135,7 @@ function SidebarContent({ rooms, location, isAdmin, roomBadgeCounts = {}, user, 
           isActive={location.pathname === '/flinders-life'}
           icon={GraduationCap}
           label="Flinders Life"
+          onIntent={() => preloadRoute('/flinders-life')}
         />
       )}
 
@@ -156,6 +164,7 @@ function SidebarContent({ rooms, location, isAdmin, roomBadgeCounts = {}, user, 
                 icon={Users}
                 label={room.name}
                 palette={getRoomPalette(room)}
+                onIntent={() => preloadRoute(`/rooms/${room.id}`)}
               />
               {unread > 0 && (
                 <span className="absolute right-2 top-1/2 -translate-y-1/2 flex h-5 min-w-5 items-center justify-center rounded-full bg-amber-500 px-1.5 text-[10px] font-bold text-white shadow-sm">
@@ -182,7 +191,7 @@ function SidebarContent({ rooms, location, isAdmin, roomBadgeCounts = {}, user, 
             <span className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-500">Admin</span>
             <div className="h-px flex-1 bg-white/5" />
           </div>
-          <NavItem to="/admin" isActive={location.pathname === '/admin'} icon={Shield} label="Admin Panel" />
+          <NavItem to="/admin" isActive={location.pathname === '/admin'} icon={Shield} label="Admin Panel" onIntent={() => preloadRoute('/admin')} />
         </>
       )}
     </nav>
@@ -207,6 +216,23 @@ export default function MainLayout({ children }) {
   const [roomOrderIds, setRoomOrderIds] = useState([]);
   const boardToastIdsRef = useRef(new Set());
   const boardLastSeenAtRef = useRef(0);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return undefined;
+
+    const preload = () => preloadSidebarRoutes({
+      includeAdmin: Boolean(user?.is_admin),
+      includeFlindersLife: (user?.account_type || user?.user_metadata?.account_type || 'flinders') !== 'general',
+    });
+
+    if (typeof window.requestIdleCallback === 'function') {
+      const id = window.requestIdleCallback(preload, { timeout: 1200 });
+      return () => window.cancelIdleCallback?.(id);
+    }
+
+    const timer = window.setTimeout(preload, 400);
+    return () => window.clearTimeout(timer);
+  }, [user?.account_type, user?.is_admin, user?.user_metadata?.account_type]);
 
   const syncRoomVisitState = useCallback((roomList = []) => {
     setRoomLastVisitedMap((prev) => {

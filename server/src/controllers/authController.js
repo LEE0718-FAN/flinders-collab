@@ -195,6 +195,54 @@ async function login(req, res, next) {
   }
 }
 
+async function refreshSession(req, res, next) {
+  try {
+    const refreshToken = String(req.body.refresh_token || '').trim();
+
+    if (!refreshToken) {
+      return res.status(400).json({ error: 'Refresh token is required' });
+    }
+
+    const { data, error } = await supabasePublic.auth.refreshSession({
+      refresh_token: refreshToken,
+    });
+
+    if (error || !data?.session || !data?.user) {
+      return res.status(401).json({ error: 'Unable to refresh session' });
+    }
+
+    await ensureUserProfile(data.user);
+
+    const { data: profile } = await supabaseAdmin
+      .from('users')
+      .select('is_admin, avatar_url, full_name, major, university')
+      .eq('id', data.user.id)
+      .single();
+
+    res.json({
+      message: 'Session refreshed',
+      session: {
+        access_token: data.session.access_token,
+        refresh_token: data.session.refresh_token,
+        expires_at: data.session.expires_at,
+      },
+      user: {
+        id: data.user.id,
+        email: data.user.email,
+        full_name: profile?.full_name || data.user.user_metadata?.full_name,
+        avatar_url: profile?.avatar_url || null,
+        is_admin: profile?.is_admin || false,
+        is_tester: Boolean(data.user.user_metadata?.is_tester),
+        account_type: data.user.user_metadata?.account_type || 'flinders',
+        major: profile?.major || data.user.user_metadata?.major || null,
+        university: profile?.university || data.user.user_metadata?.university || null,
+      },
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
 /**
  * POST /auth/password/reset
  * Send a password reset email via Supabase Auth.
@@ -534,6 +582,7 @@ async function guestCleanup(req, res, next) {
 module.exports = {
   signup,
   login,
+  refreshSession,
   requestPasswordReset,
   logout,
   getMe,

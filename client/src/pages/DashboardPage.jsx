@@ -4,7 +4,7 @@ import RoomCard, { getRoomPalette } from '@/components/room/RoomCard';
 import CreateRoomDialog from '@/components/room/CreateRoomDialog';
 import JoinRoomDialog from '@/components/room/JoinRoomDialog';
 import { getRooms } from '@/services/rooms';
-import { getEvents } from '@/services/events';
+import { getUpcomingEvents } from '@/services/events';
 import { useAuth } from '@/hooks/useAuth';
 import { applyRoomOrder, buildOrderedIds } from '@/lib/room-order';
 import { hydratePreferences, updatePreferences } from '@/lib/preferences';
@@ -151,31 +151,17 @@ export default function DashboardPage() {
   // Fetch events only once when rooms are first loaded (use room IDs as stable dependency)
   const roomIds = rooms.filter(r => !String(r.id).startsWith(TEMP_ROOM_PREFIX)).map(r => r.id).sort().join(',');
   useEffect(() => {
-    if (!roomIds) return;
+    if (!roomIds) {
+      setUpcomingEvents([]);
+      return;
+    }
 
     const fetchAllEvents = async () => {
       try {
-        const allEvents = [];
-        const ids = roomIds.split(',');
-        const results = await Promise.allSettled(
-          ids.map(async (id) => {
-            const room = rooms.find(r => r.id === id);
-            const data = await getEvents(id);
-            const events = Array.isArray(data) ? data : data.events || [];
-            return events.map(e => ({ ...e, room_name: room?.name, room_id: id }));
-          })
-        );
-        results.forEach(r => { if (r.status === 'fulfilled') allEvents.push(...r.value); });
-
-        const now = new Date();
-        const meetings = allEvents
-          .filter(e => new Date(e.start_time) > now && e.category === 'meeting')
-          .sort((a, b) => new Date(a.start_time) - new Date(b.start_time))
-          .slice(0, 3);
-
-        setUpcomingEvents(meetings);
+        const data = await getUpcomingEvents({ category: 'meeting', limit: 3 });
+        setUpcomingEvents(Array.isArray(data?.events) ? data.events : []);
       } catch {
-        // silently fail
+        setUpcomingEvents([]);
       }
     };
 
@@ -184,7 +170,7 @@ export default function DashboardPage() {
     }, 150);
 
     return () => window.clearTimeout(timer);
-  }, [roomIds]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [roomIds]);
 
   useLayoutEffect(() => {
     const nextPositions = new Map();
