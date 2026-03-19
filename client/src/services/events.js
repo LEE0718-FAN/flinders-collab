@@ -13,6 +13,12 @@ export async function getEvents(roomId) {
   return parseResponse(res);
 }
 
+export async function getUpcomingEventCount() {
+  const headers = getAuthHeaders();
+  const res = await fetch(apiUrl('/api/events/upcoming-count'), { headers });
+  return parseResponse(res);
+}
+
 export async function updateEvent(roomId, eventId, eventData) {
   const headers = getAuthHeaders();
   const res = await fetch(apiUrl(`/api/events/${eventId}`), { method: 'PATCH', headers, body: JSON.stringify(eventData) });

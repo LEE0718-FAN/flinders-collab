@@ -14,6 +14,9 @@ const {
 // All event routes require authentication
 router.use(authenticate);
 
+// GET /events/upcoming-count - Count upcoming events across my rooms
+router.get('/events/upcoming-count', eventController.getUpcomingEventCount);
+
 // POST /rooms/:roomId/events - Create event in a room
 router.post(
   '/rooms/:roomId/events',

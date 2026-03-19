@@ -150,6 +150,45 @@ async function getEvents(req, res, next) {
 }
 
 /**
+ * GET /events/upcoming-count
+ * Count upcoming events across all rooms the current user belongs to.
+ */
+async function getUpcomingEventCount(req, res, next) {
+  try {
+    const userId = req.user.id;
+    const now = new Date().toISOString();
+
+    const { data: memberships, error: membershipError } = await supabaseAdmin
+      .from('room_members')
+      .select('room_id')
+      .eq('user_id', userId);
+
+    if (membershipError) {
+      return res.status(400).json({ error: membershipError.message });
+    }
+
+    const roomIds = (memberships || []).map((membership) => membership.room_id).filter(Boolean);
+    if (roomIds.length === 0) {
+      return res.json({ count: 0 });
+    }
+
+    const { count, error } = await supabaseAdmin
+      .from('events')
+      .select('id', { count: 'exact', head: true })
+      .in('room_id', roomIds)
+      .gt('start_time', now);
+
+    if (error) {
+      return res.status(400).json({ error: error.message });
+    }
+
+    res.json({ count: count || 0 });
+  } catch (err) {
+    next(err);
+  }
+}
+
+/**
  * PATCH /events/:eventId
  * Update an existing event. Only owner/admin or event creator can update.
  */
@@ -320,6 +359,7 @@ async function deleteEvent(req, res, next) {
 module.exports = {
   createEvent,
   getEvents,
+  getUpcomingEventCount,
   updateEvent,
   deleteEvent,
 };

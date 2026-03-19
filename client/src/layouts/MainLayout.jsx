@@ -16,7 +16,7 @@ import ProfileDialog from '@/components/ProfileDialog';
 import { useToast } from '@/components/ui/toast';
 
 import { getRoomActivitySummary, getRooms } from '@/services/rooms';
-import { getEvents } from '@/services/events';
+import { getUpcomingEventCount } from '@/services/events';
 import { getBoardNotifications, updateBoardState } from '@/services/board';
 import { applyRoomOrder } from '@/lib/room-order';
 import { getLatestBoardTimestamp } from '@/lib/board-notifications';
@@ -228,26 +228,8 @@ export default function MainLayout({ children }) {
 
   const refreshDeadlineCount = async () => {
     try {
-      const data = await getRooms();
-      const nextRooms = data.rooms || data || [];
-      const results = await Promise.allSettled(
-        nextRooms.map(async (room) => {
-          const roomEvents = await getEvents(room.id);
-          return Array.isArray(roomEvents) ? roomEvents : roomEvents?.events || [];
-        })
-      );
-
-      const now = Date.now();
-      const count = results.reduce((total, result) => {
-        if (result.status !== 'fulfilled') return total;
-        const futureCount = result.value.filter((event) => {
-          const startTime = new Date(event.start_time).getTime();
-          return Number.isFinite(startTime) && startTime > now;
-        }).length;
-        return total + futureCount;
-      }, 0);
-
-      setDeadlineCount(count);
+      const data = await getUpcomingEventCount();
+      setDeadlineCount(Number(data?.count || 0));
     } catch {
       setDeadlineCount(0);
     }
