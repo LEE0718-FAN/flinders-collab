@@ -15,7 +15,7 @@ import FileList from '@/components/files/FileList';
 import FileUpload from '@/components/files/FileUpload';
 import { getQuickLinks, getMembers, getRoom, getRoomActivity, markRoomVisited as markRoomVisitedApi } from '@/services/rooms';
 import { getEvents } from '@/services/events';
-import { getFiles } from '@/services/files';
+import { getFiles, updateFile } from '@/services/files';
 import { getTasks } from '@/services/tasks';
 import { copyToClipboard } from '@/lib/native';
 import { getRoomPalette } from '@/components/room/RoomCard';
@@ -785,8 +785,7 @@ export default function RoomPage() {
                 const sourceCategory = e.dataTransfer.getData('text/source-category');
                 if (!fileId || sourceCategory === targetCategory) return;
                 try {
-                  const { updateFile: updateFileFn } = await import('@/services/files');
-                  await updateFileFn(fileId, { category: targetCategory });
+                  await updateFile(fileId, { category: targetCategory });
                   setFiles((prev) => prev.map((f) => f.id === fileId ? { ...f, category: targetCategory } : f));
                 } catch { /* ignore */ }
               };

@@ -72,6 +72,65 @@ async function buildRoomActivityEntries(roomId) {
   return activities.slice(0, 15);
 }
 
+function addUnreadCounts(rows, lastVisitedByRoom, counts) {
+  for (const row of rows || []) {
+    const roomId = row?.room_id;
+    if (!roomId) continue;
+    const createdAt = new Date(row.created_at).getTime();
+    const lastVisitedAt = lastVisitedByRoom.get(roomId) || 0;
+    if (!Number.isFinite(createdAt) || createdAt <= lastVisitedAt) continue;
+    counts.set(roomId, (counts.get(roomId) || 0) + 1);
+  }
+}
+
+async function getUnreadActivityCounts(memberships) {
+  const roomIds = memberships.map((membership) => membership.room_id).filter(Boolean);
+  if (roomIds.length === 0) return {};
+
+  const lastVisitedByRoom = new Map(
+    memberships.map((membership) => [
+      membership.room_id,
+      membership.last_visited_at ? new Date(membership.last_visited_at).getTime() : 0,
+    ])
+  );
+
+  const [messagesResult, filesResult, eventsResult, tasksResult] = await Promise.all([
+    supabaseAdmin
+      .from('messages')
+      .select('room_id, created_at')
+      .in('room_id', roomIds),
+    supabaseAdmin
+      .from('files')
+      .select('room_id, created_at')
+      .in('room_id', roomIds)
+      .is('deleted_at', null),
+    supabaseAdmin
+      .from('events')
+      .select('room_id, created_at')
+      .in('room_id', roomIds),
+    supabaseAdmin
+      .from('tasks')
+      .select('room_id, created_at')
+      .in('room_id', roomIds),
+  ]);
+
+  const errors = [messagesResult, filesResult, eventsResult, tasksResult]
+    .map((result) => result.error)
+    .filter(Boolean);
+
+  if (errors.length > 0) {
+    throw new Error(errors[0].message);
+  }
+
+  const counts = new Map();
+  addUnreadCounts(messagesResult.data, lastVisitedByRoom, counts);
+  addUnreadCounts(filesResult.data, lastVisitedByRoom, counts);
+  addUnreadCounts(eventsResult.data, lastVisitedByRoom, counts);
+  addUnreadCounts(tasksResult.data, lastVisitedByRoom, counts);
+
+  return Object.fromEntries([...counts.entries()].filter(([, count]) => count > 0));
+}
+
 async function getRoomActivity(req, res, next) {
   try {
     const { roomId } = req.params;
@@ -94,20 +153,8 @@ async function getActivitySummary(req, res, next) {
       return res.status(400).json({ error: error.message });
     }
 
-    const rooms = memberships || [];
-    const pairs = await Promise.all(
-      rooms.map(async (membership) => {
-        const activities = await buildRoomActivityEntries(membership.room_id);
-        const lastVisitedAt = membership.last_visited_at ? new Date(membership.last_visited_at).getTime() : 0;
-        const unreadCount = activities.filter((entry) => {
-          const createdAt = new Date(entry.created_at).getTime();
-          return Number.isFinite(createdAt) && createdAt > lastVisitedAt;
-        }).length;
-        return [membership.room_id, unreadCount];
-      })
-    );
-
-    res.json(Object.fromEntries(pairs.filter(([, count]) => count > 0)));
+    const summary = await getUnreadActivityCounts(memberships || []);
+    res.json(summary);
   } catch (err) {
     next(err);
   }

@@ -1,5 +1,6 @@
 const express = require('express');
 const http = require('http');
+const compression = require('compression');
 const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
@@ -44,6 +45,7 @@ app.use(cors({
     : config.clientUrl,
   credentials: true,
 }));
+app.use(compression());
 app.use(express.json({ limit: '1mb' }));
 app.use(express.urlencoded({ extended: true }));
 
@@ -84,7 +86,18 @@ app.use('/api/admin', adminRoutes);
 const path = require('path');
 const clientDist = path.resolve(__dirname, '../../client/dist');
 if (config.nodeEnv === 'production') {
-  app.use(express.static(clientDist));
+  app.use(
+    '/assets',
+    express.static(path.join(clientDist, 'assets'), {
+      maxAge: '1y',
+      immutable: true,
+    })
+  );
+  app.use(
+    express.static(clientDist, {
+      maxAge: '1h',
+    })
+  );
   // SPA fallback — any non-API route serves index.html
   app.get(/^\/(?!api).*/, (req, res) => {
     res.sendFile(path.join(clientDist, 'index.html'));
