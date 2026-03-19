@@ -21,7 +21,7 @@ import { getBoardNotifications, updateBoardState } from '@/services/board';
 import { applyRoomOrder } from '@/lib/room-order';
 import { getLatestBoardTimestamp } from '@/lib/board-notifications';
 import { getCachedPreferences, hydratePreferences } from '@/lib/preferences';
-import { preloadRoute, preloadSidebarRoutes } from '@/lib/route-preload';
+import { preloadRoute } from '@/lib/route-preload';
 
 const ROOM_NAVIGATION_UPDATED_EVENT = 'rooms-updated';
 
@@ -216,23 +216,6 @@ export default function MainLayout({ children }) {
   const [roomOrderIds, setRoomOrderIds] = useState([]);
   const boardToastIdsRef = useRef(new Set());
   const boardLastSeenAtRef = useRef(0);
-
-  useEffect(() => {
-    if (typeof window === 'undefined') return undefined;
-
-    const preload = () => preloadSidebarRoutes({
-      includeAdmin: Boolean(user?.is_admin),
-      includeFlindersLife: (user?.account_type || user?.user_metadata?.account_type || 'flinders') !== 'general',
-    });
-
-    if (typeof window.requestIdleCallback === 'function') {
-      const id = window.requestIdleCallback(preload, { timeout: 1200 });
-      return () => window.cancelIdleCallback?.(id);
-    }
-
-    const timer = window.setTimeout(preload, 400);
-    return () => window.clearTimeout(timer);
-  }, [user?.account_type, user?.is_admin, user?.user_metadata?.account_type]);
 
   const syncRoomVisitState = useCallback((roomList = []) => {
     setRoomLastVisitedMap((prev) => {
