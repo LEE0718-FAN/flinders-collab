@@ -13,6 +13,13 @@ const TUTORIAL_KEY = 'tutorial-completed';
 const TUTORIAL_ROOM_NAME = '🎓 Tutorial Room';
 const TUTORIAL_ROOM_ID_KEY = 'tutorial-room-id';
 const TUTORIAL_SESSION_DISMISS_KEY = 'tutorial-dismissed-session';
+const SEAN_IMG = '/images/seungyun.png';
+
+// Preload Sean's avatar so it renders instantly when the modal appears
+if (typeof window !== 'undefined') {
+  const img = new Image();
+  img.src = SEAN_IMG;
+}
 const hasTutorialSuppression = () => {
   if (typeof window === 'undefined') return false;
   return Boolean(window.localStorage.getItem(TUTORIAL_KEY));
@@ -118,25 +125,22 @@ export default function InteractiveTutorial() {
   const [showWelcome, setShowWelcome] = useState(false);
   const WELCOME_KEY = 'welcome-shown';
 
+  const testerModeRef = useRef(false);
+
   useEffect(() => {
     if (!user) return;
     let cancelled = false;
     const testerMode = Boolean(session?.is_tester || user?.is_tester);
+    testerModeRef.current = testerMode;
 
     // Testers always get the full tutorial prompt
     if (testerMode) {
-      const fallbackTimer = setTimeout(() => {
+      setShowWelcome(false);
+      // Single reliable timer — no getRooms() race
+      const timer = setTimeout(() => {
         if (!cancelled) guardedSetShowPrompt(true);
-      }, 250);
-      getRooms()
-        .then((rooms) => {
-          if (cancelled) return;
-          guardedSetShowPrompt(true);
-        })
-        .catch(() => {
-          if (!cancelled) guardedSetShowPrompt(true);
-        });
-      return () => { cancelled = true; clearTimeout(fallbackTimer); };
+      }, 300);
+      return () => { cancelled = true; clearTimeout(timer); };
     }
 
     // Regular users: show welcome modal once, no tutorial
@@ -149,6 +153,8 @@ export default function InteractiveTutorial() {
   useEffect(() => {
     const syncPromptVisibility = async () => {
       if (!showPromptRef.current || activeRef.current) return;
+      // Never auto-hide the tutorial prompt for testers
+      if (testerModeRef.current) return;
       if (isTutorialSuppressed() || isTutorialSessionDismissed()) {
         setShowPrompt(false);
         return;
@@ -979,7 +985,7 @@ export default function InteractiveTutorial() {
         <div className="mx-4 w-full max-w-sm rounded-3xl bg-white p-8 shadow-2xl animate-scale-in">
           <div className="text-center">
             <div className="mx-auto mb-4 h-20 w-20 rounded-full overflow-hidden shadow-lg shadow-indigo-500/30 ring-3 ring-indigo-100">
-              <img src="/images/seungyun.png" alt="Sean Lee" className="h-full w-full object-cover" />
+              <img src={SEAN_IMG} alt="Sean Lee" className="h-full w-full object-cover" />
             </div>
             <h2 className="text-xl font-black text-slate-900">Welcome! 👋</h2>
             <p className="mt-2 text-sm text-slate-500 leading-relaxed">
@@ -1005,7 +1011,7 @@ export default function InteractiveTutorial() {
         <div className="mx-4 w-full max-w-sm rounded-3xl bg-white p-8 shadow-2xl animate-scale-in">
           <div className="text-center">
             <div className="mx-auto mb-4 h-20 w-20 rounded-full overflow-hidden shadow-lg shadow-indigo-500/30 ring-3 ring-indigo-100">
-              <img src="/images/seungyun.png" alt="Sean Lee" className="h-full w-full object-cover" />
+              <img src={SEAN_IMG} alt="Sean Lee" className="h-full w-full object-cover" />
             </div>
             <h2 className="text-xl font-black text-slate-900">Hi, I'm Sean!</h2>
             <p className="mt-2 text-sm text-slate-500 leading-relaxed">
