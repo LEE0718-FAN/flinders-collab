@@ -46,6 +46,7 @@ const AdminPage = lazyRetry(() => import('@/pages/AdminPage'));
 const DeadlinesPage = lazyRetry(() => import('@/pages/DeadlinesPage'));
 const BoardPage = lazyRetry(() => import('@/pages/BoardPage'));
 const FlindersLifePage = lazyRetry(() => import('@/pages/FlindersLifePage'));
+const SettingsPage = lazyRetry(() => import('@/pages/SettingsPage'));
 
 // If a tester session exists on page load (e.g. refresh), clean up and redirect
 if (typeof window !== 'undefined') {
@@ -159,6 +160,7 @@ export default function App() {
               {/* Protected routes share MainLayout — sidebar/header persist across navigations */}
               <Route element={<ProtectedLayout />}>
                 <Route path="/dashboard" element={<DashboardPage />} />
+                <Route path="/settings" element={<SettingsPage />} />
                 <Route path="/deadlines" element={<DeadlinesPage />} />
                 <Route path="/board" element={<BoardPage />} />
                 <Route path="/flinders-life" element={<FlindersLifePage />} />
