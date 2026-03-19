@@ -138,10 +138,8 @@ export default function InteractiveTutorial() {
       setShowWelcome(false);
       clearTutorialSuppression();
       clearTutorialSessionDismiss();
-      const timer = setTimeout(() => {
-        if (!cancelled) setShowPrompt(true);
-      }, 300);
-      return () => { cancelled = true; clearTimeout(timer); };
+      setShowPrompt(true);
+      return;
     }
 
     // Regular users: show welcome modal once, no tutorial
@@ -149,7 +147,7 @@ export default function InteractiveTutorial() {
       setShowWelcome(true);
     }
     return () => { cancelled = true; };
-  }, [guardedSetShowPrompt, session?.is_tester, user]);
+  }, [clearTutorialSuppression, clearTutorialSessionDismiss, session?.is_tester, user?.is_tester, user?.id]);
 
   useEffect(() => {
     const syncPromptVisibility = async () => {
