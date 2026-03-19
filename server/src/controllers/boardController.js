@@ -21,6 +21,47 @@ function buildBoardProfile(user) {
   };
 }
 
+async function getBoardState(req, res, next) {
+  try {
+    const userId = req.user.id;
+    const { data, error } = await supabaseAdmin
+      .from('users')
+      .select('board_last_seen_at')
+      .eq('id', userId)
+      .maybeSingle();
+
+    if (error) return res.status(400).json({ error: error.message });
+
+    res.json({
+      last_seen_at: data?.board_last_seen_at || null,
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
+async function updateBoardState(req, res, next) {
+  try {
+    const userId = req.user.id;
+    const nextSeenAt = req.body?.last_seen_at ? new Date(req.body.last_seen_at).toISOString() : new Date().toISOString();
+
+    const { data, error } = await supabaseAdmin
+      .from('users')
+      .update({ board_last_seen_at: nextSeenAt })
+      .eq('id', userId)
+      .select('board_last_seen_at')
+      .single();
+
+    if (error) return res.status(400).json({ error: error.message });
+
+    res.json({
+      last_seen_at: data?.board_last_seen_at || nextSeenAt,
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
 // ── Board Posts ──
 
 async function getPosts(req, res, next) {
@@ -602,6 +643,8 @@ async function votePoll(req, res, next) {
 }
 
 module.exports = {
+  getBoardState,
+  updateBoardState,
   getPosts,
   createPost,
   deletePost,

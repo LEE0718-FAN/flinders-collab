@@ -74,3 +74,37 @@ export async function getRoomActivity(roomId) {
   const res = await fetch(apiUrl(`/api/rooms/${roomId}/activity`), { headers });
   return parseResponse(res);
 }
+
+export async function markRoomVisited(roomId) {
+  const headers = getAuthHeaders();
+  const res = await fetch(apiUrl(`/api/rooms/${roomId}/visit`), {
+    method: 'POST',
+    headers,
+  });
+  return parseResponse(res);
+}
+
+export async function getQuickLinks(roomId) {
+  const headers = getAuthHeaders();
+  const res = await fetch(apiUrl(`/api/rooms/${roomId}/quick-links`), { headers });
+  return parseResponse(res);
+}
+
+export async function createQuickLink(roomId, data) {
+  const headers = getAuthHeaders();
+  const res = await fetch(apiUrl(`/api/rooms/${roomId}/quick-links`), {
+    method: 'POST',
+    headers,
+    body: JSON.stringify(data),
+  });
+  return parseResponse(res);
+}
+
+export async function deleteQuickLink(roomId, linkId) {
+  const headers = getAuthHeaders();
+  const res = await fetch(apiUrl(`/api/rooms/${roomId}/quick-links/${linkId}`), {
+    method: 'DELETE',
+    headers,
+  });
+  return parseResponse(res);
+}

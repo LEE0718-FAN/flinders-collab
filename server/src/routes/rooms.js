@@ -4,6 +4,7 @@ const roomController = require('../controllers/roomController');
 const activityController = require('../controllers/activityController');
 const { authenticate, requireRoomMember } = require('../middleware/auth');
 const { validate } = require('../middleware/validate');
+const { body, param } = require('express-validator');
 const {
   createRoomValidation,
   joinRoomValidation,
@@ -47,6 +48,46 @@ router.get(
   validate,
   requireRoomMember,
   roomController.getMembers
+);
+
+router.post(
+  '/:roomId/visit',
+  roomIdParam,
+  validate,
+  requireRoomMember,
+  roomController.markVisited
+);
+
+router.get(
+  '/:roomId/quick-links',
+  roomIdParam,
+  validate,
+  requireRoomMember,
+  roomController.getQuickLinks
+);
+
+router.post(
+  '/:roomId/quick-links',
+  [
+    ...roomIdParam,
+    body('tool').optional().trim().isLength({ max: 50 }),
+    body('label').trim().notEmpty().isLength({ max: 120 }),
+    body('url').trim().notEmpty().isURL({ protocols: ['http', 'https'], require_protocol: true }).withMessage('A valid URL is required'),
+  ],
+  validate,
+  requireRoomMember,
+  roomController.createQuickLink
+);
+
+router.delete(
+  '/:roomId/quick-links/:linkId',
+  [
+    ...roomIdParam,
+    param('linkId').isUUID(),
+  ],
+  validate,
+  requireRoomMember,
+  roomController.deleteQuickLink
 );
 
 // PATCH /rooms/:roomId - Update room (owner only)

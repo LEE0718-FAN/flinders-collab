@@ -5,6 +5,7 @@ const router = express.Router();
 const authController = require('../controllers/authController');
 const { authenticate } = require('../middleware/auth');
 const { validate } = require('../middleware/validate');
+const { body } = require('express-validator');
 const { signupValidation, loginValidation, passwordResetValidation } = require('../utils/validators');
 
 const upload = multer({
@@ -52,6 +53,25 @@ router.get('/me', authenticate, authController.getMe);
 
 // PATCH /auth/me - Update current user profile
 router.patch('/me', authenticate, upload.single('avatar'), authController.updateProfile);
+
+// GET /auth/preferences - Get current user's cross-device preferences
+router.get('/preferences', authenticate, authController.getPreferences);
+
+// PATCH /auth/preferences - Update current user's cross-device preferences
+router.patch(
+  '/preferences',
+  authenticate,
+  [
+    body('room_order').optional().isArray(),
+    body('room_order.*').optional().isString(),
+    body('flinders_interests').optional().isArray(),
+    body('flinders_interests.*').optional().isString(),
+    body('flinders_favorites').optional().isArray(),
+    body('flinders_favorites.*').optional().isString(),
+  ],
+  validate,
+  authController.updatePreferences
+);
 
 // POST /auth/guest - Create temp tester account (rate limited)
 const guestLimiter = rateLimit({

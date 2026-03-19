@@ -270,6 +270,76 @@ async function getMe(req, res, next) {
   }
 }
 
+async function getPreferences(req, res, next) {
+  try {
+    const userId = req.user.id;
+
+    const { data, error } = await supabaseAdmin
+      .from('users')
+      .select('room_order, flinders_interests, flinders_favorites')
+      .eq('id', userId)
+      .single();
+
+    if (error) {
+      return res.status(500).json({ error: 'Failed to load preferences' });
+    }
+
+    res.json({
+      room_order: Array.isArray(data?.room_order) ? data.room_order : [],
+      flinders_interests: Array.isArray(data?.flinders_interests) ? data.flinders_interests : [],
+      flinders_favorites: Array.isArray(data?.flinders_favorites) ? data.flinders_favorites : [],
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
+async function updatePreferences(req, res, next) {
+  try {
+    const userId = req.user.id;
+    const updates = {};
+
+    if (req.body.room_order !== undefined) {
+      updates.room_order = Array.isArray(req.body.room_order) ? req.body.room_order.filter((value) => typeof value === 'string') : [];
+    }
+
+    if (req.body.flinders_interests !== undefined) {
+      updates.flinders_interests = Array.isArray(req.body.flinders_interests)
+        ? req.body.flinders_interests.filter((value) => typeof value === 'string')
+        : [];
+    }
+
+    if (req.body.flinders_favorites !== undefined) {
+      updates.flinders_favorites = Array.isArray(req.body.flinders_favorites)
+        ? req.body.flinders_favorites.filter((value) => typeof value === 'string')
+        : [];
+    }
+
+    if (Object.keys(updates).length === 0) {
+      return res.status(400).json({ error: 'No preference updates provided' });
+    }
+
+    const { data, error } = await supabaseAdmin
+      .from('users')
+      .update(updates)
+      .eq('id', userId)
+      .select('room_order, flinders_interests, flinders_favorites')
+      .single();
+
+    if (error) {
+      return res.status(500).json({ error: 'Failed to update preferences' });
+    }
+
+    res.json({
+      room_order: Array.isArray(data?.room_order) ? data.room_order : [],
+      flinders_interests: Array.isArray(data?.flinders_interests) ? data.flinders_interests : [],
+      flinders_favorites: Array.isArray(data?.flinders_favorites) ? data.flinders_favorites : [],
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
 /**
  * PATCH /auth/me
  * Update the current user's profile (name and/or avatar).
@@ -467,6 +537,8 @@ module.exports = {
   requestPasswordReset,
   logout,
   getMe,
+  getPreferences,
+  updatePreferences,
   updateProfile,
   guestLogin,
   guestCleanup,

@@ -5,8 +5,9 @@ import CreateRoomDialog from '@/components/room/CreateRoomDialog';
 import JoinRoomDialog from '@/components/room/JoinRoomDialog';
 import { getRooms } from '@/services/rooms';
 import { getEvents } from '@/services/events';
+import { apiGetPreferences, apiUpdatePreferences } from '@/services/auth';
 import { useAuth } from '@/hooks/useAuth';
-import { applyRoomOrder, buildOrderedIds, loadRoomOrder, persistRoomOrder } from '@/lib/room-order';
+import { applyRoomOrder, buildOrderedIds } from '@/lib/room-order';
 import { useNavigate } from 'react-router-dom';
 import { format, formatDistanceToNow } from 'date-fns';
 import { Loader2, LayoutGrid, PlayCircle } from 'lucide-react';
@@ -84,35 +85,40 @@ export default function DashboardPage() {
   const [dropTargetId, setDropTargetId] = useState(null);
   const [suppressNavigation, setSuppressNavigation] = useState(false);
   const [touchOptimized, setTouchOptimized] = useState(false);
+  const [roomOrderIds, setRoomOrderIds] = useState([]);
   const roomNodeMapRef = useRef(new Map());
   const previousPositionsRef = useRef(new Map());
   const swapTimerRef = useRef(null);
   const pendingSwapTargetRef = useRef(null);
   const lastSwapAtRef = useRef(0);
 
-  const broadcastRoomUpdate = useCallback((nextRooms) => {
+  const broadcastRoomUpdate = useCallback((nextRooms, orderedIds = roomOrderIds) => {
     window.dispatchEvent(new CustomEvent(ROOM_NAVIGATION_UPDATED_EVENT, {
       detail: {
         userId: user?.id,
         rooms: nextRooms,
+        orderedIds,
       },
     }));
-  }, [user?.id]);
+  }, [roomOrderIds, user?.id]);
 
   const fetchRooms = useCallback(async () => {
     setError('');
     try {
+      const preferences = await apiGetPreferences().catch(() => null);
+      const orderedIds = Array.isArray(preferences?.room_order) ? preferences.room_order : [];
+      setRoomOrderIds(orderedIds);
       const data = await getRooms();
       const nextRooms = data.rooms || data || [];
-      const orderedRooms = applyRoomOrder(nextRooms, loadRoomOrder(user?.id));
+      const orderedRooms = applyRoomOrder(nextRooms, orderedIds);
       setRooms(orderedRooms);
-      broadcastRoomUpdate(orderedRooms);
+      broadcastRoomUpdate(orderedRooms, orderedIds);
     } catch (err) {
       setError('Failed to load rooms. Please refresh the page.');
     } finally {
       setLoading(false);
     }
-  }, [broadcastRoomUpdate, user?.id]);
+  }, [broadcastRoomUpdate]);
 
   useEffect(() => {
     fetchRooms();
@@ -319,7 +325,8 @@ export default function DashboardPage() {
     pendingSwapTargetRef.current = null;
     const nextOrderedIds = buildOrderedIds(rooms, TEMP_ROOM_PREFIX);
     if (user?.id) {
-      persistRoomOrder(user.id, nextOrderedIds);
+      setRoomOrderIds(nextOrderedIds);
+      apiUpdatePreferences({ room_order: nextOrderedIds }).catch(() => {});
       window.setTimeout(() => {
         window.dispatchEvent(new CustomEvent('room-order-updated', {
           detail: {

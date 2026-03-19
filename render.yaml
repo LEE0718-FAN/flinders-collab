@@ -2,8 +2,10 @@ services:
   - type: web
     name: flinders-collab
     runtime: node
+    region: singapore
     buildCommand: npm install --include=dev && npm run build
     startCommand: npm start
+    healthCheckPath: /api/health
     envVars:
       - key: NODE_ENV
         value: production

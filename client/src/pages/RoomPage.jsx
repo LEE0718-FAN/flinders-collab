@@ -13,7 +13,7 @@ import EventList from '@/components/schedule/EventList';
 import ChatPanel from '@/components/chat/ChatPanel';
 import FileList from '@/components/files/FileList';
 import FileUpload from '@/components/files/FileUpload';
-import { getRoom, getMembers, getRoomActivity } from '@/services/rooms';
+import { getQuickLinks, getMembers, getRoom, getRoomActivity, markRoomVisited as markRoomVisitedApi } from '@/services/rooms';
 import { getEvents } from '@/services/events';
 import { getFiles } from '@/services/files';
 import { getTasks } from '@/services/tasks';
@@ -31,7 +31,6 @@ import { getAnnouncements, createAnnouncement, deleteAnnouncement as deleteAnnou
 import { formatDistanceToNow, format } from 'date-fns';
 import { isFlindersUser } from '@/lib/flinders-week';
 import { getFlindersScheduleOverlayEvents } from '@/lib/flinders-academic-overlay';
-import { markRoomVisited } from '@/lib/room-activity';
 
 function sortEvents(items) {
   return [...items].sort((a, b) => new Date(a.start_time) - new Date(b.start_time));
@@ -232,22 +231,23 @@ export default function RoomPage() {
   }, [fetchEvents]);
 
   useEffect(() => {
-    try {
-      const saved = JSON.parse(localStorage.getItem(`quick-links:${roomId}`) || '[]');
-      setQuickLinks(saved);
-    } catch {
-      // ignore
-    }
+    getQuickLinks(roomId)
+      .then((data) => setQuickLinks(Array.isArray(data) ? data : []))
+      .catch(() => setQuickLinks([]));
   }, [roomId]);
 
   useEffect(() => {
     if (!user?.id || !roomId) return undefined;
 
     const syncVisitedAt = () => {
-      markRoomVisited(user.id, roomId);
-      window.dispatchEvent(new CustomEvent('room-activity-visited', {
-        detail: { roomId },
-      }));
+      markRoomVisitedApi(roomId)
+        .then((result) => {
+          const timestamp = result?.last_visited_at ? new Date(result.last_visited_at).getTime() : Date.now();
+          window.dispatchEvent(new CustomEvent('room-activity-visited', {
+            detail: { roomId, timestamp },
+          }));
+        })
+        .catch(() => {});
     };
 
     syncVisitedAt();

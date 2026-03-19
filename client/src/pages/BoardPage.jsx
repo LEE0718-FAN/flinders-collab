@@ -20,9 +20,9 @@ import { formatDistanceToNow } from 'date-fns';
 import {
   getPosts, createPost, deletePost, toggleParticipation, getMyParticipations,
   getComments, createComment, deleteComment, getAcademicInfo, updateAcademicInfo,
-  toggleReaction as apiToggleReaction, votePoll as apiVotePoll,
+  toggleReaction as apiToggleReaction, votePoll as apiVotePoll, updateBoardState,
 } from '@/services/board';
-import { getLatestBoardTimestamp, writeBoardLastSeen } from '@/lib/board-notifications';
+import { getLatestBoardTimestamp } from '@/lib/board-notifications';
 
 const CATEGORIES = [
   { value: 'all', label: 'All', icon: Sparkles },
@@ -509,7 +509,11 @@ function CreatePostDialog({ open, onOpenChange, onCreated, academicInfo }) {
       }
       const post = await createPost(data);
       const createdAt = new Date(post?.created_at).getTime();
-      writeBoardLastSeen(user?.id, Number.isFinite(createdAt) ? createdAt : Date.now());
+      const safeTimestamp = Number.isFinite(createdAt) ? createdAt : Date.now();
+      await updateBoardState(new Date(safeTimestamp).toISOString());
+      window.dispatchEvent(new CustomEvent('board-notifications-read', {
+        detail: { userId: user?.id, timestamp: safeTimestamp },
+      }));
       window.dispatchEvent(new CustomEvent('board-post-created', { detail: { postId: post.id } }));
       onCreated?.(post);
       onOpenChange(false);
@@ -692,7 +696,13 @@ export default function BoardPage() {
       const data = await getPosts(category);
       setPosts(data || []);
       if (category === 'all') {
-        writeBoardLastSeen(user?.id, getLatestBoardTimestamp(data || []));
+        const latestTimestamp = getLatestBoardTimestamp(data || []);
+        if (latestTimestamp > 0) {
+          await updateBoardState(new Date(latestTimestamp).toISOString());
+          window.dispatchEvent(new CustomEvent('board-notifications-read', {
+            detail: { userId: user?.id, timestamp: latestTimestamp },
+          }));
+        }
       }
     } catch { /* silent */ } finally { setLoading(false); }
   }, [category, user?.id]);

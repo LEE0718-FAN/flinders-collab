@@ -6,6 +6,7 @@ import {
 } from '@/components/ui/dialog';
 import { ExternalLink, Plus, Trash2, Link2, Copy, Check } from 'lucide-react';
 import { copyToClipboard } from '@/lib/native';
+import { createQuickLink, deleteQuickLink } from '@/services/rooms';
 
 const TOOL_PRESETS = [
   { name: 'Google Docs', icon: '📄', color: 'bg-blue-50 border-blue-200 text-blue-700' },
@@ -32,28 +33,9 @@ export default function QuickLinks({ roomId, links = [], onLinksChange }) {
   const [error, setError] = useState('');
   const [selectedLink, setSelectedLink] = useState(null);
   const [copiedLinkId, setCopiedLinkId] = useState(null);
+  const savedLinks = Array.isArray(links) ? links : [];
 
-  // Links are stored in localStorage per room
-  const storageKey = `quick-links:${roomId}`;
-
-  const savedLinks = links.length > 0 ? links : (() => {
-    try {
-      return JSON.parse(localStorage.getItem(storageKey) || '[]');
-    } catch {
-      return [];
-    }
-  })();
-
-  const saveLinks = (next) => {
-    try {
-      localStorage.setItem(storageKey, JSON.stringify(next));
-    } catch {
-      // ignore
-    }
-    onLinksChange?.(next);
-  };
-
-  const handleAdd = () => {
+  const handleAdd = async () => {
     if (!url.trim()) {
       setError('URL is required');
       return;
@@ -72,25 +54,31 @@ export default function QuickLinks({ roomId, links = [], onLinksChange }) {
     }
 
     const preset = getPreset(selectedTool || 'Other');
-    const newLink = {
-      id: Date.now().toString(),
-      tool: selectedTool || 'Other',
-      url: finalUrl,
-      label: label.trim() || preset.name,
-    };
+    try {
+      const newLink = await createQuickLink(roomId, {
+        tool: selectedTool || 'Other',
+        url: finalUrl,
+        label: label.trim() || preset.name,
+      });
 
-    const next = [...savedLinks, newLink];
-    saveLinks(next);
-    setAddOpen(false);
-    setUrl('');
-    setLabel('');
-    setSelectedTool('');
-    setError('');
+      onLinksChange?.([...savedLinks, newLink]);
+      setAddOpen(false);
+      setUrl('');
+      setLabel('');
+      setSelectedTool('');
+      setError('');
+    } catch (err) {
+      setError(err.message || 'Failed to add link');
+    }
   };
 
-  const handleRemove = (linkId) => {
-    const next = savedLinks.filter((l) => l.id !== linkId);
-    saveLinks(next);
+  const handleRemove = async (linkId) => {
+    try {
+      await deleteQuickLink(roomId, linkId);
+      onLinksChange?.(savedLinks.filter((l) => l.id !== linkId));
+    } catch (err) {
+      setError(err.message || 'Failed to remove link');
+    }
   };
 
   const handleLinkActionOpen = (link) => {

@@ -5,6 +5,9 @@ const MIGRATION_SQL = `
 ALTER TABLE users ADD COLUMN IF NOT EXISTS year_level INTEGER;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS semester INTEGER;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS university TEXT;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS room_order JSONB NOT NULL DEFAULT '[]'::jsonb;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS flinders_interests JSONB NOT NULL DEFAULT '[]'::jsonb;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS flinders_favorites JSONB NOT NULL DEFAULT '[]'::jsonb;
 
 -- Allow non-Flinders university emails in the public users table.
 DO $$ DECLARE
@@ -322,6 +325,64 @@ CREATE INDEX IF NOT EXISTS idx_room_announcements_room_created ON room_announcem
 CREATE INDEX IF NOT EXISTS idx_announcement_reads_user ON announcement_reads(user_id, announcement_id);
 CREATE INDEX IF NOT EXISTS idx_events_room_start ON events(room_id, start_time);
 CREATE INDEX IF NOT EXISTS idx_tasks_room_created ON tasks(room_id, created_at DESC);
+
+-- Cross-device user state
+ALTER TABLE users ADD COLUMN IF NOT EXISTS board_last_seen_at TIMESTAMPTZ;
+ALTER TABLE room_members ADD COLUMN IF NOT EXISTS last_visited_at TIMESTAMPTZ;
+CREATE INDEX IF NOT EXISTS idx_room_members_user_last_visited ON room_members(user_id, last_visited_at DESC);
+
+-- Room quick links
+CREATE TABLE IF NOT EXISTS room_quick_links (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  room_id UUID NOT NULL REFERENCES rooms(id) ON DELETE CASCADE,
+  created_by UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  tool TEXT NOT NULL DEFAULT 'Other',
+  label TEXT NOT NULL,
+  url TEXT NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_room_quick_links_room_created ON room_quick_links(room_id, created_at ASC);
+
+ALTER TABLE room_quick_links ENABLE ROW LEVEL SECURITY;
+
+DO $$ BEGIN
+IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'room_quick_links_select') THEN
+  CREATE POLICY "room_quick_links_select" ON room_quick_links FOR SELECT USING (
+    EXISTS (
+      SELECT 1 FROM room_members rm
+      WHERE rm.room_id = room_quick_links.room_id
+        AND rm.user_id = auth.uid()
+    )
+  );
+END IF;
+IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'room_quick_links_insert') THEN
+  CREATE POLICY "room_quick_links_insert" ON room_quick_links FOR INSERT WITH CHECK (
+    auth.uid() = created_by
+    AND EXISTS (
+      SELECT 1 FROM room_members rm
+      WHERE rm.room_id = room_quick_links.room_id
+        AND rm.user_id = auth.uid()
+    )
+  );
+END IF;
+IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'room_quick_links_delete') THEN
+  CREATE POLICY "room_quick_links_delete" ON room_quick_links FOR DELETE USING (
+    auth.uid() = created_by
+    OR EXISTS (
+      SELECT 1 FROM room_members rm
+      WHERE rm.room_id = room_quick_links.room_id
+        AND rm.user_id = auth.uid()
+        AND rm.role IN ('owner', 'admin')
+    )
+  );
+END IF;
+END $$;
+
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM information_schema.table_constraints WHERE constraint_name = 'room_quick_links_created_by_users_fkey' AND table_name = 'room_quick_links') THEN
+    ALTER TABLE room_quick_links ADD CONSTRAINT room_quick_links_created_by_users_fkey FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE CASCADE;
+  END IF;
+END $$;
 `;
 
 async function runMigration() {

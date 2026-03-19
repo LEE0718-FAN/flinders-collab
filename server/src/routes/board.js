@@ -16,6 +16,20 @@ router.get(
   boardController.getPosts
 );
 
+router.get(
+  '/board/state',
+  boardController.getBoardState
+);
+
+router.put(
+  '/board/state',
+  [
+    body('last_seen_at').optional().isISO8601().withMessage('last_seen_at must be an ISO 8601 date'),
+  ],
+  validate,
+  boardController.updateBoardState
+);
+
 router.post(
   '/board/posts',
   [

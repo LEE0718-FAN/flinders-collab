@@ -4,6 +4,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { GraduationCap, Calendar, BookOpen, ExternalLink, Loader2, ChevronDown, ChevronUp, MapPin, Star, Clock, ChevronLeft, ChevronRight } from 'lucide-react';
 import { getRecommendedEvents } from '@/services/flinders';
+import { apiGetPreferences, apiUpdatePreferences } from '@/services/auth';
 import OnboardingTour from '@/components/OnboardingTour';
 import { format, parseISO, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isToday, getDay, addMonths, subMonths, isWithinInterval } from 'date-fns';
 
@@ -355,12 +356,9 @@ function EmptyState({ icon: Icon, message }) {
 export default function FlindersLifePage() {
   const [eventData, setEventData] = useState({ recommended: [], career: [], all: [] });
   const [eventsLoading, setEventsLoading] = useState(true);
-  const [selectedInterests, setSelectedInterests] = useState(() => {
-    try { return JSON.parse(localStorage.getItem('flinders-interests')) || []; } catch { return []; }
-  });
-  const [favorites, setFavorites] = useState(() => {
-    try { return JSON.parse(localStorage.getItem('flinders-favorites')) || []; } catch { return []; }
-  });
+  const [selectedInterests, setSelectedInterests] = useState([]);
+  const [favorites, setFavorites] = useState([]);
+  const [preferencesReady, setPreferencesReady] = useState(false);
   const [allEventsExpanded, setAllEventsExpanded] = useState(true);
   const [showFavorites, setShowFavorites] = useState(false);
 
@@ -377,27 +375,39 @@ export default function FlindersLifePage() {
   }, []);
 
   useEffect(() => {
+    apiGetPreferences()
+      .then((data) => {
+        setSelectedInterests(Array.isArray(data?.flinders_interests) ? data.flinders_interests : []);
+        setFavorites(Array.isArray(data?.flinders_favorites) ? data.flinders_favorites : []);
+      })
+      .catch(() => {})
+      .finally(() => setPreferencesReady(true));
+  }, []);
+
+  useEffect(() => {
+    if (!preferencesReady) return;
     fetchEvents(selectedInterests);
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [fetchEvents, preferencesReady, selectedInterests]);
 
   const toggleInterest = (interest) => {
     setSelectedInterests((prev) => {
       const next = prev.includes(interest) ? prev.filter((i) => i !== interest) : [...prev, interest];
-      localStorage.setItem('flinders-interests', JSON.stringify(next));
+      apiUpdatePreferences({ flinders_interests: next }).catch(() => {});
       fetchEvents(next);
       return next;
     });
   };
 
   const toggleFavorite = (eventId) => {
+    const normalizedId = String(eventId);
     setFavorites((prev) => {
-      const next = prev.includes(eventId) ? prev.filter((id) => id !== eventId) : [...prev, eventId];
-      localStorage.setItem('flinders-favorites', JSON.stringify(next));
+      const next = prev.includes(normalizedId) ? prev.filter((id) => id !== normalizedId) : [...prev, normalizedId];
+      apiUpdatePreferences({ flinders_favorites: next }).catch(() => {});
       return next;
     });
   };
 
-  const favoriteEvents = eventData.all.filter((e) => favorites.includes(e.id));
+  const favoriteEvents = eventData.all.filter((e) => favorites.includes(String(e.id)));
   const sortByDate = (events) => [...events].sort((a, b) => new Date(a.date || 0) - new Date(b.date || 0));
 
   return (

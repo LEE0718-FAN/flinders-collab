@@ -8,6 +8,23 @@ export async function getPosts(category) {
   return parseResponse(res);
 }
 
+export async function getBoardState() {
+  const headers = getAuthHeaders();
+  const res = await fetch(apiUrl('/api/board/state'), { headers });
+  return parseResponse(res);
+}
+
+export async function updateBoardState(lastSeenAt) {
+  const headers = getAuthHeaders();
+  const body = lastSeenAt ? { last_seen_at: lastSeenAt } : {};
+  const res = await fetch(apiUrl('/api/board/state'), {
+    method: 'PUT',
+    headers,
+    body: JSON.stringify(body),
+  });
+  return parseResponse(res);
+}
+
 export async function createPost(data) {
   const headers = getAuthHeaders();
   const res = await fetch(apiUrl('/api/board/posts'), { method: 'POST', headers, body: JSON.stringify(data) });

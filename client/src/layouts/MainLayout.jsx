@@ -17,10 +17,10 @@ import { useToast } from '@/components/ui/toast';
 
 import { getRoomActivity, getRooms } from '@/services/rooms';
 import { getEvents } from '@/services/events';
-import { getPosts } from '@/services/board';
-import { applyRoomOrder, loadRoomOrder } from '@/lib/room-order';
-import { readRoomLastVisited } from '@/lib/room-activity';
-import { getLatestBoardTimestamp, readBoardLastSeen, writeBoardLastSeen } from '@/lib/board-notifications';
+import { getBoardState, getPosts, updateBoardState } from '@/services/board';
+import { apiGetPreferences } from '@/services/auth';
+import { applyRoomOrder } from '@/lib/room-order';
+import { getLatestBoardTimestamp } from '@/lib/board-notifications';
 
 const ROOM_NAVIGATION_UPDATED_EVENT = 'rooms-updated';
 
@@ -48,11 +48,6 @@ function NavItem({ to, isActive, icon: Icon, label, palette, badgeCount = 0, bad
 
   const activeAccentColor = palette ? palette.icon : '#818cf8';
   const hasBadge = Boolean(badgeLabel) || badgeCount > 0;
-  const badgeSlotClass = badgeLabel
-    ? 'w-[6.75rem]'
-    : badgeCount > 0
-      ? 'w-[3.5rem]'
-      : 'w-4';
 
   return (
     <Link to={to}>
@@ -90,15 +85,15 @@ function NavItem({ to, isActive, icon: Icon, label, palette, badgeCount = 0, bad
               : 'text-slate-500 group-hover:text-slate-300'
           }`}
         />
-        <span className="min-w-0 flex-1 truncate">{label}</span>
-        <span className={`ml-auto flex shrink-0 items-center justify-end gap-2 ${badgeSlotClass}`}>
+        <span className="min-w-0 flex flex-1 items-center gap-2">
+          <span className="min-w-0 truncate">{label}</span>
           {hasBadge && (
             <span className="inline-flex h-5 min-w-5 max-w-[5.5rem] items-center justify-center rounded-full bg-rose-500 px-2 text-[10px] font-bold tabular-nums text-white shadow-sm whitespace-nowrap">
               {badgeLabel || (badgeCount > 99 ? '99+' : badgeCount)}
             </span>
           )}
-          <ChevronRight className={`h-3.5 w-3.5 shrink-0 text-slate-400 transition-opacity ${isActive ? 'opacity-40' : 'opacity-0'}`} />
         </span>
+        <ChevronRight className={`ml-2 h-3.5 w-3.5 shrink-0 text-slate-400 transition-opacity ${isActive ? 'opacity-40' : 'opacity-0'}`} />
       </button>
     </Link>
   );
@@ -208,12 +203,32 @@ export default function MainLayout({ children }) {
   const [recentActivityCounts, setRecentActivityCounts] = useState({});
   const [deadlineCount, setDeadlineCount] = useState(0);
   const [boardUnreadCount, setBoardUnreadCount] = useState(0);
+  const [roomLastVisitedMap, setRoomLastVisitedMap] = useState({});
+  const [roomOrderIds, setRoomOrderIds] = useState([]);
   const boardToastIdsRef = useRef(new Set());
+  const boardLastSeenAtRef = useRef(0);
+
+  const syncRoomVisitState = useCallback((roomList = []) => {
+    setRoomLastVisitedMap((prev) => {
+      const next = { ...prev };
+      roomList.forEach((room) => {
+        const timestamp = room?.last_visited_at ? new Date(room.last_visited_at).getTime() : 0;
+        next[room.id] = Number.isFinite(timestamp) ? timestamp : 0;
+      });
+      return next;
+    });
+  }, []);
 
   const refreshRooms = async () => {
-    const data = await getRooms();
+    const [data, preferences] = await Promise.all([
+      getRooms(),
+      apiGetPreferences().catch(() => null),
+    ]);
     const nextRooms = data.rooms || data || [];
-    setRooms(applyRoomOrder(nextRooms, loadRoomOrder(user?.id)));
+    const orderedIds = Array.isArray(preferences?.room_order) ? preferences.room_order : roomOrderIds;
+    setRoomOrderIds(orderedIds);
+    syncRoomVisitState(nextRooms);
+    setRooms(applyRoomOrder(nextRooms, orderedIds));
   };
 
   const refreshDeadlineCount = async () => {
@@ -243,7 +258,7 @@ export default function MainLayout({ children }) {
     }
   };
 
-  const refreshRecentActivityCounts = async (targetRooms = rooms) => {
+  const refreshRecentActivityCounts = useCallback(async (targetRooms = rooms) => {
     if (!user?.id) {
       setRecentActivityCounts({});
       return;
@@ -254,7 +269,9 @@ export default function MainLayout({ children }) {
         targetRooms.map(async (room) => {
           const activity = await getRoomActivity(room.id);
           const items = Array.isArray(activity) ? activity : [];
-          const lastVisited = readRoomLastVisited(user.id, room.id);
+          const roomVisitedAt = roomLastVisitedMap[room.id];
+          const roomLastVisited = room?.last_visited_at ? new Date(room.last_visited_at).getTime() : 0;
+          const lastVisited = roomVisitedAt ?? (Number.isFinite(roomLastVisited) ? roomLastVisited : 0);
           const count = items.filter((entry) => {
             const createdAt = new Date(entry.created_at).getTime();
             return Number.isFinite(createdAt) && createdAt > lastVisited;
@@ -273,7 +290,7 @@ export default function MainLayout({ children }) {
     } catch {
       setRecentActivityCounts({});
     }
-  };
+  }, [roomLastVisitedMap, rooms, user?.id]);
 
   const roomBadgeCounts = useMemo(() => {
     const next = {};
@@ -295,13 +312,18 @@ export default function MainLayout({ children }) {
     boardToastIdsRef.current.clear();
   }, [removeToast]);
 
-  const markBoardSeen = useCallback((posts = []) => {
+  const markBoardSeen = useCallback(async (posts = []) => {
     if (!user?.id) return;
 
     const latestTimestamp = getLatestBoardTimestamp(posts);
-    writeBoardLastSeen(user.id, latestTimestamp || Date.now());
+    const safeTimestamp = latestTimestamp || Date.now();
+    await updateBoardState(new Date(safeTimestamp).toISOString());
+    boardLastSeenAtRef.current = safeTimestamp;
     setBoardUnreadCount(0);
     clearBoardToasts();
+    window.dispatchEvent(new CustomEvent('board-notifications-read', {
+      detail: { userId: user.id, timestamp: safeTimestamp },
+    }));
   }, [clearBoardToasts, user?.id]);
 
   useEffect(() => {
@@ -312,6 +334,7 @@ export default function MainLayout({ children }) {
   useEffect(() => {
     if (!user?.id) {
       setBoardUnreadCount(0);
+      boardLastSeenAtRef.current = 0;
       clearBoardToasts();
       return;
     }
@@ -325,18 +348,18 @@ export default function MainLayout({ children }) {
 
         const posts = Array.isArray(data) ? data : [];
         const latestTimestamp = getLatestBoardTimestamp(posts);
-        const lastSeen = readBoardLastSeen(user.id);
+        const lastSeen = boardLastSeenAtRef.current;
 
         if (!lastSeen) {
           if (latestTimestamp > 0) {
-            writeBoardLastSeen(user.id, latestTimestamp);
+            await markBoardSeen(posts);
           }
           setBoardUnreadCount(0);
           return;
         }
 
         if (location.pathname === '/board') {
-          markBoardSeen(posts);
+          await markBoardSeen(posts);
           return;
         }
 
@@ -382,7 +405,20 @@ export default function MainLayout({ children }) {
       }
     };
 
-    syncBoardNotifications({ suppressToast: true }).catch(() => {});
+    const hydrateBoardState = async () => {
+      const state = await getBoardState();
+      if (cancelled) return;
+      const timestamp = state?.last_seen_at ? new Date(state.last_seen_at).getTime() : 0;
+      boardLastSeenAtRef.current = Number.isFinite(timestamp) ? timestamp : 0;
+      await syncBoardNotifications({ suppressToast: true });
+    };
+
+    hydrateBoardState().catch(() => {
+      if (!cancelled) {
+        boardLastSeenAtRef.current = 0;
+        setBoardUnreadCount(0);
+      }
+    });
 
     const intervalId = window.setInterval(() => {
       if (document.visibilityState === 'hidden') return;
@@ -391,6 +427,10 @@ export default function MainLayout({ children }) {
 
     const handleBoardRead = (event) => {
       if (event.detail?.userId && event.detail.userId !== user.id) return;
+      const timestamp = Number(event.detail?.timestamp || 0);
+      if (Number.isFinite(timestamp) && timestamp > 0) {
+        boardLastSeenAtRef.current = timestamp;
+      }
       setBoardUnreadCount(0);
       clearBoardToasts();
     };
@@ -437,17 +477,9 @@ export default function MainLayout({ children }) {
         return;
       }
 
-      const nextOrder = detail.orderedIds || loadRoomOrder(user?.id);
+      const nextOrder = Array.isArray(detail.orderedIds) ? detail.orderedIds : roomOrderIds;
+      setRoomOrderIds(nextOrder);
       setRooms((prev) => applyRoomOrder(prev, nextOrder));
-    };
-
-    const handleStorage = (event) => {
-      const key = user?.id ? `room-order:${user.id}` : null;
-      if (!key || event.key !== key) {
-        return;
-      }
-
-      setRooms((prev) => applyRoomOrder(prev, loadRoomOrder(user?.id)));
     };
 
     const handleRoomsUpdated = (event) => {
@@ -457,7 +489,10 @@ export default function MainLayout({ children }) {
       }
 
       if (Array.isArray(detail.rooms)) {
-        setRooms(applyRoomOrder(detail.rooms, loadRoomOrder(user?.id)));
+        syncRoomVisitState(detail.rooms);
+        const orderedIds = Array.isArray(detail.orderedIds) ? detail.orderedIds : roomOrderIds;
+        setRoomOrderIds(orderedIds);
+        setRooms(applyRoomOrder(detail.rooms, orderedIds));
         refreshDeadlineCount().catch(() => {});
         refreshRecentActivityCounts(detail.rooms).catch(() => {});
         return;
@@ -481,8 +516,10 @@ export default function MainLayout({ children }) {
     };
 
     const handleRoomActivityVisited = (event) => {
-      const { roomId } = event.detail || {};
+      const { roomId, timestamp } = event.detail || {};
       if (!roomId) return;
+      const safeTimestamp = Number(timestamp || Date.now());
+      setRoomLastVisitedMap((prev) => ({ ...prev, [roomId]: safeTimestamp }));
       setRecentActivityCounts((prev) => {
         if (!(roomId in prev)) return prev;
         const next = { ...prev };
@@ -492,7 +529,6 @@ export default function MainLayout({ children }) {
     };
 
     window.addEventListener('room-order-updated', handleRoomOrderUpdated);
-    window.addEventListener('storage', handleStorage);
     window.addEventListener(ROOM_NAVIGATION_UPDATED_EVENT, handleRoomsUpdated);
     window.addEventListener('room-activity-visited', handleRoomActivityVisited);
     window.addEventListener('focus', handleWindowFocus);
@@ -500,13 +536,12 @@ export default function MainLayout({ children }) {
 
     return () => {
       window.removeEventListener('room-order-updated', handleRoomOrderUpdated);
-      window.removeEventListener('storage', handleStorage);
       window.removeEventListener(ROOM_NAVIGATION_UPDATED_EVENT, handleRoomsUpdated);
       window.removeEventListener('room-activity-visited', handleRoomActivityVisited);
       window.removeEventListener('focus', handleWindowFocus);
       document.removeEventListener('visibilitychange', handleWindowFocus);
     };
-  }, [rooms, user?.id]);
+  }, [refreshDeadlineCount, refreshRecentActivityCounts, roomOrderIds, syncRoomVisitState, user?.id]);
 
   // Fetch unread announcement counts for sidebar badges
   useEffect(() => {

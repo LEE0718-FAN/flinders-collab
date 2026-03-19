@@ -17,11 +17,13 @@ async function buildRoomResponse(room, userId, membership = null) {
   const memberCount = await getRoomMemberCount(room.id);
   const role = membership?.role || (room.owner_id === userId ? 'owner' : 'member');
   const joinedAt = membership?.joined_at || room.created_at;
+  const lastVisitedAt = membership?.last_visited_at || null;
 
   return {
     ...room,
     my_role: role,
     joined_at: joinedAt,
+    last_visited_at: lastVisitedAt,
     member_count: memberCount,
   };
 }
@@ -97,6 +99,7 @@ async function createRoom(req, res, next) {
         room_id: room.id,
         user_id: userId,
         role: 'owner',
+        last_visited_at: new Date().toISOString(),
       });
 
     if (memberError) {
@@ -106,6 +109,7 @@ async function createRoom(req, res, next) {
     res.status(201).json(await buildRoomResponse(room, userId, {
       role: 'owner',
       joined_at: room.created_at,
+      last_visited_at: new Date().toISOString(),
     }));
   } catch (err) {
     next(err);
@@ -125,6 +129,7 @@ async function getRooms(req, res, next) {
       .select(`
         role,
         joined_at,
+        last_visited_at,
         rooms (
           id,
           name,
@@ -160,6 +165,7 @@ async function getRooms(req, res, next) {
       ...entry.rooms,
       my_role: entry.role,
       joined_at: entry.joined_at,
+      last_visited_at: entry.last_visited_at || null,
       member_count: countMap[entry.rooms.id] || 0,
     }));
 
@@ -236,6 +242,7 @@ async function joinRoomByCode(req, res, next) {
         room_id: room.id,
         user_id: userId,
         role: 'member',
+        last_visited_at: new Date().toISOString(),
       })
       .select()
       .single();
@@ -300,6 +307,7 @@ async function joinRoom(req, res, next) {
         room_id: roomId,
         user_id: userId,
         role: 'member',
+        last_visited_at: new Date().toISOString(),
       })
       .select()
       .single();
@@ -496,6 +504,119 @@ async function leaveRoom(req, res, next) {
   }
 }
 
+async function markVisited(req, res, next) {
+  try {
+    const { roomId } = req.params;
+    const userId = req.user.id;
+    const visitedAt = new Date().toISOString();
+
+    const { data, error } = await supabaseAdmin
+      .from('room_members')
+      .update({ last_visited_at: visitedAt })
+      .eq('room_id', roomId)
+      .eq('user_id', userId)
+      .select('last_visited_at')
+      .single();
+
+    if (error) {
+      return res.status(400).json({ error: error.message });
+    }
+
+    res.json({ last_visited_at: data?.last_visited_at || visitedAt });
+  } catch (err) {
+    next(err);
+  }
+}
+
+async function getQuickLinks(req, res, next) {
+  try {
+    const { roomId } = req.params;
+
+    const { data, error } = await supabaseAdmin
+      .from('room_quick_links')
+      .select('id, room_id, created_by, tool, label, url, created_at')
+      .eq('room_id', roomId)
+      .order('created_at', { ascending: true });
+
+    if (error) {
+      return res.status(400).json({ error: error.message });
+    }
+
+    res.json(data || []);
+  } catch (err) {
+    next(err);
+  }
+}
+
+async function createQuickLink(req, res, next) {
+  try {
+    const { roomId } = req.params;
+    const userId = req.user.id;
+    const tool = String(req.body.tool || 'Other').trim() || 'Other';
+    const label = String(req.body.label || '').trim();
+    const url = String(req.body.url || '').trim();
+
+    const { data, error } = await supabaseAdmin
+      .from('room_quick_links')
+      .insert({
+        room_id: roomId,
+        created_by: userId,
+        tool,
+        label,
+        url,
+      })
+      .select('id, room_id, created_by, tool, label, url, created_at')
+      .single();
+
+    if (error) {
+      return res.status(400).json({ error: error.message });
+    }
+
+    res.status(201).json(data);
+  } catch (err) {
+    next(err);
+  }
+}
+
+async function deleteQuickLink(req, res, next) {
+  try {
+    const { roomId, linkId } = req.params;
+    const userId = req.user.id;
+
+    const { data: link, error: fetchError } = await supabaseAdmin
+      .from('room_quick_links')
+      .select('id, created_by')
+      .eq('id', linkId)
+      .eq('room_id', roomId)
+      .maybeSingle();
+
+    if (fetchError) {
+      return res.status(400).json({ error: fetchError.message });
+    }
+    if (!link) {
+      return res.status(404).json({ error: 'Quick link not found' });
+    }
+
+    if (link.created_by !== userId && req.memberRole !== 'owner' && req.memberRole !== 'admin') {
+      return res.status(403).json({ error: 'Not allowed to delete this quick link' });
+    }
+
+    const { error } = await supabaseAdmin
+      .from('room_quick_links')
+      .delete()
+      .eq('id', linkId)
+      .eq('room_id', roomId);
+
+    if (error) {
+      return res.status(400).json({ error: error.message });
+    }
+
+    res.json({ message: 'Quick link deleted' });
+  } catch (err) {
+    next(err);
+  }
+}
+
 module.exports = {
   createRoom,
   getRooms,
@@ -504,6 +625,10 @@ module.exports = {
   joinRoom,
   joinRoomByCode,
   getMembers,
+  markVisited,
+  getQuickLinks,
+  createQuickLink,
+  deleteQuickLink,
   deleteRoom,
   leaveRoom,
 };
