@@ -24,7 +24,6 @@ import { getCachedPreferences, hydratePreferences } from '@/lib/preferences';
 import { preloadRoute } from '@/lib/route-preload';
 import { getUnreadCounts } from '@/services/announcements';
 import { syncAppBadge } from '@/lib/app-badge';
-import { subscribeToPush } from '@/lib/push';
 
 const ROOM_NAVIGATION_UPDATED_EVENT = 'rooms-updated';
 const APP_SOFT_REFRESH_EVENT = 'app-soft-refresh';
@@ -297,8 +296,8 @@ export default function MainLayout({ children }) {
 
   const totalAppBadgeCount = useMemo(() => {
     const roomUnreadTotal = Object.values(roomBadgeCounts).reduce((sum, value) => sum + Number(value || 0), 0);
-    return roomUnreadTotal + Number(deadlineCount || 0) + Number(boardUnreadCount || 0);
-  }, [boardUnreadCount, deadlineCount, roomBadgeCounts]);
+    return roomUnreadTotal + Number(boardUnreadCount || 0);
+  }, [boardUnreadCount, roomBadgeCounts]);
 
   const clearBoardToasts = useCallback(() => {
     boardToastIdsRef.current.forEach((toastId) => removeToast(toastId));
@@ -577,38 +576,6 @@ export default function MainLayout({ children }) {
   useEffect(() => {
     syncAppBadge(totalAppBadgeCount).catch(() => {});
   }, [totalAppBadgeCount]);
-
-  useEffect(() => {
-    const handlePushDebug = (event) => {
-      const detail = event.detail || {};
-      const stage = detail.stage ? `[${detail.stage}] ` : '';
-      const message = `${stage}${detail.message || 'Push update'}`;
-      addToast({
-        key: `push-debug:${detail.stage || 'unknown'}:${detail.status || 'default'}:${detail.message || ''}`,
-        title: detail.status === 'error'
-          ? 'Push Debug'
-          : detail.status === 'success'
-            ? 'Push Ready'
-            : 'Push Info',
-        message,
-        type: detail.status === 'error' ? 'error' : detail.status === 'success' ? 'success' : 'info',
-        duration: detail.status === 'error' ? 10000 : 5000,
-      });
-    };
-
-    window.addEventListener('push-debug', handlePushDebug);
-    return () => window.removeEventListener('push-debug', handlePushDebug);
-  }, [addToast]);
-
-  useEffect(() => {
-    if (!user?.id) return;
-
-    const timerId = window.setTimeout(() => {
-      subscribeToPush().catch(() => {});
-    }, 800);
-
-    return () => window.clearTimeout(timerId);
-  }, [user?.id]);
 
   // Listen for maintenance notifications via Socket.IO
   useEffect(() => {
