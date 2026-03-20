@@ -87,8 +87,8 @@ export function DesktopSidePanel({ onDismiss, onNeverShow }) {
   const url = typeof window !== 'undefined' ? window.location.origin : '';
 
   return (
-    <div className="w-full max-w-[332px] shrink-0 animate-slide-up">
-      <div className="relative overflow-hidden rounded-[28px] border border-white/10 bg-white/[0.08] p-4.5 shadow-2xl shadow-black/20 backdrop-blur-xl">
+    <div className="w-[308px] shrink-0 animate-slide-up">
+      <div className="relative overflow-hidden rounded-[26px] border border-white/10 bg-white/[0.08] p-4 shadow-2xl shadow-black/20 backdrop-blur-xl">
         <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent" />
 
         {/* Close button */}
@@ -100,28 +100,28 @@ export function DesktopSidePanel({ onDismiss, onNeverShow }) {
           <X className="h-4 w-4" />
         </button>
 
-        <div className="mb-3.5 pr-10 text-left">
+        <div className="mb-3 pr-10 text-left">
           <div className="mb-2 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/10 px-3 py-1 text-[10px] font-semibold tracking-wide text-white/70">
             <Smartphone className="h-3.5 w-3.5 text-indigo-300" />
             Install on mobile
           </div>
-          <h2 className="text-lg font-semibold tracking-tight text-white">
+          <h2 className="text-[1.65rem] font-semibold tracking-tight text-white leading-none">
             Add Collab to your phone
           </h2>
-          <p className="mt-1.5 max-w-[24ch] text-[12px] leading-5 text-white/55">
-            Scan the QR code, then add the app from Safari or Chrome.
+          <p className="mt-2 max-w-[24ch] text-[12px] leading-5 text-white/55">
+            Scan the QR code on your phone, open the link in your browser, then add Collab to your home screen.
           </p>
         </div>
 
         <div className="grid gap-3.5">
-          <div className="rounded-[24px] border border-white/10 bg-slate-950/20 p-3.5">
+          <div className="rounded-[22px] border border-white/10 bg-slate-950/20 p-3.5">
             <div className="flex items-center justify-between gap-3">
               <div>
                 <p className="text-xs font-semibold uppercase tracking-[0.18em] text-white/45">
                   QR code
                 </p>
                 <p className="mt-1 text-[12px] leading-5 text-white/75">
-                  Open this link on your phone.
+                  Open this page on your phone first.
                 </p>
               </div>
               <div className="hidden h-10 w-10 rounded-full bg-white/10 sm:flex sm:items-center sm:justify-center">
@@ -132,7 +132,7 @@ export function DesktopSidePanel({ onDismiss, onNeverShow }) {
             <div className="mx-auto mt-3.5 w-fit rounded-2xl bg-white p-3 shadow-[0_14px_32px_-16px_rgba(0,0,0,0.45)]">
               <QRCodeSVG
                 value={url}
-                size={120}
+                size={112}
                 bgColor="white"
                 fgColor="#1e1b4b"
                 level="M"
@@ -150,11 +150,15 @@ export function DesktopSidePanel({ onDismiss, onNeverShow }) {
               <div className="space-y-1.5 text-[11px] leading-5 text-white/55">
                 <p className="flex items-start gap-2">
                   <span className="mt-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-md bg-white/10 text-[10px] font-bold text-white/80">1</span>
-                  <span>Open in Safari.</span>
+                  <span>Open the link in <span className="font-medium text-white/75">Safari</span>.</span>
                 </p>
                 <p className="flex items-start gap-2">
                   <span className="mt-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-md bg-white/10 text-[10px] font-bold text-white/80">2</span>
-                  <span>Add to Home Screen.</span>
+                  <span>Tap the <span className="font-medium text-white/75">Share</span> button at the bottom.</span>
+                </p>
+                <p className="flex items-start gap-2">
+                  <span className="mt-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-md bg-white/10 text-[10px] font-bold text-white/80">3</span>
+                  <span>Scroll down and tap <span className="font-medium text-white/75">Add to Home Screen</span>.</span>
                 </p>
               </div>
             </div>
@@ -167,11 +171,15 @@ export function DesktopSidePanel({ onDismiss, onNeverShow }) {
               <div className="space-y-1.5 text-[11px] leading-5 text-white/55">
                 <p className="flex items-start gap-2">
                   <span className="mt-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-md bg-white/10 text-[10px] font-bold text-white/80">1</span>
-                  <span>Open in Chrome.</span>
+                  <span>Open the link in <span className="font-medium text-white/75">Chrome</span>.</span>
                 </p>
                 <p className="flex items-start gap-2">
                   <span className="mt-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-md bg-white/10 text-[10px] font-bold text-white/80">2</span>
-                  <span>Tap Install app.</span>
+                  <span>Tap the <span className="font-medium text-white/75">three-dot menu</span> in the top right.</span>
+                </p>
+                <p className="flex items-start gap-2">
+                  <span className="mt-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-md bg-white/10 text-[10px] font-bold text-white/80">3</span>
+                  <span>Choose <span className="font-medium text-white/75">Install app</span> or <span className="font-medium text-white/75">Add to Home screen</span>.</span>
                 </p>
               </div>
             </div>
@@ -183,7 +191,7 @@ export function DesktopSidePanel({ onDismiss, onNeverShow }) {
               Notifications
             </p>
             <p className="text-[11px] leading-5 text-white/55">
-              Allow notifications after login.
+              Allow notifications after login so room updates can reach you.
             </p>
           </div>
         </div>

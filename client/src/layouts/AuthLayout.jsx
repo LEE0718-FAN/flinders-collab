@@ -54,9 +54,9 @@ export default function AuthLayout({ children }) {
 
       {/* Main content — login card + optional side panel */}
       <div className="relative z-10 flex flex-1 items-center justify-center py-1 sm:py-3">
-        {/* Login column */}
-        <div className="grid w-full max-w-[960px] items-center justify-center gap-5 xl:grid-cols-[472px_332px] xl:gap-7">
-          <div className="w-full max-w-[480px] justify-self-center animate-slide-up xl:justify-self-center">
+        <div className="relative flex w-full items-center justify-center">
+          {/* Login column */}
+          <div className="w-full max-w-[472px] animate-slide-up">
             {/* Logo area */}
             <div className="mb-4 text-center sm:mb-5">
               <div className="mx-auto mb-2.5 flex h-16 items-center justify-center">
@@ -91,7 +91,7 @@ export default function AuthLayout({ children }) {
 
           {/* Desktop side panel */}
           {showSidePanel && (
-            <div className="hidden xl:flex xl:justify-self-start xl:self-center">
+            <div className="hidden xl:flex xl:absolute xl:left-[calc(50%+272px)] xl:top-1/2 xl:-translate-y-1/2">
               <DesktopSidePanel onDismiss={handleDismiss} onNeverShow={handleNeverShow} />
             </div>
           )}
