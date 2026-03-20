@@ -647,7 +647,7 @@ export default function MainLayout({ children }) {
 
       <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
         {/* Top Bar */}
-        <header className="flex h-16 items-center justify-between gap-3 border-b-2 border-slate-200 bg-white/90 px-3 backdrop-blur-xl sm:px-4">
+        <header className="flex min-h-16 items-center justify-between gap-3 border-b-2 border-slate-200 bg-white/90 px-3 pt-[env(safe-area-inset-top)] backdrop-blur-xl sm:px-4">
           <div className="flex min-w-0 items-center gap-2">
             <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
               <SheetTrigger asChild>

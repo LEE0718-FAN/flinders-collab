@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { ChevronRight, X } from 'lucide-react';
+import { useAuthStore } from '@/store/authStore';
 
 const STORAGE_KEY = 'onboarding-tours';
 const getInteractiveTutorialPhase = () => {
@@ -22,6 +23,9 @@ const getActiveOnboardingTourId = () => {
  *   delay     - ms before tour starts (default 600)
  */
 export default function OnboardingTour({ tourId, steps = [], delay = 600 }) {
+  const session = useAuthStore((s) => s.session);
+  const isTester = Boolean(session?.is_tester || session?.user?.is_tester);
+
   const [active, setActive] = useState(false);
   const [step, setStep] = useState(0);
   const [spotlight, setSpotlight] = useState(null);
@@ -234,7 +238,7 @@ export default function OnboardingTour({ tourId, steps = [], delay = 600 }) {
     }
   };
 
-  if (!active || steps.length === 0) return null;
+  if (!isTester || !active || steps.length === 0) return null;
 
   const s = steps[step];
   const isLast = step === steps.length - 1;
