@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
-import { DesktopSidePanel } from '@/components/InstallBanner';
+import InstallBanner, { DesktopSidePanel } from '@/components/InstallBanner';
 
 export default function AuthLayout({ children }) {
   const [showSidePanel, setShowSidePanel] = useState(false);
@@ -53,7 +53,10 @@ export default function AuthLayout({ children }) {
       <div className="absolute bottom-1/3 left-1/3 hidden h-[200px] w-[200px] rounded-full bg-purple-500/10 blur-[80px] animate-float sm:block" style={{ animationDelay: '6s' }} />
 
       {/* Main content — login card + optional side panel */}
-      <div className="relative z-10 flex flex-1 items-center justify-center py-1 sm:py-3">
+      <div className="relative z-10 flex flex-1 flex-col justify-center py-1 sm:py-3">
+        <div className="mb-3 w-full xl:hidden">
+          <InstallBanner />
+        </div>
         <div className="relative flex w-full items-center justify-center">
           {/* Login column */}
           <div className="w-full max-w-[472px] animate-slide-up">

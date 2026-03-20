@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import AuthLayout from '@/layouts/AuthLayout';
 import LoginForm from '@/components/auth/LoginForm';
 import ReportButton from '@/components/ReportButton';
-import InstallBanner from '@/components/InstallBanner';
 import { useAuth } from '@/hooks/useAuth';
 
 export default function LoginPage() {
@@ -40,7 +39,6 @@ export default function LoginPage() {
 
   return (
     <>
-      <InstallBanner />
       <AuthLayout>
         <LoginForm onSubmit={handleLogin} onGuestLogin={handleGuestLogin} onRequestPasswordReset={handlePasswordReset} />
       </AuthLayout>
