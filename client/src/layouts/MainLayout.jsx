@@ -24,7 +24,6 @@ import { getCachedPreferences, hydratePreferences } from '@/lib/preferences';
 import { preloadRoute } from '@/lib/route-preload';
 import { getUnreadCounts } from '@/services/announcements';
 import { syncAppBadge } from '@/lib/app-badge';
-import { diagnosePushSubscription } from '@/lib/push';
 
 const ROOM_NAVIGATION_UPDATED_EVENT = 'rooms-updated';
 const APP_SOFT_REFRESH_EVENT = 'app-soft-refresh';
@@ -220,7 +219,6 @@ export default function MainLayout({ children }) {
   const [recentActivityCounts, setRecentActivityCounts] = useState({});
   const [deadlineCount, setDeadlineCount] = useState(0);
   const [boardUnreadCount, setBoardUnreadCount] = useState(0);
-  const [pushDebugLoading, setPushDebugLoading] = useState(false);
   const [roomLastVisitedMap, setRoomLastVisitedMap] = useState({});
   const [roomOrderIds, setRoomOrderIds] = useState([]);
   const boardToastIdsRef = useRef(new Set());
@@ -617,30 +615,6 @@ export default function MainLayout({ children }) {
     navigate('/login');
   };
 
-  const handlePushDebugCheck = useCallback(async () => {
-    if (pushDebugLoading) return;
-
-    setPushDebugLoading(true);
-    try {
-      const result = await diagnosePushSubscription();
-      const detail = [
-        `perm=${result.permission}`,
-        `sw=${result.serviceWorkerReady ? 'ok' : 'no'}`,
-        `sub=${result.hasSubscription ? 'yes' : 'no'}`,
-        `save=${result.savedToServer ? 'ok' : 'no'}`,
-      ].join(' · ');
-
-      addToast({
-        title: result.error ? 'Push Check Failed' : 'Push Check',
-        message: result.error ? `${detail} · ${result.error}` : detail,
-        type: result.error ? 'error' : 'info',
-        duration: 10000,
-      });
-    } finally {
-      setPushDebugLoading(false);
-    }
-  }, [addToast, pushDebugLoading]);
-
   const initials = user?.user_metadata?.name
     ? user.user_metadata.name.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2)
     : user?.email?.[0]?.toUpperCase() || '?';
@@ -937,16 +911,6 @@ export default function MainLayout({ children }) {
           </div>
         </main>
       </div>
-
-      <Button
-        type="button"
-        variant="outline"
-        onClick={handlePushDebugCheck}
-        disabled={pushDebugLoading}
-        className="fixed bottom-28 left-3 z-40 h-9 rounded-full border-slate-300 bg-white/95 px-3 text-[11px] font-semibold text-slate-700 shadow-lg backdrop-blur md:bottom-6 md:left-4 md:h-10 md:px-4 md:text-xs"
-      >
-        {pushDebugLoading ? 'Checking...' : 'Push Check'}
-      </Button>
 
       <ProfileDialog open={profileOpen} onOpenChange={setProfileOpen} />
 

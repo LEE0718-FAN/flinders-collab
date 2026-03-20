@@ -71,11 +71,11 @@ function FileRow({ file, canEdit, onDelete, onEdit, onDownload, deleting, downlo
           <FileText className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
         </div>
         <div className="flex-1 min-w-0 sm:hidden">
-          <p className="font-bold text-sm truncate text-slate-800">{fileName}</p>
+          <p className="break-all text-sm font-bold leading-snug text-slate-800">{fileName}</p>
         </div>
       </div>
       <div className="flex-1 min-w-0 hidden sm:block">
-        <p className="font-bold text-sm truncate text-slate-800">{fileName}</p>
+        <p className="break-all text-sm font-bold leading-snug text-slate-800">{fileName}</p>
         {file.file_description ? (
           <p className="text-xs text-slate-500 italic leading-snug line-clamp-2 mt-0.5">{file.file_description}</p>
         ) : (
@@ -99,7 +99,7 @@ function FileRow({ file, canEdit, onDelete, onEdit, onDownload, deleting, downlo
         {file.file_description && (
           <p className="text-xs text-slate-500 italic leading-snug line-clamp-2">{file.file_description}</p>
         )}
-        <p className="text-xs text-slate-500 mt-0.5">
+        <p className="mt-0.5 break-words text-xs text-slate-500">
           {uploaderName} <span className="mx-1">&middot;</span> {file.created_at ? format(new Date(file.created_at), 'MMM d, h:mm a') : ''}
           {file.file_size > 0 && <><span className="mx-1">&middot;</span>{formatSize(file.file_size)}</>}
         </p>

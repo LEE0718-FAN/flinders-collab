@@ -88,7 +88,7 @@ function FileAttachment({ fileData, isOwn }) {
             onError={handleImageError}
           />
         </div>
-        <p className={cn('text-[11px] mt-1', isOwn ? 'text-white/70' : 'text-slate-400')}>{fileData.file_name}</p>
+        <p className={cn('mt-1 break-all text-[11px]', isOwn ? 'text-white/70' : 'text-slate-400')}>{fileData.file_name}</p>
         {lightbox && <ImageLightbox src={downloadUrl} alt={fileData.file_name} onClose={() => setLightbox(false)} />}
       </>
     );
@@ -103,7 +103,7 @@ function FileAttachment({ fileData, isOwn }) {
         <FileText className="h-5 w-5 text-white" />
       </div>
       <div className="flex-1 min-w-0">
-        <p className={cn('text-sm font-medium truncate', isOwn ? 'text-white' : 'text-slate-700')}>{fileData.file_name}</p>
+        <p className={cn('break-all text-sm font-medium', isOwn ? 'text-white' : 'text-slate-700')}>{fileData.file_name}</p>
         <p className={cn('text-[11px]', isOwn ? 'text-white/60' : 'text-slate-400')}>
           {fileData.file_size ? `${(fileData.file_size / 1024).toFixed(1)} KB` : 'File'}
         </p>
@@ -139,9 +139,9 @@ export default function MessageBubble({ message, isOwn }) {
         {avatarUrl && <AvatarImage src={avatarUrl} alt={displayName} className="object-cover" />}
         <AvatarFallback className="bg-gradient-to-br from-blue-500 to-indigo-500 text-white text-xs font-bold">{initials}</AvatarFallback>
       </Avatar>
-      <div className={cn('max-w-[75%]', isOwn ? 'text-right' : 'text-left')}>
+      <div className={cn('max-w-[78%] min-w-0', isOwn ? 'text-right' : 'text-left')}>
         <div className={cn('flex items-baseline gap-2 mb-1', isOwn ? 'justify-end' : 'justify-start')}>
-          <span className={cn('text-[12px] font-semibold', isOwn ? 'text-indigo-600' : 'text-slate-700')}>
+          <span className={cn('min-w-0 break-words text-[12px] font-semibold', isOwn ? 'text-indigo-600' : 'text-slate-700')}>
             {displayName}
           </span>
           <span className="text-[10px] text-slate-400 font-medium">{time}</span>
@@ -157,7 +157,7 @@ export default function MessageBubble({ message, isOwn }) {
               ? 'bg-gradient-to-br from-blue-600 to-indigo-600 text-white rounded-2xl rounded-br-md shadow-md shadow-blue-500/20'
               : 'bg-white shadow-sm border border-slate-100 rounded-2xl rounded-bl-md text-slate-800'
           )}>
-            {message.content}
+            <span className="whitespace-pre-wrap break-words">{message.content}</span>
           </div>
         )}
       </div>

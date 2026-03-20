@@ -105,13 +105,13 @@ export default function EventForm({ roomId, onCreateStart, onCreated, onCreateEr
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="grid h-[calc(100dvh-0.5rem)] max-h-[calc(100dvh-0.5rem)] w-[calc(100vw-0.5rem)] max-w-[560px] grid-rows-[auto_minmax(0,1fr)] gap-0 overflow-hidden rounded-[28px] border-white/60 bg-white/90 p-0 backdrop-blur-2xl sm:h-auto sm:max-h-[calc(100dvh-2rem)] sm:w-full">
-        <DialogHeader className="border-b border-slate-100 px-4 pb-3 pt-[max(1.25rem,env(safe-area-inset-top))] sm:px-6 sm:pb-4 sm:pt-6">
+      <DialogContent className="grid h-[calc(100svh-0.5rem)] max-h-[calc(100svh-0.5rem)] w-[calc(100vw-0.5rem)] max-w-[560px] grid-rows-[auto_minmax(0,1fr)] gap-0 overflow-hidden rounded-[28px] border-white/60 bg-white/90 p-0 backdrop-blur-2xl sm:h-auto sm:max-h-[calc(100dvh-2rem)] sm:w-full">
+        <DialogHeader className="border-b border-slate-100 px-4 pb-2.5 pt-[max(1rem,env(safe-area-inset-top))] sm:px-6 sm:pb-4 sm:pt-6">
           <DialogTitle className="text-lg font-bold">New Event</DialogTitle>
           <DialogDescription className="text-slate-500">{displayDate}</DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="flex min-h-0 flex-col overflow-hidden">
-          <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-4 pt-4 sm:px-6 sm:pb-6">
+          <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 pb-28 pt-3.5 sm:px-6 sm:pb-6 sm:pt-4">
           {/* Category selection */}
           <div className="space-y-2.5">
             <label className="text-sm font-semibold text-slate-700">Category</label>
@@ -211,7 +211,7 @@ export default function EventForm({ roomId, onCreateStart, onCreated, onCreateEr
 
           {error && <p className="mt-4 text-sm font-medium text-destructive">{error}</p>}
           </div>
-          <div className="border-t border-slate-100 bg-white/88 px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3 backdrop-blur-xl sm:px-6 sm:pb-6">
+          <div className="sticky bottom-0 border-t border-slate-100 bg-white/96 px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3 backdrop-blur-xl sm:px-6 sm:pb-6">
             <Button type="submit" className="h-12 w-full rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 font-semibold text-white shadow-lg shadow-blue-500/25 transition-all duration-200 hover:from-blue-700 hover:to-indigo-700 hover:shadow-xl hover:shadow-blue-500/30" disabled={loading}>
               {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Add Event

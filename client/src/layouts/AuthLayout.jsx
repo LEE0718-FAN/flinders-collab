@@ -28,10 +28,10 @@ export default function AuthLayout({ children }) {
 
   return (
     <div
-      className="relative flex min-h-screen flex-col overflow-hidden px-4 py-4 sm:px-6 sm:py-6"
+      className="relative flex min-h-[100svh] flex-col overflow-y-auto overflow-x-hidden px-4 py-3 sm:min-h-screen sm:overflow-hidden sm:px-6 sm:py-6"
       style={{
-        paddingTop: 'max(1rem, env(safe-area-inset-top))',
-        paddingBottom: 'max(1.25rem, env(safe-area-inset-bottom))',
+        paddingTop: 'max(0.75rem, env(safe-area-inset-top))',
+        paddingBottom: 'max(1rem, env(safe-area-inset-bottom))',
       }}
     >
       {/* Background */}
@@ -53,7 +53,7 @@ export default function AuthLayout({ children }) {
       <div className="absolute bottom-1/3 left-1/3 hidden h-[200px] w-[200px] rounded-full bg-purple-500/10 blur-[80px] animate-float sm:block" style={{ animationDelay: '6s' }} />
 
       {/* Main content — login card + optional side panel */}
-      <div className="relative z-10 flex flex-1 flex-col justify-center py-1 sm:py-3">
+      <div className="relative z-10 flex flex-1 flex-col justify-start py-1 sm:justify-center sm:py-3">
         <div className="mb-3 w-full xl:hidden">
           <InstallBanner />
         </div>
@@ -61,21 +61,21 @@ export default function AuthLayout({ children }) {
           {/* Login column */}
           <div className="w-full max-w-[452px] animate-slide-up min-[1380px]:max-w-[472px]">
             {/* Logo area */}
-            <div className="mb-3 text-center sm:mb-4 min-[1380px]:mb-5">
-              <div className="mx-auto mb-2 flex h-14 items-center justify-center min-[1380px]:mb-2.5 min-[1380px]:h-16">
+            <div className="mb-2.5 text-center sm:mb-4 min-[1380px]:mb-5">
+              <div className="mx-auto mb-1.5 flex h-12 items-center justify-center min-[1380px]:mb-2.5 min-[1380px]:h-16">
                 <img
                   src="/images/flinders-logo.png"
                   alt="Flinders University"
-                  className="h-12 object-contain min-[1380px]:h-14"
+                  className="h-10 object-contain min-[1380px]:h-14"
                 />
               </div>
-              <h1 className="text-[1.75rem] font-bold tracking-tight text-white min-[1380px]:text-3xl">
+              <h1 className="text-[1.55rem] font-bold tracking-tight text-white min-[1380px]:text-3xl">
                 Flinders <span className="bg-gradient-to-r from-blue-400 to-violet-400 bg-clip-text text-transparent">Collab</span>
               </h1>
-              <p className="mt-1 text-[13px] text-white/40 min-[1380px]:mt-1.5 min-[1380px]:text-sm">
+              <p className="mt-1 text-xs text-white/40 min-[1380px]:mt-1.5 min-[1380px]:text-sm">
                 Team collaboration for Flinders University students
               </p>
-              <div className="mx-auto mt-2.5 h-0.5 w-16 rounded-full bg-gradient-to-r from-transparent via-indigo-400/60 to-transparent min-[1380px]:mt-3.5" />
+              <div className="mx-auto mt-2 h-0.5 w-16 rounded-full bg-gradient-to-r from-transparent via-indigo-400/60 to-transparent min-[1380px]:mt-3.5" />
             </div>
 
             {/* Subtle glow behind card */}
@@ -84,7 +84,7 @@ export default function AuthLayout({ children }) {
             <div className="relative">
               {/* Auth card */}
               <Card className="relative rounded-[28px] border border-white/10 bg-white/[0.96] shadow-2xl shadow-black/40 backdrop-blur-xl">
-                <CardContent className="p-5 sm:p-6 min-[1380px]:p-7">{children}</CardContent>
+                <CardContent className="p-4 sm:p-6 min-[1380px]:p-7">{children}</CardContent>
               </Card>
 
               {/* Desktop side panel */}
@@ -96,7 +96,7 @@ export default function AuthLayout({ children }) {
             </div>
 
             {/* Footer - university info */}
-            <p className="mt-3.5 text-center text-xs text-white/25 sm:mt-5">
+            <p className="mt-3 text-center text-[11px] text-white/25 sm:mt-5 sm:text-xs">
               Flinders University &middot; Adelaide, South Australia
             </p>
           </div>
@@ -104,7 +104,7 @@ export default function AuthLayout({ children }) {
       </div>
 
       {/* Developer credit - bottom of page */}
-      <div className="relative z-10 mt-3 flex flex-col items-center gap-2 pb-1 pt-2 sm:mt-5">
+      <div className="relative z-10 mt-3 hidden flex-col items-center gap-2 pb-1 pt-2 sm:mt-5 sm:flex">
         <div className="h-px w-16 bg-white/10" />
         <div className="flex items-center gap-3">
           <div className="relative">

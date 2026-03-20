@@ -116,16 +116,16 @@ export default function ChatPanel({ roomId, onChatFileUploaded }) {
 
   if (loading) {
     return (
-      <div className="flex h-[min(68dvh,36rem)] min-h-[24rem] sm:h-[600px] items-center justify-center rounded-2xl border border-slate-200/60 bg-white shadow-xl shadow-blue-500/5">
+      <div className="flex h-[min(56svh,32rem)] min-h-[19rem] sm:h-[600px] sm:min-h-[24rem] items-center justify-center rounded-2xl border border-slate-200/60 bg-white shadow-xl shadow-blue-500/5">
         <Loader2 className="h-7 w-7 animate-spin text-blue-500" />
       </div>
     );
   }
 
   return (
-    <div className="flex h-[min(68dvh,36rem)] min-h-[24rem] sm:h-[600px] flex-col overflow-hidden rounded-2xl border border-slate-200/60 bg-white shadow-xl shadow-blue-500/5">
+    <div className="flex h-[min(56svh,32rem)] min-h-[19rem] sm:h-[600px] sm:min-h-[24rem] flex-col overflow-hidden rounded-2xl border border-slate-200/60 bg-white shadow-xl shadow-blue-500/5">
       {/* Gradient header */}
-      <div className="flex shrink-0 items-center justify-between rounded-t-2xl bg-gradient-to-r from-blue-600 to-indigo-600 px-4 py-3 sm:px-5">
+      <div className="flex shrink-0 items-center justify-between rounded-t-2xl bg-gradient-to-r from-blue-600 to-indigo-600 px-3.5 py-2.5 sm:px-5 sm:py-3">
         <div className="flex items-center gap-2.5">
           <div className="flex h-8 w-8 items-center justify-center rounded-full bg-white/20 backdrop-blur-sm">
             <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" /></svg>
@@ -138,7 +138,7 @@ export default function ChatPanel({ roomId, onChatFileUploaded }) {
       </div>
 
       {/* Messages area */}
-      <div className="flex-1 space-y-3 overflow-y-auto bg-gradient-to-b from-slate-50 to-white p-3.5 sm:p-5">
+      <div className="flex-1 space-y-3 overflow-y-auto bg-gradient-to-b from-slate-50 to-white p-3 sm:p-5">
         {error && (
           <div className="flex items-start gap-2 rounded-2xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 shadow-sm">
             <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />

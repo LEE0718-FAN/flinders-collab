@@ -450,7 +450,7 @@ export default function RoomPage() {
 
   return (
     <>
-      <div className="space-y-6">
+      <div className="space-y-5 pb-20 sm:space-y-6 sm:pb-0">
         {(() => {
           const palette = room ? getRoomPalette(room) : { headerGradient: 'linear-gradient(135deg, #0ea5e9, #7dd3fc)', accent: '#7dd3fc' };
           return (
@@ -545,12 +545,12 @@ export default function RoomPage() {
           <div className="relative">
             <div className="-mx-1 overflow-x-auto px-1">
               <TabsList className="w-max min-w-full justify-start gap-1 rounded-xl border bg-white p-1.5 shadow-sm scrollbar-hide">
-                <TabsTrigger value="members" className="min-h-[44px] shrink-0 px-3 text-xs sm:text-sm data-[state=active]:bg-indigo-50 data-[state=active]:font-semibold data-[state=active]:text-indigo-700">Members</TabsTrigger>
-                <TabsTrigger value="schedule" data-tour="tab-schedule" className="min-h-[44px] shrink-0 px-3 text-xs sm:text-sm data-[state=active]:bg-indigo-50 data-[state=active]:font-semibold data-[state=active]:text-indigo-700">Schedule</TabsTrigger>
-                <TabsTrigger value="tasks" data-tour="tab-tasks" className="min-h-[44px] shrink-0 px-3 text-xs sm:text-sm data-[state=active]:bg-indigo-50 data-[state=active]:font-semibold data-[state=active]:text-indigo-700">Tasks</TabsTrigger>
-                <TabsTrigger value="chat" data-tour="tab-chat" className="min-h-[44px] shrink-0 px-3 text-xs sm:text-sm data-[state=active]:bg-indigo-50 data-[state=active]:font-semibold data-[state=active]:text-indigo-700">Chat</TabsTrigger>
-                <TabsTrigger value="files" data-tour="tab-files" className="min-h-[44px] shrink-0 px-3 text-xs sm:text-sm data-[state=active]:bg-indigo-50 data-[state=active]:font-semibold data-[state=active]:text-indigo-700">Files</TabsTrigger>
-                <TabsTrigger value="links" className="min-h-[44px] shrink-0 px-3 text-xs sm:text-sm data-[state=active]:bg-indigo-50 data-[state=active]:font-semibold data-[state=active]:text-indigo-700">
+                <TabsTrigger value="members" className="min-h-[40px] shrink-0 px-2.5 text-[11px] sm:min-h-[44px] sm:px-3 sm:text-sm data-[state=active]:bg-indigo-50 data-[state=active]:font-semibold data-[state=active]:text-indigo-700">Members</TabsTrigger>
+                <TabsTrigger value="schedule" data-tour="tab-schedule" className="min-h-[40px] shrink-0 px-2.5 text-[11px] sm:min-h-[44px] sm:px-3 sm:text-sm data-[state=active]:bg-indigo-50 data-[state=active]:font-semibold data-[state=active]:text-indigo-700">Schedule</TabsTrigger>
+                <TabsTrigger value="tasks" data-tour="tab-tasks" className="min-h-[40px] shrink-0 px-2.5 text-[11px] sm:min-h-[44px] sm:px-3 sm:text-sm data-[state=active]:bg-indigo-50 data-[state=active]:font-semibold data-[state=active]:text-indigo-700">Tasks</TabsTrigger>
+                <TabsTrigger value="chat" data-tour="tab-chat" className="min-h-[40px] shrink-0 px-2.5 text-[11px] sm:min-h-[44px] sm:px-3 sm:text-sm data-[state=active]:bg-indigo-50 data-[state=active]:font-semibold data-[state=active]:text-indigo-700">Chat</TabsTrigger>
+                <TabsTrigger value="files" data-tour="tab-files" className="min-h-[40px] shrink-0 px-2.5 text-[11px] sm:min-h-[44px] sm:px-3 sm:text-sm data-[state=active]:bg-indigo-50 data-[state=active]:font-semibold data-[state=active]:text-indigo-700">Files</TabsTrigger>
+                <TabsTrigger value="links" className="min-h-[40px] shrink-0 px-2.5 text-[11px] sm:min-h-[44px] sm:px-3 sm:text-sm data-[state=active]:bg-indigo-50 data-[state=active]:font-semibold data-[state=active]:text-indigo-700">
                   <Link2 className="h-4 w-4 mr-1" />Links
                 </TabsTrigger>
               </TabsList>
