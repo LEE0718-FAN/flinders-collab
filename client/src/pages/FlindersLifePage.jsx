@@ -441,11 +441,13 @@ export default function FlindersLifePage() {
       </div>
 
       <Tabs defaultValue="events" className="w-full">
-        <TabsList className="mb-4 w-full sm:w-auto">
-          <TabsTrigger value="events" className="gap-1.5" data-tutorial="flinders-tab-events"><Calendar className="h-4 w-4" />Events</TabsTrigger>
-          <TabsTrigger value="academic-calendar" className="gap-1.5" data-tutorial="flinders-tab-academic-calendar"><Calendar className="h-4 w-4" />Academic Calendar</TabsTrigger>
-          <TabsTrigger value="study-rooms" className="gap-1.5" data-tutorial="flinders-tab-study-rooms"><BookOpen className="h-4 w-4" />Study Rooms</TabsTrigger>
-        </TabsList>
+        <div className="-mx-1 mb-4 overflow-x-auto px-1">
+          <TabsList className="w-max min-w-full justify-start gap-1 sm:w-full sm:justify-center">
+            <TabsTrigger value="events" className="shrink-0 gap-1.5 px-3 text-xs sm:text-sm" data-tutorial="flinders-tab-events"><Calendar className="h-4 w-4" />Events</TabsTrigger>
+            <TabsTrigger value="academic-calendar" className="shrink-0 gap-1.5 px-3 text-xs sm:text-sm" data-tutorial="flinders-tab-academic-calendar"><Calendar className="h-4 w-4" />Academic Calendar</TabsTrigger>
+            <TabsTrigger value="study-rooms" className="shrink-0 gap-1.5 px-3 text-xs sm:text-sm" data-tutorial="flinders-tab-study-rooms"><BookOpen className="h-4 w-4" />Study Rooms</TabsTrigger>
+          </TabsList>
+        </div>
 
         {/* ── Events ── */}
         <TabsContent value="events" data-tutorial="flinders-panel-events">

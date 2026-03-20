@@ -517,16 +517,18 @@ export default function RoomPage() {
 
         <Tabs defaultValue="members" onValueChange={setActiveTab}>
           <div className="relative">
-            <TabsList className="flex overflow-x-auto bg-white rounded-xl p-1.5 shadow-sm border gap-1 scrollbar-hide">
-              <TabsTrigger value="members" className="shrink-0 min-h-[44px] sm:min-h-0 px-3 data-[state=active]:bg-indigo-50 data-[state=active]:text-indigo-700 data-[state=active]:font-semibold">Members</TabsTrigger>
-              <TabsTrigger value="schedule" data-tour="tab-schedule" className="shrink-0 min-h-[44px] sm:min-h-0 px-3 data-[state=active]:bg-indigo-50 data-[state=active]:text-indigo-700 data-[state=active]:font-semibold">Schedule</TabsTrigger>
-              <TabsTrigger value="tasks" data-tour="tab-tasks" className="shrink-0 min-h-[44px] sm:min-h-0 px-3 data-[state=active]:bg-indigo-50 data-[state=active]:text-indigo-700 data-[state=active]:font-semibold">Tasks</TabsTrigger>
-              <TabsTrigger value="chat" data-tour="tab-chat" className="shrink-0 min-h-[44px] sm:min-h-0 px-3 data-[state=active]:bg-indigo-50 data-[state=active]:text-indigo-700 data-[state=active]:font-semibold">Chat</TabsTrigger>
-              <TabsTrigger value="files" data-tour="tab-files" className="shrink-0 min-h-[44px] sm:min-h-0 px-3 data-[state=active]:bg-indigo-50 data-[state=active]:text-indigo-700 data-[state=active]:font-semibold">Files</TabsTrigger>
-              <TabsTrigger value="links" className="shrink-0 min-h-[44px] sm:min-h-0 px-3 data-[state=active]:bg-indigo-50 data-[state=active]:text-indigo-700 data-[state=active]:font-semibold">
-                <Link2 className="h-4 w-4 mr-1" />Links
-              </TabsTrigger>
-            </TabsList>
+            <div className="-mx-1 overflow-x-auto px-1">
+              <TabsList className="w-max min-w-full justify-start gap-1 rounded-xl border bg-white p-1.5 shadow-sm scrollbar-hide">
+                <TabsTrigger value="members" className="min-h-[44px] shrink-0 px-3 text-xs sm:text-sm data-[state=active]:bg-indigo-50 data-[state=active]:font-semibold data-[state=active]:text-indigo-700">Members</TabsTrigger>
+                <TabsTrigger value="schedule" data-tour="tab-schedule" className="min-h-[44px] shrink-0 px-3 text-xs sm:text-sm data-[state=active]:bg-indigo-50 data-[state=active]:font-semibold data-[state=active]:text-indigo-700">Schedule</TabsTrigger>
+                <TabsTrigger value="tasks" data-tour="tab-tasks" className="min-h-[44px] shrink-0 px-3 text-xs sm:text-sm data-[state=active]:bg-indigo-50 data-[state=active]:font-semibold data-[state=active]:text-indigo-700">Tasks</TabsTrigger>
+                <TabsTrigger value="chat" data-tour="tab-chat" className="min-h-[44px] shrink-0 px-3 text-xs sm:text-sm data-[state=active]:bg-indigo-50 data-[state=active]:font-semibold data-[state=active]:text-indigo-700">Chat</TabsTrigger>
+                <TabsTrigger value="files" data-tour="tab-files" className="min-h-[44px] shrink-0 px-3 text-xs sm:text-sm data-[state=active]:bg-indigo-50 data-[state=active]:font-semibold data-[state=active]:text-indigo-700">Files</TabsTrigger>
+                <TabsTrigger value="links" className="min-h-[44px] shrink-0 px-3 text-xs sm:text-sm data-[state=active]:bg-indigo-50 data-[state=active]:font-semibold data-[state=active]:text-indigo-700">
+                  <Link2 className="h-4 w-4 mr-1" />Links
+                </TabsTrigger>
+              </TabsList>
+            </div>
             {/* Scroll hint — fade on right edge */}
             <div className="absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-white to-transparent rounded-r-xl pointer-events-none sm:hidden" />
           </div>

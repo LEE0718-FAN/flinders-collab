@@ -95,7 +95,7 @@ export default function DeadlinesPage() {
 
         {/* Category filter */}
         {categories.length > 2 && (
-          <div className="flex flex-wrap gap-1.5">
+          <div className="-mx-1 flex flex-nowrap gap-1.5 overflow-x-auto px-1 pb-1 scrollbar-hide">
             {categories.map((cat) => {
               const info = CATEGORY_INFO[cat] || { icon: '📌', label: cat };
               return (
@@ -103,7 +103,7 @@ export default function DeadlinesPage() {
                   key={cat}
                   variant={filter === cat ? 'default' : 'outline'}
                   size="sm"
-                  className={`h-8 text-xs rounded-full gap-1.5 ${filter === cat ? 'bg-gradient-to-r from-orange-500 to-rose-500 text-white border-0 shadow-md' : ''}`}
+                  className={`h-auto min-h-[2.25rem] shrink-0 whitespace-nowrap rounded-full px-3 py-1.5 text-xs gap-1.5 ${filter === cat ? 'bg-gradient-to-r from-orange-500 to-rose-500 text-white border-0 shadow-md' : ''}`}
                   onClick={() => setFilter(cat)}
                 >
                   {cat === 'all' ? '🔍' : info.icon}
@@ -120,7 +120,7 @@ export default function DeadlinesPage() {
             <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
           </div>
         ) : filtered.length === 0 ? (
-          <div className="rounded-2xl border-2 border-dashed border-orange-200 p-16 text-center">
+          <div className="rounded-2xl border-2 border-dashed border-orange-200 p-8 text-center sm:p-16">
             <CalendarDays className="h-12 w-12 mx-auto text-orange-300 mb-4" />
             <h3 className="text-lg font-semibold">No upcoming deadlines</h3>
             <p className="mt-2 text-sm text-muted-foreground">You're all caught up! No events scheduled.</p>

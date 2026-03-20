@@ -79,7 +79,7 @@ function AcademicInfoGate({ onSaved }) {
   return (
     <>
       <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="w-full max-w-sm rounded-3xl border bg-white/80 backdrop-blur-xl p-8 shadow-2xl shadow-indigo-500/10">
+        <div className="w-full max-w-sm rounded-3xl border bg-white/80 p-6 shadow-2xl shadow-indigo-500/10 backdrop-blur-xl sm:p-8">
           <div className="text-center mb-6">
             <div className="mx-auto w-14 h-14 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center mb-3 shadow-lg shadow-indigo-500/30">
               <GraduationCap className="h-7 w-7 text-white" />
@@ -386,7 +386,7 @@ function PostCard({ post, myStatus, onParticipate, onDelete, onReaction, onVote,
   };
 
   return (
-    <div className="group rounded-2xl border border-slate-200/80 bg-white p-5 transition-all duration-300 hover:shadow-lg hover:shadow-slate-200/50 hover:border-slate-300/80">
+      <div className="group rounded-2xl border border-slate-200/80 bg-white p-4 transition-all duration-300 hover:border-slate-300/80 hover:shadow-lg hover:shadow-slate-200/50 sm:p-5">
       {/* Header */}
       <div className="flex items-start gap-3">
         <Avatar className={`h-10 w-10 ring-2 ring-white shadow-sm shrink-0 ${isAnonymous ? 'opacity-70' : ''}`}>
@@ -545,7 +545,7 @@ function CreatePostDialog({ open, onOpenChange, onCreated, academicInfo }) {
         </DialogHeader>
 
         {/* Author info */}
-        <div className="flex items-center justify-between rounded-xl bg-slate-50 border px-3 py-2">
+        <div className="flex items-center justify-between rounded-xl border bg-slate-50 px-3 py-2">
           <div className="flex items-center gap-2">
             {isAnonymous ? (
               <>
@@ -577,7 +577,7 @@ function CreatePostDialog({ open, onOpenChange, onCreated, academicInfo }) {
 
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* Category */}
-          <div className="flex flex-wrap gap-1.5">
+          <div className="-mx-1 flex flex-nowrap gap-1.5 overflow-x-auto px-1 pb-1 scrollbar-hide">
             {CATEGORIES.filter((c) => c.value !== 'all').map((cat) => {
               const Icon = cat.icon;
               const style = CATEGORY_STYLES[cat.value] || CATEGORY_STYLES.general;
@@ -586,7 +586,7 @@ function CreatePostDialog({ open, onOpenChange, onCreated, academicInfo }) {
                   key={cat.value}
                   type="button"
                   onClick={() => setCategory(cat.value)}
-                  className={`flex items-center gap-1 rounded-full border px-3 py-1.5 text-[11px] font-semibold transition-all ${
+                  className={`shrink-0 flex items-center gap-1 rounded-full border px-3 py-1.5 text-[11px] font-semibold transition-all ${
                     category === cat.value
                       ? `${style.bg} ${style.text} ${style.border}`
                       : 'border-slate-200 hover:border-slate-300 text-slate-400'

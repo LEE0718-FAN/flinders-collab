@@ -439,7 +439,7 @@ export default function DashboardPage() {
 
         {loading ? (
           <div className="flex justify-center py-16">
-            <div className="rounded-2xl bg-white shadow-card p-10 flex flex-col items-center gap-3">
+            <div className="rounded-2xl bg-white p-8 shadow-card flex flex-col items-center gap-3 sm:p-10">
               <Loader2 className="h-8 w-8 animate-spin text-indigo-500" />
               <p className="text-sm text-muted-foreground">Loading your rooms...</p>
             </div>
@@ -487,7 +487,7 @@ export default function DashboardPage() {
             ))}
           </div>
         ) : (
-          <div className="rounded-2xl border-2 border-dashed border-indigo-200 p-16 text-center" data-tour="room-grid">
+          <div className="rounded-2xl border-2 border-dashed border-indigo-200 p-8 text-center sm:p-16" data-tour="room-grid">
             <LayoutGrid className="h-12 w-12 mx-auto text-indigo-300 mb-4" />
             <h3 className="text-lg font-semibold text-foreground">No rooms yet</h3>
             <p className="mx-auto mt-2 max-w-sm text-sm text-muted-foreground">
