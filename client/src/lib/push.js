@@ -2,6 +2,67 @@ import { getAuthHeaders } from './api-headers';
 
 const API = import.meta.env.VITE_API_BASE_URL || '';
 
+export async function diagnosePushSubscription() {
+  const result = {
+    permission: typeof Notification !== 'undefined' ? Notification.permission : 'unsupported',
+    hasServiceWorker: typeof navigator !== 'undefined' && 'serviceWorker' in navigator,
+    hasPushManager: typeof window !== 'undefined' && 'PushManager' in window,
+    hasNotificationApi: typeof window !== 'undefined' && 'Notification' in window,
+    serviceWorkerReady: false,
+    hasVapidKey: false,
+    hasSubscription: false,
+    savedToServer: false,
+    endpoint: null,
+    error: null,
+  };
+
+  if (!result.hasServiceWorker || !result.hasPushManager || !result.hasNotificationApi) {
+    return result;
+  }
+
+  try {
+    const registration = await navigator.serviceWorker.ready;
+    result.serviceWorkerReady = true;
+
+    const keyRes = await fetch(`${API}/api/push/vapid-key`);
+    if (!keyRes.ok) {
+      throw new Error(`VAPID key request failed (${keyRes.status})`);
+    }
+    const { publicKey } = await keyRes.json();
+    result.hasVapidKey = Boolean(publicKey);
+    if (!publicKey) return result;
+
+    let subscription = await registration.pushManager.getSubscription();
+    if (!subscription && Notification.permission === 'granted') {
+      subscription = await registration.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(publicKey),
+      });
+    }
+
+    result.hasSubscription = Boolean(subscription);
+    result.endpoint = subscription?.endpoint || null;
+
+    if (subscription) {
+      const saveRes = await fetch(`${API}/api/push/subscribe`, {
+        method: 'POST',
+        headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
+        body: JSON.stringify({ subscription }),
+      });
+      result.savedToServer = saveRes.ok;
+      if (!saveRes.ok) {
+        const text = await saveRes.text();
+        throw new Error(`Subscription save failed (${saveRes.status}): ${text.slice(0, 120)}`);
+      }
+    }
+
+    return result;
+  } catch (err) {
+    result.error = err?.message || 'Unknown push diagnosis error';
+    return result;
+  }
+}
+
 export async function subscribeToPush() {
   if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
   if (!('Notification' in window)) return;
