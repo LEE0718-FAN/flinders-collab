@@ -383,6 +383,37 @@ DO $$ BEGIN
     ALTER TABLE room_quick_links ADD CONSTRAINT room_quick_links_created_by_users_fkey FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE CASCADE;
   END IF;
 END $$;
+
+-- Push subscriptions for PWA notifications
+CREATE TABLE IF NOT EXISTS push_subscriptions (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  endpoint TEXT NOT NULL UNIQUE,
+  subscription JSONB NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_push_subs_user ON push_subscriptions(user_id);
+
+ALTER TABLE push_subscriptions ENABLE ROW LEVEL SECURITY;
+
+DO $$ BEGIN
+IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'push_subscriptions_manage_own') THEN
+  CREATE POLICY "push_subscriptions_manage_own" ON push_subscriptions FOR ALL
+  USING (auth.uid() = user_id)
+  WITH CHECK (auth.uid() = user_id);
+END IF;
+END $$;
+
+-- Deadline reminder ledger to prevent duplicate notifications
+CREATE TABLE IF NOT EXISTS deadline_reminders (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  event_id UUID NOT NULL REFERENCES events(id) ON DELETE CASCADE,
+  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  reminder_date DATE NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE(event_id, user_id, reminder_date)
+);
+CREATE INDEX IF NOT EXISTS idx_deadline_reminders_date ON deadline_reminders(reminder_date);
 `;
 
 async function runMigration() {

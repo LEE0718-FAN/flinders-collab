@@ -71,6 +71,7 @@ app.get('/api/maintenance/schedule', (req, res) => {
 
 // API routes
 app.use('/api/auth', authRoutes);
+app.use('/api/push', pushRoutes);
 app.use('/api/rooms', roomRoutes);
 app.use('/api', eventRoutes);
 app.use('/api', fileRoutes);
@@ -82,7 +83,6 @@ app.use('/api', boardRoutes);
 app.use('/api', flindersRoutes);
 app.use('/api', announcementRoutes);
 app.use('/api/admin', adminRoutes);
-app.use('/api/push', pushRoutes);
 
 // Serve built client in production
 const path = require('path');
@@ -130,6 +130,10 @@ server.listen(PORT, () => {
   // Start daily Flinders event crawler (runs immediately, then every 24h)
   const { startEventCrawler } = require('./utils/eventCrawler');
   startEventCrawler();
+
+  // Start deadline reminder scheduler (runs immediately, then hourly with per-day dedupe)
+  const { startDeadlineReminderScheduler } = require('./utils/deadlineReminders');
+  startDeadlineReminderScheduler();
 
   // Keep-alive ping to prevent Render free tier from sleeping
   if (config.nodeEnv === 'production') {

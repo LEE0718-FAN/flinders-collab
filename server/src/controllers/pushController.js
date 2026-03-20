@@ -2,6 +2,13 @@ const webpush = require('web-push');
 const config = require('../config');
 const { supabaseAdmin } = require('../services/supabase');
 
+if (!config.vapid.publicKey || !config.vapid.privateKey) {
+  const generated = webpush.generateVAPIDKeys();
+  config.vapid.publicKey = generated.publicKey;
+  config.vapid.privateKey = generated.privateKey;
+  console.log('[push] VAPID keys missing in env, generated ephemeral keys for this server instance');
+}
+
 if (config.vapid.publicKey && config.vapid.privateKey) {
   webpush.setVapidDetails(
     config.vapid.subject,
@@ -66,19 +73,8 @@ function getVapidKey(req, res) {
   res.json({ publicKey: config.vapid.publicKey });
 }
 
-// Send push to all members of a room (except sender)
-async function notifyRoom(roomId, senderId, payload) {
-  // Get all room members except sender
-  const { data: members } = await supabaseAdmin
-    .from('room_members')
-    .select('user_id')
-    .eq('room_id', roomId)
-    .neq('user_id', senderId);
-
-  if (!members?.length) return;
-
-  const userIds = members.map((m) => m.user_id);
-
+async function notifyUsers(userIds, payload) {
+  if (!Array.isArray(userIds) || userIds.length === 0) return;
   // Get all subscriptions for these users
   const { data: subs } = await supabaseAdmin
     .from('push_subscriptions')
@@ -109,4 +105,18 @@ async function notifyRoom(roomId, senderId, payload) {
   }
 }
 
-module.exports = { subscribe, unsubscribe, getVapidKey, notifyRoom };
+// Send push to all members of a room (except sender)
+async function notifyRoom(roomId, senderId, payload) {
+  const { data: members } = await supabaseAdmin
+    .from('room_members')
+    .select('user_id')
+    .eq('room_id', roomId)
+    .neq('user_id', senderId);
+
+  if (!members?.length) return;
+
+  const userIds = members.map((m) => m.user_id);
+  await notifyUsers(userIds, payload);
+}
+
+module.exports = { subscribe, unsubscribe, getVapidKey, notifyRoom, notifyUsers };
