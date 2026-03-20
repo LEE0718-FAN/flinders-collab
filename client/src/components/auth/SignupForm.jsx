@@ -199,7 +199,7 @@ export default function SignupForm({ onSubmit }) {
   // ── Step 1: Choose account type ──
   if (!accountType) {
     return (
-      <div className="space-y-4">
+      <div className="space-y-4 pb-1">
         <div className="space-y-1 text-center">
           <h2 className="text-2xl font-bold tracking-tight">Create your account</h2>
           <p className="text-sm text-muted-foreground/70">Choose how you'd like to join</p>
@@ -250,7 +250,7 @@ export default function SignupForm({ onSubmit }) {
   const isFlinders = accountType === 'flinders';
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
+    <form onSubmit={handleSubmit} className="space-y-3.5 pb-1 sm:space-y-4">
       <div className="flex items-center gap-2">
         <button type="button" onClick={() => { setAccountType(null); setError(''); }} className="p-1.5 rounded-lg hover:bg-slate-100 transition">
           <ArrowLeft className="h-4 w-4 text-slate-500" />

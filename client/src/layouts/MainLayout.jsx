@@ -144,14 +144,6 @@ function SidebarContent({ rooms, location, isAdmin, roomBadgeCounts = {}, user, 
           onIntent={() => preloadRoute('/flinders-life')}
         />
       )}
-      <NavItem
-        to="/settings"
-        isActive={location.pathname === '/settings'}
-        icon={Settings}
-        label="Settings"
-        onIntent={() => preloadRoute('/settings')}
-      />
-
       {/* Room section divider */}
       <div className="mt-5 mb-1 flex items-center gap-2 px-3">
         <span className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-500">
@@ -196,6 +188,20 @@ function SidebarContent({ rooms, location, isAdmin, roomBadgeCounts = {}, user, 
           <p className="mt-0.5 text-[11px] text-slate-500">Create or join a room to start</p>
         </div>
       )}
+
+      <div className="mt-5 mb-1 flex items-center gap-2 px-3">
+        <span className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-500">
+          Preferences
+        </span>
+        <div className="h-px flex-1 bg-white/5" />
+      </div>
+      <NavItem
+        to="/settings"
+        isActive={location.pathname === '/settings'}
+        icon={Settings}
+        label="Settings"
+        onIntent={() => preloadRoute('/settings')}
+      />
 
       {/* Admin - only visible to admins */}
       {isAdmin && (

@@ -52,6 +52,7 @@ export default function InteractiveTutorial() {
   const activeRef = useRef(false);
   const showPromptRef = useRef(false);
   const totalSteps = 14;
+  const isMobileViewport = typeof window !== 'undefined' && window.innerWidth < 768;
   const swallowPointer = useCallback((event) => {
     event.preventDefault();
     event.stopPropagation();
@@ -343,17 +344,45 @@ export default function InteractiveTutorial() {
 
   const showTip = useCallback((title, desc, options = {}) => {
     if (cancelRef.current) return;
-    const tw = Math.min(340, window.innerWidth - 24);
+    const safeTop = 16;
+    const safeBottom = 20;
+    const tw = Math.min(isMobileViewport ? 320 : 340, window.innerWidth - 24);
     const sidebar = document.querySelector('aside');
     const sidebarW = (sidebar && sidebar.offsetWidth > 0) ? sidebar.getBoundingClientRect().width : 0;
     const centerLeft = sidebarW + (window.innerWidth - sidebarW) / 2;
     if (options.center || !options.target) {
-      setTooltip({ title, desc, style: { position: 'fixed', top: '50%', left: centerLeft, transform: 'translate(-50%, -50%)', width: tw }, icon: options.icon });
+      setTooltip({
+        title,
+        desc,
+        style: {
+          position: 'fixed',
+          top: isMobileViewport ? `max(calc(env(safe-area-inset-top) + ${safeTop}px), 5.25rem)` : '50%',
+          left: centerLeft,
+          transform: isMobileViewport ? 'translateX(-50%)' : 'translate(-50%, -50%)',
+          width: tw,
+        },
+        icon: options.icon,
+      });
       if (!options.keepSpotlight) setSpotlight(null);
       return;
     }
     const el = document.querySelector(options.target);
-    if (!el) { setTooltip({ title, desc, style: { position: 'fixed', top: '50%', left: centerLeft, transform: 'translate(-50%, -50%)', width: tw }, icon: options.icon }); if (!options.keepSpotlight) setSpotlight(null); return; }
+    if (!el) {
+      setTooltip({
+        title,
+        desc,
+        style: {
+          position: 'fixed',
+          top: isMobileViewport ? `max(calc(env(safe-area-inset-top) + ${safeTop}px), 5.25rem)` : '50%',
+          left: centerLeft,
+          transform: isMobileViewport ? 'translateX(-50%)' : 'translate(-50%, -50%)',
+          width: tw,
+        },
+        icon: options.icon,
+      });
+      if (!options.keepSpotlight) setSpotlight(null);
+      return;
+    }
     const r = el.getBoundingClientRect();
     const gap = 14; const style = { position: 'fixed', width: tw };
     const pos = options.position || 'bottom';
@@ -362,9 +391,15 @@ export default function InteractiveTutorial() {
     else if (pos === 'right') { style.top = Math.max(12, Math.min(r.top + r.height / 2 - 50, window.innerHeight - 200)); style.left = Math.max(12, Math.min(r.right + gap, window.innerWidth - tw - 12)); }
     else if (pos === 'left') { style.top = Math.max(12, Math.min(r.top + r.height / 2 - 50, window.innerHeight - 200)); style.right = window.innerWidth - r.left + gap; }
     if (style.top !== undefined && style.top > window.innerHeight - 160 && pos !== 'right' && pos !== 'left') { delete style.top; style.bottom = window.innerHeight - r.top + gap; }
+    if (style.top !== undefined) {
+      style.top = Math.max(safeTop, Math.min(style.top, window.innerHeight - 220 - safeBottom));
+    }
+    if (style.bottom !== undefined) {
+      style.bottom = Math.max(safeBottom, Math.min(style.bottom, window.innerHeight - 220 - safeTop));
+    }
     setTooltip({ title, desc, style, icon: options.icon });
     spotlightEl(options.target);
-  }, [spotlightEl]);
+  }, [isMobileViewport, spotlightEl]);
 
   const typeInto = useCallback(async (selector, text) => {
     if (cancelRef.current) return;
@@ -980,7 +1015,7 @@ export default function InteractiveTutorial() {
     };
     return (
       <div className="fixed inset-0 z-[99999] flex items-center justify-center bg-black/50 backdrop-blur-sm animate-fade-in">
-        <div className="mx-4 w-full max-w-sm rounded-3xl bg-white p-8 shadow-2xl animate-scale-in">
+        <div className="mx-4 max-h-[calc(100svh-env(safe-area-inset-top)-env(safe-area-inset-bottom)-2rem)] w-full max-w-sm overflow-y-auto rounded-3xl bg-white p-6 shadow-2xl animate-scale-in sm:p-8">
           <div className="text-center">
             <div className="mx-auto mb-4 h-20 w-20 rounded-full overflow-hidden shadow-lg shadow-indigo-500/30 ring-3 ring-indigo-100">
               <img src={SEAN_IMG} alt="Sean Lee" className="h-full w-full object-cover" />
@@ -1006,7 +1041,7 @@ export default function InteractiveTutorial() {
   if (showPrompt && !active) {
     return (
       <div className="fixed inset-0 z-[99999] flex items-center justify-center bg-black/50 backdrop-blur-sm animate-fade-in">
-        <div className="mx-4 w-full max-w-sm rounded-3xl bg-white p-8 shadow-2xl animate-scale-in">
+        <div className="mx-4 max-h-[calc(100svh-env(safe-area-inset-top)-env(safe-area-inset-bottom)-2rem)] w-full max-w-sm overflow-y-auto rounded-3xl bg-white p-6 shadow-2xl animate-scale-in sm:p-8">
           <div className="text-center">
             <div className="mx-auto mb-4 h-20 w-20 rounded-full overflow-hidden shadow-lg shadow-indigo-500/30 ring-3 ring-indigo-100">
               <img src={SEAN_IMG} alt="Sean Lee" className="h-full w-full object-cover" />
@@ -1036,7 +1071,10 @@ export default function InteractiveTutorial() {
   return (
     <div data-tutorial-root="" style={{ pointerEvents: 'auto' }}>
       {/* ── Fixed top-right control bar ── */}
-      <div className="fixed top-4 right-4 z-[100002] flex items-center gap-2 animate-fade-in" style={{ pointerEvents: 'auto' }}>
+      <div
+        className="fixed right-3 z-[100002] flex max-w-[calc(100vw-1.5rem)] flex-wrap items-center justify-end gap-2 animate-fade-in sm:right-4"
+        style={{ pointerEvents: 'auto', top: 'max(0.75rem, calc(env(safe-area-inset-top) + 0.5rem))' }}
+      >
         {canSkip && (
           <button
             onClick={() => {
@@ -1105,17 +1143,25 @@ export default function InteractiveTutorial() {
 
       {/* ── Tooltip ── */}
       {tooltip && (
-        <div className="fixed animate-fade-in" style={{ ...tooltip.style, zIndex: 100000, pointerEvents: 'none' }}>
-          <div className="rounded-2xl bg-white shadow-[0_25px_60px_-12px_rgba(0,0,0,0.4)] border border-slate-200/80 overflow-hidden" style={{ minWidth: 290 }}>
+        <div
+          className="fixed animate-fade-in"
+          style={{
+            ...tooltip.style,
+            zIndex: 100000,
+            pointerEvents: 'none',
+            maxHeight: 'calc(100svh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 1.5rem)',
+          }}
+        >
+          <div className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-[0_25px_60px_-12px_rgba(0,0,0,0.4)]" style={{ minWidth: 290, maxHeight: 'inherit' }}>
             <div className="h-1.5 bg-gradient-to-r from-indigo-500 via-violet-500 to-purple-500">
               <div className="h-full bg-white/40 transition-all duration-700" style={{ width: `${100 - progressPct}%`, marginLeft: 'auto' }} />
             </div>
-            <div className="px-5 py-4">
+            <div className="max-h-[inherit] overflow-y-auto px-4 py-3.5 sm:px-5 sm:py-4">
               <div className="flex items-center gap-2.5 mb-2">
                 {tooltip.icon && <span className="text-2xl">{tooltip.icon}</span>}
                 <h3 className="text-[17px] font-black text-slate-950 tracking-tight leading-snug">{tooltip.title}</h3>
               </div>
-              <p className="text-[14px] leading-[1.7] text-slate-800 font-semibold pl-[34px]">{tooltip.desc}</p>
+              <p className="pl-[34px] text-[13px] font-semibold leading-[1.65] text-slate-800 sm:text-[14px] sm:leading-[1.7]">{tooltip.desc}</p>
             </div>
           </div>
         </div>

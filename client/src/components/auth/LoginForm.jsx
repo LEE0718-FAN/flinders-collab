@@ -111,7 +111,7 @@ export default function LoginForm({ onSubmit, onGuestLogin, onRequestPasswordRes
 
   return (
     <>
-      <form onSubmit={handleSubmit} className="space-y-5">
+      <form onSubmit={handleSubmit} className="space-y-4.5 pb-1 sm:space-y-5">
         <div className="space-y-1 text-center">
           <h2 className="text-2xl font-bold tracking-tight">Welcome back</h2>
           <p className="text-sm text-muted-foreground/70">Sign in to your account to continue</p>
