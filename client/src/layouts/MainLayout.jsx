@@ -24,6 +24,7 @@ import { getCachedPreferences, hydratePreferences } from '@/lib/preferences';
 import { preloadRoute } from '@/lib/route-preload';
 import { getUnreadCounts } from '@/services/announcements';
 import { syncAppBadge } from '@/lib/app-badge';
+import { subscribeToPush } from '@/lib/push';
 
 const ROOM_NAVIGATION_UPDATED_EVENT = 'rooms-updated';
 const APP_SOFT_REFRESH_EVENT = 'app-soft-refresh';
@@ -598,6 +599,16 @@ export default function MainLayout({ children }) {
     window.addEventListener('push-debug', handlePushDebug);
     return () => window.removeEventListener('push-debug', handlePushDebug);
   }, [addToast]);
+
+  useEffect(() => {
+    if (!user?.id) return;
+
+    const timerId = window.setTimeout(() => {
+      subscribeToPush().catch(() => {});
+    }, 800);
+
+    return () => window.clearTimeout(timerId);
+  }, [user?.id]);
 
   // Listen for maintenance notifications via Socket.IO
   useEffect(() => {
