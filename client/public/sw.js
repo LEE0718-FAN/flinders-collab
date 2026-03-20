@@ -73,9 +73,9 @@ self.addEventListener('push', (event) => {
     (async () => {
       const badgeCount = Math.max(1, Number(payload.badgeCount || 1));
 
-      if (typeof self.registration?.setAppBadge === 'function') {
+      if (typeof self.navigator?.setAppBadge === 'function') {
         try {
-          await self.registration.setAppBadge(badgeCount);
+          await self.navigator.setAppBadge(badgeCount);
         } catch {
           // Ignore unsupported badge failures.
         }
@@ -101,9 +101,9 @@ self.addEventListener('notificationclick', (event) => {
   const url = event.notification.data?.url || '/dashboard';
   event.waitUntil(
     (async () => {
-      if (typeof self.registration?.clearAppBadge === 'function') {
+      if (typeof self.navigator?.clearAppBadge === 'function') {
         try {
-          await self.registration.clearAppBadge();
+          await self.navigator.clearAppBadge();
         } catch {
           // Ignore unsupported badge failures.
         }
