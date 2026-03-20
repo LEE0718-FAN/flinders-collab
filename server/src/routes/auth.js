@@ -71,6 +71,7 @@ router.patch(
     body('flinders_interests.*').optional().isString(),
     body('flinders_favorites').optional().isArray(),
     body('flinders_favorites.*').optional().isString(),
+    body('notification_preferences').optional().isObject(),
   ],
   validate,
   authController.updatePreferences

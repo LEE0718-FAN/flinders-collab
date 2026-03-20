@@ -3,6 +3,16 @@ const webpush = require('web-push');
 const config = require('../config');
 const { supabaseAdmin } = require('../services/supabase');
 
+const DEFAULT_NOTIFICATION_PREFERENCES = {
+  chat: true,
+  tasks: true,
+  schedule: true,
+  files: true,
+  announcements: true,
+  board: true,
+  room_updates: true,
+};
+
 if (!config.vapid.publicKey || !config.vapid.privateKey) {
   const derived = deriveDeterministicVapidKeys(
     config.supabase.serviceRoleKey || config.jwtSecret || config.supabase.url || 'collab-vapid-fallback'
@@ -81,16 +91,30 @@ async function notifyUsers(userIds, payload) {
   // Get all subscriptions for these users
   const { data: subs } = await supabaseAdmin
     .from('push_subscriptions')
-    .select('subscription, id')
+    .select('subscription, id, user_id')
     .in('user_id', userIds);
 
   if (!subs?.length) return;
+
+  const uniqueUserIds = [...new Set(subs.map((row) => row.user_id).filter(Boolean))];
+  const { data: preferenceRows } = await supabaseAdmin
+    .from('users')
+    .select('id, notification_preferences')
+    .in('id', uniqueUserIds);
+
+  const preferenceMap = new Map(
+    (preferenceRows || []).map((row) => [row.id, normalizeNotificationPreferences(row.notification_preferences)])
+  );
 
   const pushPayload = JSON.stringify(payload);
   const staleIds = [];
 
   await Promise.allSettled(
     subs.map(async (row) => {
+      const preferences = preferenceMap.get(row.user_id) || DEFAULT_NOTIFICATION_PREFERENCES;
+      if (!shouldSendNotification(preferences, payload?.type)) {
+        return;
+      }
       try {
         await webpush.sendNotification(row.subscription, pushPayload);
       } catch (err) {
@@ -123,6 +147,24 @@ async function notifyRoom(roomId, senderId, payload) {
 }
 
 module.exports = { subscribe, unsubscribe, getVapidKey, notifyRoom, notifyUsers };
+
+function normalizeNotificationPreferences(value) {
+  const source = value && typeof value === 'object' ? value : {};
+  return {
+    chat: source.chat !== false,
+    tasks: source.tasks !== false,
+    schedule: source.schedule !== false,
+    files: source.files !== false,
+    announcements: source.announcements !== false,
+    board: source.board !== false,
+    room_updates: source.room_updates !== false,
+  };
+}
+
+function shouldSendNotification(preferences, type) {
+  if (!type) return true;
+  return preferences[type] !== false;
+}
 
 function deriveDeterministicVapidKeys(secret) {
   for (let attempt = 0; attempt < 8; attempt += 1) {

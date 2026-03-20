@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { LayoutDashboard, LogOut, Menu, Users, ChevronRight, Shield, User, CalendarClock, MessageSquare, Wrench, GraduationCap } from 'lucide-react';
+import { LayoutDashboard, LogOut, Menu, Users, ChevronRight, Shield, User, CalendarClock, MessageSquare, Wrench, GraduationCap, Settings } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
@@ -144,6 +144,13 @@ function SidebarContent({ rooms, location, isAdmin, roomBadgeCounts = {}, user, 
           onIntent={() => preloadRoute('/flinders-life')}
         />
       )}
+      <NavItem
+        to="/settings"
+        isActive={location.pathname === '/settings'}
+        icon={Settings}
+        label="Settings"
+        onIntent={() => preloadRoute('/settings')}
+      />
 
       {/* Room section divider */}
       <div className="mt-5 mb-1 flex items-center gap-2 px-3">
@@ -298,6 +305,34 @@ export default function MainLayout({ children }) {
     const roomUnreadTotal = Object.values(roomBadgeCounts).reduce((sum, value) => sum + Number(value || 0), 0);
     return roomUnreadTotal + Number(boardUnreadCount || 0);
   }, [boardUnreadCount, roomBadgeCounts]);
+
+  const mobileUnreadItems = useMemo(() => {
+    const items = [];
+
+    if (boardUnreadCount > 0) {
+      items.push({
+        key: 'board',
+        label: 'Free Board',
+        count: Number(boardUnreadCount || 0),
+        to: '/board',
+        accentClass: 'bg-indigo-50 text-indigo-700 border-indigo-200',
+      });
+    }
+
+    rooms.forEach((room) => {
+      const count = Number(roomBadgeCounts[room.id] || 0);
+      if (count <= 0) return;
+      items.push({
+        key: room.id,
+        label: room.name,
+        count,
+        to: `/rooms/${room.id}`,
+        accentClass: 'bg-amber-50 text-amber-800 border-amber-200',
+      });
+    });
+
+    return items;
+  }, [boardUnreadCount, roomBadgeCounts, rooms]);
 
   const clearBoardToasts = useCallback(() => {
     boardToastIdsRef.current.forEach((toastId) => removeToast(toastId));
@@ -846,6 +881,10 @@ export default function MainLayout({ children }) {
                 <User className="mr-2 h-4 w-4" />
                 Profile
               </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => navigate('/settings')}>
+                <Settings className="mr-2 h-4 w-4" />
+                Settings
+              </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={() => setLogoutOpen(true)} className="text-destructive focus:text-destructive">
                 <LogOut className="mr-2 h-4 w-4" />
@@ -870,6 +909,34 @@ export default function MainLayout({ children }) {
             {maintenance.type !== 'started' && (
               <button onClick={() => setMaintenance(null)} className="text-current opacity-50 hover:opacity-100 shrink-0">&times;</button>
             )}
+          </div>
+        )}
+
+        {mobileUnreadItems.length > 0 && (
+          <div className="border-b border-slate-200/70 bg-white/92 px-3 py-2 backdrop-blur md:hidden">
+            <div className="mb-1 flex items-center justify-between">
+              <span className="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500">
+                Updates
+              </span>
+              <span className="text-[10px] text-slate-400">
+                Tap to open
+              </span>
+            </div>
+            <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
+              {mobileUnreadItems.map((item) => (
+                <button
+                  key={item.key}
+                  type="button"
+                  onClick={() => navigate(item.to)}
+                  className={`inline-flex shrink-0 items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-semibold shadow-sm ${item.accentClass}`}
+                >
+                  <span className="max-w-[9.5rem] truncate">{item.label}</span>
+                  <span className="inline-flex min-w-5 items-center justify-center rounded-full bg-white/90 px-1.5 py-0.5 text-[10px] font-bold">
+                    {item.count > 99 ? '99+' : item.count}
+                  </span>
+                </button>
+              ))}
+            </div>
           </div>
         )}
 

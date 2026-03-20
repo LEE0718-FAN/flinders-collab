@@ -1,12 +1,52 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
+import { Loader2 } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/toast';
+import { getCachedPreferences, hydratePreferences, updatePreferences } from '@/lib/preferences';
 
 const PREF_NOTIFICATION_SOUNDS = 'pref-notification-sounds';
 const PREF_COMPACT_MESSAGES = 'pref-compact-messages';
 const PREF_DARK_MODE = 'pref-dark-mode';
 const TUTORIAL_KEY = 'tutorial-completed';
+
+const NOTIFICATION_OPTIONS = [
+  {
+    key: 'chat',
+    label: 'Chat Messages',
+    description: 'Push alerts for new room messages.',
+  },
+  {
+    key: 'tasks',
+    label: 'Tasks',
+    description: 'Alerts when tasks are created or assigned.',
+  },
+  {
+    key: 'schedule',
+    label: 'Schedule & Deadlines',
+    description: 'Event alerts and deadline reminders.',
+  },
+  {
+    key: 'files',
+    label: 'Files',
+    description: 'Alerts when new files are uploaded.',
+  },
+  {
+    key: 'announcements',
+    label: 'Announcements',
+    description: 'Owner and admin announcement alerts.',
+  },
+  {
+    key: 'room_updates',
+    label: 'Room Updates',
+    description: 'Membership and general room activity alerts.',
+  },
+  {
+    key: 'board',
+    label: 'Free Board',
+    description: 'Reserved for Free Board push alerts.',
+  },
+];
 
 function readBool(key, defaultValue = false) {
   const stored = localStorage.getItem(key);
@@ -37,18 +77,18 @@ function Toggle({ checked, onChange, id, disabled }) {
   );
 }
 
-function PreferenceRow({ id, label, description, checked, onChange }) {
+function PreferenceRow({ id, label, description, checked, onChange, disabled = false }) {
   return (
     <div className="flex items-center justify-between gap-4 py-3">
       <div className="space-y-0.5">
-        <label htmlFor={id} className="text-sm font-medium cursor-pointer">
+        <label htmlFor={id} className="cursor-pointer text-sm font-medium">
           {label}
         </label>
         {description && (
           <p className="text-xs text-muted-foreground">{description}</p>
         )}
       </div>
-      <Toggle id={id} checked={checked} onChange={onChange} />
+      <Toggle id={id} checked={checked} onChange={onChange} disabled={disabled} />
     </div>
   );
 }
@@ -66,6 +106,25 @@ export default function PreferenceSettings() {
     () => readBool(PREF_DARK_MODE, false)
   );
   const [tutorialReset, setTutorialReset] = useState(false);
+  const [preferencesReady, setPreferencesReady] = useState(false);
+  const [savingNotificationKey, setSavingNotificationKey] = useState('');
+  const [notificationPreferences, setNotificationPreferences] = useState(
+    () => getCachedPreferences().notification_preferences
+  );
+
+  useEffect(() => {
+    let active = true;
+
+    hydratePreferences().then((preferences) => {
+      if (!active) return;
+      setNotificationPreferences(preferences.notification_preferences);
+      setPreferencesReady(true);
+    });
+
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const handleNotificationSounds = (value) => {
     localStorage.setItem(PREF_NOTIFICATION_SOUNDS, String(value));
@@ -88,8 +147,57 @@ export default function PreferenceSettings() {
     addToast('Tutorial reset — it will appear on your next visit.', 'success');
   };
 
+  const handleNotificationPreferenceChange = async (key, value) => {
+    const nextPreferences = {
+      ...notificationPreferences,
+      [key]: value,
+    };
+
+    setNotificationPreferences(nextPreferences);
+    setSavingNotificationKey(key);
+
+    try {
+      const saved = await updatePreferences({
+        notification_preferences: nextPreferences,
+      });
+      setNotificationPreferences(saved.notification_preferences);
+    } catch (error) {
+      setNotificationPreferences(getCachedPreferences().notification_preferences);
+      addToast(error.message || 'Failed to update notification settings.', 'error');
+    } finally {
+      setSavingNotificationKey('');
+    }
+  };
+
   return (
     <div className="space-y-4">
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg">Push Notifications</CardTitle>
+          <CardDescription>Choose which alerts should reach your mobile app.</CardDescription>
+        </CardHeader>
+        <CardContent className="divide-y divide-border/50">
+          {!preferencesReady ? (
+            <div className="flex items-center gap-2 py-4 text-sm text-muted-foreground">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Loading notification settings...
+            </div>
+          ) : (
+            NOTIFICATION_OPTIONS.map((option) => (
+              <PreferenceRow
+                key={option.key}
+                id={`pref-notify-${option.key}`}
+                label={option.label}
+                description={option.description}
+                checked={notificationPreferences?.[option.key] !== false}
+                onChange={(value) => handleNotificationPreferenceChange(option.key, value)}
+                disabled={savingNotificationKey === option.key}
+              />
+            ))
+          )}
+        </CardContent>
+      </Card>
+
       <Card>
         <CardHeader>
           <CardTitle className="text-lg">Notifications</CardTitle>

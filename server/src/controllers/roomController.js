@@ -260,6 +260,7 @@ async function joinRoomByCode(req, res, next) {
     });
 
     notifyRoom(room.id, userId, {
+      type: 'room_updates',
       title: room.name || 'Room',
       body: 'A new member joined the room',
       tag: `member-${room.id}`,

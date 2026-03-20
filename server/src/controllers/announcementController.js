@@ -69,6 +69,7 @@ async function createAnnouncement(req, res, next) {
     res.status(201).json({ ...data, is_read: false });
 
     notifyRoom(req.params.roomId, req.user.id, {
+      type: 'announcements',
       title: 'Announcement',
       body: data.content?.substring(0, 100) || 'New announcement',
       tag: `announce-${req.params.roomId}`,

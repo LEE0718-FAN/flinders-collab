@@ -93,6 +93,7 @@ function chatHandler(io, socket) {
 
       // Push notification to offline members
       notifyRoom(roomId, userId, {
+        type: 'chat',
         title: message.sender_name || 'New message',
         body: content.trim().substring(0, 100),
         tag: `msg-${roomId}`,

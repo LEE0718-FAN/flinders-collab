@@ -113,6 +113,7 @@ async function createEvent(req, res, next) {
     res.status(201).json(data);
 
     notifyRoom(req.params.roomId, req.user.id, {
+      type: 'schedule',
       title: 'New Event',
       body: data.title || 'A new event was created',
       tag: `event-${req.params.roomId}`,

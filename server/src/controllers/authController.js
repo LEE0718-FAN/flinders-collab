@@ -324,7 +324,7 @@ async function getPreferences(req, res, next) {
 
     const { data, error } = await supabaseAdmin
       .from('users')
-      .select('room_order, flinders_interests, flinders_favorites')
+      .select('room_order, flinders_interests, flinders_favorites, notification_preferences')
       .eq('id', userId)
       .single();
 
@@ -336,6 +336,7 @@ async function getPreferences(req, res, next) {
       room_order: Array.isArray(data?.room_order) ? data.room_order : [],
       flinders_interests: Array.isArray(data?.flinders_interests) ? data.flinders_interests : [],
       flinders_favorites: Array.isArray(data?.flinders_favorites) ? data.flinders_favorites : [],
+      notification_preferences: normalizeNotificationPreferences(data?.notification_preferences),
     });
   } catch (err) {
     next(err);
@@ -363,6 +364,10 @@ async function updatePreferences(req, res, next) {
         : [];
     }
 
+    if (req.body.notification_preferences !== undefined) {
+      updates.notification_preferences = normalizeNotificationPreferences(req.body.notification_preferences);
+    }
+
     if (Object.keys(updates).length === 0) {
       return res.status(400).json({ error: 'No preference updates provided' });
     }
@@ -371,7 +376,7 @@ async function updatePreferences(req, res, next) {
       .from('users')
       .update(updates)
       .eq('id', userId)
-      .select('room_order, flinders_interests, flinders_favorites')
+      .select('room_order, flinders_interests, flinders_favorites, notification_preferences')
       .single();
 
     if (error) {
@@ -382,10 +387,24 @@ async function updatePreferences(req, res, next) {
       room_order: Array.isArray(data?.room_order) ? data.room_order : [],
       flinders_interests: Array.isArray(data?.flinders_interests) ? data.flinders_interests : [],
       flinders_favorites: Array.isArray(data?.flinders_favorites) ? data.flinders_favorites : [],
+      notification_preferences: normalizeNotificationPreferences(data?.notification_preferences),
     });
   } catch (err) {
     next(err);
   }
+}
+
+function normalizeNotificationPreferences(value) {
+  const source = value && typeof value === 'object' ? value : {};
+  return {
+    chat: source.chat !== false,
+    tasks: source.tasks !== false,
+    schedule: source.schedule !== false,
+    files: source.files !== false,
+    announcements: source.announcements !== false,
+    board: source.board !== false,
+    room_updates: source.room_updates !== false,
+  };
 }
 
 /**

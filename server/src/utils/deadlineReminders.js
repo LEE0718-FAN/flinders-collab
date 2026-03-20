@@ -125,6 +125,7 @@ async function runDeadlineReminders() {
   await Promise.allSettled(notifications.map(({ event, userIds }) => {
     const title = event.daysUntil === 1 ? 'Deadline Tomorrow' : 'Deadline in 2 Days';
     return notifyUsers(userIds, {
+      type: 'schedule',
       title,
       body: event.title || 'Upcoming deadline reminder',
       tag: `deadline-${event.id}-${currentReminderDate}`,

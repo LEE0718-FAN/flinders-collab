@@ -75,6 +75,7 @@ async function createTask(req, res, next) {
     res.status(201).json(fullTask || task);
 
     notifyRoom(req.params.roomId, req.user.id, {
+      type: 'tasks',
       title: 'New Task',
       body: (fullTask || task).title || 'A new task was created',
       tag: `task-${req.params.roomId}`,

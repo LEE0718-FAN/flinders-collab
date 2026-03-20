@@ -259,6 +259,7 @@ async function uploadFile(req, res, next) {
     });
 
     notifyRoom(req.params.roomId, req.user.id, {
+      type: 'files',
       title: 'New File',
       body: data.file_name || 'A file was uploaded',
       tag: `file-${req.params.roomId}`,
