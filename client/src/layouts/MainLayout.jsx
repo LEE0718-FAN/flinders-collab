@@ -943,7 +943,7 @@ export default function MainLayout({ children }) {
         variant="outline"
         onClick={handlePushDebugCheck}
         disabled={pushDebugLoading}
-        className="fixed bottom-20 left-4 z-40 h-10 rounded-full border-slate-300 bg-white/95 px-4 text-xs font-semibold text-slate-700 shadow-lg backdrop-blur md:bottom-6"
+        className="fixed bottom-28 left-3 z-40 h-9 rounded-full border-slate-300 bg-white/95 px-3 text-[11px] font-semibold text-slate-700 shadow-lg backdrop-blur md:bottom-6 md:left-4 md:h-10 md:px-4 md:text-xs"
       >
         {pushDebugLoading ? 'Checking...' : 'Push Check'}
       </Button>
