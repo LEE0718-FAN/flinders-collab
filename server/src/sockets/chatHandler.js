@@ -96,7 +96,7 @@ function chatHandler(io, socket) {
         title: message.sender_name || 'New message',
         body: content.trim().substring(0, 100),
         tag: `msg-${roomId}`,
-        data: { url: `/room/${roomId}` },
+        data: { url: `/rooms/${roomId}` },
       }).catch(() => {});
     } catch (err) {
       console.error('Error saving message:', err.message);

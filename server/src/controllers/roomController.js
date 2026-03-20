@@ -263,7 +263,7 @@ async function joinRoomByCode(req, res, next) {
       title: room.name || 'Room',
       body: 'A new member joined the room',
       tag: `member-${room.id}`,
-      data: { url: `/room/${room.id}` },
+      data: { url: `/rooms/${room.id}` },
     }).catch(() => {});
   } catch (err) {
     next(err);

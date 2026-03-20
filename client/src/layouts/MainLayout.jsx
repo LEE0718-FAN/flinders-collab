@@ -23,6 +23,7 @@ import { getLatestBoardTimestamp } from '@/lib/board-notifications';
 import { getCachedPreferences, hydratePreferences } from '@/lib/preferences';
 import { preloadRoute } from '@/lib/route-preload';
 import { getUnreadCounts } from '@/services/announcements';
+import { syncAppBadge } from '@/lib/app-badge';
 
 const ROOM_NAVIGATION_UPDATED_EVENT = 'rooms-updated';
 const APP_SOFT_REFRESH_EVENT = 'app-soft-refresh';
@@ -292,6 +293,11 @@ export default function MainLayout({ children }) {
 
     return next;
   }, [announcementUnreadCounts, recentActivityCounts]);
+
+  const totalAppBadgeCount = useMemo(() => {
+    const roomUnreadTotal = Object.values(roomBadgeCounts).reduce((sum, value) => sum + Number(value || 0), 0);
+    return roomUnreadTotal + Number(deadlineCount || 0) + Number(boardUnreadCount || 0);
+  }, [boardUnreadCount, deadlineCount, roomBadgeCounts]);
 
   const clearBoardToasts = useCallback(() => {
     boardToastIdsRef.current.forEach((toastId) => removeToast(toastId));
@@ -566,6 +572,10 @@ export default function MainLayout({ children }) {
     window.addEventListener('announcements-read', handleAnnouncementsRead);
     return () => window.removeEventListener('announcements-read', handleAnnouncementsRead);
   }, []);
+
+  useEffect(() => {
+    syncAppBadge(totalAppBadgeCount).catch(() => {});
+  }, [totalAppBadgeCount]);
 
   // Listen for maintenance notifications via Socket.IO
   useEffect(() => {

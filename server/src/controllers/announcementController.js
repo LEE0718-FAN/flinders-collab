@@ -72,7 +72,7 @@ async function createAnnouncement(req, res, next) {
       title: 'Announcement',
       body: data.content?.substring(0, 100) || 'New announcement',
       tag: `announce-${req.params.roomId}`,
-      data: { url: `/room/${req.params.roomId}` },
+      data: { url: `/rooms/${req.params.roomId}` },
     }).catch(() => {});
   } catch (err) {
     next(err);

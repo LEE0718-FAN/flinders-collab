@@ -262,7 +262,7 @@ async function uploadFile(req, res, next) {
       title: 'New File',
       body: data.file_name || 'A file was uploaded',
       tag: `file-${req.params.roomId}`,
-      data: { url: `/room/${req.params.roomId}` },
+      data: { url: `/rooms/${req.params.roomId}` },
     }).catch(() => {});
   } catch (err) {
     next(err);

@@ -70,15 +70,27 @@ self.addEventListener('push', (event) => {
   }
 
   event.waitUntil(
-    self.registration.showNotification(payload.title, {
-      body: payload.body,
-      icon: '/icons/icon-192.png',
-      badge: '/icons/icon-192.png',
-      tag: payload.tag || 'collab-notification',
-      data: payload.data || {},
-      actions: payload.actions || [],
-      vibrate: [100, 50, 100],
-    })
+    (async () => {
+      const badgeCount = Math.max(1, Number(payload.badgeCount || 1));
+
+      if (typeof self.registration?.setAppBadge === 'function') {
+        try {
+          await self.registration.setAppBadge(badgeCount);
+        } catch {
+          // Ignore unsupported badge failures.
+        }
+      }
+
+      await self.registration.showNotification(payload.title, {
+        body: payload.body,
+        icon: '/icons/icon-192.png',
+        badge: '/icons/icon-192.png',
+        tag: payload.tag || 'collab-notification',
+        data: payload.data || {},
+        actions: payload.actions || [],
+        vibrate: [100, 50, 100],
+      });
+    })()
   );
 });
 
@@ -88,10 +100,19 @@ self.addEventListener('notificationclick', (event) => {
 
   const url = event.notification.data?.url || '/dashboard';
   event.waitUntil(
-    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clients) => {
+    (async () => {
+      if (typeof self.registration?.clearAppBadge === 'function') {
+        try {
+          await self.registration.clearAppBadge();
+        } catch {
+          // Ignore unsupported badge failures.
+        }
+      }
+
+      const clients = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
       const existing = clients.find((c) => c.url.includes(url));
       if (existing) return existing.focus();
       return self.clients.openWindow(url);
-    })
+    })()
   );
 });

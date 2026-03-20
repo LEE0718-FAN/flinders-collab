@@ -134,6 +134,7 @@ export function useAuth() {
     saveSession(sessionData);
     setSession(sessionData);
     setUser(sessionData.user);
+    subscribeToPush().catch(() => {});
 
     return sessionData;
   }, [setSession, setUser]);
@@ -177,6 +178,7 @@ export function useAuth() {
     saveSession(sessionData);
     setSession(sessionData);
     setUser(sessionData.user);
+    subscribeToPush().catch(() => {});
 
     return sessionData;
   }, [setSession, setUser]);

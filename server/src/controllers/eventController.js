@@ -116,7 +116,7 @@ async function createEvent(req, res, next) {
       title: 'New Event',
       body: data.title || 'A new event was created',
       tag: `event-${req.params.roomId}`,
-      data: { url: `/room/${req.params.roomId}` },
+      data: { url: `/rooms/${req.params.roomId}` },
     }).catch(() => {});
   } catch (err) {
     next(err);

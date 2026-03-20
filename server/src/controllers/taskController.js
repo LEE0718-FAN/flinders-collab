@@ -78,7 +78,7 @@ async function createTask(req, res, next) {
       title: 'New Task',
       body: (fullTask || task).title || 'A new task was created',
       tag: `task-${req.params.roomId}`,
-      data: { url: `/room/${req.params.roomId}` },
+      data: { url: `/rooms/${req.params.roomId}` },
     }).catch(() => {});
   } catch (err) {
     next(err);
