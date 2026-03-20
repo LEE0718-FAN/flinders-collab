@@ -63,21 +63,24 @@ function DesktopQR() {
   const url = typeof window !== 'undefined' ? window.location.origin : '';
 
   return (
-    <div className="fixed right-8 top-1/2 -translate-y-1/2 z-20 hidden lg:block animate-slide-up">
-      <div className="rounded-2xl border border-white/10 bg-white/[0.07] backdrop-blur-md p-5 text-center w-[200px]">
-        <div className="mx-auto mb-3 rounded-xl bg-white p-2.5 w-fit">
+    <div className="fixed right-6 top-1/2 -translate-y-1/2 z-50 hidden xl:block animate-slide-up">
+      <div className="rounded-2xl border border-white/10 bg-white/[0.08] backdrop-blur-xl p-5 text-center w-[210px] shadow-2xl shadow-black/30">
+        <div className="mb-3 flex items-center justify-center gap-2">
+          <Smartphone className="h-4 w-4 text-indigo-300" />
+          <p className="text-sm font-semibold text-white/90">Get the app</p>
+        </div>
+        <div className="mx-auto rounded-xl bg-white p-3 w-fit mb-3">
           <QRCodeSVG
             value={url}
-            size={120}
+            size={130}
             bgColor="white"
             fgColor="#1e1b4b"
             level="M"
             includeMargin={false}
           />
         </div>
-        <p className="text-sm font-semibold text-white/90 mb-1">Get the app</p>
         <p className="text-[11px] text-white/50 leading-relaxed">
-          Scan with your phone to install Collab on your home screen
+          Scan with your phone camera to install Collab on your home screen
         </p>
       </div>
     </div>

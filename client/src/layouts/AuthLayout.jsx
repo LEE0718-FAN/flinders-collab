@@ -1,7 +1,7 @@
 import React from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 
-export default function AuthLayout({ children, banner }) {
+export default function AuthLayout({ children }) {
   return (
     <div className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden p-4">
       {/* Background */}
@@ -42,9 +42,6 @@ export default function AuthLayout({ children, banner }) {
           </p>
           <div className="mx-auto mt-4 h-0.5 w-16 rounded-full bg-gradient-to-r from-transparent via-indigo-400/60 to-transparent" />
         </div>
-
-        {/* Install banner (mobile) + QR (desktop) */}
-        {banner}
 
         {/* Subtle glow behind card */}
         <div className="pointer-events-none absolute left-1/2 top-1/2 hidden h-[300px] w-[400px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-indigo-500/10 blur-[80px] sm:block" />

@@ -39,9 +39,12 @@ export default function LoginPage() {
   };
 
   return (
-    <AuthLayout banner={<InstallBanner />}>
-      <LoginForm onSubmit={handleLogin} onGuestLogin={handleGuestLogin} onRequestPasswordReset={handlePasswordReset} />
-      <ReportButton section="login" floating />
-    </AuthLayout>
+    <>
+      <InstallBanner />
+      <AuthLayout>
+        <LoginForm onSubmit={handleLogin} onGuestLogin={handleGuestLogin} onRequestPasswordReset={handlePasswordReset} />
+        <ReportButton section="login" floating />
+      </AuthLayout>
+    </>
   );
 }
