@@ -152,31 +152,32 @@ export default function DeadlinesPage() {
               return (
                 <div
                   key={event.id}
-                  className="flex items-center gap-4 rounded-xl border bg-white px-5 py-4 shadow-sm hover:shadow-md transition-all cursor-pointer hover:-translate-y-0.5"
+                  className="flex items-start gap-3 rounded-xl border bg-white px-3.5 py-3.5 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md sm:items-center sm:gap-4 sm:px-5 sm:py-4"
                   style={{ borderLeftWidth: '4px', borderLeftColor: palette.accent }}
                   onClick={() => navigate(`/rooms/${event.room_id}`)}
                 >
                   <span
-                    className="shrink-0 text-sm font-bold px-3 py-1 rounded-full"
+                    className="shrink-0 rounded-full px-2.5 py-1 text-xs font-bold sm:px-3 sm:text-sm"
                     style={{ backgroundColor: palette.pillBg, color: palette.pillText }}
                   >
                     {event.room_name}
                   </span>
 
                   <div className="flex-1 min-w-0">
-                    <p className="text-[15px] font-semibold truncate">{event.title}</p>
-                    <p className="text-[13px] text-muted-foreground mt-0.5">
-                      <span className="text-muted-foreground/60">{catInfo.label}</span>
-                      <span className="mx-1.5 text-muted-foreground/30">·</span>
-                      {format(startDate, 'EEE, MMM d · h:mm a')}
+                    <p className="line-clamp-2 break-words text-[14px] font-semibold leading-snug sm:text-[15px]">
+                      {event.title}
                     </p>
+                    <div className="mt-1 space-y-0.5 text-[12px] text-muted-foreground sm:text-[13px]">
+                      <p className="break-words text-muted-foreground/75">{catInfo.label}</p>
+                      <p className="break-words">{format(startDate, 'EEE, MMM d · h:mm a')}</p>
+                    </div>
                   </div>
 
                   <div className="shrink-0 text-right">
-                    <span className={`inline-block text-sm font-bold px-3 py-1 rounded-full ${badgeBg}`}>
+                    <span className={`inline-block rounded-full px-2.5 py-1 text-sm font-bold ${badgeBg} sm:px-3`}>
                       {badgeText}
                     </span>
-                    <p className="text-xs text-muted-foreground mt-1">
+                    <p className="mt-1 text-[11px] leading-snug text-muted-foreground sm:text-xs">
                       {formatDistanceToNow(startDate, { addSuffix: true })}
                     </p>
                   </div>

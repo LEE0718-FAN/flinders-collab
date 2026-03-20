@@ -154,28 +154,39 @@ function EventRow({ event, isFavorite, onToggleFavorite }) {
           ))}
         </div>
         <a href={event.link} target="_blank" rel="noopener noreferrer" className="block">
-          <h3 className="text-[13px] font-bold text-slate-800 group-hover:text-amber-700 transition-colors leading-snug line-clamp-1">{title}</h3>
+          <h3 className="line-clamp-2 break-words text-[13px] font-bold leading-snug text-slate-800 transition-colors group-hover:text-amber-700 sm:text-[14px]">
+            {title}
+          </h3>
         </a>
-        <div className="flex flex-wrap gap-x-3 gap-y-0.5 mt-1">
+        <div className="mt-1.5 space-y-1">
           {timeDisplay && (
-            <span className="inline-flex items-center gap-1 text-[11px] text-slate-500">
-              <Clock className="h-3 w-3 text-slate-400" />{timeDisplay}
-            </span>
+            <div className="flex items-start gap-1.5 text-[11px] text-slate-500">
+              <Clock className="mt-0.5 h-3 w-3 shrink-0 text-slate-400" />
+              <span className="break-words leading-snug">{timeDisplay}</span>
+            </div>
           )}
           {location && (
-            <span className="inline-flex items-center gap-1 text-[11px] text-slate-500 min-w-0">
-              <MapPin className="h-3 w-3 text-slate-400 shrink-0" />
+            <div className="flex min-w-0 items-start gap-1.5 text-[11px] text-slate-500">
+              <MapPin className="mt-0.5 h-3 w-3 shrink-0 text-slate-400" />
               {mapsUrl ? (
-                <a href={mapsUrl} target="_blank" rel="noopener noreferrer" className="hover:text-blue-600 hover:underline truncate">{location}</a>
+                <a
+                  href={mapsUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="line-clamp-2 break-words leading-snug hover:text-blue-600 hover:underline"
+                >
+                  {location}
+                </a>
               ) : (
-                <span className="truncate">{location}</span>
+                <span className="line-clamp-2 break-words leading-snug">{location}</span>
               )}
-            </span>
+            </div>
           )}
           {cost && (
-            <span className={`inline-flex items-center gap-1 text-[11px] font-medium ${cost.toLowerCase().includes('free') ? 'text-emerald-600' : 'text-amber-600'}`}>
-              {cost.toLowerCase().includes('free') ? '✓' : '$'} {cost}
-            </span>
+            <div className={`flex items-start gap-1.5 text-[11px] font-medium ${cost.toLowerCase().includes('free') ? 'text-emerald-600' : 'text-amber-600'}`}>
+              <span className="mt-0.5 shrink-0">{cost.toLowerCase().includes('free') ? '✓' : '$'}</span>
+              <span className="break-words leading-snug">{cost}</span>
+            </div>
           )}
         </div>
       </div>
