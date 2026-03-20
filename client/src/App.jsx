@@ -20,6 +20,51 @@ function hasRecoveryParams() {
     || search.has('code');
 }
 
+function useViewportMetrics() {
+  useEffect(() => {
+    if (typeof window === 'undefined') return undefined;
+
+    const root = document.documentElement;
+    const viewport = window.visualViewport;
+    let rafId = 0;
+
+    const sync = () => {
+      const height = Math.round(viewport?.height || window.innerHeight || 0);
+      const width = Math.round(viewport?.width || window.innerWidth || 0);
+
+      if (height > 0) {
+        root.style.setProperty('--viewport-height', `${height}px`);
+        root.style.setProperty('--viewport-stable-height', `${height}px`);
+        root.style.setProperty('--viewport-dynamic-height', `${height}px`);
+      }
+
+      if (width > 0) {
+        root.style.setProperty('--viewport-width', `${width}px`);
+      }
+    };
+
+    const scheduleSync = () => {
+      window.cancelAnimationFrame(rafId);
+      rafId = window.requestAnimationFrame(sync);
+    };
+
+    sync();
+
+    window.addEventListener('resize', scheduleSync);
+    window.addEventListener('orientationchange', scheduleSync);
+    viewport?.addEventListener('resize', scheduleSync);
+    viewport?.addEventListener('scroll', scheduleSync);
+
+    return () => {
+      window.cancelAnimationFrame(rafId);
+      window.removeEventListener('resize', scheduleSync);
+      window.removeEventListener('orientationchange', scheduleSync);
+      viewport?.removeEventListener('resize', scheduleSync);
+      viewport?.removeEventListener('scroll', scheduleSync);
+    };
+  }, []);
+}
+
 // Retry dynamic imports with page reload on chunk mismatch (after new deployments)
 function lazyRetry(importFn) {
   return lazy(() =>
@@ -146,6 +191,8 @@ function PublicRoute({ children }) {
 }
 
 export default function App() {
+  useViewportMetrics();
+
   return (
     <ErrorBoundary>
       <ToastProvider>

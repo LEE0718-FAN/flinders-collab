@@ -602,9 +602,15 @@ export default function MainLayout({ children }) {
   const displayName = user?.user_metadata?.name || user?.email;
 
   return (
+<<<<<<< HEAD
     <div className="flex min-h-screen bg-background">
       {/* Desktop Sidebar */}
       <aside className="hidden w-64 shrink-0 flex-col bg-gradient-to-b from-slate-900 via-slate-900 to-indigo-950 md:flex">
+=======
+    <div className="app-shell overflow-x-safe flex bg-background">
+      {/* Desktop Sidebar */}
+      <aside className="app-shell hidden w-64 shrink-0 flex-col overflow-hidden bg-gradient-to-b from-slate-900 via-slate-900 to-indigo-950 md:flex">
+>>>>>>> f81203f (fix: stabilize mobile viewport shell)
         {/* Sidebar header / brand */}
         <div className="flex h-16 items-center gap-3 px-5">
           <div className="h-10 w-10 shrink-0 overflow-hidden rounded-xl bg-white p-1 shadow-lg flex items-center justify-center">
@@ -647,7 +653,15 @@ export default function MainLayout({ children }) {
 
       <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
         {/* Top Bar */}
-        <header className="flex h-16 items-center justify-between gap-3 border-b-2 border-slate-200 bg-white/90 px-3 safe-area-top backdrop-blur-xl sm:px-4">
+        <header
+          className="sticky top-0 z-30 flex min-h-16 shrink-0 items-center justify-between gap-3 border-b-2 border-slate-200 bg-white/90 backdrop-blur-xl"
+          style={{
+            paddingTop: 'max(0.5rem, var(--safe-top))',
+            paddingBottom: '0.5rem',
+            paddingLeft: 'max(0.75rem, var(--safe-left))',
+            paddingRight: 'max(0.75rem, var(--safe-right))',
+          }}
+        >
           <div className="flex min-w-0 items-center gap-2">
             <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
               <SheetTrigger asChild>
@@ -655,8 +669,15 @@ export default function MainLayout({ children }) {
                   <Menu className="h-5 w-5" />
                 </Button>
               </SheetTrigger>
-              <SheetContent side="left" className="w-[88vw] max-w-72 border-r-0 bg-gradient-to-b from-slate-900 via-slate-900 to-indigo-950 p-0">
-                <SheetHeader className="px-5 py-4 safe-area-top">
+              <SheetContent side="left" className="app-shell flex w-[88vw] max-w-72 flex-col overflow-hidden border-r-0 bg-gradient-to-b from-slate-900 via-slate-900 to-indigo-950 p-0">
+                <SheetHeader
+                  className="shrink-0 px-5 pb-4 pt-4"
+                  style={{
+                    paddingTop: 'max(0.875rem, var(--safe-top))',
+                    paddingLeft: 'max(1.25rem, var(--safe-left))',
+                    paddingRight: 'max(1.25rem, var(--safe-right))',
+                  }}
+                >
                   <SheetTitle className="flex items-center gap-2.5 text-left">
                     <div className="h-10 w-10 shrink-0 overflow-hidden rounded-xl bg-white p-1 shadow-lg flex items-center justify-center">
                       <img
@@ -754,7 +775,7 @@ export default function MainLayout({ children }) {
           data-main-scroll-container="true"
           className="relative flex-1 overflow-y-auto bg-slate-50 p-3 pb-6 sm:p-4 md:p-6 custom-scrollbar animate-fade-in"
           style={{
-            paddingTop: '0.75rem',
+            paddingTop: '0.5rem',
             paddingBottom: 'max(1.5rem, var(--safe-bottom))',
             paddingLeft: 'max(0.75rem, var(--safe-left))',
             paddingRight: 'max(0.75rem, var(--safe-right))',
