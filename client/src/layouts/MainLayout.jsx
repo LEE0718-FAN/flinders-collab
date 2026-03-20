@@ -204,6 +204,7 @@ export default function MainLayout({ children }) {
   const { addToast, removeToast } = useToast();
   const navigate = useNavigate();
   const location = useLocation();
+  const mainScrollRef = useRef(null);
   const [rooms, setRooms] = useState([]);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [logoutOpen, setLogoutOpen] = useState(false);
@@ -217,6 +218,11 @@ export default function MainLayout({ children }) {
   const [roomOrderIds, setRoomOrderIds] = useState([]);
   const boardToastIdsRef = useRef(new Set());
   const boardLastSeenAtRef = useRef(0);
+  const pullStartYRef = useRef(null);
+  const pullDistanceRef = useRef(0);
+  const pullTriggeredRef = useRef(false);
+  const [pullDistance, setPullDistance] = useState(0);
+  const [isPullRefreshing, setIsPullRefreshing] = useState(false);
 
   const syncRoomVisitState = useCallback((roomList = []) => {
     setRoomLastVisitedMap((prev) => {
@@ -600,6 +606,70 @@ export default function MainLayout({ children }) {
     : user?.email?.[0]?.toUpperCase() || '?';
 
   const displayName = user?.user_metadata?.name || user?.email;
+  const canPullToRefresh = typeof window !== 'undefined' && window.innerWidth < 768;
+  const pullReady = pullDistance >= 72;
+
+  const resetPullState = useCallback(() => {
+    pullStartYRef.current = null;
+    pullDistanceRef.current = 0;
+    pullTriggeredRef.current = false;
+    setPullDistance(0);
+  }, []);
+
+  const handleMainTouchStart = useCallback((event) => {
+    if (!canPullToRefresh || isPullRefreshing) return;
+    const scrollTop = mainScrollRef.current?.scrollTop || 0;
+    if (scrollTop > 0) {
+      pullStartYRef.current = null;
+      return;
+    }
+    pullStartYRef.current = event.touches[0]?.clientY ?? null;
+    pullTriggeredRef.current = false;
+  }, [canPullToRefresh, isPullRefreshing]);
+
+  const handleMainTouchMove = useCallback((event) => {
+    if (!canPullToRefresh || isPullRefreshing) return;
+    if (pullStartYRef.current == null) return;
+
+    const scrollTop = mainScrollRef.current?.scrollTop || 0;
+    if (scrollTop > 0) {
+      resetPullState();
+      return;
+    }
+
+    const currentY = event.touches[0]?.clientY ?? pullStartYRef.current;
+    const delta = currentY - pullStartYRef.current;
+    if (delta <= 0) {
+      setPullDistance(0);
+      pullDistanceRef.current = 0;
+      return;
+    }
+
+    const nextDistance = Math.min(delta * 0.45, 92);
+    pullDistanceRef.current = nextDistance;
+    setPullDistance(nextDistance);
+    if (nextDistance >= 72) {
+      pullTriggeredRef.current = true;
+    }
+  }, [canPullToRefresh, isPullRefreshing, resetPullState]);
+
+  const handleMainTouchEnd = useCallback(() => {
+    if (!canPullToRefresh || isPullRefreshing) {
+      resetPullState();
+      return;
+    }
+
+    if (pullTriggeredRef.current) {
+      setIsPullRefreshing(true);
+      setPullDistance(56);
+      window.setTimeout(() => {
+        window.location.reload();
+      }, 120);
+      return;
+    }
+
+    resetPullState();
+  }, [canPullToRefresh, isPullRefreshing, resetPullState]);
 
   return (
     <div className="app-shell overflow-x-safe flex bg-background">
@@ -766,8 +836,13 @@ export default function MainLayout({ children }) {
 
         {/* Main Content */}
         <main
+          ref={mainScrollRef}
           data-main-scroll-container="true"
           className="relative flex-1 overflow-y-auto bg-slate-50 p-3 pb-6 sm:p-4 md:p-6 custom-scrollbar animate-fade-in"
+          onTouchStart={handleMainTouchStart}
+          onTouchMove={handleMainTouchMove}
+          onTouchEnd={handleMainTouchEnd}
+          onTouchCancel={handleMainTouchEnd}
           style={{
             paddingTop: '0.5rem',
             paddingBottom: 'max(1.5rem, var(--safe-bottom))',
@@ -775,6 +850,17 @@ export default function MainLayout({ children }) {
             paddingRight: 'max(0.75rem, var(--safe-right))',
           }}
         >
+          <div
+            className={`pointer-events-none sticky top-0 z-20 mx-auto flex w-full max-w-xs items-center justify-center overflow-hidden transition-all duration-200 ${pullDistance > 0 || isPullRefreshing ? 'opacity-100' : 'opacity-0'}`}
+            style={{
+              height: `${isPullRefreshing ? 3.5 : Math.max(0, pullDistance)}rem`,
+            }}
+          >
+            <div className="flex items-center gap-2 rounded-full border border-slate-200 bg-white/95 px-3 py-2 text-xs font-semibold text-slate-600 shadow-sm">
+              <div className={`h-2.5 w-2.5 rounded-full ${isPullRefreshing ? 'animate-pulse bg-blue-500' : pullReady ? 'bg-emerald-500' : 'bg-slate-300'}`} />
+              <span>{isPullRefreshing ? 'Refreshing...' : pullReady ? 'Release to refresh' : 'Pull to refresh'}</span>
+            </div>
+          </div>
           <div
             className="pointer-events-none absolute inset-0 opacity-30"
             style={{

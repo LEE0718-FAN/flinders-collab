@@ -2,13 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { DesktopSidePanel } from '@/components/InstallBanner';
 
-const DISMISS_KEY = 'install-popup-dismissed';
-
 export default function AuthLayout({ children }) {
   const [showSidePanel, setShowSidePanel] = useState(false);
 
   useEffect(() => {
-    // Only show on desktop, not if permanently dismissed
+    // Always show the side panel on large desktop screens unless running installed.
     if (typeof navigator !== 'undefined') {
       const ua = navigator.userAgent || '';
       const isMobile = /iPad|iPhone|iPod|Android|Mobi|Tablet/i.test(ua);
@@ -17,22 +15,15 @@ export default function AuthLayout({ children }) {
     const standalone = window.matchMedia('(display-mode: standalone)').matches
       || window.navigator.standalone === true;
     if (standalone) return;
-
-    const permanent = localStorage.getItem(DISMISS_KEY);
-    const session = sessionStorage.getItem(DISMISS_KEY);
-    if (!permanent && !session) {
-      setShowSidePanel(true);
-    }
+    setShowSidePanel(true);
   }, []);
 
   const handleDismiss = () => {
     setShowSidePanel(false);
-    sessionStorage.setItem(DISMISS_KEY, '1');
   };
 
   const handleNeverShow = () => {
     setShowSidePanel(false);
-    localStorage.setItem(DISMISS_KEY, '1');
   };
 
   return (
@@ -64,8 +55,8 @@ export default function AuthLayout({ children }) {
       {/* Main content — login card + optional side panel */}
       <div className="relative z-10 flex flex-1 items-center justify-center py-2 sm:py-4">
         {/* Login column */}
-        <div className="grid w-full max-w-7xl items-center gap-6 lg:grid-cols-[minmax(0,1.05fr)_minmax(340px,420px)] lg:gap-8 xl:gap-10">
-          <div className="w-full max-w-[560px] justify-self-center animate-slide-up lg:justify-self-end">
+        <div className="grid w-full max-w-[1080px] items-center justify-center gap-6 xl:grid-cols-[minmax(0,480px)_minmax(340px,380px)] xl:gap-8">
+          <div className="w-full max-w-[480px] justify-self-center animate-slide-up">
             {/* Logo area */}
             <div className="mb-4 text-center sm:mb-6">
               <div className="mx-auto mb-3 flex h-16 items-center justify-center">
@@ -85,11 +76,11 @@ export default function AuthLayout({ children }) {
             </div>
 
             {/* Subtle glow behind card */}
-            <div className="pointer-events-none absolute left-1/2 top-1/2 hidden h-[320px] w-[460px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-indigo-500/10 blur-[90px] sm:block" />
+            <div className="pointer-events-none absolute left-1/2 top-1/2 hidden h-[300px] w-[420px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-indigo-500/10 blur-[90px] sm:block" />
 
             {/* Auth card */}
             <Card className="relative rounded-[28px] border border-white/10 bg-white/[0.96] shadow-2xl shadow-black/40 backdrop-blur-xl">
-              <CardContent className="p-5 sm:p-8 lg:p-10">{children}</CardContent>
+              <CardContent className="p-5 sm:p-7 lg:p-8">{children}</CardContent>
             </Card>
 
             {/* Footer - university info */}
@@ -100,7 +91,7 @@ export default function AuthLayout({ children }) {
 
           {/* Desktop side panel */}
           {showSidePanel && (
-            <div className="hidden lg:flex lg:justify-self-start lg:self-center">
+            <div className="hidden xl:flex xl:justify-self-start xl:self-center">
               <DesktopSidePanel onDismiss={handleDismiss} onNeverShow={handleNeverShow} />
             </div>
           )}

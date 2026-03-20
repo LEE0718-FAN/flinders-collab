@@ -2,8 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
 import { X, Share, PlusSquare, MoreVertical, Download, Smartphone, Bell } from 'lucide-react';
 
-const DISMISS_KEY = 'install-popup-dismissed';
-
 function getDevice() {
   if (typeof navigator === 'undefined') return 'desktop';
   const ua = navigator.userAgent || '';
@@ -89,8 +87,8 @@ export function DesktopSidePanel({ onDismiss, onNeverShow }) {
   const url = typeof window !== 'undefined' ? window.location.origin : '';
 
   return (
-    <div className="w-full max-w-[420px] shrink-0 animate-slide-up">
-      <div className="relative overflow-hidden rounded-[28px] border border-white/10 bg-white/[0.08] p-6 shadow-2xl shadow-black/20 backdrop-blur-xl sm:p-7">
+    <div className="w-full max-w-[380px] shrink-0 animate-slide-up">
+      <div className="relative overflow-hidden rounded-[28px] border border-white/10 bg-white/[0.08] p-5 shadow-2xl shadow-black/20 backdrop-blur-xl sm:p-6">
         <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent" />
 
         {/* Close button */}
@@ -102,21 +100,21 @@ export function DesktopSidePanel({ onDismiss, onNeverShow }) {
           <X className="h-4 w-4" />
         </button>
 
-        <div className="mb-5 pr-10 text-left">
+        <div className="mb-4 pr-10 text-left">
           <div className="mb-2 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/10 px-3 py-1 text-[11px] font-semibold tracking-wide text-white/70">
             <Smartphone className="h-3.5 w-3.5 text-indigo-300" />
             Install on mobile
           </div>
-          <h2 className="text-xl font-semibold tracking-tight text-white sm:text-2xl">
+          <h2 className="text-lg font-semibold tracking-tight text-white sm:text-[1.45rem]">
             Add Collab to your phone
           </h2>
-          <p className="mt-2 max-w-[30ch] text-sm leading-relaxed text-white/55">
+          <p className="mt-2 max-w-[28ch] text-[13px] leading-relaxed text-white/55">
             Scan the QR code or follow the browser steps below to install the app on iOS or Android.
           </p>
         </div>
 
-        <div className="grid gap-5">
-          <div className="rounded-[24px] border border-white/10 bg-slate-950/20 p-4 sm:p-5">
+        <div className="grid gap-4">
+          <div className="rounded-[24px] border border-white/10 bg-slate-950/20 p-4">
             <div className="flex items-center justify-between gap-3">
               <div>
                 <p className="text-xs font-semibold uppercase tracking-[0.18em] text-white/45">
@@ -134,7 +132,7 @@ export function DesktopSidePanel({ onDismiss, onNeverShow }) {
             <div className="mx-auto mt-4 w-fit rounded-2xl bg-white p-3 shadow-[0_14px_32px_-16px_rgba(0,0,0,0.45)]">
               <QRCodeSVG
                 value={url}
-                size={140}
+                size={132}
                 bgColor="white"
                 fgColor="#1e1b4b"
                 level="M"
@@ -149,7 +147,7 @@ export function DesktopSidePanel({ onDismiss, onNeverShow }) {
                 <span className="text-sm">🍎</span>
                 <p className="text-sm font-semibold text-white/85">iPhone / iPad</p>
               </div>
-              <div className="space-y-2 text-xs leading-relaxed text-white/55">
+              <div className="space-y-2 text-[11px] leading-relaxed text-white/55">
                 <p className="flex items-start gap-2">
                   <span className="mt-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-md bg-white/10 text-[10px] font-bold text-white/80">1</span>
                   Tap <Share className="inline h-3.5 w-3.5 text-blue-300" /> in Safari.
@@ -166,7 +164,7 @@ export function DesktopSidePanel({ onDismiss, onNeverShow }) {
                 <span className="text-sm">🤖</span>
                 <p className="text-sm font-semibold text-white/85">Android</p>
               </div>
-              <div className="space-y-2 text-xs leading-relaxed text-white/55">
+              <div className="space-y-2 text-[11px] leading-relaxed text-white/55">
                 <p className="flex items-start gap-2">
                   <span className="mt-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-md bg-white/10 text-[10px] font-bold text-white/80">1</span>
                   Open Chrome and tap <MoreVertical className="inline h-3.5 w-3.5 text-white/60" /> menu.
@@ -184,7 +182,7 @@ export function DesktopSidePanel({ onDismiss, onNeverShow }) {
               <Bell className="h-3.5 w-3.5" />
               Notifications
             </p>
-            <p className="text-xs leading-relaxed text-white/55">
+            <p className="text-[11px] leading-relaxed text-white/55">
               Allow notifications after login so you do not miss room updates and reminders.
             </p>
           </div>
@@ -194,7 +192,7 @@ export function DesktopSidePanel({ onDismiss, onNeverShow }) {
           onClick={onNeverShow}
           className="mt-5 w-full text-center text-[11px] text-white/25 transition hover:text-white/50"
         >
-          Don&apos;t show again
+          Hide tips
         </button>
       </div>
     </div>
