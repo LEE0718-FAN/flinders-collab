@@ -25,6 +25,7 @@ import { preloadRoute } from '@/lib/route-preload';
 import { getUnreadCounts } from '@/services/announcements';
 
 const ROOM_NAVIGATION_UPDATED_EVENT = 'rooms-updated';
+const APP_SOFT_REFRESH_EVENT = 'app-soft-refresh';
 
 const roomPalettes = [
   { softBg: '#fff1f6', softBorder: '#fbcfe8', text: '#831843', icon: '#9d174d' },
@@ -662,14 +663,32 @@ export default function MainLayout({ children }) {
     if (pullTriggeredRef.current) {
       setIsPullRefreshing(true);
       setPullDistance(56);
-      window.setTimeout(() => {
-        window.location.reload();
-      }, 120);
+      Promise.allSettled([
+        refreshRooms(),
+        refreshDeadlineCount(),
+        refreshRecentActivityCounts(),
+      ]).finally(() => {
+        window.dispatchEvent(new CustomEvent(APP_SOFT_REFRESH_EVENT, {
+          detail: { path: location.pathname, at: Date.now() },
+        }));
+        window.setTimeout(() => {
+          setIsPullRefreshing(false);
+          resetPullState();
+        }, 250);
+      });
       return;
     }
 
     resetPullState();
-  }, [canPullToRefresh, isPullRefreshing, resetPullState]);
+  }, [
+    canPullToRefresh,
+    isPullRefreshing,
+    location.pathname,
+    refreshDeadlineCount,
+    refreshRecentActivityCounts,
+    refreshRooms,
+    resetPullState,
+  ]);
 
   return (
     <div className="app-shell overflow-x-safe flex bg-background">

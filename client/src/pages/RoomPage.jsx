@@ -43,6 +43,8 @@ function upsertById(items, nextItem, { prepend = true, sorter } = {}) {
   return sorter ? sorter(next) : next;
 }
 
+const APP_SOFT_REFRESH_EVENT = 'app-soft-refresh';
+
 export default function RoomPage() {
   const { roomId } = useParams();
   const { user } = useAuth();
@@ -237,6 +239,30 @@ export default function RoomPage() {
     window.addEventListener('events-updated', handler);
     return () => window.removeEventListener('events-updated', handler);
   }, [fetchEvents]);
+
+  useEffect(() => {
+    const handleSoftRefresh = () => {
+      fetchRoom();
+      fetchMembers();
+      fetchActivity();
+      fetchAnnouncements();
+      fetchEvents();
+      if (filesLoaded) fetchFiles();
+      if (tasksLoaded) fetchTasks();
+    };
+    window.addEventListener(APP_SOFT_REFRESH_EVENT, handleSoftRefresh);
+    return () => window.removeEventListener(APP_SOFT_REFRESH_EVENT, handleSoftRefresh);
+  }, [
+    fetchActivity,
+    fetchAnnouncements,
+    fetchEvents,
+    fetchFiles,
+    fetchMembers,
+    fetchRoom,
+    fetchTasks,
+    filesLoaded,
+    tasksLoaded,
+  ]);
 
   // Quick links are now fetched as part of the initial batch load above
 

@@ -25,14 +25,14 @@ import {
 import { getLatestBoardTimestamp } from '@/lib/board-notifications';
 
 const CATEGORIES = [
-  { value: 'all', label: 'All', icon: Sparkles },
-  { value: 'study_group', label: 'Study Group', icon: Users2 },
-  { value: 'project', label: 'Project Team', icon: FolderKanban },
-  { value: 'qna', label: 'Q&A', icon: MessageSquare },
-  { value: 'meetup', label: 'Meetup', icon: Coffee },
-  { value: 'confession', label: 'Confession', icon: Ghost },
-  { value: 'event', label: 'Event', icon: Calendar },
-  { value: 'general', label: 'General', icon: HelpCircle },
+  { value: 'all', label: 'All', shortLabel: 'All', icon: Sparkles },
+  { value: 'study_group', label: 'Study Group', shortLabel: 'Study', icon: Users2 },
+  { value: 'project', label: 'Project Team', shortLabel: 'Project', icon: FolderKanban },
+  { value: 'qna', label: 'Q&A', shortLabel: 'Q&A', icon: MessageSquare },
+  { value: 'meetup', label: 'Meetup', shortLabel: 'Meetup', icon: Coffee },
+  { value: 'confession', label: 'Confession', shortLabel: 'Confess', icon: Ghost },
+  { value: 'event', label: 'Event', shortLabel: 'Event', icon: Calendar },
+  { value: 'general', label: 'General', shortLabel: 'General', icon: HelpCircle },
 ];
 
 const CATEGORY_STYLES = {
@@ -52,6 +52,7 @@ const EMOJI_MAP = {
   clap: { icon: '👏', label: 'Clap' },
   think: { icon: '🤔', label: 'Hmm' },
 };
+const APP_SOFT_REFRESH_EVENT = 'app-soft-refresh';
 
 // ── Academic Info Gate ──
 
@@ -386,7 +387,7 @@ function PostCard({ post, myStatus, onParticipate, onDelete, onReaction, onVote,
   };
 
   return (
-      <div className="group rounded-2xl border border-slate-200/80 bg-white p-4 transition-all duration-300 hover:border-slate-300/80 hover:shadow-lg hover:shadow-slate-200/50 sm:p-5">
+    <div className="group rounded-2xl border border-slate-200/80 bg-white p-4 transition-all duration-300 hover:border-slate-300/80 hover:shadow-lg hover:shadow-slate-200/50 sm:p-5">
       {/* Header */}
       <div className="flex items-start gap-3">
         <Avatar className={`h-10 w-10 ring-2 ring-white shadow-sm shrink-0 ${isAnonymous ? 'opacity-70' : ''}`}>
@@ -396,21 +397,21 @@ function PostCard({ post, myStatus, onParticipate, onDelete, onReaction, onVote,
           </AvatarFallback>
         </Avatar>
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="font-semibold text-sm text-slate-900">{authorName}</span>
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+            <span className="min-w-0 break-words text-sm font-semibold text-slate-900">{authorName}</span>
             {isAnonymous && <Ghost className="h-3.5 w-3.5 text-slate-400" />}
             {academicLabel && (
-              <span className="text-[11px] text-slate-400 font-medium">{academicLabel}</span>
+              <span className="text-[10px] font-medium text-slate-400 sm:text-[11px]">{academicLabel}</span>
             )}
           </div>
           {affiliationLabel && (
-            <p className="text-[11px] text-slate-400">{affiliationLabel}</p>
+            <p className="mt-0.5 break-words text-[10px] leading-snug text-slate-400 sm:text-[11px]">{affiliationLabel}</p>
           )}
-          <p className="text-[11px] text-slate-400">
+          <p className="mt-0.5 text-[10px] text-slate-400 sm:text-[11px]">
             {formatDistanceToNow(new Date(post.created_at), { addSuffix: true })}
           </p>
         </div>
-        <div className="flex items-center gap-1.5 shrink-0">
+        <div className="flex shrink-0 flex-wrap items-center justify-end gap-1.5">
           {isTrending && (
             <Badge className="rounded-full bg-gradient-to-r from-orange-500 to-red-500 text-white border-0 text-[10px] gap-1 px-2 py-0.5 shadow-sm">
               <TrendingUp className="h-2.5 w-2.5" />
@@ -723,6 +724,16 @@ export default function BoardPage() {
   }, [fetchPosts, academicChecked, academicInfo]);
 
   useEffect(() => {
+    if (!academicChecked || !academicInfo) return undefined;
+    const handleSoftRefresh = () => {
+      setLoading(true);
+      fetchPosts();
+    };
+    window.addEventListener(APP_SOFT_REFRESH_EVENT, handleSoftRefresh);
+    return () => window.removeEventListener(APP_SOFT_REFRESH_EVENT, handleSoftRefresh);
+  }, [academicChecked, academicInfo, fetchPosts]);
+
+  useEffect(() => {
     const syncTutorialState = (event) => {
       if (event?.detail && typeof event.detail.active === 'boolean') {
         setTutorialActive(event.detail.active);
@@ -833,18 +844,18 @@ export default function BoardPage() {
         ]}
       />
       {/* Hero */}
-      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-500 p-6 sm:p-8 text-white mb-6 shadow-2xl shadow-purple-500/20">
+      <div className="relative mb-6 overflow-hidden rounded-3xl bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-500 p-5 text-white shadow-2xl shadow-purple-500/20 sm:p-8">
         <div className="absolute -right-16 -top-16 h-56 w-56 rounded-full bg-white/10 blur-3xl" />
         <div className="absolute -left-8 -bottom-8 h-40 w-40 rounded-full bg-pink-400/20 blur-2xl" />
         <div className="absolute right-8 bottom-6 text-6xl opacity-20 select-none">💬</div>
         <div className="relative flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <div className="inline-flex items-center gap-1.5 rounded-full bg-white/15 backdrop-blur-sm px-3 py-1 text-xs font-bold uppercase tracking-wider text-white/90 mb-3">
+            <div className="mb-3 inline-flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.18em] text-white/90 backdrop-blur-sm">
               <Sparkles className="h-3 w-3" />
               Community
             </div>
             <h1 className="text-3xl font-black tracking-tight sm:text-4xl">Free Board</h1>
-            <p className="mt-1.5 text-sm text-white/70 max-w-md">
+            <p className="mt-1.5 max-w-sm text-sm leading-6 text-white/75">
               Connect, share, and discover with fellow Flinders students.
             </p>
           </div>
@@ -860,7 +871,7 @@ export default function BoardPage() {
       </div>
 
       {/* Category filter */}
-      <div className="flex gap-1.5 mb-5 overflow-x-auto pb-1 scrollbar-hide">
+      <div className="-mx-1 mb-5 flex gap-1.5 overflow-x-auto px-1 pb-1 scrollbar-hide">
         {CATEGORIES.map((cat) => {
           const Icon = cat.icon;
           const style = CATEGORY_STYLES[cat.value] || {};
@@ -869,14 +880,15 @@ export default function BoardPage() {
               key={cat.value}
               data-tour={`cat-${cat.value}`}
               onClick={() => { setCategory(cat.value); setLoading(true); }}
-              className={`flex items-center gap-1.5 whitespace-nowrap rounded-full border px-4 py-2 text-xs font-semibold transition-all ${
+              className={`flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border px-3 py-2 text-[11px] font-semibold transition-all sm:px-4 sm:text-xs ${
                 category === cat.value
                   ? `${style.bg || 'bg-indigo-50'} ${style.text || 'text-indigo-600'} ${style.border || 'border-indigo-200'} shadow-sm`
                   : 'border-slate-200 bg-white hover:border-slate-300 text-slate-500'
               }`}
             >
               <Icon className="h-3.5 w-3.5" />
-              {cat.label}
+              <span className="sm:hidden">{cat.shortLabel || cat.label}</span>
+              <span className="hidden sm:inline">{cat.label}</span>
             </button>
           );
         })}

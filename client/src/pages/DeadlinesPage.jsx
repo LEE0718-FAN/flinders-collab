@@ -22,6 +22,7 @@ const CATEGORY_INFO = {
   social:       { icon: '🎉', label: 'Social' },
   other:        { icon: '📌', label: 'Other' },
 };
+const APP_SOFT_REFRESH_EVENT = 'app-soft-refresh';
 
 function normalizeCategory(category) {
   const normalized = String(category || '').trim().toLowerCase();
@@ -46,24 +47,29 @@ export default function DeadlinesPage() {
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('all');
+  const fetchAll = useCallback(async () => {
+    try {
+      const data = await getUpcomingEvents();
+      const future = (Array.isArray(data?.events) ? data.events : []).map((event) => ({
+        ...event,
+        category: normalizeCategory(event.category),
+      }));
+      setEvents(future);
+    } catch {
+      setEvents([]);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
-    const fetchAll = async () => {
-      try {
-        const data = await getUpcomingEvents();
-        const future = (Array.isArray(data?.events) ? data.events : []).map((event) => ({
-          ...event,
-          category: normalizeCategory(event.category),
-        }));
-        setEvents(future);
-      } catch {
-        setEvents([]);
-      } finally {
-        setLoading(false);
-      }
-    };
     fetchAll();
-  }, []);
+  }, [fetchAll]);
+
+  useEffect(() => {
+    window.addEventListener(APP_SOFT_REFRESH_EVENT, fetchAll);
+    return () => window.removeEventListener(APP_SOFT_REFRESH_EVENT, fetchAll);
+  }, [fetchAll]);
 
   const categories = ['all', ...new Set(events.map((e) => normalizeCategory(e.category)))];
   const filtered = filter === 'all'

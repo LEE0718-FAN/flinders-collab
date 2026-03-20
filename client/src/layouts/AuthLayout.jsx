@@ -55,8 +55,8 @@ export default function AuthLayout({ children }) {
       {/* Main content — login card + optional side panel */}
       <div className="relative z-10 flex flex-1 items-center justify-center py-2 sm:py-4">
         {/* Login column */}
-        <div className="grid w-full max-w-[1080px] items-center justify-center gap-6 xl:grid-cols-[minmax(0,480px)_minmax(340px,380px)] xl:gap-8">
-          <div className="w-full max-w-[480px] justify-self-center animate-slide-up">
+        <div className="grid w-full max-w-[980px] items-center justify-center gap-6 xl:grid-cols-[480px_340px] xl:gap-8">
+          <div className="w-full max-w-[480px] justify-self-center animate-slide-up xl:justify-self-center">
             {/* Logo area */}
             <div className="mb-4 text-center sm:mb-6">
               <div className="mx-auto mb-3 flex h-16 items-center justify-center">

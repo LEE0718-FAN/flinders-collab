@@ -14,6 +14,7 @@ import { Loader2, LayoutGrid, PlayCircle } from 'lucide-react';
 
 const TEMP_ROOM_PREFIX = 'temp-room-';
 const ROOM_NAVIGATION_UPDATED_EVENT = 'rooms-updated';
+const APP_SOFT_REFRESH_EVENT = 'app-soft-refresh';
 
 function upsertRoom(rooms, room, fallback = {}) {
   if (!room?.id) return rooms;
@@ -102,6 +103,14 @@ export default function DashboardPage() {
 
   useEffect(() => {
     fetchRooms();
+  }, [fetchRooms]);
+
+  useEffect(() => {
+    const handleSoftRefresh = () => {
+      fetchRooms();
+    };
+    window.addEventListener(APP_SOFT_REFRESH_EVENT, handleSoftRefresh);
+    return () => window.removeEventListener(APP_SOFT_REFRESH_EVENT, handleSoftRefresh);
   }, [fetchRooms]);
 
   useEffect(() => {

@@ -105,16 +105,16 @@ export default function EventForm({ roomId, onCreateStart, onCreated, onCreateEr
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[520px] rounded-2xl">
-        <DialogHeader>
+      <DialogContent className="grid max-h-[calc(100dvh-0.5rem)] w-[calc(100vw-0.5rem)] max-w-[560px] grid-rows-[auto_minmax(0,1fr)] gap-0 overflow-hidden rounded-[28px] p-0 sm:max-h-[calc(100dvh-2rem)] sm:w-full">
+        <DialogHeader className="border-b border-slate-100 px-4 pb-3 pt-5 sm:px-6 sm:pb-4 sm:pt-6">
           <DialogTitle className="text-lg font-bold">New Event</DialogTitle>
           <DialogDescription className="text-slate-500">{displayDate}</DialogDescription>
         </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="overflow-y-auto px-4 pb-4 pt-4 sm:px-6 sm:pb-6">
           {/* Category selection */}
-          <div className="space-y-2">
+          <div className="space-y-2.5">
             <label className="text-sm font-semibold text-slate-700">Category</label>
-            <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+            <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
               {CATEGORIES.map((c) => {
                 const isSelected = category === c.value;
                 return (
@@ -122,14 +122,14 @@ export default function EventForm({ roomId, onCreateStart, onCreated, onCreateEr
                     key={c.value}
                     type="button"
                     onClick={() => setCategory(c.value)}
-                    className={`flex flex-col items-center gap-1.5 rounded-xl border-2 px-2 py-3 text-xs transition-all duration-200 ${
+                    className={`flex min-h-[88px] flex-col items-center justify-center gap-1 rounded-2xl border px-2 py-2.5 text-[11px] transition-all duration-200 sm:min-h-[96px] sm:text-xs ${
                       isSelected
                         ? 'border-blue-500 ring-2 ring-offset-1 ring-blue-500/30 bg-blue-50 text-blue-700 font-bold shadow-md'
                         : 'border-slate-200 hover:border-blue-300 hover:bg-blue-50/50 text-slate-500'
                     }`}
                   >
-                    <span className={`text-lg flex items-center justify-center h-8 w-8 rounded-full ${isSelected ? 'bg-blue-100' : 'bg-slate-100'}`}>{c.icon}</span>
-                    <span className="truncate w-full text-center leading-tight">{c.label}</span>
+                    <span className={`flex h-8 w-8 items-center justify-center rounded-full text-base ${isSelected ? 'bg-blue-100' : 'bg-slate-100'}`}>{c.icon}</span>
+                    <span className="w-full text-center leading-tight break-words">{c.label}</span>
                   </button>
                 );
               })}
@@ -137,7 +137,7 @@ export default function EventForm({ roomId, onCreateStart, onCreated, onCreateEr
           </div>
 
           {/* Title */}
-          <div className="space-y-2">
+          <div className="mt-4 space-y-2">
             <label className="text-sm font-semibold text-slate-700">Event Title</label>
             <Input
               className="rounded-xl border-slate-200 focus:border-blue-400"
@@ -150,7 +150,7 @@ export default function EventForm({ roomId, onCreateStart, onCreated, onCreateEr
           </div>
 
           {/* Date and Time */}
-          <div className="space-y-3">
+          <div className="mt-4 space-y-3">
             <div className="grid gap-3 md:grid-cols-[minmax(0,1.25fr)_minmax(0,1fr)_minmax(0,1fr)]">
               <DateField
                 label="Date"
@@ -158,6 +158,7 @@ export default function EventForm({ roomId, onCreateStart, onCreated, onCreateEr
                 readOnly
                 disabled
                 inputClassName="cursor-default"
+                className="md:col-span-1"
               />
               <TimeField
                 label="Start"
@@ -174,7 +175,7 @@ export default function EventForm({ roomId, onCreateStart, onCreated, onCreateEr
           </div>
 
           {/* Location */}
-          <div className="space-y-2">
+          <div className="mt-4 space-y-2">
             <label className="text-sm font-semibold text-slate-700">Location <span className="text-slate-400 font-normal">(optional)</span></label>
             <Input className="rounded-xl border-slate-200" placeholder="e.g. Flinders Library Room 3" value={locationName} onChange={(e) => setLocationName(e.target.value)} />
           </div>
@@ -196,7 +197,7 @@ export default function EventForm({ roomId, onCreateStart, onCreated, onCreateEr
           )}
 
           {/* Description */}
-          <div className="space-y-2">
+          <div className="mt-4 space-y-2">
             <label className="text-sm font-semibold text-slate-700">Description <span className="text-slate-400 font-normal">(optional)</span></label>
             <Textarea
               className="rounded-xl border-slate-200"
@@ -207,11 +208,13 @@ export default function EventForm({ roomId, onCreateStart, onCreated, onCreateEr
             />
           </div>
 
-          {error && <p className="text-sm text-destructive font-medium">{error}</p>}
-          <Button type="submit" className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl h-12 shadow-lg shadow-blue-500/25 hover:shadow-xl hover:shadow-blue-500/30 hover:from-blue-700 hover:to-indigo-700 transition-all duration-200 font-semibold" disabled={loading}>
-            {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Add Event
-          </Button>
+          {error && <p className="mt-4 text-sm font-medium text-destructive">{error}</p>}
+          <div className="sticky bottom-0 mt-4 bg-background/95 pb-[max(0rem,env(safe-area-inset-bottom))] pt-2 backdrop-blur sm:static sm:bg-transparent sm:p-0">
+            <Button type="submit" className="h-12 w-full rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 font-semibold text-white shadow-lg shadow-blue-500/25 transition-all duration-200 hover:from-blue-700 hover:to-indigo-700 hover:shadow-xl hover:shadow-blue-500/30" disabled={loading}>
+              {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Add Event
+            </Button>
+          </div>
         </form>
       </DialogContent>
     </Dialog>

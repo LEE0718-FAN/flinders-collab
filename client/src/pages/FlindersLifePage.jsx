@@ -38,6 +38,7 @@ const CATEGORY_COLORS = {
   'Career': 'bg-amber-100 text-amber-700 border-amber-200',
   'General': 'bg-slate-100 text-slate-600 border-slate-200',
 };
+const APP_SOFT_REFRESH_EVENT = 'app-soft-refresh';
 
 // ── Flinders 2026 Academic Calendar ──
 const ACADEMIC_DATES = [
@@ -387,6 +388,15 @@ export default function FlindersLifePage() {
   useEffect(() => {
     if (!preferencesReady) return;
     fetchEvents(selectedInterests);
+  }, [fetchEvents, preferencesReady, selectedInterests]);
+
+  useEffect(() => {
+    if (!preferencesReady) return undefined;
+    const handleSoftRefresh = () => {
+      fetchEvents(selectedInterests);
+    };
+    window.addEventListener(APP_SOFT_REFRESH_EVENT, handleSoftRefresh);
+    return () => window.removeEventListener(APP_SOFT_REFRESH_EVENT, handleSoftRefresh);
   }, [fetchEvents, preferencesReady, selectedInterests]);
 
   const toggleInterest = (interest) => {
