@@ -4,6 +4,7 @@ const API = import.meta.env.VITE_API_BASE_URL || '';
 
 export async function diagnosePushSubscription() {
   const result = {
+    stage: 'start',
     permission: typeof Notification !== 'undefined' ? Notification.permission : 'unsupported',
     hasServiceWorker: typeof navigator !== 'undefined' && 'serviceWorker' in navigator,
     hasPushManager: typeof window !== 'undefined' && 'PushManager' in window,
@@ -21,10 +22,18 @@ export async function diagnosePushSubscription() {
   }
 
   try {
-    const registration = await navigator.serviceWorker.ready;
+    result.stage = 'service-worker';
+    const registration = await withTimeout(
+      navigator.serviceWorker.ready,
+      6000,
+      'Service worker ready timeout',
+    );
     result.serviceWorkerReady = true;
 
-    const keyRes = await fetch(`${API}/api/push/vapid-key`);
+    result.stage = 'vapid-key';
+    const keyRes = await fetchWithTimeout(`${API}/api/push/vapid-key`, {
+      timeoutMs: 6000,
+    });
     if (!keyRes.ok) {
       throw new Error(`VAPID key request failed (${keyRes.status})`);
     }
@@ -32,8 +41,10 @@ export async function diagnosePushSubscription() {
     result.hasVapidKey = Boolean(publicKey);
     if (!publicKey) return result;
 
+    result.stage = 'get-subscription';
     let subscription = await registration.pushManager.getSubscription();
     if (!subscription && Notification.permission === 'granted') {
+      result.stage = 'subscribe';
       subscription = await registration.pushManager.subscribe({
         userVisibleOnly: true,
         applicationServerKey: urlBase64ToUint8Array(publicKey),
@@ -44,10 +55,12 @@ export async function diagnosePushSubscription() {
     result.endpoint = subscription?.endpoint || null;
 
     if (subscription) {
-      const saveRes = await fetch(`${API}/api/push/subscribe`, {
+      result.stage = 'save-subscription';
+      const saveRes = await fetchWithTimeout(`${API}/api/push/subscribe`, {
         method: 'POST',
         headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
         body: JSON.stringify({ subscription }),
+        timeoutMs: 6000,
       });
       result.savedToServer = saveRes.ok;
       if (!saveRes.ok) {
@@ -56,9 +69,10 @@ export async function diagnosePushSubscription() {
       }
     }
 
+    result.stage = 'done';
     return result;
   } catch (err) {
-    result.error = err?.message || 'Unknown push diagnosis error';
+    result.error = `[${result.stage}] ${err?.message || 'Unknown push diagnosis error'}`;
     return result;
   }
 }
@@ -139,4 +153,35 @@ function urlBase64ToUint8Array(base64String) {
   const array = new Uint8Array(raw.length);
   for (let i = 0; i < raw.length; i++) array[i] = raw.charCodeAt(i);
   return array;
+}
+
+async function fetchWithTimeout(url, options = {}) {
+  const { timeoutMs = 6000, ...fetchOptions } = options;
+  const controller = new AbortController();
+  const timer = window.setTimeout(() => controller.abort(new Error('Fetch timeout')), timeoutMs);
+
+  try {
+    return await fetch(url, {
+      ...fetchOptions,
+      signal: controller.signal,
+    });
+  } finally {
+    window.clearTimeout(timer);
+  }
+}
+
+function withTimeout(promise, timeoutMs, message) {
+  return new Promise((resolve, reject) => {
+    const timer = window.setTimeout(() => reject(new Error(message)), timeoutMs);
+
+    Promise.resolve(promise)
+      .then((value) => {
+        window.clearTimeout(timer);
+        resolve(value);
+      })
+      .catch((error) => {
+        window.clearTimeout(timer);
+        reject(error);
+      });
+  });
 }
