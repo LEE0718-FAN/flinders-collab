@@ -56,9 +56,9 @@ export default function AuthLayout({ children }) {
       <div className="absolute bottom-1/3 left-1/3 hidden h-[200px] w-[200px] rounded-full bg-purple-500/10 blur-[80px] animate-float sm:block" style={{ animationDelay: '6s' }} />
 
       {/* Main content — login card + optional side panel */}
-      <div className="relative z-10 flex items-center gap-8">
+      <div className="relative z-10 flex items-center justify-center gap-8">
         {/* Login column */}
-        <div className="w-full max-w-md animate-slide-up">
+        <div className="w-full max-w-md shrink-0 animate-slide-up">
           {/* Logo area */}
           <div className="mb-6 text-center">
             <div className="mx-auto mb-3 flex h-16 items-center justify-center">
@@ -93,7 +93,7 @@ export default function AuthLayout({ children }) {
 
         {/* Desktop side panel — only on xl screens */}
         {showSidePanel && (
-          <div className="hidden xl:block">
+          <div className="hidden lg:block">
             <DesktopSidePanel onDismiss={handleDismiss} onNeverShow={handleNeverShow} />
           </div>
         )}

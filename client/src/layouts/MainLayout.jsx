@@ -656,7 +656,7 @@ export default function MainLayout({ children }) {
                 </Button>
               </SheetTrigger>
               <SheetContent side="left" className="w-[88vw] max-w-72 border-r-0 bg-gradient-to-b from-slate-900 via-slate-900 to-indigo-950 p-0">
-                <SheetHeader className="px-5 py-4">
+                <SheetHeader className="px-5 py-4 safe-area-top">
                   <SheetTitle className="flex items-center gap-2.5 text-left">
                     <div className="h-10 w-10 shrink-0 overflow-hidden rounded-xl bg-white p-1 shadow-lg flex items-center justify-center">
                       <img
