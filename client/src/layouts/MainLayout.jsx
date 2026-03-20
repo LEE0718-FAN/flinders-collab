@@ -577,6 +577,28 @@ export default function MainLayout({ children }) {
     syncAppBadge(totalAppBadgeCount).catch(() => {});
   }, [totalAppBadgeCount]);
 
+  useEffect(() => {
+    const handlePushDebug = (event) => {
+      const detail = event.detail || {};
+      const stage = detail.stage ? `[${detail.stage}] ` : '';
+      const message = `${stage}${detail.message || 'Push update'}`;
+      addToast({
+        key: `push-debug:${detail.stage || 'unknown'}:${detail.status || 'default'}:${detail.message || ''}`,
+        title: detail.status === 'error'
+          ? 'Push Debug'
+          : detail.status === 'success'
+            ? 'Push Ready'
+            : 'Push Info',
+        message,
+        type: detail.status === 'error' ? 'error' : detail.status === 'success' ? 'success' : 'info',
+        duration: detail.status === 'error' ? 10000 : 5000,
+      });
+    };
+
+    window.addEventListener('push-debug', handlePushDebug);
+    return () => window.removeEventListener('push-debug', handlePushDebug);
+  }, [addToast]);
+
   // Listen for maintenance notifications via Socket.IO
   useEffect(() => {
     const onUpcoming = (data) => {
