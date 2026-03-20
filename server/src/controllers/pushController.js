@@ -1,12 +1,15 @@
+const crypto = require('crypto');
 const webpush = require('web-push');
 const config = require('../config');
 const { supabaseAdmin } = require('../services/supabase');
 
 if (!config.vapid.publicKey || !config.vapid.privateKey) {
-  const generated = webpush.generateVAPIDKeys();
-  config.vapid.publicKey = generated.publicKey;
-  config.vapid.privateKey = generated.privateKey;
-  console.log('[push] VAPID keys missing in env, generated ephemeral keys for this server instance');
+  const derived = deriveDeterministicVapidKeys(
+    config.supabase.serviceRoleKey || config.jwtSecret || config.supabase.url || 'collab-vapid-fallback'
+  );
+  config.vapid.publicKey = derived.publicKey;
+  config.vapid.privateKey = derived.privateKey;
+  console.log('[push] VAPID keys missing in env, derived stable keys from server secret');
 }
 
 if (config.vapid.publicKey && config.vapid.privateKey) {
@@ -120,3 +123,39 @@ async function notifyRoom(roomId, senderId, payload) {
 }
 
 module.exports = { subscribe, unsubscribe, getVapidKey, notifyRoom, notifyUsers };
+
+function deriveDeterministicVapidKeys(secret) {
+  for (let attempt = 0; attempt < 8; attempt += 1) {
+    const seed = crypto
+      .createHash('sha256')
+      .update(`${secret}:vapid:${attempt}`)
+      .digest();
+
+    try {
+      const ecdh = crypto.createECDH('prime256v1');
+      ecdh.setPrivateKey(seed);
+
+      const privateKey = ecdh.getPrivateKey();
+      const publicKey = ecdh.getPublicKey(undefined, 'uncompressed');
+
+      if (privateKey.length === 32 && publicKey.length === 65) {
+        return {
+          publicKey: toBase64Url(publicKey),
+          privateKey: toBase64Url(privateKey),
+        };
+      }
+    } catch {
+      // Try the next derived seed if this scalar is invalid for the curve.
+    }
+  }
+
+  return webpush.generateVAPIDKeys();
+}
+
+function toBase64Url(buffer) {
+  return buffer
+    .toString('base64')
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=+$/g, '');
+}

@@ -42,12 +42,19 @@ export async function diagnosePushSubscription() {
     if (!publicKey) return result;
 
     result.stage = 'get-subscription';
+    const applicationServerKey = urlBase64ToUint8Array(publicKey);
     let subscription = await registration.pushManager.getSubscription();
+    if (subscription && !subscriptionMatchesKey(subscription, applicationServerKey)) {
+      await removeStoredSubscription(subscription);
+      await subscription.unsubscribe().catch(() => {});
+      subscription = null;
+    }
+
     if (!subscription && Notification.permission === 'granted') {
       result.stage = 'subscribe';
       subscription = await registration.pushManager.subscribe({
         userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(publicKey),
+        applicationServerKey,
       });
     }
 
@@ -94,11 +101,18 @@ export async function subscribeToPush() {
     if (!publicKey) return null;
 
     // Check existing subscription
+    const applicationServerKey = urlBase64ToUint8Array(publicKey);
     let subscription = await registration.pushManager.getSubscription();
+    if (subscription && !subscriptionMatchesKey(subscription, applicationServerKey)) {
+      await removeStoredSubscription(subscription);
+      await subscription.unsubscribe().catch(() => {});
+      subscription = null;
+    }
+
     if (!subscription) {
       subscription = await registration.pushManager.subscribe({
         userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(publicKey),
+        applicationServerKey,
       });
     }
 
@@ -184,4 +198,31 @@ function withTimeout(promise, timeoutMs, message) {
         reject(error);
       });
   });
+}
+
+function subscriptionMatchesKey(subscription, expectedKey) {
+  const currentKey = subscription?.options?.applicationServerKey;
+  if (!currentKey || !expectedKey) return true;
+
+  const currentBytes = new Uint8Array(currentKey);
+  if (currentBytes.length !== expectedKey.length) return false;
+
+  for (let i = 0; i < currentBytes.length; i += 1) {
+    if (currentBytes[i] !== expectedKey[i]) return false;
+  }
+  return true;
+}
+
+async function removeStoredSubscription(subscription) {
+  if (!subscription?.endpoint) return;
+
+  try {
+    await fetch(`${API}/api/push/unsubscribe`, {
+      method: 'POST',
+      headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ endpoint: subscription.endpoint }),
+    });
+  } catch {
+    // Ignore stale unsubscribe failures during key rotation.
+  }
 }
