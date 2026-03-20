@@ -602,15 +602,9 @@ export default function MainLayout({ children }) {
   const displayName = user?.user_metadata?.name || user?.email;
 
   return (
-<<<<<<< HEAD
-    <div className="flex min-h-screen bg-background">
-      {/* Desktop Sidebar */}
-      <aside className="hidden w-64 shrink-0 flex-col bg-gradient-to-b from-slate-900 via-slate-900 to-indigo-950 md:flex">
-=======
     <div className="app-shell overflow-x-safe flex bg-background">
       {/* Desktop Sidebar */}
       <aside className="app-shell hidden w-64 shrink-0 flex-col overflow-hidden bg-gradient-to-b from-slate-900 via-slate-900 to-indigo-950 md:flex">
->>>>>>> f81203f (fix: stabilize mobile viewport shell)
         {/* Sidebar header / brand */}
         <div className="flex h-16 items-center gap-3 px-5">
           <div className="h-10 w-10 shrink-0 overflow-hidden rounded-xl bg-white p-1 shadow-lg flex items-center justify-center">
