@@ -53,15 +53,8 @@
     min-height: 100%;
   }
 
-  /* Mobile safe area support */
+  /* Mobile safe area support — applied selectively, not on body to avoid double padding */
   @supports(padding: env(safe-area-inset-top)) {
-    body {
-      padding-top: env(safe-area-inset-top, 0px);
-      padding-right: env(safe-area-inset-right, 0px);
-      padding-bottom: env(safe-area-inset-bottom, 0px);
-      padding-left: env(safe-area-inset-left, 0px);
-    }
-
     .safe-area-top {
       padding-top: env(safe-area-inset-top, 0px);
     }

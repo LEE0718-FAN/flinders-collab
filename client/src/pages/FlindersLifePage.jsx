@@ -548,7 +548,7 @@ export default function FlindersLifePage() {
 
         {/* ── Study Rooms ── */}
         <TabsContent value="study-rooms" data-tutorial="flinders-panel-study-rooms">
-          <div className="grid gap-4 sm:grid-cols-2" data-tutorial="flinders-study-rooms-content">
+          <div className="grid gap-6 sm:grid-cols-2" data-tutorial="flinders-study-rooms-content">
             <div className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
               <div className="bg-gradient-to-r from-indigo-600 to-blue-600 px-5 py-4">
                 <div className="flex items-center gap-3">

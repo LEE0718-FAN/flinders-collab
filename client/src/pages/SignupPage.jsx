@@ -15,9 +15,11 @@ export default function SignupPage() {
   };
 
   return (
-    <AuthLayout>
-      <SignupForm onSubmit={handleSignup} />
+    <>
+      <AuthLayout>
+        <SignupForm onSubmit={handleSignup} />
+      </AuthLayout>
       <ReportButton section="signup" floating />
-    </AuthLayout>
+    </>
   );
 }

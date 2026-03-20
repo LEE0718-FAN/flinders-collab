@@ -43,8 +43,8 @@ export default function LoginPage() {
       <InstallBanner />
       <AuthLayout>
         <LoginForm onSubmit={handleLogin} onGuestLogin={handleGuestLogin} onRequestPasswordReset={handlePasswordReset} />
-        <ReportButton section="login" floating />
       </AuthLayout>
+      <ReportButton section="login" floating />
     </>
   );
 }

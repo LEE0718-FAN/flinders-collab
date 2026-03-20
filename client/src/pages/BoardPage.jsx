@@ -860,7 +860,7 @@ export default function BoardPage() {
       </div>
 
       {/* Category filter */}
-      <div className="flex gap-1.5 mb-5 overflow-x-auto pb-1 scrollbar-none">
+      <div className="flex gap-1.5 mb-5 overflow-x-auto pb-1 scrollbar-hide">
         {CATEGORIES.map((cat) => {
           const Icon = cat.icon;
           const style = CATEGORY_STYLES[cat.value] || {};

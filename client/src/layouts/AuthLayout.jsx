@@ -60,8 +60,8 @@ export default function AuthLayout({ children }) {
         {/* Login column */}
         <div className="w-full max-w-md animate-slide-up">
           {/* Logo area */}
-          <div className="mb-8 text-center">
-            <div className="mx-auto mb-5 flex h-20 items-center justify-center">
+          <div className="mb-6 text-center">
+            <div className="mx-auto mb-3 flex h-16 items-center justify-center">
               <img
                 src="/images/flinders-logo.png"
                 alt="Flinders University"
@@ -100,7 +100,7 @@ export default function AuthLayout({ children }) {
       </div>
 
       {/* Developer credit - bottom of page */}
-      <div className="relative z-10 mt-10 mb-4 flex flex-col items-center gap-2.5">
+      <div className="relative z-10 mt-6 mb-8 flex flex-col items-center gap-2.5">
         <div className="h-px w-16 bg-white/10" />
         <div className="flex items-center gap-3">
           <div className="relative">

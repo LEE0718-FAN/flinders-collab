@@ -647,7 +647,7 @@ export default function MainLayout({ children }) {
 
       <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
         {/* Top Bar */}
-        <header className="flex min-h-16 items-center justify-between gap-3 border-b-2 border-slate-200 bg-white/90 px-3 pt-[env(safe-area-inset-top)] backdrop-blur-xl sm:px-4">
+        <header className="flex h-16 items-center justify-between gap-3 border-b-2 border-slate-200 bg-white/90 px-3 safe-area-top backdrop-blur-xl sm:px-4">
           <div className="flex min-w-0 items-center gap-2">
             <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
               <SheetTrigger asChild>
@@ -754,7 +754,7 @@ export default function MainLayout({ children }) {
           data-main-scroll-container="true"
           className="relative flex-1 overflow-y-auto bg-slate-50 p-3 pb-6 sm:p-4 md:p-6 custom-scrollbar animate-fade-in"
           style={{
-            paddingTop: 'max(0.75rem, var(--safe-top))',
+            paddingTop: '0.75rem',
             paddingBottom: 'max(1.5rem, var(--safe-bottom))',
             paddingLeft: 'max(0.75rem, var(--safe-left))',
             paddingRight: 'max(0.75rem, var(--safe-right))',
