@@ -26,6 +26,9 @@ import { getUnreadCounts } from '@/services/announcements';
 
 const ROOM_NAVIGATION_UPDATED_EVENT = 'rooms-updated';
 const APP_SOFT_REFRESH_EVENT = 'app-soft-refresh';
+const PULL_REFRESH_MIN_DRAG = 18;
+const PULL_REFRESH_READY_DISTANCE = 108;
+const PULL_REFRESH_MAX_DISTANCE = 120;
 
 const roomPalettes = [
   { softBg: '#fff1f6', softBorder: '#fbcfe8', text: '#831843', icon: '#9d174d' },
@@ -608,7 +611,7 @@ export default function MainLayout({ children }) {
 
   const displayName = user?.user_metadata?.name || user?.email;
   const canPullToRefresh = typeof window !== 'undefined' && window.innerWidth < 768;
-  const pullReady = pullDistance >= 72;
+  const pullReady = pullDistance >= PULL_REFRESH_READY_DISTANCE;
 
   const resetPullState = useCallback(() => {
     pullStartYRef.current = null;
@@ -646,10 +649,17 @@ export default function MainLayout({ children }) {
       return;
     }
 
-    const nextDistance = Math.min(delta * 0.45, 92);
+    if (delta < PULL_REFRESH_MIN_DRAG) {
+      setPullDistance(0);
+      pullDistanceRef.current = 0;
+      pullTriggeredRef.current = false;
+      return;
+    }
+
+    const nextDistance = Math.min((delta - PULL_REFRESH_MIN_DRAG) * 0.32, PULL_REFRESH_MAX_DISTANCE);
     pullDistanceRef.current = nextDistance;
     setPullDistance(nextDistance);
-    if (nextDistance >= 72) {
+    if (nextDistance >= PULL_REFRESH_READY_DISTANCE) {
       pullTriggeredRef.current = true;
     }
   }, [canPullToRefresh, isPullRefreshing, resetPullState]);
