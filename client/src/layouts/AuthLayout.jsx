@@ -59,23 +59,23 @@ export default function AuthLayout({ children }) {
         </div>
         <div className="relative flex w-full items-center justify-center">
           {/* Login column */}
-          <div className="w-full max-w-[472px] animate-slide-up">
+          <div className="w-full max-w-[452px] animate-slide-up min-[1380px]:max-w-[472px]">
             {/* Logo area */}
-            <div className="mb-4 text-center sm:mb-5">
-              <div className="mx-auto mb-2.5 flex h-16 items-center justify-center">
+            <div className="mb-3 text-center sm:mb-4 min-[1380px]:mb-5">
+              <div className="mx-auto mb-2 flex h-14 items-center justify-center min-[1380px]:mb-2.5 min-[1380px]:h-16">
                 <img
                   src="/images/flinders-logo.png"
                   alt="Flinders University"
-                  className="h-14 object-contain"
+                  className="h-12 object-contain min-[1380px]:h-14"
                 />
               </div>
-              <h1 className="text-2xl font-bold tracking-tight text-white sm:text-3xl">
+              <h1 className="text-[1.75rem] font-bold tracking-tight text-white min-[1380px]:text-3xl">
                 Flinders <span className="bg-gradient-to-r from-blue-400 to-violet-400 bg-clip-text text-transparent">Collab</span>
               </h1>
-              <p className="mt-1.5 text-sm text-white/40">
+              <p className="mt-1 text-[13px] text-white/40 min-[1380px]:mt-1.5 min-[1380px]:text-sm">
                 Team collaboration for Flinders University students
               </p>
-              <div className="mx-auto mt-3.5 h-0.5 w-16 rounded-full bg-gradient-to-r from-transparent via-indigo-400/60 to-transparent" />
+              <div className="mx-auto mt-2.5 h-0.5 w-16 rounded-full bg-gradient-to-r from-transparent via-indigo-400/60 to-transparent min-[1380px]:mt-3.5" />
             </div>
 
             {/* Subtle glow behind card */}
@@ -84,12 +84,12 @@ export default function AuthLayout({ children }) {
             <div className="relative">
               {/* Auth card */}
               <Card className="relative rounded-[28px] border border-white/10 bg-white/[0.96] shadow-2xl shadow-black/40 backdrop-blur-xl">
-                <CardContent className="p-5 sm:p-6 lg:p-7">{children}</CardContent>
+                <CardContent className="p-5 sm:p-6 min-[1380px]:p-7">{children}</CardContent>
               </Card>
 
               {/* Desktop side panel */}
               {showSidePanel && (
-                <div className="hidden xl:block xl:absolute xl:left-[calc(100%+28px)] xl:top-0">
+                <div className="hidden min-[1380px]:absolute min-[1380px]:left-[calc(100%+22px)] min-[1380px]:top-0 min-[1380px]:block">
                   <DesktopSidePanel onDismiss={handleDismiss} onNeverShow={handleNeverShow} />
                 </div>
               )}
