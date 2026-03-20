@@ -87,8 +87,8 @@ export function DesktopSidePanel({ onDismiss, onNeverShow }) {
   const url = typeof window !== 'undefined' ? window.location.origin : '';
 
   return (
-    <div className="w-full max-w-[340px] shrink-0 animate-slide-up">
-      <div className="relative overflow-hidden rounded-[28px] border border-white/10 bg-white/[0.08] p-5 shadow-2xl shadow-black/20 backdrop-blur-xl">
+    <div className="w-full max-w-[332px] shrink-0 animate-slide-up">
+      <div className="relative overflow-hidden rounded-[28px] border border-white/10 bg-white/[0.08] p-4.5 shadow-2xl shadow-black/20 backdrop-blur-xl">
         <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent" />
 
         {/* Close button */}
@@ -100,21 +100,21 @@ export function DesktopSidePanel({ onDismiss, onNeverShow }) {
           <X className="h-4 w-4" />
         </button>
 
-        <div className="mb-4 pr-10 text-left">
-          <div className="mb-2 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/10 px-3 py-1 text-[11px] font-semibold tracking-wide text-white/70">
+        <div className="mb-3.5 pr-10 text-left">
+          <div className="mb-2 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/10 px-3 py-1 text-[10px] font-semibold tracking-wide text-white/70">
             <Smartphone className="h-3.5 w-3.5 text-indigo-300" />
             Install on mobile
           </div>
-          <h2 className="text-lg font-semibold tracking-tight text-white sm:text-[1.45rem]">
+          <h2 className="text-lg font-semibold tracking-tight text-white">
             Add Collab to your phone
           </h2>
-          <p className="mt-2 max-w-[24ch] text-[12px] leading-6 text-white/55">
+          <p className="mt-1.5 max-w-[24ch] text-[12px] leading-5 text-white/55">
             Scan the QR code, then add the app from Safari or Chrome.
           </p>
         </div>
 
-        <div className="grid gap-4">
-          <div className="rounded-[24px] border border-white/10 bg-slate-950/20 p-4">
+        <div className="grid gap-3.5">
+          <div className="rounded-[24px] border border-white/10 bg-slate-950/20 p-3.5">
             <div className="flex items-center justify-between gap-3">
               <div>
                 <p className="text-xs font-semibold uppercase tracking-[0.18em] text-white/45">
@@ -129,7 +129,7 @@ export function DesktopSidePanel({ onDismiss, onNeverShow }) {
               </div>
             </div>
 
-            <div className="mx-auto mt-4 w-fit rounded-2xl bg-white p-3 shadow-[0_14px_32px_-16px_rgba(0,0,0,0.45)]">
+            <div className="mx-auto mt-3.5 w-fit rounded-2xl bg-white p-3 shadow-[0_14px_32px_-16px_rgba(0,0,0,0.45)]">
               <QRCodeSVG
                 value={url}
                 size={120}
@@ -141,13 +141,13 @@ export function DesktopSidePanel({ onDismiss, onNeverShow }) {
             </div>
           </div>
 
-          <div className="grid gap-3 sm:grid-cols-2">
-            <div className="rounded-2xl border border-white/10 bg-white/[0.06] p-4">
-              <div className="mb-2 flex items-center gap-2">
+          <div className="grid gap-2.5 sm:grid-cols-2">
+            <div className="rounded-2xl border border-white/10 bg-white/[0.06] p-3.5">
+              <div className="mb-1.5 flex items-center gap-2">
                 <span className="text-sm">🍎</span>
                 <p className="text-sm font-semibold text-white/85">iPhone / iPad</p>
               </div>
-              <div className="space-y-2 text-[11px] leading-5 text-white/55">
+              <div className="space-y-1.5 text-[11px] leading-5 text-white/55">
                 <p className="flex items-start gap-2">
                   <span className="mt-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-md bg-white/10 text-[10px] font-bold text-white/80">1</span>
                   <span>Open in Safari.</span>
@@ -159,12 +159,12 @@ export function DesktopSidePanel({ onDismiss, onNeverShow }) {
               </div>
             </div>
 
-            <div className="rounded-2xl border border-white/10 bg-white/[0.06] p-4">
-              <div className="mb-2 flex items-center gap-2">
+            <div className="rounded-2xl border border-white/10 bg-white/[0.06] p-3.5">
+              <div className="mb-1.5 flex items-center gap-2">
                 <span className="text-sm">🤖</span>
                 <p className="text-sm font-semibold text-white/85">Android</p>
               </div>
-              <div className="space-y-2 text-[11px] leading-5 text-white/55">
+              <div className="space-y-1.5 text-[11px] leading-5 text-white/55">
                 <p className="flex items-start gap-2">
                   <span className="mt-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-md bg-white/10 text-[10px] font-bold text-white/80">1</span>
                   <span>Open in Chrome.</span>
@@ -177,8 +177,8 @@ export function DesktopSidePanel({ onDismiss, onNeverShow }) {
             </div>
           </div>
 
-          <div className="rounded-2xl border border-amber-500/20 bg-amber-500/10 p-4">
-            <p className="mb-1 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.16em] text-amber-200/80">
+          <div className="rounded-2xl border border-amber-500/20 bg-amber-500/10 p-3.5">
+            <p className="mb-1 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-amber-200/80">
               <Bell className="h-3.5 w-3.5" />
               Notifications
             </p>
@@ -190,7 +190,7 @@ export function DesktopSidePanel({ onDismiss, onNeverShow }) {
 
         <button
           onClick={onNeverShow}
-          className="mt-5 w-full text-center text-[11px] text-white/25 transition hover:text-white/50"
+          className="mt-4 w-full text-center text-[11px] text-white/25 transition hover:text-white/50"
         >
           Hide tips
         </button>

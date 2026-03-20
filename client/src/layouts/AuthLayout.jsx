@@ -28,10 +28,10 @@ export default function AuthLayout({ children }) {
 
   return (
     <div
-      className="relative flex min-h-screen flex-col overflow-hidden px-4 py-5 sm:px-6 sm:py-8"
+      className="relative flex min-h-screen flex-col overflow-hidden px-4 py-4 sm:px-6 sm:py-6"
       style={{
-        paddingTop: 'max(1.25rem, env(safe-area-inset-top))',
-        paddingBottom: 'max(1.5rem, env(safe-area-inset-bottom))',
+        paddingTop: 'max(1rem, env(safe-area-inset-top))',
+        paddingBottom: 'max(1.25rem, env(safe-area-inset-bottom))',
       }}
     >
       {/* Background */}
@@ -53,13 +53,13 @@ export default function AuthLayout({ children }) {
       <div className="absolute bottom-1/3 left-1/3 hidden h-[200px] w-[200px] rounded-full bg-purple-500/10 blur-[80px] animate-float sm:block" style={{ animationDelay: '6s' }} />
 
       {/* Main content — login card + optional side panel */}
-      <div className="relative z-10 flex flex-1 items-center justify-center py-2 sm:py-4">
+      <div className="relative z-10 flex flex-1 items-center justify-center py-1 sm:py-3">
         {/* Login column */}
-        <div className="grid w-full max-w-[980px] items-center justify-center gap-6 xl:grid-cols-[480px_340px] xl:gap-8">
+        <div className="grid w-full max-w-[960px] items-center justify-center gap-5 xl:grid-cols-[472px_332px] xl:gap-7">
           <div className="w-full max-w-[480px] justify-self-center animate-slide-up xl:justify-self-center">
             {/* Logo area */}
-            <div className="mb-4 text-center sm:mb-6">
-              <div className="mx-auto mb-3 flex h-16 items-center justify-center">
+            <div className="mb-4 text-center sm:mb-5">
+              <div className="mx-auto mb-2.5 flex h-16 items-center justify-center">
                 <img
                   src="/images/flinders-logo.png"
                   alt="Flinders University"
@@ -69,10 +69,10 @@ export default function AuthLayout({ children }) {
               <h1 className="text-2xl font-bold tracking-tight text-white sm:text-3xl">
                 Flinders <span className="bg-gradient-to-r from-blue-400 to-violet-400 bg-clip-text text-transparent">Collab</span>
               </h1>
-              <p className="mt-2 text-sm text-white/40">
+              <p className="mt-1.5 text-sm text-white/40">
                 Team collaboration for Flinders University students
               </p>
-              <div className="mx-auto mt-4 h-0.5 w-16 rounded-full bg-gradient-to-r from-transparent via-indigo-400/60 to-transparent" />
+              <div className="mx-auto mt-3.5 h-0.5 w-16 rounded-full bg-gradient-to-r from-transparent via-indigo-400/60 to-transparent" />
             </div>
 
             {/* Subtle glow behind card */}
@@ -80,11 +80,11 @@ export default function AuthLayout({ children }) {
 
             {/* Auth card */}
             <Card className="relative rounded-[28px] border border-white/10 bg-white/[0.96] shadow-2xl shadow-black/40 backdrop-blur-xl">
-              <CardContent className="p-5 sm:p-7 lg:p-8">{children}</CardContent>
+              <CardContent className="p-5 sm:p-6 lg:p-7">{children}</CardContent>
             </Card>
 
             {/* Footer - university info */}
-            <p className="mt-4 text-center text-xs text-white/25 sm:mt-6">
+            <p className="mt-3.5 text-center text-xs text-white/25 sm:mt-5">
               Flinders University &middot; Adelaide, South Australia
             </p>
           </div>
@@ -99,7 +99,7 @@ export default function AuthLayout({ children }) {
       </div>
 
       {/* Developer credit - bottom of page */}
-      <div className="relative z-10 mt-4 flex flex-col items-center gap-2.5 pb-1 pt-2 sm:mt-6">
+      <div className="relative z-10 mt-3 flex flex-col items-center gap-2 pb-1 pt-2 sm:mt-5">
         <div className="h-px w-16 bg-white/10" />
         <div className="flex items-center gap-3">
           <div className="relative">
