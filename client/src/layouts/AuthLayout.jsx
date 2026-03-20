@@ -54,7 +54,7 @@ export default function AuthLayout({ children }) {
 
       {/* Main content — login card + optional side panel */}
       <div className="relative z-10 flex flex-1 items-center justify-center py-1 sm:py-3">
-        <div className="relative flex w-full items-center justify-center xl:pr-[320px]">
+        <div className="relative flex w-full items-center justify-center">
           {/* Login column */}
           <div className="w-full max-w-[472px] animate-slide-up">
             {/* Logo area */}
@@ -78,25 +78,25 @@ export default function AuthLayout({ children }) {
             {/* Subtle glow behind card */}
             <div className="pointer-events-none absolute left-1/2 top-1/2 hidden h-[300px] w-[420px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-indigo-500/10 blur-[90px] sm:block" />
 
-            {/* Auth card */}
-            <Card className="relative overflow-hidden rounded-[30px] border border-white/55 bg-white/[0.72] shadow-[0_36px_80px_-40px_rgba(15,23,42,0.55)] backdrop-blur-[26px]">
-              <div className="pointer-events-none absolute inset-x-0 top-0 h-20 bg-gradient-to-b from-white/45 via-white/10 to-transparent" />
-              <div className="pointer-events-none absolute -right-10 top-10 h-32 w-32 rounded-full bg-indigo-400/12 blur-3xl" />
-              <CardContent className="relative p-5 sm:p-6 lg:p-7">{children}</CardContent>
-            </Card>
+            <div className="relative">
+              {/* Auth card */}
+              <Card className="relative rounded-[28px] border border-white/10 bg-white/[0.96] shadow-2xl shadow-black/40 backdrop-blur-xl">
+                <CardContent className="p-5 sm:p-6 lg:p-7">{children}</CardContent>
+              </Card>
+
+              {/* Desktop side panel */}
+              {showSidePanel && (
+                <div className="hidden xl:block xl:absolute xl:left-[calc(100%+28px)] xl:top-0">
+                  <DesktopSidePanel onDismiss={handleDismiss} onNeverShow={handleNeverShow} />
+                </div>
+              )}
+            </div>
 
             {/* Footer - university info */}
             <p className="mt-3.5 text-center text-xs text-white/25 sm:mt-5">
               Flinders University &middot; Adelaide, South Australia
             </p>
           </div>
-
-          {/* Desktop side panel */}
-          {showSidePanel && (
-            <div className="hidden xl:flex xl:absolute xl:left-[calc(50%+260px)] xl:top-1/2 xl:-translate-y-1/2">
-              <DesktopSidePanel onDismiss={handleDismiss} onNeverShow={handleNeverShow} />
-            </div>
-          )}
         </div>
       </div>
 
