@@ -1,5 +1,6 @@
 import { apiUrl } from '@/lib/api';
 import { getAuthHeaders, parseResponse } from '@/lib/api-headers';
+import { cacheForOffline } from '@/lib/push';
 
 export async function createRoom(roomData) {
   const headers = getAuthHeaders();
@@ -10,7 +11,9 @@ export async function createRoom(roomData) {
 export async function getRooms() {
   const headers = getAuthHeaders();
   const res = await fetch(apiUrl('/api/rooms'), { headers });
-  return parseResponse(res);
+  const data = await parseResponse(res);
+  cacheForOffline('/api/rooms', data);
+  return data;
 }
 
 export async function getRoom(roomId) {

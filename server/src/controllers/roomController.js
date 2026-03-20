@@ -1,4 +1,5 @@
 const { supabaseAdmin } = require('../services/supabase');
+const { notifyRoom } = require('./pushController');
 
 function normalizeInviteCode(inviteCode) {
   return String(inviteCode || '').trim().toUpperCase();
@@ -257,6 +258,13 @@ async function joinRoomByCode(req, res, next) {
       room: await buildRoomResponse(room, userId, membership),
       membership,
     });
+
+    notifyRoom(room.id, userId, {
+      title: room.name || 'Room',
+      body: 'A new member joined the room',
+      tag: `member-${room.id}`,
+      data: { url: `/room/${room.id}` },
+    }).catch(() => {});
   } catch (err) {
     next(err);
   }

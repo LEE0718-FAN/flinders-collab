@@ -845,7 +845,7 @@ export default function InteractiveTutorial() {
 
       if (!flTab || bail()) {
         // Flinders Life not available — skip
-        showTip('Flinders Life', "Campus events, calendar, study rooms — all here.", { center: true, icon: '🎓' });
+        showTip('Flinders Life', "Campus info at a glance.", { center: true, icon: '🎓' });
         await pause(2500); if (bail()) { await end(); return; }
       } else {
         // Events tab
@@ -864,7 +864,7 @@ export default function InteractiveTutorial() {
           const er = evtPanel.getBoundingClientRect();
           setSpotlight({ x: er.left, y: er.top, w: er.width, h: Math.min(er.height, 350), r: 12 });
         }
-        showTip('Events', 'See personalised picks, career events, and all campus events in one place. Your interests make the recommendations smarter.', {
+        showTip('Events', 'Campus events at a glance.', {
           target: '[data-tutorial="flinders-tab-events"]',
           icon: '🎪',
           position: 'bottom',
@@ -885,7 +885,7 @@ export default function InteractiveTutorial() {
             const ar = acadPanel.getBoundingClientRect();
             setSpotlight({ x: ar.left, y: ar.top, w: ar.width, h: Math.min(ar.height, 350), r: 12 });
           }
-          showTip('Academic Calendar', 'Check semester dates, exam periods, public holidays, and key deadlines here. It works like a quick planning reference.', {
+          showTip('Academic Calendar', 'Semester dates and key deadlines.', {
             target: '[data-tutorial="flinders-tab-academic-calendar"]',
             icon: '📅',
             position: 'bottom',
@@ -907,7 +907,7 @@ export default function InteractiveTutorial() {
             const str = studyPanel.getBoundingClientRect();
             setSpotlight({ x: str.left, y: str.top, w: str.width, h: Math.min(str.height, 350), r: 12 });
           }
-          showTip('Study Rooms', 'Jump straight to campus booking links here. It is the fastest way to find an empty room before a group session.', {
+          showTip('Study Rooms', 'Book a study room on campus.', {
             target: '[data-tutorial="flinders-tab-study-rooms"]',
             icon: '📚',
             position: 'bottom',

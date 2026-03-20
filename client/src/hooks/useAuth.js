@@ -2,6 +2,7 @@ import { useEffect, useCallback } from 'react';
 import { useAuthStore } from '@/store/authStore';
 import { apiSignup, apiLogin, apiLogout, apiUpdateProfile, apiGuestLogin, apiGuestCleanup, apiRequestPasswordReset, apiRefreshSession } from '@/services/auth';
 import { saveSession, loadSession, loadStoredSession, clearSession, isSessionExpired } from '@/lib/auth-token';
+import { subscribeToPush } from '@/lib/push';
 
 function buildSessionData(result, fallback = {}) {
   const accountType = result.user.account_type || fallback.account_type || 'flinders';
@@ -49,6 +50,7 @@ export function useAuth() {
           setSession(stored);
           setUser(stored.user || null);
           setLoading(false);
+          subscribeToPush().catch(() => {});
         }
         return;
       }
@@ -99,6 +101,7 @@ export function useAuth() {
     saveSession(sessionData);
     setSession(sessionData);
     setUser(sessionData.user);
+    subscribeToPush().catch(() => {});
 
     return sessionData;
   }, [setSession, setUser]);

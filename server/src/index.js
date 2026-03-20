@@ -23,6 +23,7 @@ const boardRoutes = require('./routes/board');
 const flindersRoutes = require('./routes/flinders');
 const announcementRoutes = require('./routes/announcements');
 const adminRoutes = require('./routes/admin');
+const pushRoutes = require('./routes/push');
 
 // Create Express app and HTTP server
 const app = express();
@@ -81,6 +82,7 @@ app.use('/api', boardRoutes);
 app.use('/api', flindersRoutes);
 app.use('/api', announcementRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/push', pushRoutes);
 
 // Serve built client in production
 const path = require('path');

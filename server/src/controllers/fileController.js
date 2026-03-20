@@ -1,6 +1,7 @@
 const { supabaseAdmin } = require('../services/supabase');
 const config = require('../config');
 const path = require('path');
+const { notifyRoom } = require('./pushController');
 const { v4: uuidv4, validate: isUuid } = require('uuid');
 
 const SIGNED_URL_TTL_SECONDS = 60 * 5;
@@ -256,6 +257,13 @@ async function uploadFile(req, res, next) {
       ...data,
       download_url,
     });
+
+    notifyRoom(req.params.roomId, req.user.id, {
+      title: 'New File',
+      body: data.file_name || 'A file was uploaded',
+      tag: `file-${req.params.roomId}`,
+      data: { url: `/room/${req.params.roomId}` },
+    }).catch(() => {});
   } catch (err) {
     next(err);
   }

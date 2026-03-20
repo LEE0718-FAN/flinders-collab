@@ -1,4 +1,5 @@
 const { supabaseAdmin } = require('../services/supabase');
+const { notifyRoom } = require('./pushController');
 
 function normalizeOptionalText(value) {
   if (value === undefined) return undefined;
@@ -110,6 +111,13 @@ async function createEvent(req, res, next) {
     }
 
     res.status(201).json(data);
+
+    notifyRoom(req.params.roomId, req.user.id, {
+      title: 'New Event',
+      body: data.title || 'A new event was created',
+      tag: `event-${req.params.roomId}`,
+      data: { url: `/room/${req.params.roomId}` },
+    }).catch(() => {});
   } catch (err) {
     next(err);
   }

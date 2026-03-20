@@ -1,5 +1,6 @@
 const { saveMessage } = require('../controllers/messageController');
 const { supabaseAdmin } = require('../services/supabase');
+const { notifyRoom } = require('../controllers/pushController');
 
 // Cache room membership checks for 60 seconds to avoid per-message DB queries
 const membershipCache = new Map();
@@ -89,6 +90,14 @@ function chatHandler(io, socket) {
 
       // Broadcast to all users in the room (including sender)
       io.to(`room:${roomId}`).emit('chat:message', message);
+
+      // Push notification to offline members
+      notifyRoom(roomId, userId, {
+        title: message.sender_name || 'New message',
+        body: content.trim().substring(0, 100),
+        tag: `msg-${roomId}`,
+        data: { url: `/room/${roomId}` },
+      }).catch(() => {});
     } catch (err) {
       console.error('Error saving message:', err.message);
       socket.emit('chat:error', { error: 'Failed to send message' });

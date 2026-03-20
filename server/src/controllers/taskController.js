@@ -1,4 +1,5 @@
 const { supabaseAdmin } = require('../services/supabase');
+const { notifyRoom } = require('./pushController');
 
 /**
  * POST /rooms/:roomId/tasks
@@ -72,6 +73,13 @@ async function createTask(req, res, next) {
     // Fetch the full task with assignees for response
     const fullTask = await fetchTaskWithAssignees(task.id);
     res.status(201).json(fullTask || task);
+
+    notifyRoom(req.params.roomId, req.user.id, {
+      title: 'New Task',
+      body: (fullTask || task).title || 'A new task was created',
+      tag: `task-${req.params.roomId}`,
+      data: { url: `/room/${req.params.roomId}` },
+    }).catch(() => {});
   } catch (err) {
     next(err);
   }

@@ -36,6 +36,11 @@ const config = {
     storageBucket: 'room-files',
     backupBucket: 'room-files-backup',
   },
+  vapid: {
+    publicKey: process.env.VAPID_PUBLIC_KEY || 'BB2bqc5Wws7LanRKsNUuvR1mXPqfy7f4IaVLfjMP_QamV5Jfv_0qD9sDovdR7rNAnv-ck14Ru-nbaEFL_z1lfdM',
+    privateKey: process.env.VAPID_PRIVATE_KEY || 'e3W0lp_SPbgXjd6Hjm9IVnkBKJqhY9kthPkdY9GAv9A',
+    subject: process.env.VAPID_SUBJECT || 'mailto:collab@flinders.edu.au',
+  },
   location: {
     // Sessions older than this (in minutes) are considered stale
     staleSessionMinutes: 30,

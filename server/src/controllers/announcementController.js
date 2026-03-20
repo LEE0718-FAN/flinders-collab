@@ -1,4 +1,5 @@
 const { supabaseAdmin } = require('../services/supabase');
+const { notifyRoom } = require('./pushController');
 
 // GET /rooms/:roomId/announcements
 async function getAnnouncements(req, res, next) {
@@ -66,6 +67,13 @@ async function createAnnouncement(req, res, next) {
     if (error) return res.status(400).json({ error: error.message });
 
     res.status(201).json({ ...data, is_read: false });
+
+    notifyRoom(req.params.roomId, req.user.id, {
+      title: 'Announcement',
+      body: data.content?.substring(0, 100) || 'New announcement',
+      tag: `announce-${req.params.roomId}`,
+      data: { url: `/room/${req.params.roomId}` },
+    }).catch(() => {});
   } catch (err) {
     next(err);
   }
