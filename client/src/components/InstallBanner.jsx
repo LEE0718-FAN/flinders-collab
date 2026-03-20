@@ -133,14 +133,14 @@ export function DesktopSidePanel({ onDismiss, onNeverShow }) {
                 <span className="text-sm">🍎</span>
                 <p className="text-sm font-semibold text-white/85">iPhone</p>
               </div>
-              <div className="space-y-1.5 text-[11px] leading-5 text-white/88">
+              <div className="space-y-1.5 text-[11px] leading-5 text-white">
                 <p className="flex items-start gap-2">
                   <span className="mt-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-md bg-white/10 text-[10px] font-bold text-white/80">1</span>
-                  <span>Open in <span className="font-medium text-white">Safari</span>.</span>
+                  <span className="text-white">Open in <span className="font-medium text-white">Safari</span>.</span>
                 </p>
                 <p className="flex items-start gap-2">
                   <span className="mt-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-md bg-white/10 text-[10px] font-bold text-white/80">2</span>
-                  <span className="inline-flex min-w-0 items-start gap-1.5"><Share className="mt-0.5 h-3.5 w-3.5 shrink-0 text-indigo-200" /> <span>Tap <span className="font-medium text-white">Add to Home Screen</span>.</span></span>
+                  <span className="inline-flex min-w-0 items-start gap-1.5 text-white"><Share className="mt-0.5 h-3.5 w-3.5 shrink-0 text-indigo-200" /> <span className="text-white">Tap <span className="font-medium text-white">Add to Home Screen</span>.</span></span>
                 </p>
               </div>
             </div>
@@ -150,14 +150,14 @@ export function DesktopSidePanel({ onDismiss, onNeverShow }) {
                 <span className="text-sm">🤖</span>
                 <p className="text-sm font-semibold text-white/85">Android</p>
               </div>
-              <div className="space-y-1.5 text-[11px] leading-5 text-white/88">
+              <div className="space-y-1.5 text-[11px] leading-5 text-white">
                 <p className="flex items-start gap-2">
                   <span className="mt-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-md bg-white/10 text-[10px] font-bold text-white/80">1</span>
-                  <span>Open in <span className="font-medium text-white">Chrome</span>.</span>
+                  <span className="text-white">Open in <span className="font-medium text-white">Chrome</span>.</span>
                 </p>
                 <p className="flex items-start gap-2">
                   <span className="mt-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-md bg-white/10 text-[10px] font-bold text-white/80">2</span>
-                  <span className="inline-flex min-w-0 items-start gap-1.5"><MoreVertical className="mt-0.5 h-3.5 w-3.5 shrink-0 text-indigo-200" /> <span>Tap <span className="font-medium text-white">Install app</span>.</span></span>
+                  <span className="inline-flex min-w-0 items-start gap-1.5 text-white"><MoreVertical className="mt-0.5 h-3.5 w-3.5 shrink-0 text-indigo-200" /> <span className="text-white">Tap <span className="font-medium text-white">Install app</span>.</span></span>
                 </p>
               </div>
             </div>
