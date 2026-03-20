@@ -200,7 +200,7 @@ export default function SignupForm({ onSubmit }) {
   if (!accountType) {
     return (
       <div className="space-y-4">
-        <div className="text-center space-y-1">
+        <div className="space-y-1 text-center">
           <h2 className="text-2xl font-bold tracking-tight">Create your account</h2>
           <p className="text-sm text-muted-foreground/70">Choose how you'd like to join</p>
         </div>
@@ -214,14 +214,14 @@ export default function SignupForm({ onSubmit }) {
                 type="button"
                 onClick={() => setAccountType(type.id)}
                 disabled={loading}
-                className={`w-full flex items-center gap-3.5 rounded-xl border-2 ${type.border} p-4 text-left transition-all hover:shadow-md active:scale-[0.98] disabled:opacity-50`}
+                className={`flex w-full items-start gap-3 rounded-xl border-2 ${type.border} p-4 text-left transition-all hover:shadow-md active:scale-[0.98] disabled:opacity-50 sm:items-center sm:gap-3.5`}
               >
-                <div className={`shrink-0 flex items-center justify-center h-10 w-10 rounded-xl bg-gradient-to-br ${type.color} text-white shadow-sm`}>
+                <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br ${type.color} text-white shadow-sm`}>
                   <Icon className="h-5 w-5" />
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-bold text-foreground">{type.label}</p>
-                  <p className="text-[12px] text-muted-foreground leading-snug">{type.desc}</p>
+                  <p className="text-[12px] leading-snug text-muted-foreground">{type.desc}</p>
                 </div>
               </button>
             );
@@ -229,16 +229,16 @@ export default function SignupForm({ onSubmit }) {
         </div>
 
         {error && (
-          <div className="flex items-center gap-2 rounded-xl bg-red-50 border border-red-100 px-4 py-3">
+          <div className="flex items-start gap-2 rounded-xl border border-red-100 bg-red-50 px-4 py-3">
             <svg className="h-4 w-4 text-red-500 shrink-0" fill="currentColor" viewBox="0 0 20 20">
               <circle cx="10" cy="10" r="10" />
               <text x="10" y="14" textAnchor="middle" fill="white" fontSize="12" fontWeight="bold">!</text>
             </svg>
-            <p className="text-sm text-destructive">{error}</p>
+            <p className="min-w-0 break-words text-sm text-destructive">{error}</p>
           </div>
         )}
 
-        <p className="text-center text-sm text-muted-foreground">
+        <p className="text-center text-sm leading-relaxed text-muted-foreground">
           Already have an account?{' '}
           <Link to="/login" className="font-semibold text-blue-600 hover:text-blue-700">Sign in</Link>
         </p>
@@ -255,7 +255,7 @@ export default function SignupForm({ onSubmit }) {
         <button type="button" onClick={() => { setAccountType(null); setError(''); }} className="p-1.5 rounded-lg hover:bg-slate-100 transition">
           <ArrowLeft className="h-4 w-4 text-slate-500" />
         </button>
-        <h2 className="text-lg font-bold tracking-tight">
+        <h2 className="min-w-0 break-words text-lg font-bold tracking-tight">
           {isFlinders ? 'Flinders Student' : 'Other University'}
         </h2>
       </div>
@@ -310,12 +310,12 @@ export default function SignupForm({ onSubmit }) {
               className="h-11 rounded-xl pl-10 bg-muted/30 border-border/40 focus:bg-white"
             />
             {showSuggestions && filtered.length > 0 && (
-              <div ref={suggestionsRef} className="absolute left-0 right-0 top-full mt-1 z-50 max-h-44 overflow-y-auto rounded-xl bg-white border shadow-lg">
+              <div ref={suggestionsRef} className="absolute left-0 right-0 top-full z-50 mt-1 max-h-44 overflow-y-auto rounded-xl border bg-white shadow-lg">
                 {filtered.map((program, i) => (
                   <button
                     key={program}
                     type="button"
-                    className={`w-full text-left px-4 py-2 text-sm transition-colors ${i === highlightIndex ? 'bg-indigo-50 text-indigo-700 font-medium' : 'hover:bg-slate-50'}`}
+                    className={`w-full break-words px-4 py-2 text-left text-sm transition-colors ${i === highlightIndex ? 'bg-indigo-50 font-medium text-indigo-700' : 'hover:bg-slate-50'}`}
                     onMouseEnter={() => setHighlightIndex(i)}
                     onClick={() => selectProgram(program)}
                   >
@@ -325,7 +325,7 @@ export default function SignupForm({ onSubmit }) {
               </div>
             )}
             {major && (
-              <p className="mt-1 text-[11px] text-emerald-600 font-medium">Selected: {major}</p>
+              <p className="mt-1 break-words text-[11px] font-medium text-emerald-600">Selected: {major}</p>
             )}
           </div>
         </div>
@@ -356,12 +356,12 @@ export default function SignupForm({ onSubmit }) {
                 className="h-11 rounded-xl pl-10 bg-muted/30 border-border/40 focus:bg-white"
               />
               {showUniversitySuggestions && filteredUniversities.length > 0 && (
-                <div ref={universitySuggestionsRef} className="absolute left-0 right-0 top-full mt-1 z-50 max-h-44 overflow-y-auto rounded-xl bg-white border shadow-lg">
+                <div ref={universitySuggestionsRef} className="absolute left-0 right-0 top-full z-50 mt-1 max-h-44 overflow-y-auto rounded-xl border bg-white shadow-lg">
                   {filteredUniversities.map((school, i) => (
                     <button
                       key={school}
                       type="button"
-                      className={`w-full text-left px-4 py-2 text-sm transition-colors ${i === highlightUniversityIndex ? 'bg-violet-50 text-violet-700 font-medium' : 'hover:bg-slate-50'}`}
+                      className={`w-full break-words px-4 py-2 text-left text-sm transition-colors ${i === highlightUniversityIndex ? 'bg-violet-50 font-medium text-violet-700' : 'hover:bg-slate-50'}`}
                       onMouseEnter={() => setHighlightUniversityIndex(i)}
                       onClick={() => selectUniversity(school)}
                     >
@@ -382,7 +382,7 @@ export default function SignupForm({ onSubmit }) {
         </div>
       )}
 
-      <div className="grid grid-cols-2 gap-2">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-2">
         <div className="space-y-1.5">
           <label className="text-[13px] font-semibold text-foreground/70">Password</label>
           <div className="relative">
@@ -400,12 +400,12 @@ export default function SignupForm({ onSubmit }) {
       </div>
 
       {error && (
-        <div className="flex items-center gap-2 rounded-xl bg-red-50 border border-red-100 px-4 py-3">
+        <div className="flex items-start gap-2 rounded-xl border border-red-100 bg-red-50 px-4 py-3">
           <svg className="h-4 w-4 text-red-500 shrink-0" fill="currentColor" viewBox="0 0 20 20">
             <circle cx="10" cy="10" r="10" />
             <text x="10" y="14" textAnchor="middle" fill="white" fontSize="12" fontWeight="bold">!</text>
           </svg>
-          <p className="text-sm text-destructive">{error}</p>
+          <p className="min-w-0 break-words text-sm text-destructive">{error}</p>
         </div>
       )}
 
@@ -418,7 +418,7 @@ export default function SignupForm({ onSubmit }) {
         {loading ? 'Creating account...' : 'Create Account'}
       </Button>
 
-      <p className="text-center text-sm text-muted-foreground">
+      <p className="text-center text-sm leading-relaxed text-muted-foreground">
         Already have an account?{' '}
         <Link to="/login" className="font-semibold text-blue-600 hover:text-blue-700">Sign in</Link>
       </p>

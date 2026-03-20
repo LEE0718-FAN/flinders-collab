@@ -15,49 +15,57 @@ function getDevice() {
 
 function MobileBanner({ device, onDismiss }) {
   return (
-    <div className="relative w-full max-w-md mx-auto mb-4 animate-slide-up">
-      <div className="rounded-2xl border border-white/10 bg-white/[0.07] backdrop-blur-md px-4 py-3.5 text-white/80">
+    <div className="relative mx-auto mb-3 w-full max-w-md animate-slide-up sm:mb-4">
+      <div className="rounded-2xl border border-white/10 bg-white/[0.07] px-3.5 py-3 text-white/80 backdrop-blur-md sm:px-4 sm:py-3.5">
         <button
           onClick={onDismiss}
-          className="absolute top-2.5 right-2.5 p-1 rounded-full hover:bg-white/10 text-white/40 hover:text-white/70 transition"
+          className="absolute right-2 top-2 rounded-full p-1 text-white/40 transition hover:bg-white/10 hover:text-white/70"
           aria-label="Dismiss"
         >
           <X className="h-4 w-4" />
         </button>
 
-        <div className="flex items-start gap-3 pr-6">
+        <div className="flex items-start gap-2.5 pr-7 sm:gap-3 sm:pr-6">
           <div className="mt-0.5 shrink-0 rounded-xl bg-indigo-500/20 p-2">
             <Smartphone className="h-5 w-5 text-indigo-300" />
           </div>
-          <div className="min-w-0">
-            <p className="text-sm font-semibold text-white/90 mb-1">Install Collab</p>
+          <div className="min-w-0 flex-1">
+            <p className="mb-1 pr-2 text-sm font-semibold text-white/90">Install Collab</p>
             {device === 'ios' ? (
-              <div className="space-y-1.5 text-xs text-white/60 leading-relaxed">
-                <p className="flex items-center gap-1.5">
+              <div className="space-y-1.5 text-xs leading-relaxed text-white/60">
+                <p className="flex items-start gap-1.5">
                   <span className="inline-flex items-center justify-center h-5 w-5 rounded-md bg-white/10 text-[10px] font-bold text-white/80 shrink-0">1</span>
-                  Tap <Share className="inline h-3.5 w-3.5 text-blue-300 mx-0.5" /> at the bottom
+                  <span className="min-w-0 break-words">
+                    Tap <Share className="mx-0.5 inline h-3.5 w-3.5 align-text-bottom text-blue-300" /> at the bottom
+                  </span>
                 </p>
-                <p className="flex items-center gap-1.5">
+                <p className="flex items-start gap-1.5">
                   <span className="inline-flex items-center justify-center h-5 w-5 rounded-md bg-white/10 text-[10px] font-bold text-white/80 shrink-0">2</span>
-                  Scroll down, tap <span className="inline-flex items-center gap-0.5 text-white/80 font-medium"><PlusSquare className="inline h-3.5 w-3.5" /> Add to Home Screen</span>
+                  <span className="min-w-0 break-words">
+                    Scroll down, tap <span className="inline-flex max-w-full items-center gap-0.5 break-words font-medium text-white/80"><PlusSquare className="inline h-3.5 w-3.5 shrink-0" /> Add to Home Screen</span>
+                  </span>
                 </p>
               </div>
             ) : (
-              <div className="space-y-1.5 text-xs text-white/60 leading-relaxed">
-                <p className="flex items-center gap-1.5">
+              <div className="space-y-1.5 text-xs leading-relaxed text-white/60">
+                <p className="flex items-start gap-1.5">
                   <span className="inline-flex items-center justify-center h-5 w-5 rounded-md bg-white/10 text-[10px] font-bold text-white/80 shrink-0">1</span>
-                  Tap <MoreVertical className="inline h-3.5 w-3.5 text-white/70 mx-0.5" /> in your browser menu
+                  <span className="min-w-0 break-words">
+                    Tap <MoreVertical className="mx-0.5 inline h-3.5 w-3.5 align-text-bottom text-white/70" /> in your browser menu
+                  </span>
                 </p>
-                <p className="flex items-center gap-1.5">
+                <p className="flex items-start gap-1.5">
                   <span className="inline-flex items-center justify-center h-5 w-5 rounded-md bg-white/10 text-[10px] font-bold text-white/80 shrink-0">2</span>
-                  Tap <span className="inline-flex items-center gap-0.5 text-white/80 font-medium"><Download className="inline h-3.5 w-3.5" /> Install app</span> or <span className="text-white/80 font-medium">Add to Home Screen</span>
+                  <span className="min-w-0 break-words">
+                    Tap <span className="inline-flex max-w-full items-center gap-0.5 break-words font-medium text-white/80"><Download className="inline h-3.5 w-3.5 shrink-0" /> Install app</span> or <span className="font-medium text-white/80">Add to Home Screen</span>
+                  </span>
                 </p>
               </div>
             )}
 
-            <div className="mt-3 pt-2.5 border-t border-white/10">
-              <div className="flex items-center gap-1.5 mb-1.5">
-                <Bell className="h-3.5 w-3.5 text-amber-300" />
+            <div className="mt-3 border-t border-white/10 pt-2.5">
+              <div className="mb-1.5 flex items-start gap-1.5">
+                <Bell className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-300" />
                 <p className="text-xs font-semibold text-white/80">Enable notifications</p>
               </div>
               {device === 'ios' ? (
@@ -81,68 +89,110 @@ export function DesktopSidePanel({ onDismiss, onNeverShow }) {
   const url = typeof window !== 'undefined' ? window.location.origin : '';
 
   return (
-    <div className="w-[260px] shrink-0 animate-slide-up">
-      <div className="relative rounded-2xl border border-white/10 bg-white/[0.07] backdrop-blur-xl p-5 shadow-2xl shadow-black/20">
+    <div className="w-full max-w-[420px] shrink-0 animate-slide-up">
+      <div className="relative overflow-hidden rounded-[28px] border border-white/10 bg-white/[0.08] p-6 shadow-2xl shadow-black/20 backdrop-blur-xl sm:p-7">
+        <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent" />
+
         {/* Close button */}
         <button
           onClick={onDismiss}
-          className="absolute top-2.5 right-2.5 p-1 rounded-full hover:bg-white/10 text-white/40 hover:text-white/70 transition"
+          className="absolute right-3 top-3 rounded-full p-1.5 text-white/40 transition hover:bg-white/10 hover:text-white/70"
           aria-label="Close"
         >
-          <X className="h-3.5 w-3.5" />
+          <X className="h-4 w-4" />
         </button>
 
-        <div className="text-center mb-4">
-          <div className="flex items-center justify-center gap-1.5 mb-1">
-            <Smartphone className="h-4 w-4 text-indigo-300" />
-            <p className="text-sm font-semibold text-white/90">Get the app</p>
+        <div className="mb-5 pr-10 text-left">
+          <div className="mb-2 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/10 px-3 py-1 text-[11px] font-semibold tracking-wide text-white/70">
+            <Smartphone className="h-3.5 w-3.5 text-indigo-300" />
+            Install on mobile
           </div>
-          <p className="text-[10px] text-white/40">Scan to install on your phone</p>
+          <h2 className="text-xl font-semibold tracking-tight text-white sm:text-2xl">
+            Add Collab to your phone
+          </h2>
+          <p className="mt-2 max-w-[30ch] text-sm leading-relaxed text-white/55">
+            Scan the QR code or follow the browser steps below to install the app on iOS or Android.
+          </p>
         </div>
 
-        <div className="mx-auto rounded-xl bg-white p-2.5 w-fit mb-4">
-          <QRCodeSVG
-            value={url}
-            size={110}
-            bgColor="white"
-            fgColor="#1e1b4b"
-            level="M"
-            includeMargin={false}
-          />
-        </div>
+        <div className="grid gap-5">
+          <div className="rounded-[24px] border border-white/10 bg-slate-950/20 p-4 sm:p-5">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-white/45">
+                  QR code
+                </p>
+                <p className="mt-1 text-sm text-white/75">
+                  Open this page on your phone to install Collab.
+                </p>
+              </div>
+              <div className="hidden h-10 w-10 rounded-full bg-white/10 sm:flex sm:items-center sm:justify-center">
+                <Smartphone className="h-5 w-5 text-indigo-200" />
+              </div>
+            </div>
 
-        <div className="space-y-2 mb-4">
-          <div className="rounded-lg bg-white/[0.06] p-2.5">
-            <p className="text-[10px] font-semibold text-white/60 mb-1 flex items-center gap-1">
-              <span>🍎</span> iPhone / iPad
-            </p>
-            <div className="space-y-0.5 text-[10px] text-white/45 leading-relaxed">
-              <p>Safari &rarr; <Share className="inline h-2.5 w-2.5 text-blue-300" /> Share &rarr; Add to Home Screen</p>
+            <div className="mx-auto mt-4 w-fit rounded-2xl bg-white p-3 shadow-[0_14px_32px_-16px_rgba(0,0,0,0.45)]">
+              <QRCodeSVG
+                value={url}
+                size={140}
+                bgColor="white"
+                fgColor="#1e1b4b"
+                level="M"
+                includeMargin={false}
+              />
             </div>
           </div>
 
-          <div className="rounded-lg bg-white/[0.06] p-2.5">
-            <p className="text-[10px] font-semibold text-white/60 mb-1 flex items-center gap-1">
-              <span>🤖</span> Android
-            </p>
-            <div className="space-y-0.5 text-[10px] text-white/45 leading-relaxed">
-              <p>Chrome &rarr; <MoreVertical className="inline h-2.5 w-2.5 text-white/50" /> Menu &rarr; Install app</p>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="rounded-2xl border border-white/10 bg-white/[0.06] p-4">
+              <div className="mb-2 flex items-center gap-2">
+                <span className="text-sm">🍎</span>
+                <p className="text-sm font-semibold text-white/85">iPhone / iPad</p>
+              </div>
+              <div className="space-y-2 text-xs leading-relaxed text-white/55">
+                <p className="flex items-start gap-2">
+                  <span className="mt-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-md bg-white/10 text-[10px] font-bold text-white/80">1</span>
+                  Tap <Share className="inline h-3.5 w-3.5 text-blue-300" /> in Safari.
+                </p>
+                <p className="flex items-start gap-2">
+                  <span className="mt-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-md bg-white/10 text-[10px] font-bold text-white/80">2</span>
+                  Choose <span className="font-medium text-white/80">Add to Home Screen</span>.
+                </p>
+              </div>
+            </div>
+
+            <div className="rounded-2xl border border-white/10 bg-white/[0.06] p-4">
+              <div className="mb-2 flex items-center gap-2">
+                <span className="text-sm">🤖</span>
+                <p className="text-sm font-semibold text-white/85">Android</p>
+              </div>
+              <div className="space-y-2 text-xs leading-relaxed text-white/55">
+                <p className="flex items-start gap-2">
+                  <span className="mt-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-md bg-white/10 text-[10px] font-bold text-white/80">1</span>
+                  Open Chrome and tap <MoreVertical className="inline h-3.5 w-3.5 text-white/60" /> menu.
+                </p>
+                <p className="flex items-start gap-2">
+                  <span className="mt-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-md bg-white/10 text-[10px] font-bold text-white/80">2</span>
+                  Choose <span className="font-medium text-white/80">Install app</span>.
+                </p>
+              </div>
             </div>
           </div>
 
-          <div className="rounded-lg bg-amber-500/10 p-2.5">
-            <p className="text-[10px] font-semibold text-amber-300/70 mb-0.5 flex items-center gap-1">
-              <Bell className="h-2.5 w-2.5" /> Notifications
+          <div className="rounded-2xl border border-amber-500/20 bg-amber-500/10 p-4">
+            <p className="mb-1 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.16em] text-amber-200/80">
+              <Bell className="h-3.5 w-3.5" />
+              Notifications
             </p>
-            <p className="text-[10px] text-white/40 leading-relaxed">
-              Tap &quot;Allow&quot; after login for push notifications
+            <p className="text-xs leading-relaxed text-white/55">
+              Allow notifications after login so you do not miss room updates and reminders.
             </p>
           </div>
         </div>
 
         <button
           onClick={onNeverShow}
-          className="w-full text-[10px] text-white/25 hover:text-white/50 transition text-center"
+          className="mt-5 w-full text-center text-[11px] text-white/25 transition hover:text-white/50"
         >
           Don&apos;t show again
         </button>

@@ -112,7 +112,7 @@ export default function LoginForm({ onSubmit, onGuestLogin, onRequestPasswordRes
   return (
     <>
       <form onSubmit={handleSubmit} className="space-y-5">
-        <div className="text-center space-y-1">
+        <div className="space-y-1 text-center">
           <h2 className="text-2xl font-bold tracking-tight">Welcome back</h2>
           <p className="text-sm text-muted-foreground/70">Sign in to your account to continue</p>
         </div>
@@ -133,13 +133,13 @@ export default function LoginForm({ onSubmit, onGuestLogin, onRequestPasswordRes
           </div>
         </div>
         <div className="space-y-2">
-          <div className="flex items-center justify-between gap-3">
+          <div className="flex flex-col gap-1.5 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
             <label htmlFor="password" className="text-[13px] font-semibold text-foreground/70">Password</label>
             <button
               type="button"
               onClick={openResetDialog}
               disabled={loading || guestLoading}
-              className="text-[12px] font-semibold text-blue-600 hover:text-blue-700 disabled:opacity-50"
+              className="text-left text-[12px] font-semibold text-blue-600 hover:text-blue-700 disabled:opacity-50 sm:text-right"
             >
               Forgot password?
             </button>
@@ -160,17 +160,17 @@ export default function LoginForm({ onSubmit, onGuestLogin, onRequestPasswordRes
 
         {success && (
           <div className="rounded-xl border border-emerald-100 bg-emerald-50 px-4 py-3">
-            <p className="text-sm text-emerald-700">{success}</p>
+            <p className="break-words text-sm text-emerald-700">{success}</p>
           </div>
         )}
 
         {error && (
-          <div className="flex items-center gap-2 rounded-xl bg-red-50 border border-red-100 px-4 py-3">
+          <div className="flex items-start gap-2 rounded-xl border border-red-100 bg-red-50 px-4 py-3">
             <svg className="h-4 w-4 text-red-500 shrink-0" fill="currentColor" viewBox="0 0 20 20">
               <circle cx="10" cy="10" r="10" />
               <text x="10" y="14" textAnchor="middle" fill="white" fontSize="12" fontWeight="bold">!</text>
             </svg>
-            <p className="text-sm text-destructive">{error}</p>
+            <p className="min-w-0 break-words text-sm text-destructive">{error}</p>
           </div>
         )}
 
@@ -192,7 +192,7 @@ export default function LoginForm({ onSubmit, onGuestLogin, onRequestPasswordRes
           </div>
         </div>
 
-        <p className="text-center text-sm text-muted-foreground">
+        <p className="text-center text-sm leading-relaxed text-muted-foreground">
           Don&apos;t have an account?{' '}
           <Link to="/signup" className="font-semibold text-blue-600 hover:text-blue-700">Sign up</Link>
         </p>
@@ -226,18 +226,18 @@ export default function LoginForm({ onSubmit, onGuestLogin, onRequestPasswordRes
             }
           }}
           disabled={guestLoading || loading}
-          className="w-full h-12 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 font-semibold text-[14px] shadow-lg shadow-emerald-500/20 text-white flex items-center justify-center gap-2 transition-all disabled:opacity-50"
+          className="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 px-4 py-3 text-center text-[14px] font-semibold text-white shadow-lg shadow-emerald-500/20 transition-all hover:from-emerald-600 hover:to-teal-600 disabled:opacity-50 whitespace-normal"
         >
           {guestLoading && <Loader2 className="h-4 w-4 animate-spin" />}
           {guestLoading ? 'Setting up...' : '🎓 Try as Tester (Tutorial Only)'}
         </button>
-        <p className="text-center text-[11px] text-muted-foreground/50">
+        <p className="text-center text-[11px] leading-relaxed text-muted-foreground/50">
           No signup needed — see a quick demo of the app
         </p>
       </form>
 
       <Dialog open={resetOpen} onOpenChange={setResetOpen}>
-        <DialogContent className="sm:max-w-md rounded-2xl">
+        <DialogContent className="max-h-[calc(100vh-2rem)] w-[calc(100vw-1.5rem)] max-w-md overflow-y-auto rounded-2xl p-5 sm:max-h-[calc(100vh-3rem)] sm:w-full">
           <DialogHeader>
             <DialogTitle>Reset password</DialogTitle>
             <DialogDescription>
@@ -264,24 +264,24 @@ export default function LoginForm({ onSubmit, onGuestLogin, onRequestPasswordRes
 
             {resetMessage && (
               <div className="rounded-xl border border-emerald-100 bg-emerald-50 px-4 py-3">
-                <p className="text-sm text-emerald-700">{resetMessage}</p>
+                <p className="break-words text-sm text-emerald-700">{resetMessage}</p>
               </div>
             )}
 
             {resetCooldown > 0 && (
               <div className="rounded-xl border border-blue-100 bg-blue-50 px-4 py-3">
-                <p className="text-sm text-blue-700">
+                <p className="break-words text-sm text-blue-700">
                   You can send another reset email in <span className="font-semibold">{formatCooldown(resetCooldown)}</span>.
                 </p>
               </div>
             )}
           </div>
 
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => setResetOpen(false)} disabled={resetLoading}>
+          <DialogFooter className="flex-col-reverse gap-2 sm:flex-row">
+            <Button type="button" variant="outline" onClick={() => setResetOpen(false)} disabled={resetLoading} className="w-full sm:w-auto">
               Cancel
             </Button>
-            <Button type="button" onClick={handlePasswordReset} disabled={resetLoading || resetCooldown > 0}>
+            <Button type="button" onClick={handlePasswordReset} disabled={resetLoading || resetCooldown > 0} className="w-full whitespace-normal sm:w-auto">
               {resetLoading ? (
                 <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Sending...</>
               ) : resetCooldown > 0 ? (
