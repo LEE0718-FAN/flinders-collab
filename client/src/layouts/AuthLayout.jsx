@@ -1,7 +1,40 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
+import { DesktopSidePanel } from '@/components/InstallBanner';
+
+const DISMISS_KEY = 'install-popup-dismissed';
 
 export default function AuthLayout({ children }) {
+  const [showSidePanel, setShowSidePanel] = useState(false);
+
+  useEffect(() => {
+    // Only show on desktop, not if permanently dismissed
+    if (typeof navigator !== 'undefined') {
+      const ua = navigator.userAgent || '';
+      const isMobile = /iPad|iPhone|iPod|Android|Mobi|Tablet/i.test(ua);
+      if (isMobile) return;
+    }
+    const standalone = window.matchMedia('(display-mode: standalone)').matches
+      || window.navigator.standalone === true;
+    if (standalone) return;
+
+    const permanent = localStorage.getItem(DISMISS_KEY);
+    const session = sessionStorage.getItem(DISMISS_KEY);
+    if (!permanent && !session) {
+      setShowSidePanel(true);
+    }
+  }, []);
+
+  const handleDismiss = () => {
+    setShowSidePanel(false);
+    sessionStorage.setItem(DISMISS_KEY, '1');
+  };
+
+  const handleNeverShow = () => {
+    setShowSidePanel(false);
+    localStorage.setItem(DISMISS_KEY, '1');
+  };
+
   return (
     <div className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden p-4">
       {/* Background */}
@@ -22,39 +55,48 @@ export default function AuthLayout({ children }) {
       <div className="absolute top-1/2 right-1/3 hidden h-[250px] w-[250px] rounded-full bg-blue-500/15 blur-[80px] animate-float sm:block" style={{ animationDelay: '4s' }} />
       <div className="absolute bottom-1/3 left-1/3 hidden h-[200px] w-[200px] rounded-full bg-purple-500/10 blur-[80px] animate-float sm:block" style={{ animationDelay: '6s' }} />
 
-      {/* Main content */}
-      <div className="relative z-10 w-full max-w-md animate-slide-up">
-        {/* Logo area */}
-        <div className="mb-8 text-center">
-          {/* Flinders University logo */}
-          <div className="mx-auto mb-5 flex h-20 items-center justify-center">
-            <img
-              src="/images/flinders-logo.png"
-              alt="Flinders University"
-              className="h-14 object-contain"
-            />
+      {/* Main content — login card + optional side panel */}
+      <div className="relative z-10 flex items-center gap-8">
+        {/* Login column */}
+        <div className="w-full max-w-md animate-slide-up">
+          {/* Logo area */}
+          <div className="mb-8 text-center">
+            <div className="mx-auto mb-5 flex h-20 items-center justify-center">
+              <img
+                src="/images/flinders-logo.png"
+                alt="Flinders University"
+                className="h-14 object-contain"
+              />
+            </div>
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-white">
+              Flinders <span className="bg-gradient-to-r from-blue-400 to-violet-400 bg-clip-text text-transparent">Collab</span>
+            </h1>
+            <p className="mt-2 text-sm text-white/40">
+              Team collaboration for Flinders University students
+            </p>
+            <div className="mx-auto mt-4 h-0.5 w-16 rounded-full bg-gradient-to-r from-transparent via-indigo-400/60 to-transparent" />
           </div>
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-white">
-            Flinders <span className="bg-gradient-to-r from-blue-400 to-violet-400 bg-clip-text text-transparent">Collab</span>
-          </h1>
-          <p className="mt-2 text-sm text-white/40">
-            Team collaboration for Flinders University students
+
+          {/* Subtle glow behind card */}
+          <div className="pointer-events-none absolute left-1/2 top-1/2 hidden h-[300px] w-[400px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-indigo-500/10 blur-[80px] sm:block" />
+
+          {/* Auth card */}
+          <Card className="relative border-0 shadow-2xl shadow-black/40 bg-white/[0.95] backdrop-blur-xl rounded-2xl">
+            <CardContent className="p-6 sm:p-8">{children}</CardContent>
+          </Card>
+
+          {/* Footer - university info */}
+          <p className="mt-6 text-center text-xs text-white/25">
+            Flinders University &middot; Adelaide, South Australia
           </p>
-          <div className="mx-auto mt-4 h-0.5 w-16 rounded-full bg-gradient-to-r from-transparent via-indigo-400/60 to-transparent" />
         </div>
 
-        {/* Subtle glow behind card */}
-        <div className="pointer-events-none absolute left-1/2 top-1/2 hidden h-[300px] w-[400px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-indigo-500/10 blur-[80px] sm:block" />
-
-        {/* Auth card */}
-        <Card className="relative border-0 shadow-2xl shadow-black/40 bg-white/[0.95] backdrop-blur-xl rounded-2xl">
-          <CardContent className="p-6 sm:p-8">{children}</CardContent>
-        </Card>
-
-        {/* Footer - university info */}
-        <p className="mt-6 text-center text-xs text-white/25">
-          Flinders University &middot; Adelaide, South Australia
-        </p>
+        {/* Desktop side panel — only on xl screens */}
+        {showSidePanel && (
+          <div className="hidden xl:block">
+            <DesktopSidePanel onDismiss={handleDismiss} onNeverShow={handleNeverShow} />
+          </div>
+        )}
       </div>
 
       {/* Developer credit - bottom of page */}
