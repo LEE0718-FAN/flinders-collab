@@ -142,10 +142,9 @@ export default function InteractiveTutorial() {
       return;
     }
 
-    // Regular users: show welcome modal once, no tutorial
-    if (!localStorage.getItem(WELCOME_KEY)) {
-      setShowWelcome(true);
-    }
+    // Regular users: no tutorial, no welcome modal
+    setShowWelcome(false);
+    setShowPrompt(false);
     return () => { cancelled = true; };
   }, [clearTutorialSuppression, clearTutorialSessionDismiss, session?.is_tester, user?.is_tester, user?.id]);
 

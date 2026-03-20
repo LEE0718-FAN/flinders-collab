@@ -37,8 +37,8 @@ const config = {
     backupBucket: 'room-files-backup',
   },
   vapid: {
-    publicKey: process.env.VAPID_PUBLIC_KEY || 'BB2bqc5Wws7LanRKsNUuvR1mXPqfy7f4IaVLfjMP_QamV5Jfv_0qD9sDovdR7rNAnv-ck14Ru-nbaEFL_z1lfdM',
-    privateKey: process.env.VAPID_PRIVATE_KEY || 'e3W0lp_SPbgXjd6Hjm9IVnkBKJqhY9kthPkdY9GAv9A',
+    publicKey: process.env.VAPID_PUBLIC_KEY || '',
+    privateKey: process.env.VAPID_PRIVATE_KEY || '',
     subject: process.env.VAPID_SUBJECT || 'mailto:collab@flinders.edu.au',
   },
   location: {

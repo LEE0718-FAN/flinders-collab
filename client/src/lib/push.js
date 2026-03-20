@@ -4,13 +4,19 @@ const API = import.meta.env.VITE_API_BASE_URL || '';
 
 export async function subscribeToPush() {
   if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
+  if (!('Notification' in window)) return;
 
   try {
+    // Request notification permission first
+    const permission = await Notification.requestPermission();
+    if (permission !== 'granted') return null;
+
     const registration = await navigator.serviceWorker.ready;
 
     // Get VAPID key from server
     const keyRes = await fetch(`${API}/api/push/vapid-key`);
     const { publicKey } = await keyRes.json();
+    if (!publicKey) return null;
 
     // Check existing subscription
     let subscription = await registration.pushManager.getSubscription();

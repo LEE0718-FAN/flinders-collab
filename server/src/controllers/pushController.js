@@ -2,11 +2,13 @@ const webpush = require('web-push');
 const config = require('../config');
 const { supabaseAdmin } = require('../services/supabase');
 
-webpush.setVapidDetails(
-  config.vapid.subject,
-  config.vapid.publicKey,
-  config.vapid.privateKey
-);
+if (config.vapid.publicKey && config.vapid.privateKey) {
+  webpush.setVapidDetails(
+    config.vapid.subject,
+    config.vapid.publicKey,
+    config.vapid.privateKey
+  );
+}
 
 // Ensure table exists on startup
 (async () => {
