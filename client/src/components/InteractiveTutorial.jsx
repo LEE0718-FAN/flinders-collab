@@ -972,8 +972,8 @@ export default function InteractiveTutorial() {
     guardedStartTutorial({ force: true });
   };
 
-  // ── Welcome modal for regular users (shown once) ──
-  if (showWelcome && !active && !showPrompt) {
+  // ── Welcome modal (testers see tutorial prompt instead, regular users skip entirely) ──
+  if (showWelcome && !active && !showPrompt && testerModeRef.current) {
     const dismissWelcome = () => {
       localStorage.setItem(WELCOME_KEY, Date.now().toString());
       setShowWelcome(false);

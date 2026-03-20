@@ -75,29 +75,60 @@ function MobileBanner({ device, onDismiss }) {
   );
 }
 
-function DesktopQR() {
+export function DesktopInstallPanel() {
   const url = typeof window !== 'undefined' ? window.location.origin : '';
 
   return (
-    <div className="fixed right-6 top-1/2 -translate-y-1/2 z-50 hidden 2xl:block animate-slide-up">
-      <div className="rounded-2xl border border-white/10 bg-white/[0.08] backdrop-blur-xl p-5 text-center w-[210px] shadow-2xl shadow-black/30">
-        <div className="mb-3 flex items-center justify-center gap-2">
-          <Smartphone className="h-4 w-4 text-indigo-300" />
-          <p className="text-sm font-semibold text-white/90">Get the app</p>
+    <div className="rounded-2xl border border-white/10 bg-white/[0.08] backdrop-blur-xl p-5 text-center w-[240px] shadow-2xl shadow-black/30 animate-slide-up">
+      <div className="mb-3 flex items-center justify-center gap-2">
+        <Smartphone className="h-4 w-4 text-indigo-300" />
+        <p className="text-sm font-semibold text-white/90">Get the app</p>
+      </div>
+      <div className="mx-auto rounded-xl bg-white p-3 w-fit mb-3">
+        <QRCodeSVG
+          value={url}
+          size={120}
+          bgColor="white"
+          fgColor="#1e1b4b"
+          level="M"
+          includeMargin={false}
+        />
+      </div>
+      <p className="text-[11px] text-white/50 leading-relaxed mb-4">
+        Scan with your phone camera to install Collab
+      </p>
+
+      <div className="text-left space-y-3">
+        <div className="rounded-xl bg-white/[0.06] p-3">
+          <p className="text-[11px] font-semibold text-white/70 mb-1.5 flex items-center gap-1">
+            <span className="text-xs">🍎</span> iPhone / iPad
+          </p>
+          <div className="space-y-1 text-[10px] text-white/50 leading-relaxed">
+            <p>1. Open in Safari</p>
+            <p>2. Tap <Share className="inline h-3 w-3 text-blue-300 mx-0.5" /> Share</p>
+            <p>3. Tap "Add to Home Screen"</p>
+          </div>
         </div>
-        <div className="mx-auto rounded-xl bg-white p-3 w-fit mb-3">
-          <QRCodeSVG
-            value={url}
-            size={130}
-            bgColor="white"
-            fgColor="#1e1b4b"
-            level="M"
-            includeMargin={false}
-          />
+
+        <div className="rounded-xl bg-white/[0.06] p-3">
+          <p className="text-[11px] font-semibold text-white/70 mb-1.5 flex items-center gap-1">
+            <span className="text-xs">🤖</span> Android
+          </p>
+          <div className="space-y-1 text-[10px] text-white/50 leading-relaxed">
+            <p>1. Open in Chrome</p>
+            <p>2. Tap <MoreVertical className="inline h-3 w-3 text-white/60 mx-0.5" /> Menu</p>
+            <p>3. Tap "Install app"</p>
+          </div>
         </div>
-        <p className="text-[11px] text-white/50 leading-relaxed">
-          Scan with your phone camera to install Collab on your home screen
-        </p>
+
+        <div className="rounded-xl bg-amber-500/10 p-3">
+          <p className="text-[11px] font-semibold text-amber-300/80 mb-1 flex items-center gap-1">
+            <Bell className="h-3 w-3" /> Notifications
+          </p>
+          <p className="text-[10px] text-white/50 leading-relaxed">
+            Tap "Allow" when prompted after login to receive push notifications
+          </p>
+        </div>
       </div>
     </div>
   );
@@ -110,7 +141,6 @@ export default function InstallBanner() {
 
   useEffect(() => {
     setDevice(getDevice());
-    // Already installed as PWA
     const standalone = window.matchMedia('(display-mode: standalone)').matches
       || window.navigator.standalone === true;
     setIsStandalone(standalone);
@@ -126,12 +156,12 @@ export default function InstallBanner() {
     sessionStorage.setItem('install-banner-dismissed', '1');
   };
 
+  // Desktop QR is now rendered via DesktopInstallPanel in AuthLayout
   return (
     <>
       {device !== 'desktop' && !dismissed && (
         <MobileBanner device={device} onDismiss={handleDismiss} />
       )}
-      {device === 'desktop' && <DesktopQR />}
     </>
   );
 }
