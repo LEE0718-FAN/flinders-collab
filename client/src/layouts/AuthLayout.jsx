@@ -1,7 +1,7 @@
 import React from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 
-export default function AuthLayout({ children, footer }) {
+export default function AuthLayout({ children }) {
   return (
     <div className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden p-4">
       {/* Background */}
@@ -56,7 +56,6 @@ export default function AuthLayout({ children, footer }) {
           Flinders University &middot; Adelaide, South Australia
         </p>
 
-        {footer}
       </div>
 
       {/* Developer credit - bottom of page */}
