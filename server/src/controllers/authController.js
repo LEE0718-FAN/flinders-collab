@@ -25,13 +25,12 @@ function getRequestClientOrigin(req) {
 }
 
 function resolvePasswordResetBaseUrl(req) {
-  const configuredOrigins = getConfiguredClientOrigins();
   const requestOrigin = getRequestClientOrigin(req);
 
-  if (requestOrigin && configuredOrigins.includes(requestOrigin)) {
-    return requestOrigin;
-  }
+  // Trust the request origin first (Supabase allowlist provides security)
+  if (requestOrigin) return requestOrigin;
 
+  const configuredOrigins = getConfiguredClientOrigins();
   const preferredConfiguredOrigin = configuredOrigins.find((origin) => {
     if (!/^https?:\/\//.test(origin)) return false;
     return !origin.includes('localhost') && !origin.includes('127.0.0.1');
