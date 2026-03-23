@@ -267,6 +267,9 @@ async function requestPasswordReset(req, res, next) {
       });
     }
 
+    // Set cooldown immediately to prevent timing attacks on email existence
+    _resetCooldowns.set(email, Date.now());
+
     const redirectTo = `${resolvePasswordResetBaseUrl(req)}/reset-password`;
 
     const { data, error } = await supabaseAdmin.auth.admin.generateLink({
@@ -281,8 +284,6 @@ async function requestPasswordReset(req, res, next) {
         message: 'If an account exists for that email, you can now reset your password.',
       });
     }
-
-    _resetCooldowns.set(email, Date.now());
 
     // Build reset URL from the hashed token
     const hashedToken = data.properties?.hashed_token;

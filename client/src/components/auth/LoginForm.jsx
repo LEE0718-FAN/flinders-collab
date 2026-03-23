@@ -73,12 +73,12 @@ export default function LoginForm({ onSubmit, onGuestLogin, onRequestPasswordRes
     const normalizedEmail = resetEmail.trim().toLowerCase();
 
     if (!normalizedEmail) {
-      setError('Enter the email address to receive a reset link.');
+      setError('Please enter your email address.');
       return;
     }
 
     if (resetCooldown > 0) {
-      setError(`Please wait ${formatCooldown(resetCooldown)} before sending another reset email.`);
+      setError(`Please wait ${formatCooldown(resetCooldown)} before requesting another reset.`);
       return;
     }
 
@@ -246,7 +246,7 @@ export default function LoginForm({ onSubmit, onGuestLogin, onRequestPasswordRes
           <DialogHeader>
             <DialogTitle>Reset password</DialogTitle>
             <DialogDescription>
-              Enter your email address. We&apos;ll send you a password reset link.
+              Enter the email address associated with your account.
             </DialogDescription>
           </DialogHeader>
 
@@ -276,7 +276,7 @@ export default function LoginForm({ onSubmit, onGuestLogin, onRequestPasswordRes
             {resetCooldown > 0 && (
               <div className="rounded-xl border border-blue-100 bg-blue-50 px-4 py-3">
                 <p className="break-words text-sm text-blue-700">
-                  You can send another reset email in <span className="font-semibold">{formatCooldown(resetCooldown)}</span>.
+                  You can request another reset in <span className="font-semibold">{formatCooldown(resetCooldown)}</span>.
                 </p>
               </div>
             )}
@@ -288,11 +288,11 @@ export default function LoginForm({ onSubmit, onGuestLogin, onRequestPasswordRes
             </Button>
             <Button type="button" onClick={handlePasswordReset} disabled={resetLoading || resetCooldown > 0} className="w-full whitespace-normal sm:w-auto">
               {resetLoading ? (
-                <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Sending...</>
+                <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Processing...</>
               ) : resetCooldown > 0 ? (
-                `Resend in ${formatCooldown(resetCooldown)}`
+                `Retry in ${formatCooldown(resetCooldown)}`
               ) : (
-                'Send reset email'
+                'Reset password'
               )}
             </Button>
           </DialogFooter>

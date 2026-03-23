@@ -44,6 +44,7 @@ app.use(helmet({
     directives: {
       ...helmet.contentSecurityPolicy.getDefaultDirectives(),
       'connect-src': ["'self'", 'https://*.supabase.co', 'wss://*.supabase.co'],
+      'img-src': ["'self'", 'data:', 'blob:', 'https://*.supabase.co'],
     },
   },
 }));
