@@ -84,16 +84,21 @@ export default function LoginForm({ onSubmit, onGuestLogin, onRequestPasswordRes
 
     setResetLoading(true);
     try {
-      await onRequestPasswordReset?.(normalizedEmail);
+      const result = await onRequestPasswordReset?.(normalizedEmail);
+      if (result?.reset_url) {
+        setResetOpen(false);
+        window.location.href = result.reset_url;
+        return;
+      }
       setResetCooldown(RESET_COOLDOWN_SECONDS);
-      setResetMessage(`An email has been sent to ${normalizedEmail}. Please use the reset link in that email.`);
+      setResetMessage(result?.message || 'Password reset is ready. Please check your email.');
     } catch (err) {
-      const msg = err.message || 'Failed to send password reset email';
+      const msg = err.message || 'Failed to send password reset request';
       if (msg === 'Failed to fetch' || msg === 'Load failed') {
         setError('Server is starting up. Please try again in a few seconds.');
-      } else if (msg.toLowerCase().includes('rate limit')) {
+      } else if (msg.toLowerCase().includes('wait') || msg.toLowerCase().includes('rate')) {
         setResetCooldown(RESET_COOLDOWN_SECONDS);
-        setError(`Too many reset requests. Please wait ${formatCooldown(RESET_COOLDOWN_SECONDS)} before trying again.`);
+        setError(msg);
       } else {
         setError(msg);
       }

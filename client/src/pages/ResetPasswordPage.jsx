@@ -73,7 +73,12 @@ export default function ResetPasswordPage() {
         }
       } catch (err) {
         if (!active) return;
-        setError(err.message || 'This reset link is invalid or has expired. Please request a new one.');
+        const msg = err.message || '';
+        if (msg === 'Failed to fetch' || msg === 'Load failed') {
+          setError('Unable to connect. Please check your internet connection and try again.');
+        } else {
+          setError(msg || 'This reset link is invalid or has expired. Please request a new one.');
+        }
       } finally {
         if (active) setChecking(false);
       }
@@ -122,7 +127,12 @@ export default function ResetPasswordPage() {
       await supabase.auth.signOut();
       window.setTimeout(() => navigate('/login', { replace: true }), 1200);
     } catch (err) {
-      setError(err.message || 'Failed to update password.');
+      const msg = err.message || '';
+      if (msg === 'Failed to fetch' || msg === 'Load failed') {
+        setError('Unable to connect. Please check your internet connection and try again.');
+      } else {
+        setError(msg || 'Failed to update password.');
+      }
     } finally {
       setLoading(false);
     }
