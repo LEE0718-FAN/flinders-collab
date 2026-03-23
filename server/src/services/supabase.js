@@ -30,6 +30,7 @@ const supabasePublic = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
   auth: {
     autoRefreshToken: false,
     persistSession: false,
+    flowType: 'implicit',
   },
 });
 
