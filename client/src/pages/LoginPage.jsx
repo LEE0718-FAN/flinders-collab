@@ -16,7 +16,8 @@ export default function LoginPage() {
     const isRecoveryLink = search.get('type') === 'recovery'
       || hash.get('type') === 'recovery'
       || hash.has('access_token')
-      || search.has('code');
+      || search.has('code')
+      || search.has('token_hash');
 
     if (isRecoveryLink) {
       navigate(`/reset-password${window.location.search}${window.location.hash}`, { replace: true });

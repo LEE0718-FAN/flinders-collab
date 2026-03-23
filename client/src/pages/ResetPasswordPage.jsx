@@ -21,6 +21,11 @@ export default function ResetPasswordPage() {
     return new URLSearchParams(window.location.search).get('code') || '';
   }, []);
 
+  const tokenHash = useMemo(() => {
+    if (typeof window === 'undefined') return '';
+    return new URLSearchParams(window.location.search).get('token_hash') || '';
+  }, []);
+
   const hashParams = useMemo(() => {
     if (typeof window === 'undefined') return new URLSearchParams();
     return new URLSearchParams(window.location.hash.replace(/^#/, ''));
@@ -31,7 +36,15 @@ export default function ResetPasswordPage() {
 
     const initRecovery = async () => {
       try {
-        if (recoveryCode) {
+        if (tokenHash) {
+          const { error: verifyError } = await supabase.auth.verifyOtp({
+            token_hash: tokenHash,
+            type: 'recovery',
+          });
+          if (verifyError) {
+            throw verifyError;
+          }
+        } else if (recoveryCode) {
           const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(recoveryCode);
           if (exchangeError) {
             throw exchangeError;
@@ -81,7 +94,7 @@ export default function ResetPasswordPage() {
       active = false;
       authListener.subscription.unsubscribe();
     };
-  }, [hashParams, recoveryCode]);
+  }, [hashParams, recoveryCode, tokenHash]);
 
   const handleSubmit = async (event) => {
     event.preventDefault();
