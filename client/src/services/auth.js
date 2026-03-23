@@ -34,7 +34,8 @@ export async function apiRequestPasswordReset(email) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ email }),
   });
-  return parseResponse(res);
+  const data = await parseResponse(res);
+  return data;
 }
 
 export async function apiLogout() {

@@ -168,7 +168,8 @@ export function useAuth() {
     if (!normalizedEmail) {
       throw new Error('Email is required');
     }
-    return apiRequestPasswordReset(normalizedEmail);
+    const result = await apiRequestPasswordReset(normalizedEmail);
+    return result;
   }, []);
 
   const guestLogin = useCallback(async () => {
