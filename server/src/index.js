@@ -39,7 +39,14 @@ app.set('io', io);
 app.set('trust proxy', 1);
 
 // Global middleware
-app.use(helmet());
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      ...helmet.contentSecurityPolicy.getDefaultDirectives(),
+      'connect-src': ["'self'", 'https://*.supabase.co', 'wss://*.supabase.co'],
+    },
+  },
+}));
 app.use(cors({
   origin: config.clientUrl.includes(',')
     ? config.clientUrl.split(',').map(url => url.trim())
