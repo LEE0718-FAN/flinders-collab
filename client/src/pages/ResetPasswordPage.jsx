@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Loader2, Lock } from 'lucide-react';
 import AuthLayout from '@/layouts/AuthLayout';
@@ -16,49 +16,44 @@ export default function ResetPasswordPage() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
-  const recoveryCode = useMemo(() => {
-    if (typeof window === 'undefined') return '';
-    return new URLSearchParams(window.location.search).get('code') || '';
-  }, []);
-
-  const tokenHash = useMemo(() => {
-    if (typeof window === 'undefined') return '';
-    return new URLSearchParams(window.location.search).get('token_hash') || '';
-  }, []);
-
-  const hashParams = useMemo(() => {
-    if (typeof window === 'undefined') return new URLSearchParams();
-    return new URLSearchParams(window.location.hash.replace(/^#/, ''));
-  }, []);
-
   useEffect(() => {
     let active = true;
 
     const initRecovery = async () => {
+      const params = new URLSearchParams(window.location.search);
+      const hash = new URLSearchParams(window.location.hash.replace(/^#/, ''));
+      const code = params.get('code') || '';
+      const tokenHash = params.get('token_hash') || '';
+      const accessToken = hash.get('access_token') || '';
+      const refreshToken = hash.get('refresh_token') || '';
+
+      // Attempt to establish a session from recovery params
       try {
-        if (tokenHash) {
-          const { error: verifyError } = await supabase.auth.verifyOtp({
+        if (code) {
+          const { error: err } = await supabase.auth.exchangeCodeForSession(code);
+          if (err) console.warn('[reset] code exchange:', err.message);
+        } else if (tokenHash) {
+          const { error: err } = await supabase.auth.verifyOtp({
             token_hash: tokenHash,
             type: 'recovery',
           });
-          if (verifyError) {
-            throw verifyError;
-          }
-        } else if (recoveryCode) {
-          const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(recoveryCode);
-          if (exchangeError) {
-            throw exchangeError;
-          }
-        } else if (hashParams.has('access_token') && hashParams.has('refresh_token')) {
-          const { error: sessionError } = await supabase.auth.setSession({
-            access_token: hashParams.get('access_token'),
-            refresh_token: hashParams.get('refresh_token'),
+          if (err) console.warn('[reset] verifyOtp:', err.message);
+        } else if (accessToken && refreshToken) {
+          const { error: err } = await supabase.auth.setSession({
+            access_token: accessToken,
+            refresh_token: refreshToken,
           });
-          if (sessionError) {
-            throw sessionError;
-          }
+          if (err) console.warn('[reset] setSession:', err.message);
         }
+      } catch (e) {
+        // Code may already have been consumed by detectSessionInUrl — that's OK
+        console.warn('[reset] exchange attempt error (may be normal):', e.message);
+      }
 
+      if (!active) return;
+
+      // Regardless of exchange result, check if we have a valid session now
+      try {
         const { data } = await supabase.auth.getSession();
         if (!active) return;
 
@@ -71,24 +66,20 @@ export default function ResetPasswordPage() {
         } else {
           setError('This reset link is invalid or has expired. Please request a new one.');
         }
-      } catch (err) {
+      } catch (e) {
         if (!active) return;
-        const msg = err.message || '';
-        if (msg === 'Failed to fetch' || msg === 'Load failed') {
-          setError('Unable to connect. Please check your internet connection and try again.');
-        } else {
-          setError(msg || 'This reset link is invalid or has expired. Please request a new one.');
-        }
-      } finally {
-        if (active) setChecking(false);
+        setError('Unable to connect. Please check your internet connection and try again.');
       }
+
+      if (active) setChecking(false);
     };
 
     initRecovery();
 
+    // Backup: listen for auth state changes (Supabase may auto-detect recovery from URL)
     const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
       if (!active) return;
-      if (event === 'PASSWORD_RECOVERY' || session) {
+      if ((event === 'PASSWORD_RECOVERY' || event === 'SIGNED_IN') && session) {
         setReady(true);
         setError('');
         setChecking(false);
@@ -99,7 +90,7 @@ export default function ResetPasswordPage() {
       active = false;
       authListener.subscription.unsubscribe();
     };
-  }, [hashParams, recoveryCode, tokenHash]);
+  }, []);
 
   const handleSubmit = async (event) => {
     event.preventDefault();
@@ -119,9 +110,7 @@ export default function ResetPasswordPage() {
     setLoading(true);
     try {
       const { error: updateError } = await supabase.auth.updateUser({ password });
-      if (updateError) {
-        throw updateError;
-      }
+      if (updateError) throw updateError;
 
       setSuccess('Your password has been updated. Redirecting to login...');
       await supabase.auth.signOut();
