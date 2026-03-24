@@ -154,7 +154,9 @@ export default function DeadlinesPage() {
                   key={event.id}
                   className="flex items-start gap-3 rounded-xl border bg-white px-3.5 py-3.5 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md sm:items-center sm:gap-4 sm:px-5 sm:py-4"
                   style={{ borderLeftWidth: '4px', borderLeftColor: palette.accent }}
-                  onClick={() => navigate(`/rooms/${event.room_id}`)}
+                  onClick={() => navigate(`/rooms/${event.room_id}`, {
+                    state: { tab: 'schedule', eventDate: startDate.toISOString().slice(0, 10) },
+                  })}
                 >
                   <span
                     className="shrink-0 rounded-full px-2.5 py-1 text-xs font-bold sm:px-3 sm:text-sm"

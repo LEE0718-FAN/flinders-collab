@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef, lazy, Suspense } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useLocation } from 'react-router-dom';
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -47,7 +47,9 @@ const APP_SOFT_REFRESH_EVENT = 'app-soft-refresh';
 
 export default function RoomPage() {
   const { roomId } = useParams();
+  const location = useLocation();
   const { user } = useAuth();
+  const navState = location.state || {};
   const [room, setRoom] = useState(null);
   const [members, setMembers] = useState([]);
   const [events, setEvents] = useState([]);
@@ -57,7 +59,7 @@ export default function RoomPage() {
   const [eventFormOpen, setEventFormOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState(false);
-  const [activeTab, setActiveTab] = useState('members');
+  const [activeTab, setActiveTab] = useState(navState.tab || 'members');
   const [activities, setActivities] = useState([]);
   const [quickLinks, setQuickLinks] = useState([]);
   const [error, setError] = useState('');
@@ -232,6 +234,24 @@ export default function RoomPage() {
       cancelled = true;
     };
   }, [activeTab, eventsLoaded, filesLoaded, tasksLoaded, fetchEvents, fetchFiles, fetchTasks]);
+
+  // Navigate from DeadlinesPage: scroll to event date after schedule data loads
+  useEffect(() => {
+    if (!navState.eventDate || !eventsLoaded || activeTab !== 'schedule') return;
+    const dateKey = navState.eventDate;
+    // Small delay to let the DOM render the event list
+    const timer = setTimeout(() => {
+      const el = document.getElementById(`event-date-${dateKey}`);
+      if (!el) return;
+      clearHighlight();
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      el.classList.add('ring-2', 'ring-blue-400', 'ring-offset-4', 'bg-blue-50/50');
+      highlightRef.current = el;
+      highlightTimerRef.current = setTimeout(() => clearHighlight(), 4000);
+    }, 300);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [eventsLoaded, activeTab]);
 
   // Listen for external event creation (e.g. tutorial) to refetch events
   useEffect(() => {
@@ -541,7 +561,7 @@ export default function RoomPage() {
           </div>
         )}
 
-        <Tabs defaultValue="members" onValueChange={setActiveTab}>
+        <Tabs value={activeTab} onValueChange={setActiveTab}>
           <div className="relative">
             <div className="-mx-1 overflow-x-auto px-1">
               <TabsList className="w-max min-w-full justify-start gap-1 rounded-xl border bg-white p-1.5 shadow-sm scrollbar-hide">
