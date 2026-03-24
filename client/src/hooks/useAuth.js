@@ -3,6 +3,7 @@ import { useAuthStore } from '@/store/authStore';
 import { apiSignup, apiLogin, apiLogout, apiUpdateProfile, apiGuestLogin, apiGuestCleanup, apiRequestPasswordReset, apiRefreshSession } from '@/services/auth';
 import { saveSession, loadSession, loadStoredSession, clearSession, isSessionExpired } from '@/lib/auth-token';
 import { subscribeToPush } from '@/lib/push';
+import { supabase } from '@/lib/supabase';
 
 function buildSessionData(result, fallback = {}) {
   const accountType = result.user.account_type || fallback.account_type || 'flinders';
@@ -168,8 +169,20 @@ export function useAuth() {
     if (!normalizedEmail) {
       throw new Error('Email is required');
     }
-    const result = await apiRequestPasswordReset(normalizedEmail);
-    return result;
+
+    // Server-side rate limit check (throws on 429)
+    await apiRequestPasswordReset(normalizedEmail);
+
+    // Client initiates the actual reset so Supabase JS stores the PKCE
+    // code_verifier in localStorage — required for code exchange on the
+    // reset-password page after the user clicks the email link.
+    const redirectTo = `${window.location.origin}/reset-password`;
+    const { error } = await supabase.auth.resetPasswordForEmail(normalizedEmail, { redirectTo });
+    if (error) {
+      console.warn('[auth] resetPasswordForEmail:', error.message);
+      // Don't throw — server already accepted the request; Supabase may
+      // silently succeed for security (email-existence hiding).
+    }
   }, []);
 
   const guestLogin = useCallback(async () => {

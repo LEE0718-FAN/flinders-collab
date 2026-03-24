@@ -11,7 +11,8 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
     flowType: 'pkce',
     autoRefreshToken: false,
-    persistSession: false,
+    persistSession: true,       // code_verifier must survive page loads for PKCE recovery
     detectSessionInUrl: true,
+    storageKey: 'sb-pwd-reset', // isolated from app's own session management
   },
 });

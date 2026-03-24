@@ -270,16 +270,11 @@ async function requestPasswordReset(req, res, next) {
     // Set cooldown immediately to prevent timing attacks on email existence
     _resetCooldowns.set(email, Date.now());
 
-    const redirectTo = `${resolvePasswordResetBaseUrl(req)}/reset-password`;
+    // The actual resetPasswordForEmail call is made from the CLIENT so that
+    // the Supabase JS SDK can generate and store a PKCE code_verifier in the
+    // browser.  This endpoint only enforces the server-side rate limit.
 
-    // Use admin client (service role key) for better deliverability
-    const { error } = await supabaseAdmin.auth.resetPasswordForEmail(email, { redirectTo });
-
-    if (error) {
-      console.error('Password reset email error:', error.message);
-    }
-
-    // Always return same response regardless of success/failure (don't reveal email existence)
+    // Always return same response regardless of email existence
     res.json({
       message: 'If an account exists for that email, a password reset link has been sent.',
     });
