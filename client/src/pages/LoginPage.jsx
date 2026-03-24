@@ -35,7 +35,7 @@ export default function LoginPage() {
   };
 
   const handlePasswordReset = async (email) => {
-    return await requestPasswordReset(email);
+    await requestPasswordReset(email);
   };
 
   return (

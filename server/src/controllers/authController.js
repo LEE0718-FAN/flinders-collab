@@ -45,7 +45,7 @@ function resolvePasswordResetBaseUrl(req) {
 
 // In-memory rate limit for password reset (email → timestamp)
 const _resetCooldowns = new Map();
-const RESET_COOLDOWN_MS = 5 * 60 * 1000; // 5 minutes
+const RESET_COOLDOWN_MS = 2 * 60 * 1000; // 2 minutes
 
 async function ignoreQueryError(query) {
   try {
@@ -248,7 +248,7 @@ async function refreshSession(req, res, next) {
 
 /**
  * POST /auth/password/reset
- * Generate a password reset link via Admin API (bypasses Supabase email rate limits).
+ * Send a password reset email via Supabase Auth (service role key).
  */
 async function requestPasswordReset(req, res, next) {
   try {
@@ -258,7 +258,7 @@ async function requestPasswordReset(req, res, next) {
       return res.status(400).json({ error: 'Email is required' });
     }
 
-    // Server-side cooldown: 1 request per email per 5 minutes
+    // Server-side cooldown: 1 request per email per 2 minutes
     const lastReset = _resetCooldowns.get(email);
     if (lastReset && Date.now() - lastReset < RESET_COOLDOWN_MS) {
       const remainSec = Math.ceil((RESET_COOLDOWN_MS - (Date.now() - lastReset)) / 1000);
@@ -272,28 +272,16 @@ async function requestPasswordReset(req, res, next) {
 
     const redirectTo = `${resolvePasswordResetBaseUrl(req)}/reset-password`;
 
-    const { data, error } = await supabaseAdmin.auth.admin.generateLink({
-      type: 'recovery',
-      email,
-      options: { redirectTo },
-    });
+    // Use admin client (service role key) for better deliverability
+    const { error } = await supabaseAdmin.auth.resetPasswordForEmail(email, { redirectTo });
 
     if (error) {
-      // Don't reveal whether the account exists
-      return res.json({
-        message: 'If an account exists for that email, you can now reset your password.',
-      });
+      console.error('Password reset email error:', error.message);
     }
 
-    // Build reset URL from the hashed token
-    const hashedToken = data.properties?.hashed_token;
-    const resetUrl = hashedToken
-      ? `${redirectTo}?token_hash=${encodeURIComponent(hashedToken)}&type=recovery`
-      : null;
-
+    // Always return same response regardless of success/failure (don't reveal email existence)
     res.json({
-      message: 'If an account exists for that email, you can now reset your password.',
-      reset_url: resetUrl,
+      message: 'If an account exists for that email, a password reset link has been sent.',
     });
   } catch (err) {
     next(err);

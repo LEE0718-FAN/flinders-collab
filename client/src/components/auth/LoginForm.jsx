@@ -84,14 +84,9 @@ export default function LoginForm({ onSubmit, onGuestLogin, onRequestPasswordRes
 
     setResetLoading(true);
     try {
-      const result = await onRequestPasswordReset?.(normalizedEmail);
-      if (result?.reset_url) {
-        setResetOpen(false);
-        window.location.href = result.reset_url;
-        return;
-      }
+      await onRequestPasswordReset?.(normalizedEmail);
       setResetCooldown(RESET_COOLDOWN_SECONDS);
-      setResetMessage(result?.message || 'Password reset is ready. Please check your email.');
+      setResetMessage(`If an account exists for ${normalizedEmail}, a password reset link has been sent. Please check your inbox and spam folder.`);
     } catch (err) {
       const msg = err.message || 'Failed to send password reset request';
       if (msg === 'Failed to fetch' || msg === 'Load failed') {
@@ -246,7 +241,7 @@ export default function LoginForm({ onSubmit, onGuestLogin, onRequestPasswordRes
           <DialogHeader>
             <DialogTitle>Reset password</DialogTitle>
             <DialogDescription>
-              Enter the email address associated with your account.
+              Enter your email address. We&apos;ll send you a password reset link.
             </DialogDescription>
           </DialogHeader>
 
@@ -288,11 +283,11 @@ export default function LoginForm({ onSubmit, onGuestLogin, onRequestPasswordRes
             </Button>
             <Button type="button" onClick={handlePasswordReset} disabled={resetLoading || resetCooldown > 0} className="w-full whitespace-normal sm:w-auto">
               {resetLoading ? (
-                <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Processing...</>
+                <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Sending...</>
               ) : resetCooldown > 0 ? (
-                `Retry in ${formatCooldown(resetCooldown)}`
+                `Resend in ${formatCooldown(resetCooldown)}`
               ) : (
-                'Reset password'
+                'Send reset link'
               )}
             </Button>
           </DialogFooter>
