@@ -27,7 +27,7 @@ export function DateField({ label = 'Date', hint, className, inputClassName, ...
         type="date"
         lang="en"
         className={cn(
-          'h-12 rounded-xl border-slate-200 bg-white pl-11 pr-3 text-[15px] font-medium text-slate-700 [color-scheme:light]',
+          'h-12 rounded-xl border-slate-200 bg-white pl-11 pr-3 text-[14px] font-medium text-slate-600 placeholder:text-slate-300 [color-scheme:light] sm:text-[15px]',
           inputClassName
         )}
         {...props}
@@ -43,7 +43,7 @@ export function TimeField({ label, hint, className, inputClassName, ...props }) 
         type="time"
         lang="en"
         className={cn(
-          'h-12 rounded-xl border-slate-200 bg-white pl-11 pr-3 text-[15px] font-medium text-slate-700 [color-scheme:light]',
+          'h-12 rounded-xl border-slate-200 bg-white pl-11 pr-3 text-[14px] font-medium text-slate-600 placeholder:text-slate-300 [color-scheme:light] sm:text-[15px]',
           inputClassName
         )}
         {...props}

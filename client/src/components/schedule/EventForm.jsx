@@ -24,63 +24,63 @@ const CATEGORIES = [
 const DUE_ONLY_CATEGORIES = new Set(['submission', 'deadline']);
 const CATEGORY_THEME = {
   meeting: {
-    accent: 'from-sky-600 to-indigo-600',
-    soft: 'bg-sky-50 text-sky-700 border-sky-200',
-    selected: 'border-sky-500 bg-sky-50 text-sky-700 shadow-sky-200/70',
+    accent: 'from-sky-400 to-indigo-400',
+    soft: 'bg-sky-50 text-sky-600 border-sky-100',
+    selected: 'border-sky-300 bg-sky-50 text-sky-600 shadow-sky-100/80',
     ring: 'focus:border-sky-400',
   },
   submission: {
-    accent: 'from-amber-500 to-orange-500',
-    soft: 'bg-amber-50 text-amber-700 border-amber-200',
-    selected: 'border-amber-500 bg-amber-50 text-amber-700 shadow-amber-200/70',
+    accent: 'from-amber-300 to-orange-300',
+    soft: 'bg-amber-50 text-amber-700 border-amber-100',
+    selected: 'border-amber-300 bg-amber-50 text-amber-700 shadow-amber-100/80',
     ring: 'focus:border-amber-400',
   },
   quiz: {
-    accent: 'from-teal-500 to-cyan-500',
-    soft: 'bg-teal-50 text-teal-700 border-teal-200',
-    selected: 'border-teal-500 bg-teal-50 text-teal-700 shadow-teal-200/70',
+    accent: 'from-teal-300 to-cyan-300',
+    soft: 'bg-teal-50 text-teal-700 border-teal-100',
+    selected: 'border-teal-300 bg-teal-50 text-teal-700 shadow-teal-100/80',
     ring: 'focus:border-teal-400',
   },
   exam: {
-    accent: 'from-rose-600 to-red-600',
-    soft: 'bg-rose-50 text-rose-700 border-rose-200',
-    selected: 'border-rose-500 bg-rose-50 text-rose-700 shadow-rose-200/70',
+    accent: 'from-rose-400 to-red-400',
+    soft: 'bg-rose-50 text-rose-700 border-rose-100',
+    selected: 'border-rose-300 bg-rose-50 text-rose-700 shadow-rose-100/80',
     ring: 'focus:border-rose-400',
   },
   presentation: {
-    accent: 'from-fuchsia-600 to-violet-600',
-    soft: 'bg-fuchsia-50 text-fuchsia-700 border-fuchsia-200',
-    selected: 'border-fuchsia-500 bg-fuchsia-50 text-fuchsia-700 shadow-fuchsia-200/70',
+    accent: 'from-fuchsia-400 to-violet-400',
+    soft: 'bg-fuchsia-50 text-fuchsia-700 border-fuchsia-100',
+    selected: 'border-fuchsia-300 bg-fuchsia-50 text-fuchsia-700 shadow-fuchsia-100/80',
     ring: 'focus:border-fuchsia-400',
   },
   deadline: {
-    accent: 'from-amber-500 to-rose-500',
-    soft: 'bg-amber-50 text-amber-800 border-amber-200',
-    selected: 'border-amber-500 bg-gradient-to-br from-amber-50 to-rose-50 text-amber-800 shadow-amber-200/80',
+    accent: 'from-amber-300 to-rose-300',
+    soft: 'bg-amber-50 text-amber-700 border-amber-100',
+    selected: 'border-amber-300 bg-gradient-to-br from-amber-50 to-rose-50 text-amber-700 shadow-amber-100/80',
     ring: 'focus:border-amber-400',
   },
   study: {
-    accent: 'from-emerald-500 to-green-600',
-    soft: 'bg-emerald-50 text-emerald-700 border-emerald-200',
-    selected: 'border-emerald-500 bg-emerald-50 text-emerald-700 shadow-emerald-200/70',
+    accent: 'from-emerald-300 to-green-400',
+    soft: 'bg-emerald-50 text-emerald-700 border-emerald-100',
+    selected: 'border-emerald-300 bg-emerald-50 text-emerald-700 shadow-emerald-100/80',
     ring: 'focus:border-emerald-400',
   },
   lecture: {
-    accent: 'from-indigo-600 to-blue-600',
-    soft: 'bg-indigo-50 text-indigo-700 border-indigo-200',
-    selected: 'border-indigo-500 bg-indigo-50 text-indigo-700 shadow-indigo-200/70',
+    accent: 'from-indigo-400 to-blue-400',
+    soft: 'bg-indigo-50 text-indigo-700 border-indigo-100',
+    selected: 'border-indigo-300 bg-indigo-50 text-indigo-700 shadow-indigo-100/80',
     ring: 'focus:border-indigo-400',
   },
   social: {
-    accent: 'from-pink-500 to-orange-500',
-    soft: 'bg-pink-50 text-pink-700 border-pink-200',
-    selected: 'border-pink-500 bg-pink-50 text-pink-700 shadow-pink-200/70',
+    accent: 'from-pink-300 to-orange-300',
+    soft: 'bg-pink-50 text-pink-700 border-pink-100',
+    selected: 'border-pink-300 bg-pink-50 text-pink-700 shadow-pink-100/80',
     ring: 'focus:border-pink-400',
   },
   other: {
-    accent: 'from-slate-600 to-slate-700',
-    soft: 'bg-slate-100 text-slate-700 border-slate-200',
-    selected: 'border-slate-400 bg-slate-100 text-slate-700 shadow-slate-200/70',
+    accent: 'from-slate-300 to-slate-400',
+    soft: 'bg-slate-50 text-slate-600 border-slate-100',
+    selected: 'border-slate-300 bg-slate-50 text-slate-600 shadow-slate-100/80',
     ring: 'focus:border-slate-400',
   },
 };
@@ -101,7 +101,7 @@ export default function EventForm({ roomId, onCreateStart, onCreated, onCreateEr
   const categoryButtonClasses = (isSelected) => `shrink-0 inline-flex items-center gap-1.5 rounded-full border px-3 py-2 text-xs font-semibold transition-all ${
     isSelected
       ? `${theme.selected} shadow-sm`
-      : 'border-slate-200 bg-white text-slate-500'
+      : 'border-slate-100 bg-white/90 text-slate-400'
   }`;
 
   useEffect(() => {
@@ -215,7 +215,7 @@ export default function EventForm({ roomId, onCreateStart, onCreated, onCreateEr
                     onClick={() => setCategory(c.value)}
                     className={`${categoryButtonClasses(isSelected)} sm:min-h-[84px] sm:flex-col sm:justify-center sm:rounded-2xl sm:px-2 sm:py-2.5 sm:text-[11px]`}
                   >
-                    <span className={`flex h-7 w-7 items-center justify-center rounded-full text-sm sm:h-8 sm:w-8 sm:text-base ${isSelected ? 'bg-blue-100' : 'bg-slate-100'}`}>{c.icon}</span>
+                    <span className={`flex h-7 w-7 items-center justify-center rounded-full text-sm sm:h-8 sm:w-8 sm:text-base ${isSelected ? 'bg-white/80' : 'bg-slate-50'}`}>{c.icon}</span>
                     <span className="whitespace-nowrap text-center leading-tight sm:w-full sm:break-words">{c.label}</span>
                   </button>
                 );
@@ -227,7 +227,7 @@ export default function EventForm({ roomId, onCreateStart, onCreated, onCreateEr
           <div className="mt-4 space-y-2">
             <label className="text-sm font-semibold text-slate-700">Event Title</label>
             <Input
-              className={`rounded-xl border-slate-200 bg-white/95 ${theme.ring}`}
+              className={`rounded-xl border-slate-100 bg-white/90 text-slate-700 placeholder:text-slate-300 ${theme.ring}`}
               placeholder="e.g. Group Meeting, Final Presentation..."
               value={title}
               onChange={(e) => setTitle(e.target.value)}
@@ -242,7 +242,7 @@ export default function EventForm({ roomId, onCreateStart, onCreated, onCreateEr
                 label="Date"
                 value={eventDate}
                 onChange={(e) => setEventDate(e.target.value)}
-                hint="Flexible"
+                inputClassName="text-slate-600"
                 className="sm:col-span-1"
               />
               {!isDueOnlyCategory && (
@@ -268,7 +268,7 @@ export default function EventForm({ roomId, onCreateStart, onCreated, onCreateEr
           {/* Location */}
           <div className="mt-4 space-y-2">
             <label className="text-sm font-semibold text-slate-700">Location <span className="text-slate-400 font-normal">(optional)</span></label>
-            <Input className={`rounded-xl border-slate-200 bg-white/95 ${theme.ring}`} placeholder="e.g. Flinders Library Room 3" value={locationName} onChange={(e) => setLocationName(e.target.value)} />
+            <Input className={`rounded-xl border-slate-100 bg-white/90 text-slate-700 placeholder:text-slate-300 ${theme.ring}`} placeholder="e.g. Flinders Library Room 3" value={locationName} onChange={(e) => setLocationName(e.target.value)} />
           </div>
 
           {/* Location Sharing Toggle */}
@@ -291,7 +291,7 @@ export default function EventForm({ roomId, onCreateStart, onCreated, onCreateEr
           <div className="mt-4 space-y-2">
             <label className="text-sm font-semibold text-slate-700">Description <span className="text-slate-400 font-normal">(optional)</span></label>
             <Textarea
-              className={`rounded-xl border-slate-200 bg-white/95 ${theme.ring}`}
+              className={`rounded-xl border-slate-100 bg-white/90 text-slate-700 placeholder:text-slate-300 ${theme.ring}`}
               placeholder="Add any details about this event..."
               value={description}
               onChange={(e) => setDescription(e.target.value)}
@@ -302,7 +302,7 @@ export default function EventForm({ roomId, onCreateStart, onCreated, onCreateEr
           {error && <p className="mt-4 text-sm font-medium text-destructive">{error}</p>}
           </div>
           <div className="sticky bottom-0 border-t border-slate-100 bg-white/98 px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3 backdrop-blur-xl sm:px-6 sm:pb-6">
-            <Button type="submit" className={`h-12 w-full rounded-xl bg-gradient-to-r ${theme.accent} font-semibold text-white shadow-lg transition-all duration-200`} disabled={loading}>
+            <Button type="submit" className={`h-12 w-full rounded-xl bg-gradient-to-r ${theme.accent} font-semibold text-slate-800 shadow-sm transition-all duration-200`} disabled={loading}>
               {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Add Event
             </Button>
