@@ -22,6 +22,68 @@ const CATEGORIES = [
 ];
 
 const DUE_ONLY_CATEGORIES = new Set(['submission', 'deadline']);
+const CATEGORY_THEME = {
+  meeting: {
+    accent: 'from-sky-600 to-indigo-600',
+    soft: 'bg-sky-50 text-sky-700 border-sky-200',
+    selected: 'border-sky-500 bg-sky-50 text-sky-700 shadow-sky-200/70',
+    ring: 'focus:border-sky-400',
+  },
+  submission: {
+    accent: 'from-amber-500 to-orange-500',
+    soft: 'bg-amber-50 text-amber-700 border-amber-200',
+    selected: 'border-amber-500 bg-amber-50 text-amber-700 shadow-amber-200/70',
+    ring: 'focus:border-amber-400',
+  },
+  quiz: {
+    accent: 'from-teal-500 to-cyan-500',
+    soft: 'bg-teal-50 text-teal-700 border-teal-200',
+    selected: 'border-teal-500 bg-teal-50 text-teal-700 shadow-teal-200/70',
+    ring: 'focus:border-teal-400',
+  },
+  exam: {
+    accent: 'from-rose-600 to-red-600',
+    soft: 'bg-rose-50 text-rose-700 border-rose-200',
+    selected: 'border-rose-500 bg-rose-50 text-rose-700 shadow-rose-200/70',
+    ring: 'focus:border-rose-400',
+  },
+  presentation: {
+    accent: 'from-fuchsia-600 to-violet-600',
+    soft: 'bg-fuchsia-50 text-fuchsia-700 border-fuchsia-200',
+    selected: 'border-fuchsia-500 bg-fuchsia-50 text-fuchsia-700 shadow-fuchsia-200/70',
+    ring: 'focus:border-fuchsia-400',
+  },
+  deadline: {
+    accent: 'from-amber-500 to-rose-500',
+    soft: 'bg-amber-50 text-amber-800 border-amber-200',
+    selected: 'border-amber-500 bg-gradient-to-br from-amber-50 to-rose-50 text-amber-800 shadow-amber-200/80',
+    ring: 'focus:border-amber-400',
+  },
+  study: {
+    accent: 'from-emerald-500 to-green-600',
+    soft: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+    selected: 'border-emerald-500 bg-emerald-50 text-emerald-700 shadow-emerald-200/70',
+    ring: 'focus:border-emerald-400',
+  },
+  lecture: {
+    accent: 'from-indigo-600 to-blue-600',
+    soft: 'bg-indigo-50 text-indigo-700 border-indigo-200',
+    selected: 'border-indigo-500 bg-indigo-50 text-indigo-700 shadow-indigo-200/70',
+    ring: 'focus:border-indigo-400',
+  },
+  social: {
+    accent: 'from-pink-500 to-orange-500',
+    soft: 'bg-pink-50 text-pink-700 border-pink-200',
+    selected: 'border-pink-500 bg-pink-50 text-pink-700 shadow-pink-200/70',
+    ring: 'focus:border-pink-400',
+  },
+  other: {
+    accent: 'from-slate-600 to-slate-700',
+    soft: 'bg-slate-100 text-slate-700 border-slate-200',
+    selected: 'border-slate-400 bg-slate-100 text-slate-700 shadow-slate-200/70',
+    ring: 'focus:border-slate-400',
+  },
+};
 
 export default function EventForm({ roomId, onCreateStart, onCreated, onCreateError, selectedDate, open, onOpenChange }) {
   const [title, setTitle] = useState('');
@@ -35,9 +97,10 @@ export default function EventForm({ roomId, onCreateStart, onCreated, onCreateEr
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const isDueOnlyCategory = DUE_ONLY_CATEGORIES.has(category);
+  const theme = CATEGORY_THEME[category] || CATEGORY_THEME.meeting;
   const categoryButtonClasses = (isSelected) => `shrink-0 inline-flex items-center gap-1.5 rounded-full border px-3 py-2 text-xs font-semibold transition-all ${
     isSelected
-      ? 'border-blue-500 bg-blue-50 text-blue-700 shadow-sm'
+      ? `${theme.selected} shadow-sm`
       : 'border-slate-200 bg-white text-slate-500'
   }`;
 
@@ -132,7 +195,7 @@ export default function EventForm({ roomId, onCreateStart, onCreated, onCreateEr
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="grid h-[calc(100dvh-0.75rem)] max-h-[calc(100dvh-0.75rem)] w-[calc(100vw-0.75rem)] max-w-[560px] grid-rows-[auto_minmax(0,1fr)] gap-0 overflow-hidden rounded-[26px] border-white/60 bg-white/95 p-0 backdrop-blur-2xl sm:h-auto sm:max-h-[calc(100dvh-2rem)] sm:w-full">
+      <DialogContent className="grid h-[calc(100dvh-0.75rem)] max-h-[calc(100dvh-0.75rem)] w-[calc(100vw-0.75rem)] max-w-[560px] grid-rows-[auto_minmax(0,1fr)] gap-0 overflow-hidden rounded-[26px] border border-white/70 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(248,250,252,0.98))] p-0 backdrop-blur-2xl sm:h-auto sm:max-h-[calc(100dvh-2rem)] sm:w-full">
         <DialogHeader className="border-b border-slate-100 px-4 pb-2.5 pt-[max(1rem,env(safe-area-inset-top))] sm:px-6 sm:pb-4 sm:pt-6">
           <DialogTitle className="text-lg font-bold">New Event</DialogTitle>
           <DialogDescription className="text-slate-500">{displayDate}</DialogDescription>
@@ -164,7 +227,7 @@ export default function EventForm({ roomId, onCreateStart, onCreated, onCreateEr
           <div className="mt-4 space-y-2">
             <label className="text-sm font-semibold text-slate-700">Event Title</label>
             <Input
-              className="rounded-xl border-slate-200 focus:border-blue-400"
+              className={`rounded-xl border-slate-200 bg-white/95 ${theme.ring}`}
               placeholder="e.g. Group Meeting, Final Presentation..."
               value={title}
               onChange={(e) => setTitle(e.target.value)}
@@ -205,7 +268,7 @@ export default function EventForm({ roomId, onCreateStart, onCreated, onCreateEr
           {/* Location */}
           <div className="mt-4 space-y-2">
             <label className="text-sm font-semibold text-slate-700">Location <span className="text-slate-400 font-normal">(optional)</span></label>
-            <Input className="rounded-xl border-slate-200" placeholder="e.g. Flinders Library Room 3" value={locationName} onChange={(e) => setLocationName(e.target.value)} />
+            <Input className={`rounded-xl border-slate-200 bg-white/95 ${theme.ring}`} placeholder="e.g. Flinders Library Room 3" value={locationName} onChange={(e) => setLocationName(e.target.value)} />
           </div>
 
           {/* Location Sharing Toggle */}
@@ -215,11 +278,11 @@ export default function EventForm({ roomId, onCreateStart, onCreated, onCreateEr
               onClick={() => setEnableLocationSharing((v) => !v)}
               className={`flex items-center gap-2.5 w-full rounded-xl border-2 px-4 py-3 text-sm transition-all duration-200 ${
                 enableLocationSharing
-                  ? 'border-blue-500 bg-gradient-to-r from-blue-50 to-indigo-50 text-blue-700 font-semibold shadow-md shadow-blue-500/10'
-                  : 'border-slate-200 hover:border-blue-300 hover:bg-blue-50/50 text-slate-500'
+                  ? `${theme.soft} font-semibold shadow-md`
+                  : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50 text-slate-500'
               }`}
             >
-              <MapPin className={`h-4 w-4 ${enableLocationSharing ? 'text-blue-600' : 'text-slate-400'}`} />
+              <MapPin className={`h-4 w-4 ${enableLocationSharing ? 'text-current' : 'text-slate-400'}`} />
               Enable live location sharing for this event
             </button>
           )}
@@ -228,7 +291,7 @@ export default function EventForm({ roomId, onCreateStart, onCreated, onCreateEr
           <div className="mt-4 space-y-2">
             <label className="text-sm font-semibold text-slate-700">Description <span className="text-slate-400 font-normal">(optional)</span></label>
             <Textarea
-              className="rounded-xl border-slate-200"
+              className={`rounded-xl border-slate-200 bg-white/95 ${theme.ring}`}
               placeholder="Add any details about this event..."
               value={description}
               onChange={(e) => setDescription(e.target.value)}
@@ -239,7 +302,7 @@ export default function EventForm({ roomId, onCreateStart, onCreated, onCreateEr
           {error && <p className="mt-4 text-sm font-medium text-destructive">{error}</p>}
           </div>
           <div className="sticky bottom-0 border-t border-slate-100 bg-white/98 px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3 backdrop-blur-xl sm:px-6 sm:pb-6">
-            <Button type="submit" className="h-12 w-full rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 font-semibold text-white shadow-lg shadow-blue-500/25 transition-all duration-200 hover:from-blue-700 hover:to-indigo-700 hover:shadow-xl hover:shadow-blue-500/30" disabled={loading}>
+            <Button type="submit" className={`h-12 w-full rounded-xl bg-gradient-to-r ${theme.accent} font-semibold text-white shadow-lg transition-all duration-200`} disabled={loading}>
               {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Add Event
             </Button>
