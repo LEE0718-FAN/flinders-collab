@@ -138,6 +138,12 @@
     color: hsl(var(--foreground));
   }
 
+  input::placeholder,
+  textarea::placeholder {
+    color: hsl(var(--muted-foreground) / 0.5);
+    opacity: 1;
+  }
+
   /* Accessibility: respect reduced motion preferences */
   @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after {
