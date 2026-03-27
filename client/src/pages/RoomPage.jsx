@@ -66,6 +66,8 @@ export default function RoomPage() {
   const [announcements, setAnnouncements] = useState([]);
   const [announcementInput, setAnnouncementInput] = useState('');
   const [showAnnouncementForm, setShowAnnouncementForm] = useState(false);
+  const [activitiesLoaded, setActivitiesLoaded] = useState(false);
+  const [quickLinksLoaded, setQuickLinksLoaded] = useState(false);
   const [eventsLoaded, setEventsLoaded] = useState(false);
   const [filesLoaded, setFilesLoaded] = useState(false);
   const [tasksLoaded, setTasksLoaded] = useState(false);
@@ -160,11 +162,24 @@ export default function RoomPage() {
     } catch { /* non-critical */ }
   }, [roomId]);
 
+  const fetchQuickLinks = useCallback(async () => {
+    try {
+      const data = await getQuickLinks(roomId);
+      setQuickLinks(Array.isArray(data) ? data : []);
+    } catch {
+      setQuickLinks([]);
+    }
+  }, [roomId]);
+
   useEffect(() => {
     setLoading(true);
     setEvents([]);
     setFiles([]);
     setTasks([]);
+    setActivities([]);
+    setQuickLinks([]);
+    setActivitiesLoaded(false);
+    setQuickLinksLoaded(false);
     setEventsLoaded(false);
     setFilesLoaded(false);
     setTasksLoaded(false);
@@ -175,9 +190,8 @@ export default function RoomPage() {
         const [,,,, linksData] = await Promise.all([
           fetchRoom(),
           fetchMembers(),
-          fetchActivity(),
           fetchAnnouncements(),
-          getQuickLinks(roomId).catch(() => []),
+          Promise.resolve([]),
         ]);
         setQuickLinks(Array.isArray(linksData) ? linksData : []);
       } catch {
@@ -205,6 +219,18 @@ export default function RoomPage() {
           loaded: tasksLoaded,
           fetcher: fetchTasks,
           onLoaded: () => setTasksLoaded(true),
+        },
+        members: {
+          key: 'activities',
+          loaded: activitiesLoaded,
+          fetcher: fetchActivity,
+          onLoaded: () => setActivitiesLoaded(true),
+        },
+        links: {
+          key: 'quickLinks',
+          loaded: quickLinksLoaded,
+          fetcher: fetchQuickLinks,
+          onLoaded: () => setQuickLinksLoaded(true),
         },
         files: {
           key: 'files',
@@ -234,7 +260,7 @@ export default function RoomPage() {
     return () => {
       cancelled = true;
     };
-  }, [activeTab, eventsLoaded, filesLoaded, tasksLoaded, fetchEvents, fetchFiles, fetchTasks]);
+  }, [activeTab, activitiesLoaded, eventsLoaded, filesLoaded, quickLinksLoaded, tasksLoaded, fetchActivity, fetchEvents, fetchFiles, fetchQuickLinks, fetchTasks]);
 
   // Navigate from DeadlinesPage: scroll to event date after schedule data loads
   useEffect(() => {
@@ -268,6 +294,8 @@ export default function RoomPage() {
       fetchActivity();
       fetchAnnouncements();
       fetchEvents();
+      if (activitiesLoaded) fetchActivity();
+      if (quickLinksLoaded) fetchQuickLinks();
       if (filesLoaded) fetchFiles();
       if (tasksLoaded) fetchTasks();
     };
@@ -280,8 +308,11 @@ export default function RoomPage() {
     fetchFiles,
     fetchMembers,
     fetchRoom,
+    fetchQuickLinks,
     fetchTasks,
+    activitiesLoaded,
     filesLoaded,
+    quickLinksLoaded,
     tasksLoaded,
   ]);
 
@@ -289,8 +320,12 @@ export default function RoomPage() {
 
   useEffect(() => {
     if (!user?.id || !roomId) return undefined;
+    let lastSyncedAt = 0;
 
-    const syncVisitedAt = () => {
+    const syncVisitedAt = (force = false) => {
+      const now = Date.now();
+      if (!force && now - lastSyncedAt < 180000) return;
+      lastSyncedAt = now;
       markRoomVisitedApi(roomId)
         .then((result) => {
           const timestamp = result?.last_visited_at ? new Date(result.last_visited_at).getTime() : Date.now();
@@ -301,11 +336,11 @@ export default function RoomPage() {
         .catch(() => {});
     };
 
-    syncVisitedAt();
-    const intervalId = window.setInterval(syncVisitedAt, 60000);
+    syncVisitedAt(true);
+    const intervalId = window.setInterval(() => syncVisitedAt(false), 180000);
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
-        syncVisitedAt();
+        syncVisitedAt(false);
       }
     };
 
@@ -313,7 +348,7 @@ export default function RoomPage() {
     window.addEventListener('beforeunload', syncVisitedAt);
 
     return () => {
-      syncVisitedAt();
+      syncVisitedAt(true);
       window.clearInterval(intervalId);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       window.removeEventListener('beforeunload', syncVisitedAt);
@@ -599,7 +634,11 @@ export default function RoomPage() {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                {activities.length === 0 ? (
+                {!activitiesLoaded ? (
+                  <div className="flex items-center justify-center py-4">
+                    <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                  </div>
+                ) : activities.length === 0 ? (
                   <p className="text-sm text-muted-foreground text-center py-4">No activity yet</p>
                 ) : (
                   <div className="space-y-3">
@@ -873,7 +912,13 @@ export default function RoomPage() {
           <TabsContent value="links">
             <Card>
               <CardContent className="p-5">
-                <QuickLinks roomId={roomId} links={quickLinks} onLinksChange={setQuickLinks} />
+                {!quickLinksLoaded ? (
+                  <div className="flex items-center justify-center py-6">
+                    <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                  </div>
+                ) : (
+                  <QuickLinks roomId={roomId} links={quickLinks} onLinksChange={setQuickLinks} />
+                )}
               </CardContent>
             </Card>
           </TabsContent>

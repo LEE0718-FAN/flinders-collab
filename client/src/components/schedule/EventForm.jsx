@@ -35,6 +35,11 @@ export default function EventForm({ roomId, onCreateStart, onCreated, onCreateEr
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const isDueOnlyCategory = DUE_ONLY_CATEGORIES.has(category);
+  const categoryButtonClasses = (isSelected) => `shrink-0 inline-flex items-center gap-1.5 rounded-full border px-3 py-2 text-xs font-semibold transition-all ${
+    isSelected
+      ? 'border-blue-500 bg-blue-50 text-blue-700 shadow-sm'
+      : 'border-slate-200 bg-white text-slate-500'
+  }`;
 
   useEffect(() => {
     if (open) {
@@ -127,17 +132,17 @@ export default function EventForm({ roomId, onCreateStart, onCreated, onCreateEr
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="grid h-[calc(100svh-0.5rem)] max-h-[calc(100svh-0.5rem)] w-[calc(100vw-0.5rem)] max-w-[560px] grid-rows-[auto_minmax(0,1fr)] gap-0 overflow-hidden rounded-[28px] border-white/60 bg-white/90 p-0 backdrop-blur-2xl sm:h-auto sm:max-h-[calc(100dvh-2rem)] sm:w-full">
+      <DialogContent className="grid h-[calc(100dvh-0.75rem)] max-h-[calc(100dvh-0.75rem)] w-[calc(100vw-0.75rem)] max-w-[560px] grid-rows-[auto_minmax(0,1fr)] gap-0 overflow-hidden rounded-[26px] border-white/60 bg-white/95 p-0 backdrop-blur-2xl sm:h-auto sm:max-h-[calc(100dvh-2rem)] sm:w-full">
         <DialogHeader className="border-b border-slate-100 px-4 pb-2.5 pt-[max(1rem,env(safe-area-inset-top))] sm:px-6 sm:pb-4 sm:pt-6">
           <DialogTitle className="text-lg font-bold">New Event</DialogTitle>
           <DialogDescription className="text-slate-500">{displayDate}</DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="flex min-h-0 flex-col overflow-hidden">
-          <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 pb-28 pt-3.5 sm:px-6 sm:pb-6 sm:pt-4">
+          <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 pb-36 pt-3.5 sm:px-6 sm:pb-8 sm:pt-4">
           {/* Category selection */}
           <div className="space-y-2.5">
             <label className="text-sm font-semibold text-slate-700">Category</label>
-            <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
+            <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 sm:grid sm:grid-cols-4 sm:overflow-visible sm:px-0">
               {CATEGORIES.map((c) => {
                 const isSelected = category === c.value;
                 return (
@@ -145,14 +150,10 @@ export default function EventForm({ roomId, onCreateStart, onCreated, onCreateEr
                     key={c.value}
                     type="button"
                     onClick={() => setCategory(c.value)}
-                    className={`flex min-h-[88px] flex-col items-center justify-center gap-1 rounded-2xl border px-2 py-2.5 text-[11px] transition-all duration-200 sm:min-h-[96px] sm:text-xs ${
-                      isSelected
-                        ? 'border-blue-500 ring-2 ring-offset-1 ring-blue-500/30 bg-blue-50 text-blue-700 font-bold shadow-md'
-                        : 'border-slate-200 hover:border-blue-300 hover:bg-blue-50/50 text-slate-500'
-                    }`}
+                    className={`${categoryButtonClasses(isSelected)} sm:min-h-[84px] sm:flex-col sm:justify-center sm:rounded-2xl sm:px-2 sm:py-2.5 sm:text-[11px]`}
                   >
-                    <span className={`flex h-8 w-8 items-center justify-center rounded-full text-base ${isSelected ? 'bg-blue-100' : 'bg-slate-100'}`}>{c.icon}</span>
-                    <span className="w-full text-center leading-tight break-words">{c.label}</span>
+                    <span className={`flex h-7 w-7 items-center justify-center rounded-full text-sm sm:h-8 sm:w-8 sm:text-base ${isSelected ? 'bg-blue-100' : 'bg-slate-100'}`}>{c.icon}</span>
+                    <span className="whitespace-nowrap text-center leading-tight sm:w-full sm:break-words">{c.label}</span>
                   </button>
                 );
               })}
@@ -167,14 +168,13 @@ export default function EventForm({ roomId, onCreateStart, onCreated, onCreateEr
               placeholder="e.g. Group Meeting, Final Presentation..."
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              autoFocus
               required
             />
           </div>
 
           {/* Date and Time */}
           <div className="mt-4 space-y-3">
-            <div className={`grid gap-3 ${isDueOnlyCategory ? 'sm:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]' : 'sm:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)_minmax(0,1fr)]'}`}>
+            <div className={`grid gap-3 ${isDueOnlyCategory ? 'grid-cols-1 sm:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]' : 'grid-cols-1 sm:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)_minmax(0,1fr)]'}`}>
               <DateField
                 label="Date"
                 value={eventDate}
@@ -238,7 +238,7 @@ export default function EventForm({ roomId, onCreateStart, onCreated, onCreateEr
 
           {error && <p className="mt-4 text-sm font-medium text-destructive">{error}</p>}
           </div>
-          <div className="sticky bottom-0 border-t border-slate-100 bg-white/96 px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3 backdrop-blur-xl sm:px-6 sm:pb-6">
+          <div className="sticky bottom-0 border-t border-slate-100 bg-white/98 px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3 backdrop-blur-xl sm:px-6 sm:pb-6">
             <Button type="submit" className="h-12 w-full rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 font-semibold text-white shadow-lg shadow-blue-500/25 transition-all duration-200 hover:from-blue-700 hover:to-indigo-700 hover:shadow-xl hover:shadow-blue-500/30" disabled={loading}>
               {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Add Event

@@ -1,6 +1,10 @@
 import { getAuthHeaders, parseResponse } from '@/lib/api-headers';
 import { apiUrl } from '@/lib/api';
 
+let boardNotificationsCache = null;
+let boardNotificationsCacheAt = 0;
+let boardNotificationsInflight = null;
+
 export async function getPosts(category) {
   const headers = getAuthHeaders();
   const params = category && category !== 'all' ? `?category=${category}` : '';
@@ -15,9 +19,28 @@ export async function getBoardState() {
 }
 
 export async function getBoardNotifications() {
+  if (boardNotificationsCache && Date.now() - boardNotificationsCacheAt < 20000) {
+    return boardNotificationsCache;
+  }
+  if (boardNotificationsInflight) {
+    return boardNotificationsInflight;
+  }
+
   const headers = getAuthHeaders();
-  const res = await fetch(apiUrl('/api/board/notifications'), { headers });
-  return parseResponse(res);
+  boardNotificationsInflight = fetch(apiUrl('/api/board/notifications'), { headers })
+    .then(parseResponse)
+    .then((data) => {
+      boardNotificationsCache = data;
+      boardNotificationsCacheAt = Date.now();
+      boardNotificationsInflight = null;
+      return data;
+    })
+    .catch((error) => {
+      boardNotificationsInflight = null;
+      throw error;
+    });
+
+  return boardNotificationsInflight;
 }
 
 export async function updateBoardState(lastSeenAt) {
@@ -28,18 +51,24 @@ export async function updateBoardState(lastSeenAt) {
     headers,
     body: JSON.stringify(body),
   });
+  boardNotificationsCache = null;
+  boardNotificationsCacheAt = 0;
   return parseResponse(res);
 }
 
 export async function createPost(data) {
   const headers = getAuthHeaders();
   const res = await fetch(apiUrl('/api/board/posts'), { method: 'POST', headers, body: JSON.stringify(data) });
+  boardNotificationsCache = null;
+  boardNotificationsCacheAt = 0;
   return parseResponse(res);
 }
 
 export async function deletePost(postId) {
   const headers = getAuthHeaders();
   const res = await fetch(apiUrl(`/api/board/posts/${postId}`), { method: 'DELETE', headers });
+  boardNotificationsCache = null;
+  boardNotificationsCacheAt = 0;
   return parseResponse(res);
 }
 

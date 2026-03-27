@@ -417,7 +417,12 @@ export default function MainLayout({ children }) {
         }
 
         if (location.pathname === '/board') {
-          await markBoardSeen(posts);
+          const unreadCount = Number(data?.unread_count || 0);
+          if (unreadCount > 0 || posts.length > 0) {
+            await markBoardSeen(posts);
+          } else {
+            setBoardUnreadCount(0);
+          }
           return;
         }
 
@@ -467,8 +472,9 @@ export default function MainLayout({ children }) {
 
     const intervalId = window.setInterval(() => {
       if (document.visibilityState === 'hidden') return;
+      if (location.pathname === '/board') return;
       syncBoardNotifications().catch(() => {});
-    }, 15000);
+    }, 30000);
 
     const handleBoardRead = (event) => {
       if (event.detail?.userId && event.detail.userId !== user.id) return;

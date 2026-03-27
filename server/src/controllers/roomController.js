@@ -1,4 +1,21 @@
 const { supabaseAdmin } = require('../services/supabase');
+
+const QUICK_LINKS_TTL_MS = 60 * 1000;
+const quickLinksCache = new Map();
+
+function getFreshQuickLinks(roomId) {
+  const entry = quickLinksCache.get(roomId);
+  if (!entry) return null;
+  if (Date.now() - entry.timestamp > QUICK_LINKS_TTL_MS) {
+    quickLinksCache.delete(roomId);
+    return null;
+  }
+  return entry.value;
+}
+
+function setQuickLinksCache(roomId, value) {
+  quickLinksCache.set(roomId, { value, timestamp: Date.now() });
+}
 const { notifyRoom } = require('./pushController');
 
 function normalizeInviteCode(inviteCode) {
@@ -541,6 +558,10 @@ async function markVisited(req, res, next) {
 async function getQuickLinks(req, res, next) {
   try {
     const { roomId } = req.params;
+    const cached = getFreshQuickLinks(roomId);
+    if (cached) {
+      return res.json(cached);
+    }
 
     const { data, error } = await supabaseAdmin
       .from('room_quick_links')
@@ -552,7 +573,9 @@ async function getQuickLinks(req, res, next) {
       return res.status(400).json({ error: error.message });
     }
 
-    res.json(data || []);
+    const result = data || [];
+    setQuickLinksCache(roomId, result);
+    res.json(result);
   } catch (err) {
     next(err);
   }
@@ -582,6 +605,7 @@ async function createQuickLink(req, res, next) {
       return res.status(400).json({ error: error.message });
     }
 
+    quickLinksCache.delete(roomId);
     res.status(201).json(data);
   } catch (err) {
     next(err);
@@ -621,6 +645,7 @@ async function deleteQuickLink(req, res, next) {
       return res.status(400).json({ error: error.message });
     }
 
+    quickLinksCache.delete(roomId);
     res.json({ message: 'Quick link deleted' });
   } catch (err) {
     next(err);

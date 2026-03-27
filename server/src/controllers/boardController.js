@@ -1,5 +1,30 @@
 const { supabaseAdmin } = require('../services/supabase');
 
+const BOARD_NOTIFICATIONS_TTL_MS = 20 * 1000;
+const boardNotificationsCache = new Map();
+
+function getFreshBoardNotificationsCache(key) {
+  const entry = boardNotificationsCache.get(key);
+  if (!entry) return null;
+  if (Date.now() - entry.timestamp > BOARD_NOTIFICATIONS_TTL_MS) {
+    boardNotificationsCache.delete(key);
+    return null;
+  }
+  return entry.value;
+}
+
+function setBoardNotificationsCache(key, value) {
+  boardNotificationsCache.set(key, { value, timestamp: Date.now() });
+}
+
+function invalidateBoardNotificationsCacheForUser(userId) {
+  for (const key of boardNotificationsCache.keys()) {
+    if (key.startsWith(`${userId}:`)) {
+      boardNotificationsCache.delete(key);
+    }
+  }
+}
+
 function buildBoardProfile(user) {
   if (!user) return null;
 
@@ -57,6 +82,12 @@ async function getBoardNotifications(req, res, next) {
       return res.json({ last_seen_at: null, unread_count: 0, posts: [] });
     }
 
+    const cacheKey = `${userId}:${lastSeenAt}`;
+    const cached = getFreshBoardNotificationsCache(cacheKey);
+    if (cached) {
+      return res.json(cached);
+    }
+
     const [{ count, error: countError }, { data: posts, error: postsError }] = await Promise.all([
       supabaseAdmin
         .from('board_posts')
@@ -75,14 +106,16 @@ async function getBoardNotifications(req, res, next) {
     if (countError) return res.status(400).json({ error: countError.message });
     if (postsError) return res.status(400).json({ error: postsError.message });
 
-    res.json({
+    const response = {
       last_seen_at: lastSeenAt,
       unread_count: count || 0,
       posts: (posts || []).map((post) => ({
         ...post,
         users: post.is_anonymous ? null : post.users,
       })),
-    });
+    };
+    setBoardNotificationsCache(cacheKey, response);
+    res.json(response);
   } catch (err) {
     next(err);
   }
@@ -102,6 +135,7 @@ async function updateBoardState(req, res, next) {
 
     if (error) return res.status(400).json({ error: error.message });
 
+    invalidateBoardNotificationsCacheForUser(userId);
     res.json({
       last_seen_at: data?.board_last_seen_at || nextSeenAt,
     });
@@ -284,6 +318,7 @@ async function createPost(req, res, next) {
 
     if (error) return res.status(400).json({ error: error.message });
 
+    boardNotificationsCache.clear();
     const result = {
       ...data,
       users: buildBoardProfile(data.users),
@@ -336,6 +371,7 @@ async function deletePost(req, res, next) {
     const { error } = await supabaseAdmin.from('board_posts').delete().eq('id', postId);
     if (error) return res.status(400).json({ error: error.message });
 
+    boardNotificationsCache.clear();
     res.json({ message: 'Post deleted' });
   } catch (err) {
     next(err);

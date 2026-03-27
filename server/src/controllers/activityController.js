@@ -1,5 +1,24 @@
 const { supabaseAdmin } = require('../services/supabase');
 
+const ROOM_ACTIVITY_TTL_MS = 15 * 1000;
+const ACTIVITY_SUMMARY_TTL_MS = 20 * 1000;
+const roomActivityCache = new Map();
+const activitySummaryCache = new Map();
+
+function getFreshCacheEntry(cache, key, ttlMs) {
+  const entry = cache.get(key);
+  if (!entry) return null;
+  if (Date.now() - entry.timestamp > ttlMs) {
+    cache.delete(key);
+    return null;
+  }
+  return entry.value;
+}
+
+function setCacheEntry(cache, key, value) {
+  cache.set(key, { value, timestamp: Date.now() });
+}
+
 async function buildRoomActivityEntries(roomId) {
   const [messagesResult, filesResult, eventsResult, tasksResult] = await Promise.all([
     supabaseAdmin
@@ -155,7 +174,12 @@ async function getUnreadActivityCounts(memberships) {
 async function getRoomActivity(req, res, next) {
   try {
     const { roomId } = req.params;
+    const cached = getFreshCacheEntry(roomActivityCache, roomId, ROOM_ACTIVITY_TTL_MS);
+    if (cached) {
+      return res.json(cached);
+    }
     const activities = await buildRoomActivityEntries(roomId);
+    setCacheEntry(roomActivityCache, roomId, activities);
     res.json(activities);
   } catch (err) {
     next(err);
@@ -174,7 +198,18 @@ async function getActivitySummary(req, res, next) {
       return res.status(400).json({ error: error.message });
     }
 
+    const membershipFingerprint = (memberships || [])
+      .map((membership) => `${membership.room_id}:${membership.last_visited_at || '0'}`)
+      .sort()
+      .join('|');
+    const cacheKey = `${userId}:${membershipFingerprint}`;
+    const cached = getFreshCacheEntry(activitySummaryCache, cacheKey, ACTIVITY_SUMMARY_TTL_MS);
+    if (cached) {
+      return res.json(cached);
+    }
+
     const summary = await getUnreadActivityCounts(memberships || []);
+    setCacheEntry(activitySummaryCache, cacheKey, summary);
     res.json(summary);
   } catch (err) {
     next(err);
