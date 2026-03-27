@@ -36,6 +36,8 @@ const categoryConfig = {
   other:        { label: 'Other',         icon: '📌', color: 'bg-gray-400',    badgeBg: 'bg-gray-50 text-gray-600 border-gray-200/60', borderColor: 'border-l-gray-400' },
 };
 
+const DUE_ONLY_CATEGORIES = new Set(['submission', 'deadline']);
+
 export default function EventList({ events = [], roomId, onEventsChange }) {
   const { user } = useAuth();
   const [expandedId, setExpandedId] = useState(null);
@@ -118,13 +120,14 @@ export default function EventList({ events = [], roomId, onEventsChange }) {
     setEditEvent(event);
     const start = new Date(event.start_time);
     const end = event.end_time ? new Date(event.end_time) : null;
+    const isDueOnlyCategory = DUE_ONLY_CATEGORIES.has(event.category);
     setEditForm({
       title: event.title || '',
       description: event.description || '',
       location_name: event.location_name || event.location || '',
       start_date: format(start, 'yyyy-MM-dd'),
-      start_time: format(start, 'HH:mm'),
-      end_time: end ? format(end, 'HH:mm') : '',
+      start_time: isDueOnlyCategory ? '' : format(start, 'HH:mm'),
+      end_time: end ? format(end, 'HH:mm') : (isDueOnlyCategory ? format(start, 'HH:mm') : ''),
       enable_location_sharing: event.enable_location_sharing || false,
     });
   };
@@ -133,15 +136,29 @@ export default function EventList({ events = [], roomId, onEventsChange }) {
     if (!editEvent) return;
     setEditLoading(true);
     try {
-      const startDt = new Date(`${editForm.start_date}T${editForm.start_time}`);
+      const isDueOnlyCategory = DUE_ONLY_CATEGORIES.has(editEvent.category);
+      if (!editForm.start_date) {
+        return;
+      }
+
+      if (isDueOnlyCategory && !editForm.end_time) {
+        return;
+      }
+
+      if (!isDueOnlyCategory && (!editForm.start_time || !editForm.end_time)) {
+        return;
+      }
+
+      const startDt = new Date(`${editForm.start_date}T${isDueOnlyCategory ? editForm.end_time : editForm.start_time}`);
       const updates = {
         title: editForm.title.trim(),
         description: editForm.description.trim(),
         location_name: editForm.location_name.trim() || null,
         start_time: startDt.toISOString(),
         enable_location_sharing: editForm.enable_location_sharing || false,
+        end_time: null,
       };
-      if (editForm.end_time) {
+      if (!isDueOnlyCategory && editForm.end_time) {
         updates.end_time = new Date(`${editForm.start_date}T${editForm.end_time}`).toISOString();
       }
       const updatedEvent = await updateEvent(roomId, editEvent.id, updates);
@@ -236,9 +253,12 @@ export default function EventList({ events = [], roomId, onEventsChange }) {
                   const isExpanded = expandedId === event.id;
                   const hasDetails = Boolean(locationName || event.enable_location_sharing);
                   const isAcademicOverlay = Boolean(event.isAcademicOverlay);
+                  const isDueOnlyCategory = DUE_ONLY_CATEGORIES.has(event.category);
                   const timeLabel = isAcademicOverlay && event.all_day
                     ? 'All day'
-                    : `${format(startDt, 'h:mm a')}${endDt ? ` – ${format(endDt, 'h:mm a')}` : ''}`;
+                    : isDueOnlyCategory && !endDt
+                      ? `Due ${format(startDt, 'h:mm a')}`
+                      : `${format(startDt, 'h:mm a')}${endDt ? ` – ${format(endDt, 'h:mm a')}` : ''}`;
 
                   return (
                     <div key={event.id} className={`group relative rounded-xl border border-slate-100 border-l-[3px] ${cat.borderColor} bg-white px-3.5 py-3 shadow-sm hover:shadow-md transition-all duration-200 hover:-translate-y-px`}>
@@ -389,21 +409,23 @@ export default function EventList({ events = [], roomId, onEventsChange }) {
               <label className="text-sm font-semibold text-slate-700">Title</label>
               <Input className="rounded-xl border-slate-200" value={editForm.title || ''} onChange={(e) => setEditForm({ ...editForm, title: e.target.value })} disabled={editLoading} />
             </div>
-            <div className="grid gap-3 md:grid-cols-[minmax(0,1.25fr)_minmax(0,1fr)_minmax(0,1fr)]">
+            <div className={`grid gap-3 ${DUE_ONLY_CATEGORIES.has(editEvent?.category) ? 'md:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)]' : 'md:grid-cols-[minmax(0,1.25fr)_minmax(0,1fr)_minmax(0,1fr)]'}`}>
               <DateField
                 label="Date"
                 value={editForm.start_date || ''}
                 onChange={(e) => setEditForm({ ...editForm, start_date: e.target.value })}
                 disabled={editLoading}
               />
+              {!DUE_ONLY_CATEGORIES.has(editEvent?.category) && (
+                <TimeField
+                  label="Start"
+                  value={editForm.start_time || ''}
+                  onChange={(e) => setEditForm({ ...editForm, start_time: e.target.value })}
+                  disabled={editLoading}
+                />
+              )}
               <TimeField
-                label="Start"
-                value={editForm.start_time || ''}
-                onChange={(e) => setEditForm({ ...editForm, start_time: e.target.value })}
-                disabled={editLoading}
-              />
-              <TimeField
-                label="End"
+                label={DUE_ONLY_CATEGORIES.has(editEvent?.category) ? 'Due' : 'End'}
                 value={editForm.end_time || ''}
                 onChange={(e) => setEditForm({ ...editForm, end_time: e.target.value })}
                 disabled={editLoading}

@@ -21,39 +21,45 @@ const CATEGORIES = [
   { value: 'other', label: 'Other', icon: '📌' },
 ];
 
+const DUE_ONLY_CATEGORIES = new Set(['submission', 'deadline']);
+
 export default function EventForm({ roomId, onCreateStart, onCreated, onCreateError, selectedDate, open, onOpenChange }) {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState('meeting');
+  const [eventDate, setEventDate] = useState('');
   const [startTime, setStartTime] = useState('09:00');
   const [endTime, setEndTime] = useState('10:00');
   const [locationName, setLocationName] = useState('');
   const [enableLocationSharing, setEnableLocationSharing] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const isDueOnlyCategory = DUE_ONLY_CATEGORIES.has(category);
 
   useEffect(() => {
     if (open) {
       setTitle('');
       setDescription('');
       setCategory('meeting');
+      setEventDate(selectedDate ? format(selectedDate, 'yyyy-MM-dd') : '');
       setStartTime('09:00');
       setEndTime('10:00');
       setLocationName('');
       setEnableLocationSharing(false);
       setError('');
     }
-  }, [open]);
+  }, [open, selectedDate]);
 
-  const dateStr = selectedDate ? format(selectedDate, 'yyyy-MM-dd') : '';
-  const displayDate = selectedDate ? format(selectedDate, 'EEEE, MMMM d, yyyy') : '';
+  const displayDate = eventDate
+    ? format(new Date(`${eventDate}T12:00:00`), 'EEEE, MMMM d, yyyy')
+    : 'Choose a date for this event';
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
 
-    if (!dateStr) {
-      setError('Please select a date from the calendar.');
+    if (!eventDate) {
+      setError('Please choose a date for this event.');
       return;
     }
     if (!title.trim()) {
@@ -61,12 +67,28 @@ export default function EventForm({ roomId, onCreateStart, onCreated, onCreateEr
       return;
     }
 
-    const start = new Date(`${dateStr}T${startTime}`).toISOString();
-    const end = new Date(`${dateStr}T${endTime}`).toISOString();
+    let start;
+    let end;
 
-    if (new Date(end) <= new Date(start)) {
-      setError('End time must be after start time.');
-      return;
+    if (isDueOnlyCategory) {
+      if (!endTime) {
+        setError('Due time is required for this type of event.');
+        return;
+      }
+      start = new Date(`${eventDate}T${endTime}`).toISOString();
+    } else {
+      if (!startTime || !endTime) {
+        setError('Start and end times are required.');
+        return;
+      }
+
+      start = new Date(`${eventDate}T${startTime}`).toISOString();
+      end = new Date(`${eventDate}T${endTime}`).toISOString();
+
+      if (new Date(end) <= new Date(start)) {
+        setError('End time must be after start time.');
+        return;
+      }
     }
 
     if (enableLocationSharing && !locationName.trim()) {
@@ -152,27 +174,32 @@ export default function EventForm({ roomId, onCreateStart, onCreated, onCreateEr
 
           {/* Date and Time */}
           <div className="mt-4 space-y-3">
-            <div className="grid gap-3 sm:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)_minmax(0,1fr)]">
+            <div className={`grid gap-3 ${isDueOnlyCategory ? 'sm:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]' : 'sm:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)_minmax(0,1fr)]'}`}>
               <DateField
                 label="Date"
-                value={dateStr}
-                readOnly
-                disabled
-                inputClassName="cursor-default"
+                value={eventDate}
+                onChange={(e) => setEventDate(e.target.value)}
+                hint="Flexible"
                 className="sm:col-span-1"
               />
+              {!isDueOnlyCategory && (
+                <TimeField
+                  label="Start"
+                  value={startTime}
+                  onChange={(e) => setStartTime(e.target.value)}
+                />
+              )}
               <TimeField
-                label="Start"
-                value={startTime}
-                onChange={(e) => setStartTime(e.target.value)}
-              />
-              <TimeField
-                label="End"
+                label={isDueOnlyCategory ? 'Due' : 'End'}
                 value={endTime}
                 onChange={(e) => setEndTime(e.target.value)}
               />
             </div>
-            <p className="text-xs text-slate-400">Choose a precise start and end time for this event.</p>
+            <p className="text-xs text-slate-400">
+              {isDueOnlyCategory
+                ? 'Submission-style events only need a due date and due time.'
+                : 'You can still change the date here even if you opened the form from another day on the calendar.'}
+            </p>
           </div>
 
           {/* Location */}

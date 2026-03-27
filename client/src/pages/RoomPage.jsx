@@ -29,7 +29,7 @@ import EditRoomDialog from '@/components/room/EditRoomDialog';
 import QuickLinks from '@/components/room/QuickLinks';
 import { getAnnouncements, createAnnouncement, deleteAnnouncement as deleteAnnouncementApi, markAllRead } from '@/services/announcements';
 import { formatDistanceToNow, format } from 'date-fns';
-import { isFlindersUser } from '@/lib/flinders-week';
+import { isFlindersUser, getStoredFlindersWeekOffset, setStoredFlindersWeekOffset } from '@/lib/flinders-week';
 import { getFlindersScheduleOverlayEvents } from '@/lib/flinders-academic-overlay';
 
 function sortEvents(items) {
@@ -70,6 +70,7 @@ export default function RoomPage() {
   const [filesLoaded, setFilesLoaded] = useState(false);
   const [tasksLoaded, setTasksLoaded] = useState(false);
   const [showAcademicInList, setShowAcademicInList] = useState(false);
+  const [weekOffset, setWeekOffset] = useState(() => getStoredFlindersWeekOffset());
   const [sectionLoading, setSectionLoading] = useState({
     events: false,
     files: false,
@@ -634,7 +635,31 @@ export default function RoomPage() {
 
           <TabsContent value="schedule" className="space-y-4" style={{ overflow: 'visible' }}><Suspense fallback={<div className="flex min-h-[18rem] items-center justify-center rounded-2xl border border-slate-200 bg-white"><Loader2 className="h-6 w-6 animate-spin text-indigo-500" /></div>}>
             <div className="flex items-start justify-between rounded-xl bg-gradient-to-r from-slate-50 to-indigo-50 px-5 py-4 gap-4">
-              <h2 className="text-lg font-bold text-indigo-900">Schedule</h2>
+              <div className="space-y-2">
+                <h2 className="text-lg font-bold text-indigo-900">Schedule</h2>
+                {isFlindersUser(user) && (
+                  <label className="inline-flex items-center gap-2 rounded-full border border-indigo-100 bg-white/85 px-2.5 py-1 text-[11px] font-medium text-slate-600 shadow-sm">
+                    <span className="text-slate-500">Week Start</span>
+                    <select
+                      value={weekOffset}
+                      onChange={(e) => {
+                        const nextOffset = Number.parseInt(e.target.value, 10) || 0;
+                        setWeekOffset(nextOffset);
+                        setStoredFlindersWeekOffset(nextOffset);
+                      }}
+                      className="rounded-full border border-slate-200 bg-white px-2 py-0.5 text-[11px] font-semibold text-slate-700 outline-none"
+                    >
+                      <option value={-3}>-3 weeks</option>
+                      <option value={-2}>-2 weeks</option>
+                      <option value={-1}>-1 week</option>
+                      <option value={0}>Default</option>
+                      <option value={1}>+1 week</option>
+                      <option value={2}>+2 weeks</option>
+                      <option value={3}>+3 weeks</option>
+                    </select>
+                  </label>
+                )}
+              </div>
               <div className="flex items-center gap-2">
                 <Button size="sm" className="bg-indigo-600 hover:bg-indigo-700 shadow-md" onClick={() => { if (!selectedDate) setSelectedDate(new Date()); setEventFormOpen(true); }}>
                   <Plus className="mr-2 h-4 w-4" />
@@ -652,6 +677,7 @@ export default function RoomPage() {
                     selectedDate={selectedDate}
                     onSelectDate={setSelectedDate}
                     scrollFollowDate={scrollFollowDate}
+                    weekOffset={weekOffset}
                     onDismissPrompt={() => {
                       clearHighlight();
                     }}

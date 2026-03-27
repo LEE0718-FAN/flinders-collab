@@ -1,5 +1,7 @@
 import { differenceInCalendarDays, format, isValid, parseISO, startOfDay } from 'date-fns';
 
+const FLINDERS_WEEK_OFFSET_KEY = 'flinders-week-offset';
+
 const FLINDERS_SEMESTER_STARTS = [
   { date: '2025-03-03', semester: 1 },
   { date: '2025-07-28', semester: 2 },
@@ -27,9 +29,22 @@ export function isFlindersUser(user) {
   return accountType === 'flinders' || email.endsWith('@flinders.edu.au') || university.includes('flinders');
 }
 
-export function getFlindersWeekInfo(dateLike) {
+export function getStoredFlindersWeekOffset() {
+  if (typeof window === 'undefined') return 0;
+  const rawValue = window.localStorage.getItem(FLINDERS_WEEK_OFFSET_KEY);
+  const parsed = Number.parseInt(rawValue || '0', 10);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+export function setStoredFlindersWeekOffset(offset) {
+  if (typeof window === 'undefined') return;
+  window.localStorage.setItem(FLINDERS_WEEK_OFFSET_KEY, String(offset));
+}
+
+export function getFlindersWeekInfo(dateLike, options = {}) {
   const target = normalizeDate(dateLike);
   if (!target) return null;
+  const weekOffset = Number.isFinite(options.weekOffset) ? options.weekOffset : getStoredFlindersWeekOffset();
 
   for (let index = 0; index < FLINDERS_SEMESTER_STARTS.length; index += 1) {
     const current = FLINDERS_SEMESTER_STARTS[index];
@@ -40,7 +55,7 @@ export function getFlindersWeekInfo(dateLike) {
     if (target < start) continue;
     if (nextStart && target >= nextStart) continue;
 
-    const week = Math.floor(differenceInCalendarDays(target, start) / 7) + 1;
+    const week = Math.max(1, Math.floor(differenceInCalendarDays(target, start) / 7) + 1 + weekOffset);
     return {
       semester: current.semester,
       week,
@@ -54,14 +69,14 @@ export function getFlindersWeekInfo(dateLike) {
 }
 
 export function getFlindersWeekLabel(dateLike, options = {}) {
-  const info = getFlindersWeekInfo(dateLike);
+  const info = getFlindersWeekInfo(dateLike, options);
   if (!info) return null;
   return options.short ? info.shortLabel : info.label;
 }
 
 export function getFlindersWeekLabelForDates(dates, options = {}) {
   const labels = dates
-    .map((date) => ({ date, info: getFlindersWeekInfo(date) }))
+    .map((date) => ({ date, info: getFlindersWeekInfo(date, options) }))
     .filter((entry) => entry.info);
 
   const weekdayTeachingWeek = labels.find((entry) => {

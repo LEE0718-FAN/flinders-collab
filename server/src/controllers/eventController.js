@@ -19,14 +19,21 @@ function normalizeOptionalBoolean(value) {
 
 function validateEventPayload({ startTime, endTime, enableLocationSharing, locationName }) {
   const start = new Date(startTime);
-  const end = new Date(endTime);
 
-  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
-    return 'Valid start and end times are required';
+  if (Number.isNaN(start.getTime())) {
+    return 'Valid start time is required';
   }
 
-  if (end <= start) {
-    return 'End time must be after start time';
+  if (endTime !== undefined && endTime !== null && endTime !== '') {
+    const end = new Date(endTime);
+
+    if (Number.isNaN(end.getTime())) {
+      return 'Valid end time is required';
+    }
+
+    if (end <= start) {
+      return 'End time must be after start time';
+    }
   }
 
   if (enableLocationSharing === null) {
@@ -307,7 +314,7 @@ async function updateEvent(req, res, next) {
       updates.location_name = normalizeOptionalText(req.body.location_name);
     }
     if (req.body.start_time !== undefined) updates.start_time = req.body.start_time;
-    if (req.body.end_time !== undefined) updates.end_time = req.body.end_time;
+    if (req.body.end_time !== undefined) updates.end_time = req.body.end_time || null;
     if (req.body.enable_location_sharing !== undefined) {
       updates.enable_location_sharing = normalizedBoolean;
     }
@@ -319,7 +326,7 @@ async function updateEvent(req, res, next) {
     }
 
     const effectiveStart = updates.start_time || existing.start_time;
-    const effectiveEnd = updates.end_time || existing.end_time;
+    const effectiveEnd = updates.end_time !== undefined ? updates.end_time : existing.end_time;
     const effectiveLocationSharing =
       updates.enable_location_sharing !== undefined
         ? updates.enable_location_sharing

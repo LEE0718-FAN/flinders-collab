@@ -109,6 +109,7 @@ const createEventValidation = [
     .isISO8601()
     .withMessage('Valid start time is required'),
   body('end_time')
+    .optional({ nullable: true, checkFalsy: true })
     .isISO8601()
     .withMessage('Valid end time is required')
     .custom((value, { req }) => {

@@ -539,14 +539,16 @@ function CreatePostDialog({ open, onOpenChange, onCreated, academicInfo }) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg rounded-2xl">
+      <DialogContent className="grid max-h-[calc(100dvh-2rem)] w-[min(calc(100vw-1.5rem),56rem)] max-w-[56rem] grid-rows-[auto_auto_minmax(0,1fr)] overflow-hidden rounded-2xl p-0">
         <DialogHeader>
-          <DialogTitle className="text-lg font-black">New Post</DialogTitle>
+          <div className="border-b border-slate-100 px-5 pb-4 pt-5 sm:px-6">
+            <DialogTitle className="text-lg font-black">New Post</DialogTitle>
+          </div>
           <DialogDescription className="sr-only">Create a new post on the community board</DialogDescription>
         </DialogHeader>
 
         {/* Author info */}
-        <div className="flex items-center justify-between rounded-xl border bg-slate-50 px-3 py-2">
+        <div className="mx-5 flex items-center justify-between rounded-xl border bg-slate-50 px-3 py-2 sm:mx-6">
           <div className="flex items-center gap-2">
             {isAnonymous ? (
               <>
@@ -576,7 +578,8 @@ function CreatePostDialog({ open, onOpenChange, onCreated, academicInfo }) {
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="flex min-h-0 flex-col overflow-hidden">
+          <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-5 pb-5 pt-4 sm:px-6">
           {/* Category */}
           <div className="-mx-1 flex flex-nowrap gap-1.5 overflow-x-auto px-1 pb-1 scrollbar-hide">
             {CATEGORIES.filter((c) => c.value !== 'all').map((cat) => {
@@ -611,7 +614,7 @@ function CreatePostDialog({ open, onOpenChange, onCreated, academicInfo }) {
             placeholder="What's on your mind?"
             value={content}
             onChange={(e) => setContent(e.target.value)}
-            className="rounded-xl min-h-[80px] text-sm"
+            className="rounded-xl min-h-[220px] text-sm leading-6"
             maxLength={5000}
           />
 
@@ -669,10 +672,13 @@ function CreatePostDialog({ open, onOpenChange, onCreated, academicInfo }) {
           </div>
 
           {error && <p className="text-sm text-destructive">{error}</p>}
+          </div>
+          <div className="border-t border-slate-100 bg-white px-5 py-4 sm:px-6">
           <Button type="submit" disabled={loading} className="w-full rounded-xl h-11 bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 font-bold shadow-lg shadow-indigo-500/20">
             {loading && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
             Post
           </Button>
+          </div>
         </form>
       </DialogContent>
     </Dialog>

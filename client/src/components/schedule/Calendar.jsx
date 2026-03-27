@@ -21,7 +21,7 @@ const categoryColors = {
   other: '#94a3b8',
 };
 
-export default function ScheduleCalendar({ events = [], selectedDate, onSelectDate, onDateClick, onAddEvent, onDismissPrompt, roomId, promptResetToken = 0, scrollFollowDate }) {
+export default function ScheduleCalendar({ events = [], selectedDate, onSelectDate, onDateClick, onAddEvent, onDismissPrompt, roomId, promptResetToken = 0, scrollFollowDate, weekOffset = 0 }) {
   const [month, setMonth] = useState(new Date());
   const [addPrompt, setAddPrompt] = useState(null); // date to show "add event?" prompt
   const showWeekColumn = events.some((event) => event.isAcademicOverlay);
@@ -91,7 +91,7 @@ export default function ScheduleCalendar({ events = [], selectedDate, onSelectDa
     const dates = Array.from({ length: 7 }, (_, index) => addDays(rowStart, index));
     calendarRows.push({
       key: format(rowStart, 'yyyy-MM-dd'),
-      label: getFlindersWeekLabelForDates(dates, { short: true }),
+      label: getFlindersWeekLabelForDates(dates, { short: true, weekOffset }),
     });
     rowStart = addDays(rowStart, 7);
   }
