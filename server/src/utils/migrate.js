@@ -420,6 +420,7 @@ CREATE INDEX IF NOT EXISTS idx_deadline_reminders_date ON deadline_reminders(rem
 CREATE TABLE IF NOT EXISTS flinders_campus_presence (
   user_id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
   campus TEXT NOT NULL CHECK (campus IN ('city', 'bedford', 'tonsley', 'off_campus')),
+  activity_status TEXT NOT NULL DEFAULT 'study' CHECK (activity_status IN ('study', 'meal', 'coffee', 'team_up', 'quiet')),
   source TEXT NOT NULL DEFAULT 'manual' CHECK (source IN ('gps', 'manual')),
   sharing_enabled BOOLEAN NOT NULL DEFAULT true,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
@@ -433,6 +434,7 @@ DO $$ BEGIN
     ALTER TABLE flinders_campus_presence ADD CONSTRAINT flinders_campus_presence_user_users_fkey FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE;
   END IF;
 END $$;
+ALTER TABLE flinders_campus_presence ADD COLUMN IF NOT EXISTS activity_status TEXT NOT NULL DEFAULT 'study';
 `;
 
 async function runMigration() {

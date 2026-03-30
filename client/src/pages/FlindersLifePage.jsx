@@ -106,6 +106,14 @@ const FLINAP_GEOFENCES = {
   tonsley: { lat: -35.0069, lng: 138.5717, radiusKm: 1.0 },
 };
 
+const FLINAP_ACTIVITY_OPTIONS = [
+  { key: 'study', label: 'Study', chip: 'bg-blue-50 border-blue-200 text-blue-700' },
+  { key: 'meal', label: 'Meal', chip: 'bg-orange-50 border-orange-200 text-orange-700' },
+  { key: 'coffee', label: 'Coffee', chip: 'bg-amber-50 border-amber-200 text-amber-700' },
+  { key: 'team_up', label: 'Team Up', chip: 'bg-violet-50 border-violet-200 text-violet-700' },
+  { key: 'quiet', label: 'Quiet', chip: 'bg-emerald-50 border-emerald-200 text-emerald-700' },
+];
+
 function getCampusMeta(campusKey) {
   return FLINAP_CAMPUSES.find((campus) => campus.key === campusKey) || FLINAP_CAMPUSES[0];
 }
@@ -117,6 +125,10 @@ function formatPresenceTime(value) {
   if (minutes < 60) return `${minutes}m ago`;
   const hours = Math.floor(minutes / 60);
   return `${hours}h ago`;
+}
+
+function getActivityMeta(activityKey) {
+  return FLINAP_ACTIVITY_OPTIONS.find((item) => item.key === activityKey) || FLINAP_ACTIVITY_OPTIONS[0];
 }
 
 function haversineKm(lat1, lng1, lat2, lng2) {
@@ -421,6 +433,7 @@ function FlinapPanel({ currentUserId }) {
     stale_after_hours: 6,
   });
   const [selectedCampus, setSelectedCampus] = useState('city');
+  const [selectedActivity, setSelectedActivity] = useState('study');
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [locating, setLocating] = useState(false);
@@ -438,6 +451,9 @@ function FlinapPanel({ currentUserId }) {
       });
       if (data?.my_presence?.campus) {
         setSelectedCampus(data.my_presence.campus);
+      }
+      if (data?.my_presence?.activity_status) {
+        setSelectedActivity(data.my_presence.activity_status);
       }
     } catch (err) {
       setError(err.message || 'Failed to load Flinap');
@@ -462,13 +478,13 @@ function FlinapPanel({ currentUserId }) {
     setError('');
     setStatusMessage('');
     try {
-      const nextPresence = await updateCampusPresence({ campus, source });
+      const nextPresence = await updateCampusPresence({ campus, source, activity_status: selectedActivity });
       setPresenceData((prev) => ({
         ...prev,
         my_presence: nextPresence,
       }));
       setSelectedCampus(campus);
-      setStatusMessage(`${getCampusMeta(campus).label} is now shared on Flinap.`);
+      setStatusMessage(`${getCampusMeta(campus).label} · ${getActivityMeta(selectedActivity).label} is now shared on Flinap.`);
       fetchPresence({ silent: true });
     } catch (err) {
       setError(err.message || 'Failed to share your campus');
@@ -587,6 +603,11 @@ function FlinapPanel({ currentUserId }) {
                         </p>
                         <span className="shrink-0 text-[10px] text-slate-400">{formatPresenceTime(member.updated_at)}</span>
                       </div>
+                      <div className="mt-2">
+                        <span className={`inline-flex rounded-full border px-2 py-0.5 text-[10px] font-semibold ${getActivityMeta(member.activity_status).chip}`}>
+                          {getActivityMeta(member.activity_status).label}
+                        </span>
+                      </div>
                     </div>
                   )) : (
                     <p className="rounded-xl border border-dashed border-slate-200 px-3 py-4 text-center text-xs text-slate-400">
@@ -621,6 +642,9 @@ function FlinapPanel({ currentUserId }) {
               <p className="text-[12px] text-slate-500">
                 Shared {formatPresenceTime(presenceData.my_presence.updated_at)} via {presenceData.my_presence.source === 'gps' ? 'current location' : 'manual selection'}
               </p>
+              <span className={`inline-flex rounded-full border px-2 py-0.5 text-[10px] font-semibold ${getActivityMeta(presenceData.my_presence.activity_status).chip}`}>
+                {getActivityMeta(presenceData.my_presence.activity_status).label}
+              </span>
             </div>
           ) : (
             <p className="mt-2 text-sm text-slate-500">You are currently hidden from Flinap.</p>
@@ -643,6 +667,24 @@ function FlinapPanel({ currentUserId }) {
                 <p className="text-[11px] opacity-70">
                   {campus.key === 'off_campus' ? 'Shown as away from campus' : `Visible in the ${campus.shortLabel} list`}
                 </p>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="mt-4 space-y-2">
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">What Are You Up For?</p>
+          <div className="flex flex-wrap gap-2">
+            {FLINAP_ACTIVITY_OPTIONS.map((activity) => (
+              <button
+                key={activity.key}
+                type="button"
+                onClick={() => setSelectedActivity(activity.key)}
+                className={`rounded-full border px-3 py-1.5 text-[11px] font-semibold transition ${
+                  selectedActivity === activity.key ? activity.chip : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300'
+                }`}
+              >
+                {activity.label}
               </button>
             ))}
           </div>

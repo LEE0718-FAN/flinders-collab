@@ -7,6 +7,7 @@ const { crawlFlindersEvents } = require('../utils/eventCrawler');
 router.use(authenticate);
 
 const FLINAP_CAMPUSES = ['city', 'bedford', 'tonsley', 'off_campus'];
+const FLINAP_ACTIVITY_STATUSES = ['study', 'meal', 'coffee', 'team_up', 'quiet'];
 const FLINAP_STALE_HOURS = 6;
 
 function normalizeCampus(value) {
@@ -17,6 +18,11 @@ function normalizeCampus(value) {
 function normalizePresenceSource(value) {
   const source = String(value || '').trim().toLowerCase();
   return source === 'gps' ? 'gps' : 'manual';
+}
+
+function normalizeActivityStatus(value) {
+  const status = String(value || '').trim().toLowerCase();
+  return FLINAP_ACTIVITY_STATUSES.includes(status) ? status : 'study';
 }
 
 function getPresenceCutoffIso() {
@@ -41,6 +47,7 @@ function groupPresenceRows(rows, currentUserId) {
       full_name: row.users?.full_name || 'Student',
       avatar_url: row.users?.avatar_url || null,
       campus,
+      activity_status: normalizeActivityStatus(row.activity_status),
       source: row.source || 'manual',
       updated_at: row.updated_at,
       is_me: row.user_id === currentUserId,
@@ -636,6 +643,7 @@ router.get('/flinders/campus-presence', async (req, res) => {
       .select(`
         user_id,
         campus,
+        activity_status,
         source,
         updated_at,
         users:user_id (
@@ -664,6 +672,7 @@ router.get('/flinders/campus-presence', async (req, res) => {
 router.post('/flinders/campus-presence', async (req, res) => {
   try {
     const campus = normalizeCampus(req.body.campus);
+    const activityStatus = normalizeActivityStatus(req.body.activity_status);
     const source = normalizePresenceSource(req.body.source);
 
     if (!campus) {
@@ -675,6 +684,7 @@ router.post('/flinders/campus-presence', async (req, res) => {
       .upsert({
         user_id: req.user.id,
         campus,
+        activity_status: activityStatus,
         source,
         sharing_enabled: true,
         updated_at: new Date().toISOString(),
@@ -682,6 +692,7 @@ router.post('/flinders/campus-presence', async (req, res) => {
       .select(`
         user_id,
         campus,
+        activity_status,
         source,
         updated_at,
         users:user_id (
@@ -700,6 +711,7 @@ router.post('/flinders/campus-presence', async (req, res) => {
       full_name: data.users?.full_name || req.user.user_metadata?.full_name || 'Student',
       avatar_url: data.users?.avatar_url || null,
       campus: data.campus,
+      activity_status: normalizeActivityStatus(data.activity_status),
       source: data.source,
       updated_at: data.updated_at,
       is_me: true,
