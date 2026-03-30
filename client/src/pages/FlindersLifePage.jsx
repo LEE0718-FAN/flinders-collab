@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { useLocation } from 'react-router-dom';
 
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
@@ -776,6 +777,7 @@ function FlinapPanel({ currentUserId }) {
 
 export default function FlindersLifePage() {
   const { user } = useAuth();
+  const location = useLocation();
   const [eventData, setEventData] = useState({ recommended: [], career: [], all: [] });
   const [eventsLoading, setEventsLoading] = useState(true);
   const [selectedInterests, setSelectedInterests] = useState([]);
@@ -853,6 +855,11 @@ export default function FlindersLifePage() {
     () => favoriteEvents.filter((event) => eventMatchesInterests(event, selectedInterests)),
     [eventMatchesInterests, favoriteEvents, selectedInterests]
   );
+  const initialTab = useMemo(() => {
+    const params = new URLSearchParams(location.search);
+    const tab = params.get('tab');
+    return ['events', 'flinap', 'academic-calendar', 'study-rooms'].includes(tab) ? tab : 'events';
+  }, [location.search]);
 
   return (
     <>
@@ -884,7 +891,7 @@ export default function FlindersLifePage() {
         </div>
       </div>
 
-      <Tabs defaultValue="events" className="w-full">
+      <Tabs key={initialTab} defaultValue={initialTab} className="w-full">
         <div className="-mx-1 mb-4 overflow-x-auto px-1">
           <TabsList className="w-max min-w-full justify-start gap-1 sm:w-full sm:justify-center">
             <TabsTrigger value="events" className="shrink-0 gap-1.5 px-3 text-xs sm:text-sm" data-tutorial="flinders-tab-events"><Calendar className="h-4 w-4" />Events</TabsTrigger>

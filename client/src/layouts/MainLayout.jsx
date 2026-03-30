@@ -131,7 +131,7 @@ function SidebarContent({ rooms, location, isAdmin, roomBadgeCounts = {}, user, 
         to="/board"
         isActive={location.pathname === '/board'}
         icon={MessageSquare}
-        label="Free Board"
+        label="Snap"
         badgeCount={boardUnreadCount}
         onIntent={() => preloadRoute('/board')}
       />
