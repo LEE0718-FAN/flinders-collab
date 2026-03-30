@@ -634,6 +634,7 @@ export function FlinapPanel({ currentUserId }) {
   const selectedCampusMeta = getCampusMeta(selectedCampus);
   const selectedMembers = presenceData.campuses?.[selectedCampus] || [];
   const sharingEnabled = Boolean(presenceData.my_presence);
+  const selectedActivityMeta = getActivityMeta(selectedActivity);
 
   if (loading) {
     return <LoadingState />;
@@ -648,7 +649,7 @@ export function FlinapPanel({ currentUserId }) {
         }
       `}</style>
       <div className="grid gap-4 lg:grid-cols-[16rem_minmax(0,1fr)_22rem]">
-      <aside className="overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-sm">
+      <aside className="hidden overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-sm lg:block">
         <div className="border-b border-slate-100 bg-gradient-to-br from-yellow-300 via-amber-300 to-orange-400 px-4 py-4">
           <div className="flex items-center justify-between gap-3">
             <div>
@@ -706,66 +707,121 @@ export function FlinapPanel({ currentUserId }) {
           </div>
         </div>
         <div className="p-3 sm:p-4">
+          <div className="mb-4 rounded-[24px] border border-slate-200 bg-white p-3 shadow-sm lg:hidden">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">Quick Share</p>
+                <h4 className="mt-1 text-sm font-black text-slate-900">{selectedCampusMeta.label}</h4>
+              </div>
+              <div className={`rounded-full px-3 py-1 text-[11px] font-semibold ${selectedCampusMeta.light}`}>
+                {selectedMembers.length} here now
+              </div>
+            </div>
+            <div className="-mx-1 mt-3 flex gap-2 overflow-x-auto px-1 pb-1">
+              {FLINAP_CAMPUSES.map((campus) => (
+                <button
+                  key={campus.key}
+                  type="button"
+                  onClick={() => setSelectedCampus(campus.key)}
+                  className={`shrink-0 rounded-full border px-3 py-2 text-[12px] font-semibold transition ${
+                    selectedCampus === campus.key ? campus.light : 'border-slate-200 bg-slate-50 text-slate-600'
+                  }`}
+                >
+                  {campus.shortLabel}
+                </button>
+              ))}
+            </div>
+            <div className="mt-3 grid grid-cols-2 gap-2">
+              <Button
+                type="button"
+                onClick={handleStartSharing}
+                disabled={syncing || locating}
+                className="h-10 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 text-white"
+              >
+                {syncing || locating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Shield className="mr-2 h-4 w-4" />}
+                {sharingEnabled ? 'Refresh' : 'Share'}
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleHidePresence}
+                disabled={syncing || locating || !presenceData.my_presence}
+                className="h-10 rounded-xl"
+              >
+                <EyeOff className="mr-2 h-4 w-4" />
+                Hide
+              </Button>
+            </div>
+            <div className="-mx-1 mt-3 flex gap-2 overflow-x-auto px-1 pb-1">
+              {FLINAP_ACTIVITY_OPTIONS.map((activity) => (
+                <button
+                  key={activity.key}
+                  type="button"
+                  onClick={() => setSelectedActivity(activity.key)}
+                  className={`shrink-0 rounded-full border px-3 py-1.5 text-[11px] font-semibold transition ${
+                    selectedActivity === activity.key ? activity.chip : 'border-slate-200 bg-white text-slate-600'
+                  }`}
+                >
+                  <span className="mr-1">{activity.emoji}</span>
+                  {activity.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
           <div className="mb-4 overflow-hidden rounded-[24px] border border-slate-200 bg-[radial-gradient(circle_at_top,_#fef3c7,_#ffffff_38%,_#e0e7ff_70%,_#f8fafc_100%)] p-4">
             <div className="flex items-center justify-between gap-3">
               <div>
                 <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">Snap Map</p>
-                <h4 className="mt-1 text-sm font-black text-slate-900">Campus at a glance</h4>
+                <h4 className="mt-1 text-sm font-black text-slate-900">{selectedCampusMeta.label} only</h4>
               </div>
               <div className="rounded-full bg-white/80 px-3 py-1 text-[11px] font-semibold text-slate-600 shadow-sm">
-                {totalVisible} sharing
+                {selectedMembers.length} sharing
               </div>
             </div>
-            <div className="mt-4 grid gap-3 md:grid-cols-3">
-              {FLINAP_CAMPUSES.map((campus) => {
-                const members = presenceData.campuses?.[campus.key] || [];
-                return (
-                  <button
-                    key={campus.key}
-                    type="button"
-                    onClick={() => setSelectedCampus(campus.key)}
-                    className={`relative min-h-[150px] overflow-hidden rounded-[24px] border p-4 text-left transition ${
-                      selectedCampus === campus.key ? `${campus.light} shadow-sm` : 'border-slate-200 bg-white/80 hover:border-slate-300'
-                    }`}
-                  >
-                    <div className={`absolute inset-x-6 top-7 h-px bg-gradient-to-r ${campus.accent} opacity-35`} />
-                    <div className={`absolute left-1/2 top-1/2 h-16 w-16 -translate-x-1/2 -translate-y-1/2 rounded-full bg-gradient-to-br ${campus.accent} opacity-15 blur-xl`} />
-                    <div className="relative flex items-center justify-between">
-                      <div>
-                        <p className="text-sm font-black text-slate-900">{campus.shortLabel}</p>
-                        <p className="text-[11px] text-slate-500">{members.length} visible now</p>
+            <div className={`relative mt-4 min-h-[220px] overflow-hidden rounded-[28px] border ${selectedCampusMeta.light} p-4`}>
+              <div className={`absolute inset-x-10 top-10 h-px bg-gradient-to-r ${selectedCampusMeta.accent} opacity-35`} />
+              <div className={`absolute left-1/2 top-1/2 h-28 w-28 -translate-x-1/2 -translate-y-1/2 rounded-full bg-gradient-to-br ${selectedCampusMeta.accent} opacity-15 blur-2xl`} />
+              <div className="relative flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-black text-slate-900">{selectedCampusMeta.label}</p>
+                  <p className="text-[11px] text-slate-500">Only the campus you selected is shown here.</p>
+                </div>
+                <div className={`flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-br ${selectedCampusMeta.accent} text-white shadow-sm`}>
+                  <MapPin className="h-4 w-4" />
+                </div>
+              </div>
+              <div className="relative mt-6 h-[132px] rounded-[24px] border border-white/70 bg-white/70 shadow-inner">
+                {selectedMembers.length > 0 ? selectedMembers.slice(0, 10).map((member) => {
+                  const bubble = getSnapBubblePosition(member.user_id, selectedCampus);
+                  const activity = getActivityMeta(member.activity_status);
+                  return (
+                    <div
+                      key={member.user_id}
+                      className="absolute -translate-x-1/2 -translate-y-1/2"
+                      style={{
+                        left: `${bubble.x}%`,
+                        top: `${bubble.y}%`,
+                        animation: `flinap-float 3.8s ease-in-out ${bubble.delay} infinite`,
+                      }}
+                    >
+                      <div className="mb-1 flex justify-center">
+                        <span className={`inline-flex rounded-full border px-2 py-0.5 text-[10px] font-semibold shadow-sm ${activity.chip}`}>
+                          <span className="mr-1">{activity.emoji}</span>
+                          {activity.label}
+                        </span>
                       </div>
-                      <div className={`flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-br ${campus.accent} text-white shadow-sm`}>
-                        <MapPin className="h-4 w-4" />
+                      <div className={`flex h-11 w-11 items-center justify-center rounded-2xl border border-white/80 bg-gradient-to-br ${selectedCampusMeta.accent} text-xs font-black text-white shadow-lg`}>
+                        {(member.full_name || 'S').slice(0, 1).toUpperCase()}
                       </div>
                     </div>
-                    <div className="relative mt-5 h-20 rounded-[20px] border border-white/70 bg-white/70 shadow-inner">
-                      {members.length > 0 ? members.slice(0, 8).map((member) => {
-                        const bubble = getSnapBubblePosition(member.user_id, campus.key);
-                        return (
-                          <div
-                            key={member.user_id}
-                            className="absolute -translate-x-1/2 -translate-y-1/2"
-                            style={{
-                              left: `${bubble.x}%`,
-                              top: `${bubble.y}%`,
-                              animation: `flinap-float 3.8s ease-in-out ${bubble.delay} infinite`,
-                            }}
-                          >
-                            <div className={`flex h-10 w-10 items-center justify-center rounded-2xl border border-white/80 bg-gradient-to-br ${campus.accent} text-xs font-black text-white shadow-lg`}>
-                              {(member.full_name || 'S').slice(0, 1).toUpperCase()}
-                            </div>
-                          </div>
-                        );
-                      }) : (
-                        <div className="flex h-full items-center justify-center text-[11px] font-medium text-slate-400">
-                          Waiting for the first snap
-                        </div>
-                      )}
-                    </div>
-                  </button>
-                );
-              })}
+                  );
+                }) : (
+                  <div className="flex h-full items-center justify-center text-[11px] font-medium text-slate-400">
+                    Waiting for the first snap at {selectedCampusMeta.shortLabel}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
 
@@ -804,7 +860,7 @@ export function FlinapPanel({ currentUserId }) {
         </div>
       </div>
 
-      <aside className="h-fit rounded-2xl border border-slate-200 bg-white p-4 shadow-sm lg:sticky lg:top-4">
+      <aside className="hidden h-fit rounded-2xl border border-slate-200 bg-white p-4 shadow-sm lg:sticky lg:top-4 lg:block">
         <div className="flex items-start gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-slate-100 text-slate-700">
             <Users className="h-5 w-5" />
@@ -864,6 +920,11 @@ export function FlinapPanel({ currentUserId }) {
               </button>
             ))}
           </div>
+          {sharingEnabled && (
+            <p className="text-[11px] text-slate-500">
+              Current quick status: <span className="font-semibold text-slate-700">{selectedActivityMeta.label}</span>
+            </p>
+          )}
         </div>
 
         <div className="mt-4 grid gap-2">
