@@ -13,13 +13,10 @@ import {
 import { useAuth } from '@/hooks/useAuth';
 import { socket } from '@/lib/socket';
 import ProfileDialog from '@/components/ProfileDialog';
-import { useToast } from '@/components/ui/toast';
 
 import { getRoomActivitySummary, getRooms } from '@/services/rooms';
 import { getUpcomingEventCount } from '@/services/events';
-import { getBoardNotifications, updateBoardState } from '@/services/board';
 import { applyRoomOrder } from '@/lib/room-order';
-import { getLatestBoardTimestamp } from '@/lib/board-notifications';
 import { getCachedPreferences, hydratePreferences } from '@/lib/preferences';
 import { preloadRoute } from '@/lib/route-preload';
 import { getUnreadCounts } from '@/services/announcements';
@@ -109,7 +106,7 @@ function NavItem({ to, isActive, icon: Icon, label, palette, badgeCount = 0, bad
   );
 }
 
-function SidebarContent({ rooms, location, isAdmin, roomBadgeCounts = {}, user, deadlineCount = 0, boardUnreadCount = 0 }) {
+function SidebarContent({ rooms, location, isAdmin, roomBadgeCounts = {}, user, deadlineCount = 0 }) {
   return (
     <nav className="flex flex-col gap-1" role="navigation" aria-label="Main navigation" data-tour="sidebar-nav">
       <NavItem
@@ -132,7 +129,6 @@ function SidebarContent({ rooms, location, isAdmin, roomBadgeCounts = {}, user, 
         isActive={location.pathname === '/board'}
         icon={MessageSquare}
         label="Flinders Social"
-        badgeCount={boardUnreadCount}
         onIntent={() => preloadRoute('/board')}
       />
       {(user?.account_type || user?.user_metadata?.account_type || 'flinders') !== 'general' && (
@@ -219,7 +215,6 @@ function SidebarContent({ rooms, location, isAdmin, roomBadgeCounts = {}, user, 
 
 export default function MainLayout({ children }) {
   const { user, logout } = useAuth();
-  const { addToast, removeToast } = useToast();
   const navigate = useNavigate();
   const location = useLocation();
   const mainScrollRef = useRef(null);
@@ -231,11 +226,8 @@ export default function MainLayout({ children }) {
   const [announcementUnreadCounts, setAnnouncementUnreadCounts] = useState({});
   const [recentActivityCounts, setRecentActivityCounts] = useState({});
   const [deadlineCount, setDeadlineCount] = useState(0);
-  const [boardUnreadCount, setBoardUnreadCount] = useState(0);
   const [roomLastVisitedMap, setRoomLastVisitedMap] = useState({});
   const [roomOrderIds, setRoomOrderIds] = useState([]);
-  const boardToastIdsRef = useRef(new Set());
-  const boardLastSeenAtRef = useRef(0);
   const pullStartYRef = useRef(null);
   const pullDistanceRef = useRef(0);
   const pullTriggeredRef = useRef(false);
@@ -309,21 +301,11 @@ export default function MainLayout({ children }) {
 
   const totalAppBadgeCount = useMemo(() => {
     const roomUnreadTotal = Object.values(roomBadgeCounts).reduce((sum, value) => sum + Number(value || 0), 0);
-    return roomUnreadTotal + Number(boardUnreadCount || 0);
-  }, [boardUnreadCount, roomBadgeCounts]);
+    return roomUnreadTotal;
+  }, [roomBadgeCounts]);
 
   const mobileUnreadItems = useMemo(() => {
     const items = [];
-
-    if (boardUnreadCount > 0) {
-      items.push({
-        key: 'board',
-        label: 'Free Board',
-        count: Number(boardUnreadCount || 0),
-        to: '/board',
-        accentClass: 'bg-indigo-50 text-indigo-700 border-indigo-200',
-      });
-    }
 
     rooms.forEach((room) => {
       const count = Number(roomBadgeCounts[room.id] || 0);
@@ -338,26 +320,7 @@ export default function MainLayout({ children }) {
     });
 
     return items;
-  }, [boardUnreadCount, roomBadgeCounts, rooms]);
-
-  const clearBoardToasts = useCallback(() => {
-    boardToastIdsRef.current.forEach((toastId) => removeToast(toastId));
-    boardToastIdsRef.current.clear();
-  }, [removeToast]);
-
-  const markBoardSeen = useCallback(async (posts = []) => {
-    if (!user?.id) return;
-
-    const latestTimestamp = getLatestBoardTimestamp(posts);
-    const safeTimestamp = latestTimestamp || Date.now();
-    await updateBoardState(new Date(safeTimestamp).toISOString());
-    boardLastSeenAtRef.current = safeTimestamp;
-    setBoardUnreadCount(0);
-    clearBoardToasts();
-    window.dispatchEvent(new CustomEvent('board-notifications-read', {
-      detail: { userId: user.id, timestamp: safeTimestamp },
-    }));
-  }, [clearBoardToasts, user?.id]);
+  }, [roomBadgeCounts, rooms]);
 
   useEffect(() => {
     if (!user?.id) return;
@@ -387,127 +350,6 @@ export default function MainLayout({ children }) {
       cancelled = true;
     };
   }, [refreshDeadlineCount, syncRoomVisitState, user?.id]);
-
-  useEffect(() => {
-    if (!user?.id) {
-      setBoardUnreadCount(0);
-      boardLastSeenAtRef.current = 0;
-      clearBoardToasts();
-      return;
-    }
-
-    let cancelled = false;
-
-    const syncBoardNotifications = async ({ suppressToast = false } = {}) => {
-      try {
-        const data = await getBoardNotifications();
-        if (cancelled) return;
-
-        const posts = Array.isArray(data?.posts) ? data.posts : [];
-        const latestTimestamp = getLatestBoardTimestamp(posts);
-        const lastSeen = data?.last_seen_at ? new Date(data.last_seen_at).getTime() : boardLastSeenAtRef.current;
-        boardLastSeenAtRef.current = Number.isFinite(lastSeen) ? lastSeen : 0;
-
-        if (!lastSeen) {
-          if (latestTimestamp > 0) {
-            await markBoardSeen(posts);
-          }
-          setBoardUnreadCount(0);
-          return;
-        }
-
-        if (location.pathname === '/board') {
-          const unreadCount = Number(data?.unread_count || 0);
-          if (unreadCount > 0 || posts.length > 0) {
-            await markBoardSeen(posts);
-          } else {
-            setBoardUnreadCount(0);
-          }
-          return;
-        }
-
-        const unreadCount = Number(data?.unread_count || 0);
-        setBoardUnreadCount(unreadCount);
-
-        if (suppressToast || unreadCount === 0 || posts.length === 0) return;
-
-        posts
-          .reverse()
-          .forEach((post) => {
-            const authorName = post?.is_anonymous ? 'Anonymous' : (post?.users?.full_name || 'Someone');
-            const toastId = addToast({
-              key: `board-post:${post.id}`,
-              title: `${authorName} posted on Free Board`,
-              message: post?.title || 'New Free Board post',
-              type: 'info',
-              duration: 8000,
-              actionLabel: 'View',
-              onAction: () => {
-                markBoardSeen(posts);
-                navigate('/board');
-              },
-              onClick: () => {
-                markBoardSeen(posts);
-                navigate('/board');
-              },
-            });
-
-            if (toastId) {
-              boardToastIdsRef.current.add(toastId);
-            }
-          });
-      } catch {
-        if (!cancelled) {
-          setBoardUnreadCount(0);
-        }
-      }
-    };
-
-    syncBoardNotifications({ suppressToast: true }).catch(() => {
-      if (!cancelled) {
-        boardLastSeenAtRef.current = 0;
-        setBoardUnreadCount(0);
-      }
-    });
-
-    const intervalId = window.setInterval(() => {
-      if (document.visibilityState === 'hidden') return;
-      if (location.pathname === '/board') return;
-      syncBoardNotifications().catch(() => {});
-    }, 30000);
-
-    const handleBoardRead = (event) => {
-      if (event.detail?.userId && event.detail.userId !== user.id) return;
-      const timestamp = Number(event.detail?.timestamp || 0);
-      if (Number.isFinite(timestamp) && timestamp > 0) {
-        boardLastSeenAtRef.current = timestamp;
-      }
-      setBoardUnreadCount(0);
-      clearBoardToasts();
-    };
-
-    const handleBoardRefresh = () => {
-      syncBoardNotifications().catch(() => {});
-    };
-
-    const handleFocus = () => {
-      if (document.visibilityState === 'hidden') return;
-      syncBoardNotifications().catch(() => {});
-    };
-
-    window.addEventListener('board-notifications-read', handleBoardRead);
-    window.addEventListener('board-post-created', handleBoardRefresh);
-    window.addEventListener('focus', handleFocus);
-
-    return () => {
-      cancelled = true;
-      window.clearInterval(intervalId);
-      window.removeEventListener('board-notifications-read', handleBoardRead);
-      window.removeEventListener('board-post-created', handleBoardRefresh);
-      window.removeEventListener('focus', handleFocus);
-      clearBoardToasts();
-    };
-  }, [addToast, clearBoardToasts, location.pathname, markBoardSeen, navigate, user?.id]);
 
   useEffect(() => {
     if (!user?.id) {
@@ -779,7 +621,7 @@ export default function MainLayout({ children }) {
 
         {/* Sidebar navigation */}
         <div className="flex-1 overflow-y-auto px-3 py-4 custom-scrollbar">
-          <SidebarContent rooms={rooms} location={location} isAdmin={user?.is_admin} roomBadgeCounts={roomBadgeCounts} user={user} deadlineCount={deadlineCount} boardUnreadCount={boardUnreadCount} />
+          <SidebarContent rooms={rooms} location={location} isAdmin={user?.is_admin} roomBadgeCounts={roomBadgeCounts} user={user} deadlineCount={deadlineCount} />
         </div>
 
         {/* Sidebar footer / user info */}
@@ -841,7 +683,7 @@ export default function MainLayout({ children }) {
                 </SheetHeader>
                 <div className="h-px bg-gradient-to-r from-white/10 via-white/5 to-transparent mx-3" />
                 <div className="px-3 py-4">
-                  <SidebarContent rooms={rooms} location={location} isAdmin={user?.is_admin} roomBadgeCounts={roomBadgeCounts} user={user} deadlineCount={deadlineCount} boardUnreadCount={boardUnreadCount} />
+                  <SidebarContent rooms={rooms} location={location} isAdmin={user?.is_admin} roomBadgeCounts={roomBadgeCounts} user={user} deadlineCount={deadlineCount} />
                 </div>
               </SheetContent>
             </Sheet>

@@ -443,7 +443,7 @@ function EmptyState({ icon: Icon, message }) {
   );
 }
 
-function FlinapPanel({ currentUserId }) {
+export function FlinapPanel({ currentUserId }) {
   const [presenceData, setPresenceData] = useState({
     campuses: { city: [], bedford: [], tonsley: [] },
     my_presence: null,
@@ -1025,7 +1025,6 @@ export default function FlindersLifePage() {
         <div className="-mx-1 mb-4 overflow-x-auto px-1">
           <TabsList className="w-max min-w-full justify-start gap-1 sm:w-full sm:justify-center">
             <TabsTrigger value="events" className="shrink-0 gap-1.5 px-3 text-xs sm:text-sm" data-tutorial="flinders-tab-events"><Calendar className="h-4 w-4" />Events</TabsTrigger>
-            <TabsTrigger value="flinap" className="shrink-0 gap-1.5 px-3 text-xs sm:text-sm"><Users className="h-4 w-4" />Flinap</TabsTrigger>
             <TabsTrigger value="academic-calendar" className="shrink-0 gap-1.5 px-3 text-xs sm:text-sm" data-tutorial="flinders-tab-academic-calendar"><Calendar className="h-4 w-4" />Academic Calendar</TabsTrigger>
             <TabsTrigger value="study-rooms" className="shrink-0 gap-1.5 px-3 text-xs sm:text-sm" data-tutorial="flinders-tab-study-rooms"><BookOpen className="h-4 w-4" />Study Rooms</TabsTrigger>
           </TabsList>
@@ -1143,10 +1142,6 @@ export default function FlindersLifePage() {
               </aside>
             </div>
           )}
-        </TabsContent>
-
-        <TabsContent value="flinap">
-          <FlinapPanel currentUserId={user?.id || null} />
         </TabsContent>
 
         {/* ── Academic Calendar ── */}

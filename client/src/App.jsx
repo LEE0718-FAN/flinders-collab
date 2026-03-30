@@ -89,8 +89,8 @@ const DashboardPage = lazyRetry(() => import('@/pages/DashboardPage'));
 const RoomPage = lazyRetry(() => import('@/pages/RoomPage'));
 const AdminPage = lazyRetry(() => import('@/pages/AdminPage'));
 const DeadlinesPage = lazyRetry(() => import('@/pages/DeadlinesPage'));
-const BoardPage = lazyRetry(() => import('@/pages/BoardPage'));
 const FlindersLifePage = lazyRetry(() => import('@/pages/FlindersLifePage'));
+const FlindersSocialPage = lazyRetry(() => import('@/pages/FlindersSocialPage'));
 const SettingsPage = lazyRetry(() => import('@/pages/SettingsPage'));
 
 // If a tester session exists on page load (e.g. refresh), clean up and redirect
@@ -209,7 +209,7 @@ export default function App() {
                 <Route path="/dashboard" element={<DashboardPage />} />
                 <Route path="/settings" element={<SettingsPage />} />
                 <Route path="/deadlines" element={<DeadlinesPage />} />
-                <Route path="/board" element={<BoardPage />} />
+                <Route path="/board" element={<FlindersSocialPage />} />
                 <Route path="/flinders-life" element={<FlindersLifePage />} />
                 <Route path="/rooms/:roomId" element={<RoomPage />} />
                 <Route path="/admin" element={<AdminRoute><AdminPage /></AdminRoute>} />
