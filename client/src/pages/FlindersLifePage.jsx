@@ -519,6 +519,16 @@ export function FlinapPanel({ currentUserId }) {
     }
   }, []);
 
+  const handleStatusInputFocus = useCallback((event) => {
+    const target = event.currentTarget;
+    window.requestAnimationFrame(() => {
+      target.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    });
+    window.setTimeout(() => {
+      target.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    }, 320);
+  }, []);
+
   const loadFriendState = useCallback(async () => {
     try {
       const data = await getFriendRequests();
@@ -1087,6 +1097,7 @@ export function FlinapPanel({ currentUserId }) {
                 type="text"
                 value={statusNote}
                 onChange={(event) => setStatusNote(event.target.value.slice(0, 80))}
+                onFocus={handleStatusInputFocus}
                 placeholder="Add a short status message"
                 className="h-11 flex-1 rounded-xl border border-slate-200 bg-white px-3 text-base text-slate-700 placeholder:text-slate-300 focus:border-slate-300 focus:outline-none sm:h-10 sm:text-[12px]"
               />
@@ -1272,6 +1283,7 @@ export function FlinapPanel({ currentUserId }) {
               type="text"
               value={statusNote}
               onChange={(event) => setStatusNote(event.target.value.slice(0, 80))}
+              onFocus={handleStatusInputFocus}
               placeholder="Add a short status message"
               className="h-11 flex-1 rounded-xl border border-slate-200 bg-white px-3 text-base text-slate-700 placeholder:text-slate-300 focus:border-slate-300 focus:outline-none sm:h-10 sm:text-[12px]"
             />
