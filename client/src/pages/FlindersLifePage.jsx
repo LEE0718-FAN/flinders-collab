@@ -97,7 +97,6 @@ const FLINAP_CAMPUSES = [
   { key: 'city', label: 'City Campus', shortLabel: 'City', accent: 'from-indigo-500 to-blue-600', light: 'bg-indigo-50 border-indigo-200 text-indigo-700' },
   { key: 'bedford', label: 'Bedford Park', shortLabel: 'Bedford', accent: 'from-emerald-500 to-teal-600', light: 'bg-emerald-50 border-emerald-200 text-emerald-700' },
   { key: 'tonsley', label: 'Tonsley', shortLabel: 'Tonsley', accent: 'from-amber-500 to-orange-600', light: 'bg-amber-50 border-amber-200 text-amber-700' },
-  { key: 'off_campus', label: 'Off Campus', shortLabel: 'Off Campus', accent: 'from-slate-500 to-slate-700', light: 'bg-slate-50 border-slate-200 text-slate-700' },
 ];
 
 const FLINAP_GEOFENCES = {
@@ -150,7 +149,7 @@ function detectCampusFromCoords(latitude, longitude) {
     .sort((a, b) => a.distanceKm - b.distanceKm);
 
   const match = matches.find((entry) => entry.distanceKm <= entry.radiusKm);
-  return match?.campus || 'off_campus';
+  return match?.campus || null;
 }
 
 function getAcademicEntryStart(entry) {
@@ -428,7 +427,7 @@ function EmptyState({ icon: Icon, message }) {
 
 function FlinapPanel({ currentUserId }) {
   const [presenceData, setPresenceData] = useState({
-    campuses: { city: [], bedford: [], tonsley: [], off_campus: [] },
+    campuses: { city: [], bedford: [], tonsley: [] },
     my_presence: null,
     stale_after_hours: 6,
   });
@@ -444,8 +443,13 @@ function FlinapPanel({ currentUserId }) {
     if (!silent) setLoading(true);
     try {
       const data = await getCampusPresence();
+      const nextCampuses = {
+        city: data?.campuses?.city || [],
+        bedford: data?.campuses?.bedford || [],
+        tonsley: data?.campuses?.tonsley || [],
+      };
       setPresenceData({
-        campuses: data?.campuses || { city: [], bedford: [], tonsley: [], off_campus: [] },
+        campuses: nextCampuses,
         my_presence: data?.my_presence || null,
         stale_after_hours: data?.stale_after_hours || 6,
       });
@@ -525,6 +529,11 @@ function FlinapPanel({ currentUserId }) {
     navigator.geolocation.getCurrentPosition(
       async (position) => {
         const campus = detectCampusFromCoords(position.coords.latitude, position.coords.longitude);
+        if (!campus) {
+          setLocating(false);
+          setError('You do not appear to be on City, Bedford Park, or Tonsley campus right now.');
+          return;
+        }
         setSelectedCampus(campus);
         await handleShareCampus(campus, 'gps');
         setLocating(false);
@@ -542,82 +551,104 @@ function FlinapPanel({ currentUserId }) {
   };
 
   const totalVisible = Object.values(presenceData.campuses || {}).reduce((sum, list) => sum + list.length, 0);
+  const selectedCampusMeta = getCampusMeta(selectedCampus);
+  const selectedMembers = presenceData.campuses?.[selectedCampus] || [];
 
   if (loading) {
     return <LoadingState />;
   }
 
   return (
-    <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_22rem]">
-      <div className="space-y-4">
-        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-          <div className="flex flex-wrap items-start justify-between gap-3">
+    <div className="grid gap-4 lg:grid-cols-[16rem_minmax(0,1fr)_22rem]">
+      <aside className="overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-sm">
+        <div className="border-b border-slate-100 bg-gradient-to-br from-yellow-300 via-amber-300 to-orange-400 px-4 py-4">
+          <div className="flex items-center justify-between gap-3">
             <div>
-              <h2 className="text-sm font-bold text-slate-900">Flinap</h2>
-              <p className="mt-1 text-[12px] leading-relaxed text-slate-500">
-                Only the campus label is shared. Exact coordinates stay in your browser and never get saved.
-              </p>
+              <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-900/60">Flinap</p>
+              <h2 className="mt-1 text-lg font-black text-slate-900">Campus Snap</h2>
             </div>
             <button
               type="button"
               onClick={() => fetchPresence()}
-              className="inline-flex items-center gap-1 rounded-full border border-slate-200 px-3 py-1 text-[11px] font-semibold text-slate-600 transition hover:border-slate-300 hover:text-slate-900"
+              className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-white/80 text-slate-700 transition hover:bg-white"
             >
-              <RefreshCw className="h-3.5 w-3.5" />
-              Refresh
+              <RefreshCw className="h-4 w-4" />
             </button>
           </div>
-          <div className="mt-3 flex flex-wrap gap-2">
-            {FLINAP_CAMPUSES.map((campus) => {
-              const count = presenceData.campuses?.[campus.key]?.length || 0;
-              return (
-                <div key={campus.key} className={`rounded-full border px-3 py-1 text-[11px] font-semibold ${campus.light}`}>
-                  {campus.shortLabel} {count}
-                </div>
-              );
-            })}
-          </div>
+          <p className="mt-2 text-[12px] leading-relaxed text-slate-800/70">
+            Quick campus-only presence. No exact GPS is stored.
+          </p>
         </div>
-
-        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="space-y-2 p-3">
           {FLINAP_CAMPUSES.map((campus) => {
-            const members = presenceData.campuses?.[campus.key] || [];
+            const count = presenceData.campuses?.[campus.key]?.length || 0;
+            const active = selectedCampus === campus.key;
             return (
-              <div key={campus.key} className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-                <div className={`bg-gradient-to-r ${campus.accent} px-4 py-3`}>
-                  <div className="flex items-center justify-between gap-3 text-white">
-                    <div>
-                      <p className="text-sm font-bold">{campus.label}</p>
-                      <p className="text-[11px] text-white/75">{members.length} studying here</p>
-                    </div>
-                    <MapPin className="h-4 w-4 text-white/80" />
-                  </div>
+              <button
+                key={campus.key}
+                type="button"
+                onClick={() => setSelectedCampus(campus.key)}
+                className={`flex w-full items-center justify-between rounded-2xl border px-3 py-3 text-left transition ${
+                  active ? `${campus.light} shadow-sm` : 'border-slate-200 bg-slate-50 text-slate-700 hover:bg-white hover:border-slate-300'
+                }`}
+              >
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-bold">{campus.label}</p>
+                  <p className="text-[11px] opacity-70">{count} visible now</p>
                 </div>
-                <div className="space-y-2 p-3">
-                  {members.length > 0 ? members.map((member) => (
-                    <div key={member.user_id} className={`rounded-xl border px-3 py-2 ${member.is_me ? 'border-blue-200 bg-blue-50' : 'border-slate-200 bg-slate-50'}`}>
-                      <div className="flex items-center justify-between gap-2">
-                        <p className="truncate text-sm font-semibold text-slate-800">
-                          {member.full_name}
-                          {member.is_me ? ' (You)' : ''}
-                        </p>
-                        <span className="shrink-0 text-[10px] text-slate-400">{formatPresenceTime(member.updated_at)}</span>
-                      </div>
-                      <div className="mt-2">
-                        <span className={`inline-flex rounded-full border px-2 py-0.5 text-[10px] font-semibold ${getActivityMeta(member.activity_status).chip}`}>
-                          {getActivityMeta(member.activity_status).label}
-                        </span>
-                      </div>
-                    </div>
-                  )) : (
-                    <p className="rounded-xl border border-dashed border-slate-200 px-3 py-4 text-center text-xs text-slate-400">
-                      Nobody visible here yet
-                    </p>
-                  )}
+                <div className={`h-10 w-10 shrink-0 rounded-2xl bg-gradient-to-br ${campus.accent} text-white flex items-center justify-center shadow-sm`}>
+                  <MapPin className="h-4 w-4" />
                 </div>
-              </div>
+              </button>
             );
           })}
+        </div>
+      </aside>
+
+      <div className="overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-sm">
+        <div className={`border-b border-slate-100 bg-gradient-to-r ${selectedCampusMeta.accent} px-5 py-4 text-white`}>
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/70">Live List</p>
+              <h3 className="mt-1 text-xl font-black">{selectedCampusMeta.label}</h3>
+            </div>
+            <div className="rounded-full bg-white/15 px-3 py-1 text-[11px] font-semibold">
+              {selectedMembers.length} online here
+            </div>
+          </div>
+        </div>
+        <div className="p-3 sm:p-4">
+          {selectedMembers.length > 0 ? (
+            <div className="space-y-2">
+              {selectedMembers.map((member) => (
+                <div key={member.user_id} className={`flex items-center gap-3 rounded-[22px] border px-4 py-3 transition ${member.is_me ? 'border-blue-200 bg-blue-50' : 'border-slate-200 bg-slate-50 hover:bg-white'}`}>
+                  <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-[18px] bg-gradient-to-br ${selectedCampusMeta.accent} text-sm font-black text-white shadow-sm`}>
+                    {(member.full_name || 'S').slice(0, 1).toUpperCase()}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                      <p className="truncate text-sm font-bold text-slate-900">
+                        {member.full_name}
+                        {member.user_id === currentUserId ? ' (You)' : ''}
+                      </p>
+                    </div>
+                    <div className="mt-1 flex flex-wrap items-center gap-2">
+                      <span className={`inline-flex rounded-full border px-2 py-0.5 text-[10px] font-semibold ${getActivityMeta(member.activity_status).chip}`}>
+                        {getActivityMeta(member.activity_status).label}
+                      </span>
+                      <span className="text-[11px] text-slate-400">{formatPresenceTime(member.updated_at)}</span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="flex min-h-[260px] flex-col items-center justify-center rounded-[24px] border border-dashed border-slate-200 bg-slate-50 px-6 text-center">
+              <Users className="h-10 w-10 text-slate-300" />
+              <p className="mt-3 text-sm font-semibold text-slate-600">No one is visible at {selectedCampusMeta.shortLabel} right now</p>
+              <p className="mt-1 text-xs text-slate-400">Be the first one to drop into the list.</p>
+            </div>
+          )}
         </div>
       </div>
 
@@ -664,9 +695,7 @@ function FlinapPanel({ currentUserId }) {
                 }`}
               >
                 <p className="text-sm font-semibold">{campus.label}</p>
-                <p className="text-[11px] opacity-70">
-                  {campus.key === 'off_campus' ? 'Shown as away from campus' : `Visible in the ${campus.shortLabel} list`}
-                </p>
+                <p className="text-[11px] opacity-70">Visible in the {campus.shortLabel} sidebar</p>
               </button>
             ))}
           </div>
