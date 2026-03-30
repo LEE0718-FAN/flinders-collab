@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { GraduationCap, Calendar, BookOpen, ExternalLink, Loader2, ChevronDown, ChevronUp, MapPin, Star, Clock, ChevronLeft, ChevronRight, Users, Shield, RefreshCw, EyeOff, UserPlus, MessageCircle, Check, X } from 'lucide-react';
@@ -472,6 +473,9 @@ export function FlinapPanel({ currentUserId }) {
   const [activeMember, setActiveMember] = useState(null);
   const [friendRequestMessage, setFriendRequestMessage] = useState('');
   const [friendActionLoading, setFriendActionLoading] = useState(false);
+  const [confirmStatusOpen, setConfirmStatusOpen] = useState(false);
+  const [pendingActivity, setPendingActivity] = useState(null);
+  const [pendingStatusNoteConfirm, setPendingStatusNoteConfirm] = useState(false);
   const watchIdRef = useRef(null);
   const lastSyncedPresenceRef = useRef({ campus: null, activity: null });
 
@@ -662,24 +666,6 @@ export function FlinapPanel({ currentUserId }) {
     };
   }, [presenceData.my_presence, selectedActivity, syncPresence]);
 
-  useEffect(() => {
-    if (!presenceData.my_presence) return;
-    if (presenceData.my_presence.activity_status === selectedActivity) return;
-    if (lastSyncedPresenceRef.current.activity === selectedActivity) return;
-
-    syncPresence(
-      presenceData.my_presence.campus,
-      presenceData.my_presence.source || 'gps',
-      selectedActivity,
-      statusNote,
-    )
-      .then((nextPresence) => {
-        if (nextPresence) {
-          setStatusMessage(`Status updated to ${getActivityMeta(selectedActivity).label}.`);
-        }
-      });
-  }, [presenceData.my_presence, selectedActivity, statusNote, syncPresence]);
-
   const totalVisible = Object.values(presenceData.campuses || {}).reduce((sum, list) => sum + list.length, 0);
   const selectedCampusMeta = getCampusMeta(selectedCampus);
   const selectedMembers = presenceData.campuses?.[selectedCampus] || [];
@@ -758,6 +744,77 @@ export function FlinapPanel({ currentUserId }) {
     setActiveMember(null);
     navigate(`/rooms/${relationship.request.direct_room_id}`);
   }, [activeMember, getFriendRelationship, navigate]);
+
+  const handleSelectActivity = useCallback((nextActivity) => {
+    if (nextActivity === selectedActivity) return;
+    if (sharingEnabled) {
+      setPendingActivity(nextActivity);
+      setConfirmStatusOpen(true);
+      return;
+    }
+    setSelectedActivity(nextActivity);
+  }, [selectedActivity, sharingEnabled]);
+
+  const handleConfirmStatusChange = useCallback(async () => {
+    if (!pendingActivity) {
+      setConfirmStatusOpen(false);
+      return;
+    }
+
+    setSelectedActivity(pendingActivity);
+    setConfirmStatusOpen(false);
+
+    if (!presenceData.my_presence) {
+      setPendingActivity(null);
+      return;
+    }
+
+    const nextPresence = await syncPresence(
+      presenceData.my_presence.campus,
+      presenceData.my_presence.source || 'gps',
+      pendingActivity,
+      statusNote,
+    );
+
+    if (nextPresence) {
+      setStatusMessage(`Status updated to ${getActivityMeta(pendingActivity).label}. Refreshing your snap...`);
+      fetchPresence({ silent: true });
+    }
+
+    setPendingActivity(null);
+  }, [pendingActivity, presenceData.my_presence, statusNote, syncPresence, fetchPresence]);
+
+  const handleSubmitStatusNote = useCallback(() => {
+    if (!sharingEnabled || !presenceData.my_presence) {
+      setStatusMessage('Turn on sharing first to publish a status message.');
+      return;
+    }
+    setPendingStatusNoteConfirm(true);
+    setConfirmStatusOpen(true);
+  }, [presenceData.my_presence, sharingEnabled]);
+
+  const handleConfirmStatusNote = useCallback(async () => {
+    if (!presenceData.my_presence) {
+      setPendingStatusNoteConfirm(false);
+      setConfirmStatusOpen(false);
+      return;
+    }
+
+    const nextPresence = await syncPresence(
+      presenceData.my_presence.campus,
+      presenceData.my_presence.source || 'gps',
+      selectedActivity,
+      statusNote,
+    );
+
+    if (nextPresence) {
+      setStatusMessage('Status message updated. Refreshing your snap...');
+      fetchPresence({ silent: true });
+    }
+
+    setPendingStatusNoteConfirm(false);
+    setConfirmStatusOpen(false);
+  }, [presenceData.my_presence, selectedActivity, statusNote, syncPresence, fetchPresence]);
 
   if (loading) {
     return <LoadingState />;
@@ -874,7 +931,7 @@ export function FlinapPanel({ currentUserId }) {
                 <button
                   key={activity.key}
                   type="button"
-                  onClick={() => setSelectedActivity(activity.key)}
+                  onClick={() => handleSelectActivity(activity.key)}
                   className={`shrink-0 rounded-full border px-3 py-1.5 text-[11px] font-semibold transition ${
                     selectedActivity === activity.key ? activity.chip : 'border-slate-200 bg-white text-slate-600'
                   }`}
@@ -884,6 +941,22 @@ export function FlinapPanel({ currentUserId }) {
                 </button>
               ))}
             </div>
+            <input
+              type="text"
+              value={statusNote}
+              onChange={(event) => setStatusNote(event.target.value.slice(0, 80))}
+              placeholder="Add a short status message"
+              className="mt-3 h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-[12px] text-slate-700 placeholder:text-slate-300 focus:border-slate-300 focus:outline-none"
+            />
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleSubmitStatusNote}
+              disabled={!sharingEnabled || syncing || locating}
+              className="mt-2 h-10 rounded-xl"
+            >
+              Update Message
+            </Button>
           </div>
 
           <div className="mb-4 overflow-hidden rounded-[24px] border border-slate-200 bg-[radial-gradient(circle_at_top,_#fef3c7,_#ffffff_38%,_#e0e7ff_70%,_#f8fafc_100%)] p-4">
@@ -1032,7 +1105,7 @@ export function FlinapPanel({ currentUserId }) {
               <button
                 key={activity.key}
                 type="button"
-                onClick={() => setSelectedActivity(activity.key)}
+                onClick={() => handleSelectActivity(activity.key)}
                 className={`rounded-full border px-3 py-1.5 text-[11px] font-semibold transition ${
                   selectedActivity === activity.key ? activity.chip : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300'
                 }`}
@@ -1049,6 +1122,15 @@ export function FlinapPanel({ currentUserId }) {
             placeholder="Add a short status message"
             className="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-[12px] text-slate-700 placeholder:text-slate-300 focus:border-slate-300 focus:outline-none"
           />
+          <Button
+            type="button"
+            variant="outline"
+            onClick={handleSubmitStatusNote}
+            disabled={!sharingEnabled || syncing || locating}
+            className="h-10 rounded-xl"
+          >
+            Update Message
+          </Button>
           <p className="text-[11px] text-slate-500">
             Current: <span className="font-semibold text-slate-700">{selectedActivityMeta.label}</span>
           </p>
@@ -1175,6 +1257,33 @@ export function FlinapPanel({ currentUserId }) {
           )}
         </DialogContent>
       </Dialog>
+
+      <AlertDialog open={confirmStatusOpen} onOpenChange={setConfirmStatusOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Change Status?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {pendingStatusNoteConfirm
+                ? 'Your status message will be updated on your current snap.'
+                : pendingActivity
+                  ? `Your current snap will change to ${getActivityMeta(pendingActivity).label}.`
+                  : 'Your current snap status will be updated.'}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => {
+              setPendingActivity(null);
+              setPendingStatusNoteConfirm(false);
+            }}
+            >
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction onClick={pendingStatusNoteConfirm ? handleConfirmStatusNote : handleConfirmStatusChange}>
+              {pendingStatusNoteConfirm ? 'Update Message' : 'Change Status'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
     </>
   );
