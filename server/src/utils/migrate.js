@@ -419,8 +419,8 @@ CREATE INDEX IF NOT EXISTS idx_deadline_reminders_date ON deadline_reminders(rem
 -- Flinap: privacy-friendly campus presence board (campus only, never raw coordinates)
 CREATE TABLE IF NOT EXISTS flinders_campus_presence (
   user_id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
-  campus TEXT NOT NULL CHECK (campus IN ('city', 'bedford', 'tonsley', 'off_campus')),
-  activity_status TEXT NOT NULL DEFAULT 'study' CHECK (activity_status IN ('study', 'meal', 'coffee', 'team_up', 'quiet')),
+  campus TEXT NOT NULL CHECK (campus IN ('city', 'bedford', 'tonsley')),
+  activity_status TEXT NOT NULL DEFAULT 'study' CHECK (activity_status IN ('study', 'in_class', 'meal', 'coffee', 'team_up', 'quiet', 'break')),
   source TEXT NOT NULL DEFAULT 'manual' CHECK (source IN ('gps', 'manual')),
   sharing_enabled BOOLEAN NOT NULL DEFAULT true,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
@@ -435,6 +435,11 @@ DO $$ BEGIN
   END IF;
 END $$;
 ALTER TABLE flinders_campus_presence ADD COLUMN IF NOT EXISTS activity_status TEXT NOT NULL DEFAULT 'study';
+DELETE FROM flinders_campus_presence WHERE campus = 'off_campus';
+ALTER TABLE flinders_campus_presence DROP CONSTRAINT IF EXISTS flinders_campus_presence_campus_check;
+ALTER TABLE flinders_campus_presence ADD CONSTRAINT flinders_campus_presence_campus_check CHECK (campus IN ('city', 'bedford', 'tonsley'));
+ALTER TABLE flinders_campus_presence DROP CONSTRAINT IF EXISTS flinders_campus_presence_activity_status_check;
+ALTER TABLE flinders_campus_presence ADD CONSTRAINT flinders_campus_presence_activity_status_check CHECK (activity_status IN ('study', 'in_class', 'meal', 'coffee', 'team_up', 'quiet', 'break'));
 `;
 
 async function runMigration() {

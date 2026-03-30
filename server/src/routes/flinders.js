@@ -6,8 +6,8 @@ const { crawlFlindersEvents } = require('../utils/eventCrawler');
 
 router.use(authenticate);
 
-const FLINAP_CAMPUSES = ['city', 'bedford', 'tonsley', 'off_campus'];
-const FLINAP_ACTIVITY_STATUSES = ['study', 'meal', 'coffee', 'team_up', 'quiet'];
+const FLINAP_CAMPUSES = ['city', 'bedford', 'tonsley'];
+const FLINAP_ACTIVITY_STATUSES = ['study', 'in_class', 'meal', 'coffee', 'team_up', 'quiet', 'break'];
 const FLINAP_STALE_HOURS = 6;
 
 function normalizeCampus(value) {
@@ -34,7 +34,6 @@ function groupPresenceRows(rows, currentUserId) {
     city: [],
     bedford: [],
     tonsley: [],
-    off_campus: [],
   };
   let my_presence = null;
 
@@ -676,7 +675,7 @@ router.post('/flinders/campus-presence', async (req, res) => {
     const source = normalizePresenceSource(req.body.source);
 
     if (!campus) {
-      return res.status(400).json({ error: 'Campus must be city, bedford, tonsley, or off_campus' });
+      return res.status(400).json({ error: 'Campus must be city, bedford, or tonsley' });
     }
 
     const { data, error } = await supabaseAdmin
