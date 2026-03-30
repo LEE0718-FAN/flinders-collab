@@ -969,11 +969,11 @@ export function FlinapPanel({ currentUserId }) {
           <div className="mb-4 rounded-[28px] bg-[radial-gradient(circle_at_top,_#fef3c7,_#ffffff_38%,_#e0e7ff_70%,_#f8fafc_100%)] lg:hidden">
             <div className="relative min-h-[320px] overflow-visible rounded-[28px] border border-indigo-100 px-4 pb-5 pt-4 shadow-inner sm:px-6 sm:pb-6">
               <div
-                className="absolute inset-0 rounded-[28px] bg-cover bg-center opacity-[0.16] saturate-[0.9]"
+                className="absolute inset-0 rounded-[28px] bg-cover bg-center opacity-[0.34] saturate-[0.95]"
                 style={{ backgroundImage: `url(${selectedCampusMeta.mapImage})` }}
               />
-              <div className="absolute inset-0 rounded-[28px] bg-[linear-gradient(180deg,rgba(255,255,255,0.86),rgba(255,255,255,0.82))]" />
-              <div className="absolute inset-0 rounded-[28px] bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.12),rgba(255,255,255,0.5)_45%,rgba(255,255,255,0.68)_100%)]" />
+              <div className="absolute inset-0 rounded-[28px] bg-[linear-gradient(180deg,rgba(255,255,255,0.68),rgba(255,255,255,0.56))]" />
+              <div className="absolute inset-0 rounded-[28px] bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.06),rgba(255,255,255,0.18)_42%,rgba(255,255,255,0.34)_100%)]" />
               <div className={`absolute left-1/2 top-1/2 h-36 w-36 -translate-x-1/2 -translate-y-1/2 rounded-full bg-gradient-to-br ${selectedCampusMeta.accent} opacity-[0.14] blur-3xl`} />
               <div className="relative h-[250px] overflow-visible sm:h-[280px]">
                 {selectedMembers.length > 0 ? selectedMembers.slice(0, 10).map((member) => {
@@ -1111,11 +1111,11 @@ export function FlinapPanel({ currentUserId }) {
           <div className="mb-4 hidden rounded-[28px] bg-[radial-gradient(circle_at_top,_#fef3c7,_#ffffff_38%,_#e0e7ff_70%,_#f8fafc_100%)] lg:block">
             <div className="relative min-h-[340px] overflow-visible rounded-[28px] border border-indigo-100 px-6 pb-6 pt-6 shadow-inner">
               <div
-                className="absolute inset-0 rounded-[28px] bg-cover bg-center opacity-[0.16] saturate-[0.9]"
+                className="absolute inset-0 rounded-[28px] bg-cover bg-center opacity-[0.34] saturate-[0.95]"
                 style={{ backgroundImage: `url(${selectedCampusMeta.mapImage})` }}
               />
-              <div className="absolute inset-0 rounded-[28px] bg-[linear-gradient(180deg,rgba(255,255,255,0.86),rgba(255,255,255,0.82))]" />
-              <div className="absolute inset-0 rounded-[28px] bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.12),rgba(255,255,255,0.5)_45%,rgba(255,255,255,0.68)_100%)]" />
+              <div className="absolute inset-0 rounded-[28px] bg-[linear-gradient(180deg,rgba(255,255,255,0.68),rgba(255,255,255,0.56))]" />
+              <div className="absolute inset-0 rounded-[28px] bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.06),rgba(255,255,255,0.18)_42%,rgba(255,255,255,0.34)_100%)]" />
               <div className={`absolute left-1/2 top-1/2 h-36 w-36 -translate-x-1/2 -translate-y-1/2 rounded-full bg-gradient-to-br ${selectedCampusMeta.accent} opacity-[0.14] blur-3xl`} />
               <div className="relative h-[280px] overflow-visible">
                 {selectedMembers.length > 0 ? selectedMembers.slice(0, 10).map((member) => {
