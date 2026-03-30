@@ -6,6 +6,57 @@ const { crawlFlindersEvents } = require('../utils/eventCrawler');
 
 router.use(authenticate);
 
+const FLINAP_CAMPUSES = ['city', 'bedford', 'tonsley', 'off_campus'];
+const FLINAP_STALE_HOURS = 6;
+
+function normalizeCampus(value) {
+  const campus = String(value || '').trim().toLowerCase();
+  return FLINAP_CAMPUSES.includes(campus) ? campus : null;
+}
+
+function normalizePresenceSource(value) {
+  const source = String(value || '').trim().toLowerCase();
+  return source === 'gps' ? 'gps' : 'manual';
+}
+
+function getPresenceCutoffIso() {
+  return new Date(Date.now() - FLINAP_STALE_HOURS * 60 * 60 * 1000).toISOString();
+}
+
+function groupPresenceRows(rows, currentUserId) {
+  const campuses = {
+    city: [],
+    bedford: [],
+    tonsley: [],
+    off_campus: [],
+  };
+  let my_presence = null;
+
+  for (const row of rows || []) {
+    const campus = normalizeCampus(row.campus);
+    if (!campus) continue;
+
+    const member = {
+      user_id: row.user_id,
+      full_name: row.users?.full_name || 'Student',
+      avatar_url: row.users?.avatar_url || null,
+      campus,
+      source: row.source || 'manual',
+      updated_at: row.updated_at,
+      is_me: row.user_id === currentUserId,
+    };
+
+    campuses[campus].push(member);
+    if (member.is_me) my_presence = member;
+  }
+
+  for (const campus of Object.keys(campuses)) {
+    campuses[campus].sort((a, b) => new Date(b.updated_at || 0) - new Date(a.updated_at || 0));
+  }
+
+  return { campuses, my_presence };
+}
+
 // Shared categorization logic
 const categoryPatterns = {
   'IT & Computing': [/\bcomputer\b/i, /\bI\.?T\.?\b/, /\btech\b/i, /\btechnolog/i, /\bsoftware\b/i, /\bcyber/i, /\bdata\b/i, /\bdigital\b/i, /\b(?:A\.?I\.?|artificial intelligence)\b/i, /\bmachine learning\b/i, /\bcoding\b/i, /\bprogramming\b/i, /\bhackathon\b/i, /\binformation technology\b/i, /\bSTEM\b/],
@@ -575,6 +626,103 @@ router.get('/flinders/news', async (req, res) => {
   } catch (err) {
     console.error('Flinders news proxy error:', err.message);
     res.json([]);
+  }
+});
+
+router.get('/flinders/campus-presence', async (req, res) => {
+  try {
+    const { data, error } = await supabaseAdmin
+      .from('flinders_campus_presence')
+      .select(`
+        user_id,
+        campus,
+        source,
+        updated_at,
+        users:user_id (
+          full_name,
+          avatar_url
+        )
+      `)
+      .eq('sharing_enabled', true)
+      .gte('updated_at', getPresenceCutoffIso())
+      .order('updated_at', { ascending: false });
+
+    if (error) {
+      return res.status(500).json({ error: 'Failed to load Flinap presence' });
+    }
+
+    const grouped = groupPresenceRows(data || [], req.user.id);
+    res.json({
+      stale_after_hours: FLINAP_STALE_HOURS,
+      ...grouped,
+    });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to load Flinap presence' });
+  }
+});
+
+router.post('/flinders/campus-presence', async (req, res) => {
+  try {
+    const campus = normalizeCampus(req.body.campus);
+    const source = normalizePresenceSource(req.body.source);
+
+    if (!campus) {
+      return res.status(400).json({ error: 'Campus must be city, bedford, tonsley, or off_campus' });
+    }
+
+    const { data, error } = await supabaseAdmin
+      .from('flinders_campus_presence')
+      .upsert({
+        user_id: req.user.id,
+        campus,
+        source,
+        sharing_enabled: true,
+        updated_at: new Date().toISOString(),
+      }, { onConflict: 'user_id' })
+      .select(`
+        user_id,
+        campus,
+        source,
+        updated_at,
+        users:user_id (
+          full_name,
+          avatar_url
+        )
+      `)
+      .single();
+
+    if (error) {
+      return res.status(500).json({ error: 'Failed to update Flinap presence' });
+    }
+
+    res.json({
+      user_id: data.user_id,
+      full_name: data.users?.full_name || req.user.user_metadata?.full_name || 'Student',
+      avatar_url: data.users?.avatar_url || null,
+      campus: data.campus,
+      source: data.source,
+      updated_at: data.updated_at,
+      is_me: true,
+    });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to update Flinap presence' });
+  }
+});
+
+router.delete('/flinders/campus-presence', async (req, res) => {
+  try {
+    const { error } = await supabaseAdmin
+      .from('flinders_campus_presence')
+      .delete()
+      .eq('user_id', req.user.id);
+
+    if (error) {
+      return res.status(500).json({ error: 'Failed to hide Flinap presence' });
+    }
+
+    res.json({ message: 'Flinap presence hidden' });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to hide Flinap presence' });
   }
 });
 

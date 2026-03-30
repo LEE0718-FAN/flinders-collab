@@ -19,3 +19,28 @@ export async function getRecommendedEvents(interests = []) {
   const res = await fetch(apiUrl(`/api/flinders/recommended-events${query}`), { headers });
   return parseResponse(res);
 }
+
+export async function getCampusPresence() {
+  const headers = getAuthHeaders();
+  const res = await fetch(apiUrl('/api/flinders/campus-presence'), { headers });
+  return parseResponse(res);
+}
+
+export async function updateCampusPresence(payload) {
+  const headers = getAuthHeaders();
+  const res = await fetch(apiUrl('/api/flinders/campus-presence'), {
+    method: 'POST',
+    headers,
+    body: JSON.stringify(payload),
+  });
+  return parseResponse(res);
+}
+
+export async function clearCampusPresence() {
+  const headers = getAuthHeaders();
+  const res = await fetch(apiUrl('/api/flinders/campus-presence'), {
+    method: 'DELETE',
+    headers,
+  });
+  return parseResponse(res);
+}

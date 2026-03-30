@@ -415,6 +415,24 @@ CREATE TABLE IF NOT EXISTS deadline_reminders (
   UNIQUE(event_id, user_id, reminder_date)
 );
 CREATE INDEX IF NOT EXISTS idx_deadline_reminders_date ON deadline_reminders(reminder_date);
+
+-- Flinap: privacy-friendly campus presence board (campus only, never raw coordinates)
+CREATE TABLE IF NOT EXISTS flinders_campus_presence (
+  user_id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+  campus TEXT NOT NULL CHECK (campus IN ('city', 'bedford', 'tonsley', 'off_campus')),
+  source TEXT NOT NULL DEFAULT 'manual' CHECK (source IN ('gps', 'manual')),
+  sharing_enabled BOOLEAN NOT NULL DEFAULT true,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_flinders_campus_presence_campus ON flinders_campus_presence(campus);
+CREATE INDEX IF NOT EXISTS idx_flinders_campus_presence_updated ON flinders_campus_presence(updated_at DESC);
+
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM information_schema.table_constraints WHERE constraint_name = 'flinders_campus_presence_user_users_fkey' AND table_name = 'flinders_campus_presence') THEN
+    ALTER TABLE flinders_campus_presence ADD CONSTRAINT flinders_campus_presence_user_users_fkey FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE;
+  END IF;
+END $$;
 `;
 
 async function runMigration() {
