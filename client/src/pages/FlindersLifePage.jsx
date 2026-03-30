@@ -130,6 +130,7 @@ const FLINAP_GEOFENCES = {
   bedford: { lat: -35.0212, lng: 138.5711, radiusKm: 1.8 },
   tonsley: { lat: -35.0069, lng: 138.5717, radiusKm: 1.0 },
 };
+const FLINAP_OUTSIDE_HIDE_DELAY_MS = 60 * 1000;
 
 const FLINAP_ACTIVITY_OPTIONS = [
   { key: 'study', label: 'Study', chip: 'bg-blue-50 border-blue-200 text-blue-700', emoji: '📘' },
@@ -509,6 +510,14 @@ export function FlinapPanel({ currentUserId }) {
   const [pendingStatusNoteConfirm, setPendingStatusNoteConfirm] = useState(false);
   const watchIdRef = useRef(null);
   const lastSyncedPresenceRef = useRef({ campus: null, activity: null });
+  const outsideCampusTimeoutRef = useRef(null);
+
+  const clearOutsideCampusTimeout = useCallback(() => {
+    if (outsideCampusTimeoutRef.current !== null) {
+      window.clearTimeout(outsideCampusTimeoutRef.current);
+      outsideCampusTimeoutRef.current = null;
+    }
+  }, []);
 
   const loadFriendState = useCallback(async () => {
     try {
@@ -549,15 +558,17 @@ export function FlinapPanel({ currentUserId }) {
           campus: data.my_presence.campus,
           activity: data.my_presence.activity_status || 'study',
         };
+        clearOutsideCampusTimeout();
       } else {
         lastSyncedPresenceRef.current = { campus: null, activity: null };
+        clearOutsideCampusTimeout();
       }
     } catch (err) {
       setError(err.message || 'Failed to load Flinap');
     } finally {
       if (!silent) setLoading(false);
     }
-  }, []);
+  }, [clearOutsideCampusTimeout]);
 
   useEffect(() => {
     fetchPresence();
@@ -650,6 +661,7 @@ export function FlinapPanel({ currentUserId }) {
     setSyncing(true);
     setError('');
     setStatusMessage('');
+    clearOutsideCampusTimeout();
     try {
       await clearCampusPresence();
       setPresenceData((prev) => ({
@@ -672,7 +684,32 @@ export function FlinapPanel({ currentUserId }) {
     watchIdRef.current = navigator.geolocation.watchPosition(
       async (position) => {
         const campus = detectCampusFromCoords(position.coords.latitude, position.coords.longitude);
-        if (!campus) return;
+        if (!campus) {
+          if (outsideCampusTimeoutRef.current === null) {
+            outsideCampusTimeoutRef.current = window.setTimeout(async () => {
+              outsideCampusTimeoutRef.current = null;
+              setSyncing(true);
+              setError('');
+              try {
+                await clearCampusPresence();
+                setPresenceData((prev) => ({
+                  ...prev,
+                  my_presence: null,
+                }));
+                lastSyncedPresenceRef.current = { campus: null, activity: null };
+                setStatusMessage('Hidden because you left campus.');
+                fetchPresence({ silent: true });
+              } catch (err) {
+                setError(err.message || 'Failed to hide your campus');
+              } finally {
+                setSyncing(false);
+              }
+            }, FLINAP_OUTSIDE_HIDE_DELAY_MS);
+          }
+          return;
+        }
+
+        clearOutsideCampusTimeout();
 
         const lastSynced = lastSyncedPresenceRef.current;
         if (lastSynced.campus === campus && lastSynced.activity === selectedActivity) {
@@ -690,12 +727,13 @@ export function FlinapPanel({ currentUserId }) {
     );
 
     return () => {
+      clearOutsideCampusTimeout();
       if (watchIdRef.current !== null) {
         navigator.geolocation.clearWatch(watchIdRef.current);
         watchIdRef.current = null;
       }
     };
-  }, [presenceData.my_presence, selectedActivity, syncPresence]);
+  }, [clearOutsideCampusTimeout, fetchPresence, presenceData.my_presence, selectedActivity, syncPresence]);
 
   const totalVisible = Object.values(presenceData.campuses || {}).reduce((sum, list) => sum + list.length, 0);
   const selectedCampusMeta = getCampusMeta(selectedCampus);
