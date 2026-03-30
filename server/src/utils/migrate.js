@@ -449,6 +449,14 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_flinders_friend_requests_pair_pending
   WHERE status = 'pending';
 CREATE INDEX IF NOT EXISTS idx_flinders_friend_requests_requester ON flinders_friend_requests(requester_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_flinders_friend_requests_target ON flinders_friend_requests(target_id, created_at DESC);
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM information_schema.table_constraints WHERE constraint_name = 'flinders_friend_requests_requester_users_fkey' AND table_name = 'flinders_friend_requests') THEN
+    ALTER TABLE flinders_friend_requests ADD CONSTRAINT flinders_friend_requests_requester_users_fkey FOREIGN KEY (requester_id) REFERENCES users(id) ON DELETE CASCADE;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.table_constraints WHERE constraint_name = 'flinders_friend_requests_target_users_fkey' AND table_name = 'flinders_friend_requests') THEN
+    ALTER TABLE flinders_friend_requests ADD CONSTRAINT flinders_friend_requests_target_users_fkey FOREIGN KEY (target_id) REFERENCES users(id) ON DELETE CASCADE;
+  END IF;
+END $$;
 
 DO $$ BEGIN
   IF NOT EXISTS (SELECT 1 FROM information_schema.table_constraints WHERE constraint_name = 'flinders_campus_presence_user_users_fkey' AND table_name = 'flinders_campus_presence') THEN

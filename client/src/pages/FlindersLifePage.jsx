@@ -2,12 +2,15 @@ import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
-import { GraduationCap, Calendar, BookOpen, ExternalLink, Loader2, ChevronDown, ChevronUp, MapPin, Star, Clock, ChevronLeft, ChevronRight, Users, Shield, RefreshCw, EyeOff } from 'lucide-react';
-import { getRecommendedEvents, getCampusPresence, updateCampusPresence, clearCampusPresence } from '@/services/flinders';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { Textarea } from '@/components/ui/textarea';
+import { GraduationCap, Calendar, BookOpen, ExternalLink, Loader2, ChevronDown, ChevronUp, MapPin, Star, Clock, ChevronLeft, ChevronRight, Users, Shield, RefreshCw, EyeOff, UserPlus, MessageCircle, Check, X } from 'lucide-react';
+import { getRecommendedEvents, getCampusPresence, updateCampusPresence, clearCampusPresence, getFriendRequests, sendFriendRequest, respondToFriendRequest } from '@/services/flinders';
 import { hydratePreferences, updatePreferences } from '@/lib/preferences';
 import OnboardingTour from '@/components/OnboardingTour';
 import { format, parseISO, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isToday, getDay, addMonths, subMonths, isWithinInterval } from 'date-fns';
 import { useAuth } from '@/hooks/useAuth';
+import { useNavigate } from 'react-router-dom';
 
 function stripHtml(html) {
   if (!html) return '';
@@ -130,6 +133,13 @@ function formatPresenceTime(value) {
 
 function getActivityMeta(activityKey) {
   return FLINAP_ACTIVITY_OPTIONS.find((item) => item.key === activityKey) || FLINAP_ACTIVITY_OPTIONS[0];
+}
+
+function getAcademicMeta(member) {
+  const major = member?.major || 'Major not shared';
+  const year = member?.year_level ? `Year ${member.year_level}` : 'Year hidden';
+  const semester = member?.semester ? `Sem ${member.semester}` : 'Sem hidden';
+  return `${major} · ${year} · ${semester}`;
 }
 
 function hashCode(value) {
@@ -444,6 +454,7 @@ function EmptyState({ icon: Icon, message }) {
 }
 
 export function FlinapPanel({ currentUserId }) {
+  const navigate = useNavigate();
   const [presenceData, setPresenceData] = useState({
     campuses: { city: [], bedford: [], tonsley: [] },
     my_presence: null,
@@ -457,8 +468,25 @@ export function FlinapPanel({ currentUserId }) {
   const [locating, setLocating] = useState(false);
   const [statusMessage, setStatusMessage] = useState('');
   const [error, setError] = useState('');
+  const [friendState, setFriendState] = useState({ incoming: [], outgoing: [], friends: [] });
+  const [activeMember, setActiveMember] = useState(null);
+  const [friendRequestMessage, setFriendRequestMessage] = useState('');
+  const [friendActionLoading, setFriendActionLoading] = useState(false);
   const watchIdRef = useRef(null);
   const lastSyncedPresenceRef = useRef({ campus: null, activity: null });
+
+  const loadFriendState = useCallback(async () => {
+    try {
+      const data = await getFriendRequests();
+      setFriendState({
+        incoming: Array.isArray(data?.incoming) ? data.incoming : [],
+        outgoing: Array.isArray(data?.outgoing) ? data.outgoing : [],
+        friends: Array.isArray(data?.friends) ? data.friends : [],
+      });
+    } catch {
+      setFriendState({ incoming: [], outgoing: [], friends: [] });
+    }
+  }, []);
 
   const fetchPresence = useCallback(async ({ silent = false } = {}) => {
     if (!silent) setLoading(true);
@@ -499,6 +527,10 @@ export function FlinapPanel({ currentUserId }) {
   useEffect(() => {
     fetchPresence();
   }, [fetchPresence]);
+
+  useEffect(() => {
+    loadFriendState();
+  }, [loadFriendState]);
 
   useEffect(() => {
     const intervalId = window.setInterval(() => {
@@ -654,9 +686,84 @@ export function FlinapPanel({ currentUserId }) {
   const sharingEnabled = Boolean(presenceData.my_presence);
   const selectedActivityMeta = getActivityMeta(selectedActivity);
 
+  const getFriendRelationship = useCallback((member) => {
+    if (!member || member.user_id === currentUserId) {
+      return { kind: 'self' };
+    }
+
+    const accepted = friendState.friends.find((item) => item.other_user?.user_id === member.user_id);
+    if (accepted) {
+      return { kind: 'friend', request: accepted };
+    }
+
+    const incoming = friendState.incoming.find((item) => item.other_user?.user_id === member.user_id);
+    if (incoming) {
+      return { kind: 'incoming', request: incoming };
+    }
+
+    const outgoing = friendState.outgoing.find((item) => item.other_user?.user_id === member.user_id);
+    if (outgoing) {
+      return { kind: 'outgoing', request: outgoing };
+    }
+
+    return { kind: 'none' };
+  }, [currentUserId, friendState.friends, friendState.incoming, friendState.outgoing]);
+
+  const openMemberCard = useCallback((member) => {
+    setFriendRequestMessage('');
+    setActiveMember(member);
+  }, []);
+
+  const handleSendFriendRequest = useCallback(async () => {
+    if (!activeMember) return;
+    setFriendActionLoading(true);
+    try {
+      await sendFriendRequest({
+        target_user_id: activeMember.user_id,
+        message: friendRequestMessage.trim(),
+      });
+      await loadFriendState();
+      setStatusMessage(`Friend request sent to ${activeMember.full_name}.`);
+      setFriendRequestMessage('');
+    } catch (err) {
+      setError(err.message || 'Failed to send friend request');
+    } finally {
+      setFriendActionLoading(false);
+    }
+  }, [activeMember, friendRequestMessage, loadFriendState]);
+
+  const handleRespondToRequest = useCallback(async (action) => {
+    const relationship = getFriendRelationship(activeMember);
+    if (!relationship.request?.id) return;
+    setFriendActionLoading(true);
+    try {
+      const updated = await respondToFriendRequest(relationship.request.id, action);
+      await loadFriendState();
+      if (action === 'accept' && updated?.direct_room_id) {
+        setActiveMember(null);
+        navigate(`/rooms/${updated.direct_room_id}`);
+        return;
+      }
+      setStatusMessage(action === 'accept' ? 'Friend request accepted.' : 'Friend request declined.');
+    } catch (err) {
+      setError(err.message || 'Failed to respond to friend request');
+    } finally {
+      setFriendActionLoading(false);
+    }
+  }, [activeMember, getFriendRelationship, loadFriendState, navigate]);
+
+  const handleOpenDirectChat = useCallback(() => {
+    const relationship = getFriendRelationship(activeMember);
+    if (!relationship.request?.direct_room_id) return;
+    setActiveMember(null);
+    navigate(`/rooms/${relationship.request.direct_room_id}`);
+  }, [activeMember, getFriendRelationship, navigate]);
+
   if (loading) {
     return <LoadingState />;
   }
+
+  const activeRelationship = getFriendRelationship(activeMember);
 
   return (
     <>
@@ -714,15 +821,7 @@ export function FlinapPanel({ currentUserId }) {
 
       <div className="overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-sm">
         <div className={`border-b border-slate-100 bg-gradient-to-r ${selectedCampusMeta.accent} px-5 py-4 text-white`}>
-          <div className="flex items-center justify-between gap-3">
-            <div>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/70">Live List</p>
-              <h3 className="mt-1 text-xl font-black">{selectedCampusMeta.label}</h3>
-            </div>
-            <div className="rounded-full bg-white/15 px-3 py-1 text-[11px] font-semibold">
-              {selectedMembers.length} online here
-            </div>
-          </div>
+          <h3 className="text-xl font-black">{selectedCampusMeta.label}</h3>
         </div>
         <div className="p-3 sm:p-4">
           <div className="mb-4 rounded-[24px] border border-slate-200 bg-white p-3 shadow-sm lg:hidden">
@@ -789,33 +888,22 @@ export function FlinapPanel({ currentUserId }) {
 
           <div className="mb-4 overflow-hidden rounded-[24px] border border-slate-200 bg-[radial-gradient(circle_at_top,_#fef3c7,_#ffffff_38%,_#e0e7ff_70%,_#f8fafc_100%)] p-4">
             <div className="flex items-center justify-between gap-3">
-              <div>
-                <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">Snap Map</p>
-                <h4 className="mt-1 text-sm font-black text-slate-900">{selectedCampusMeta.label} only</h4>
-              </div>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">Snap Map</p>
               <div className="rounded-full bg-white/80 px-3 py-1 text-[11px] font-semibold text-slate-600 shadow-sm">
                 {selectedMembers.length} sharing
               </div>
             </div>
-            <div className={`relative mt-4 min-h-[220px] overflow-hidden rounded-[28px] border ${selectedCampusMeta.light} p-4`}>
-              <div className={`absolute inset-x-10 top-10 h-px bg-gradient-to-r ${selectedCampusMeta.accent} opacity-35`} />
+            <div className="relative mt-4 min-h-[240px] overflow-hidden rounded-[28px] border border-white/70 bg-white/65 shadow-inner">
               <div className={`absolute left-1/2 top-1/2 h-28 w-28 -translate-x-1/2 -translate-y-1/2 rounded-full bg-gradient-to-br ${selectedCampusMeta.accent} opacity-15 blur-2xl`} />
-              <div className="relative flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-black text-slate-900">{selectedCampusMeta.label}</p>
-                  <p className="text-[11px] text-slate-500">Only the campus you selected is shown here.</p>
-                </div>
-                <div className={`flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-br ${selectedCampusMeta.accent} text-white shadow-sm`}>
-                  <MapPin className="h-4 w-4" />
-                </div>
-              </div>
-              <div className="relative mt-6 h-[132px] rounded-[24px] border border-white/70 bg-white/70 shadow-inner">
+              <div className="relative h-[240px]">
                 {selectedMembers.length > 0 ? selectedMembers.slice(0, 10).map((member) => {
                   const bubble = getSnapBubblePosition(member.user_id, selectedCampus);
                   const activity = getActivityMeta(member.activity_status);
                   return (
-                    <div
+                    <button
                       key={member.user_id}
+                      type="button"
+                      onClick={() => openMemberCard(member)}
                       className="absolute -translate-x-1/2 -translate-y-1/2"
                       style={{
                         left: `${bubble.x}%`,
@@ -839,7 +927,7 @@ export function FlinapPanel({ currentUserId }) {
                       <div className={`flex h-11 w-11 items-center justify-center rounded-2xl border border-white/80 bg-gradient-to-br ${selectedCampusMeta.accent} text-xs font-black text-white shadow-lg`}>
                         {(member.full_name || 'S').slice(0, 1).toUpperCase()}
                       </div>
-                    </div>
+                    </button>
                   );
                 }) : (
                   <div className="flex h-full items-center justify-center text-[11px] font-medium text-slate-400">
@@ -853,7 +941,12 @@ export function FlinapPanel({ currentUserId }) {
           {selectedMembers.length > 0 ? (
             <div className="space-y-2">
               {selectedMembers.map((member) => (
-                <div key={member.user_id} className={`flex items-center gap-3 rounded-[22px] border px-4 py-3 transition ${member.is_me ? 'border-blue-200 bg-blue-50' : 'border-slate-200 bg-slate-50 hover:bg-white'}`}>
+                <button
+                  key={member.user_id}
+                  type="button"
+                  onClick={() => openMemberCard(member)}
+                  className={`flex w-full items-center gap-3 rounded-[22px] border px-4 py-3 text-left transition ${member.is_me ? 'border-blue-200 bg-blue-50' : 'border-slate-200 bg-slate-50 hover:bg-white'}`}
+                >
                   <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-[18px] bg-gradient-to-br ${selectedCampusMeta.accent} text-sm font-black text-white shadow-sm`}>
                     {(member.full_name || 'S').slice(0, 1).toUpperCase()}
                   </div>
@@ -875,7 +968,7 @@ export function FlinapPanel({ currentUserId }) {
                       <span className="text-[11px] text-slate-400">{formatPresenceTime(member.updated_at)}</span>
                     </div>
                   </div>
-                </div>
+                </button>
               ))}
             </div>
           ) : (
@@ -980,6 +1073,108 @@ export function FlinapPanel({ currentUserId }) {
           <p className="mt-2 text-[11px] text-amber-700">Visible now: {totalVisible} students</p>
         </div>
       </aside>
+
+      <Dialog open={Boolean(activeMember)} onOpenChange={(open) => !open && setActiveMember(null)}>
+        <DialogContent className="sm:max-w-md rounded-3xl border border-slate-200 bg-white p-0 overflow-hidden">
+          {activeMember && (
+            <>
+              <div className={`bg-gradient-to-r ${selectedCampusMeta.accent} px-5 py-5 text-white`}>
+                <div className="flex items-center gap-4">
+                  <div className="flex h-14 w-14 items-center justify-center rounded-[20px] bg-white/15 text-lg font-black shadow-sm">
+                    {(activeMember.full_name || 'S').slice(0, 1).toUpperCase()}
+                  </div>
+                  <div className="min-w-0">
+                    <DialogTitle className="truncate text-left text-xl font-black">{activeMember.full_name}</DialogTitle>
+                    <DialogDescription className="mt-1 text-left text-white/80">
+                      {getAcademicMeta(activeMember)}
+                    </DialogDescription>
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-4 px-5 py-5">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className={`inline-flex rounded-full border px-2.5 py-1 text-[11px] font-semibold ${getActivityMeta(activeMember.activity_status).chip}`}>
+                    <span className="mr-1">{getActivityMeta(activeMember.activity_status).emoji}</span>
+                    {getActivityMeta(activeMember.activity_status).label}
+                  </span>
+                  <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-medium text-slate-600">
+                    {activeMember.campus ? getCampusMeta(activeMember.campus).label : selectedCampusMeta.label}
+                  </span>
+                </div>
+
+                {activeMember.status_message && (
+                  <div className="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-600">
+                    {activeMember.status_message}
+                  </div>
+                )}
+
+                {activeRelationship.kind === 'self' ? (
+                  <div className="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm text-slate-600">
+                    This is your own snap card.
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {activeRelationship.kind === 'friend' ? (
+                      <>
+                        <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-3 py-3 text-sm text-emerald-700">
+                          You are already connected. 1:1 chat is available.
+                        </div>
+                        <Button type="button" onClick={handleOpenDirectChat} className="h-11 w-full rounded-xl">
+                          <MessageCircle className="mr-2 h-4 w-4" />
+                          Open 1:1 Chat
+                        </Button>
+                      </>
+                    ) : activeRelationship.kind === 'incoming' ? (
+                      <>
+                        <div className="rounded-2xl border border-blue-200 bg-blue-50 px-3 py-3 text-sm text-blue-700">
+                          {activeRelationship.request?.message || 'This person sent you a friend request.'}
+                        </div>
+                        <div className="grid grid-cols-2 gap-2">
+                          <Button type="button" onClick={() => handleRespondToRequest('accept')} disabled={friendActionLoading} className="h-11 rounded-xl">
+                            <Check className="mr-2 h-4 w-4" />
+                            Accept
+                          </Button>
+                          <Button type="button" variant="outline" onClick={() => handleRespondToRequest('decline')} disabled={friendActionLoading} className="h-11 rounded-xl">
+                            <X className="mr-2 h-4 w-4" />
+                            Decline
+                          </Button>
+                        </div>
+                      </>
+                    ) : activeRelationship.kind === 'outgoing' ? (
+                      <>
+                        <div className="rounded-2xl border border-amber-200 bg-amber-50 px-3 py-3 text-sm text-amber-700">
+                          Friend request sent. 1:1 chat opens after they accept.
+                        </div>
+                        <Button type="button" variant="outline" disabled className="h-11 w-full rounded-xl">
+                          <MessageCircle className="mr-2 h-4 w-4" />
+                          Wait for acceptance
+                        </Button>
+                      </>
+                    ) : (
+                      <>
+                        <Textarea
+                          value={friendRequestMessage}
+                          onChange={(event) => setFriendRequestMessage(event.target.value.slice(0, 160))}
+                          placeholder="Write a short friend request message"
+                          className="min-h-[96px] rounded-2xl border-slate-200"
+                        />
+                        <Button type="button" onClick={handleSendFriendRequest} disabled={friendActionLoading} className="h-11 w-full rounded-xl">
+                          <UserPlus className="mr-2 h-4 w-4" />
+                          Add Friend
+                        </Button>
+                        <div className="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm text-slate-600">
+                          1:1 chat is available after the other person accepts your friend request.
+                        </div>
+                      </>
+                    )}
+                  </div>
+                )}
+              </div>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
     </>
   );
