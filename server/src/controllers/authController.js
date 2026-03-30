@@ -43,6 +43,16 @@ function resolvePasswordResetBaseUrl(req) {
   return 'http://localhost:5173';
 }
 
+function resolveEmailVerificationRedirectUrl(req) {
+  const baseUrl = resolvePasswordResetBaseUrl(req);
+
+  try {
+    return new URL('/login?verified=1', baseUrl).toString();
+  } catch {
+    return `${baseUrl.replace(/\/$/, '')}/login?verified=1`;
+  }
+}
+
 // In-memory rate limit for password reset (email → timestamp)
 const _resetCooldowns = new Map();
 const RESET_COOLDOWN_MS = 2 * 60 * 1000; // 2 minutes
@@ -84,18 +94,20 @@ async function signup(req, res, next) {
       return res.status(400).json({ error: 'Major or degree program is required' });
     }
 
-    // Create user in Supabase Auth
+    const emailRedirectTo = resolveEmailVerificationRedirectUrl(req);
     const { data: authData, error: authError } =
-      await supabaseAdmin.auth.admin.createUser({
+      await supabasePublic.auth.signUp({
         email,
         password,
-        email_confirm: true, // auto-confirm for MVP
-        user_metadata: {
-          full_name,
-          student_id: normalizedAccountType === 'flinders' ? student_id : null,
-          major: normalizedMajor,
-          university: normalizedUniversity,
-          account_type: normalizedAccountType,
+        options: {
+          emailRedirectTo,
+          data: {
+            full_name,
+            student_id: normalizedAccountType === 'flinders' ? student_id : null,
+            major: normalizedMajor,
+            university: normalizedUniversity,
+            account_type: normalizedAccountType,
+          },
         },
       });
 
@@ -103,33 +115,14 @@ async function signup(req, res, next) {
       return res.status(400).json({ error: authError.message });
     }
 
-    // Insert profile into users table
-    const { error: profileError } = await supabaseAdmin.from('users').insert({
-      id: authData.user.id,
-      university_email: email,
-      student_id: normalizedAccountType === 'flinders' ? student_id : null,
-      full_name,
-      major: normalizedMajor,
-      university: normalizedUniversity,
-      avatar_url: null,
-    });
-
-    if (profileError) {
-      console.error('Profile insert error:', profileError.message);
-      await ignoreQueryError(supabaseAdmin.auth.admin.deleteUser(authData.user.id));
-      return res.status(500).json({ error: 'Failed to create user profile. Please try again.' });
+    if (!authData?.user?.id) {
+      return res.status(500).json({ error: 'Failed to create your account. Please try again.' });
     }
 
     res.status(201).json({
-      message: 'Account created successfully',
-      user: {
-        id: authData.user.id,
-        email: authData.user.email,
-        full_name,
-        student_id: normalizedAccountType === 'flinders' ? student_id : null,
-        major: normalizedMajor,
-        university: normalizedUniversity,
-      },
+      message: 'Check your email to verify your account before signing in.',
+      requires_email_verification: true,
+      email,
     });
   } catch (err) {
     next(err);
@@ -158,6 +151,9 @@ async function login(req, res, next) {
       await supabasePublic.auth.signInWithPassword({ email, password });
 
     if (error) {
+      if (error.message?.toLowerCase().includes('email not confirmed')) {
+        return res.status(403).json({ error: 'Please verify your email address before signing in.' });
+      }
       return res.status(401).json({ error: 'Invalid email or password' });
     }
 
@@ -507,6 +503,10 @@ async function updateProfile(req, res, next) {
  */
 async function guestLogin(req, res, next) {
   try {
+    if (!config.security.allowTesterMode) {
+      return res.status(403).json({ error: 'Tester mode is disabled' });
+    }
+
     const uuid = require('crypto').randomUUID();
     const email = `tester-${uuid}@flinders.edu.au`;
     const password = `guest-${uuid}-${Date.now()}`;
@@ -571,6 +571,10 @@ async function guestLogin(req, res, next) {
  */
 async function guestCleanup(req, res, next) {
   try {
+    if (!config.security.allowTesterMode) {
+      return res.status(403).json({ error: 'Tester mode is disabled' });
+    }
+
     const userId = req.user.id;
 
     // Verify this is actually a tester account (check auth metadata)

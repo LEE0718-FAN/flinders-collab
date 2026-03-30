@@ -1,5 +1,8 @@
 const { supabaseAdmin } = require('../services/supabase');
 
+const LOCATION_SOCKET_MIN_INTERVAL_MS = 1500;
+const locationUpdateTimestamps = new Map();
+
 async function verifyEventAccess(eventId, userId) {
   const { data: event } = await supabaseAdmin
     .from('events')
@@ -30,6 +33,26 @@ async function verifyEventAccess(eventId, userId) {
  */
 function locationHandler(io, socket) {
   const userId = socket.userId;
+
+  const canEmitLocationUpdate = (eventId) => {
+    const key = `${userId}:${eventId}`;
+    const lastUpdateAt = locationUpdateTimestamps.get(key) || 0;
+    const now = Date.now();
+
+    if (now - lastUpdateAt < LOCATION_SOCKET_MIN_INTERVAL_MS) {
+      return false;
+    }
+
+    locationUpdateTimestamps.set(key, now);
+    if (locationUpdateTimestamps.size > 2000) {
+      for (const [entryKey, timestamp] of locationUpdateTimestamps) {
+        if (now - timestamp > 5 * 60 * 1000) {
+          locationUpdateTimestamps.delete(entryKey);
+        }
+      }
+    }
+    return true;
+  };
 
   /**
    * Join an event's location channel.
@@ -65,6 +88,11 @@ function locationHandler(io, socket) {
    */
   socket.on('location:update', async ({ eventId, latitude, longitude, status }) => {
     if (!eventId || latitude == null || longitude == null) return;
+    if (!Number.isFinite(Number(latitude)) || !Number.isFinite(Number(longitude))) return;
+    if (Number(latitude) < -90 || Number(latitude) > 90 || Number(longitude) < -180 || Number(longitude) > 180) return;
+    if (!canEmitLocationUpdate(eventId)) {
+      return socket.emit('location:error', { error: 'Location updates are coming in too quickly' });
+    }
 
     try {
       const event = await verifyEventAccess(eventId, userId);

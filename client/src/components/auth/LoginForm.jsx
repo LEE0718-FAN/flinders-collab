@@ -5,12 +5,19 @@ import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Loader2, Mail, Lock } from 'lucide-react';
 
-export default function LoginForm({ onSubmit, onGuestLogin, onRequestPasswordReset }) {
+export default function LoginForm({
+  onSubmit,
+  onGuestLogin,
+  onRequestPasswordReset,
+  testerModeEnabled = false,
+  initialSuccess = '',
+  initialEmail = '',
+}) {
   const RESET_COOLDOWN_SECONDS = 60;
-  const [email, setEmail] = useState('');
+  const [email, setEmail] = useState(initialEmail);
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
+  const [success, setSuccess] = useState(initialSuccess);
   const [loading, setLoading] = useState(false);
   const [guestLoading, setGuestLoading] = useState(false);
   const [resetLoading, setResetLoading] = useState(false);
@@ -26,6 +33,14 @@ export default function LoginForm({ onSubmit, onGuestLogin, onRequestPasswordRes
     }, 1000);
     return () => window.clearInterval(timer);
   }, [resetCooldown]);
+
+  useEffect(() => {
+    setEmail(initialEmail || '');
+  }, [initialEmail]);
+
+  useEffect(() => {
+    setSuccess(initialSuccess || '');
+  }, [initialSuccess]);
 
   const formatCooldown = (seconds) => {
     const mins = Math.floor(seconds / 60);
@@ -197,43 +212,47 @@ export default function LoginForm({ onSubmit, onGuestLogin, onRequestPasswordRes
           <Link to="/signup" className="font-semibold text-blue-600 hover:text-blue-700">Sign up</Link>
         </p>
 
-        <div className="relative">
-          <div className="absolute inset-0 flex items-center">
-            <span className="w-full border-t border-border/40" />
-          </div>
-          <div className="relative flex justify-center text-xs uppercase">
-            <span className="bg-background px-2 text-muted-foreground/50">or</span>
-          </div>
-        </div>
+        {testerModeEnabled && (
+          <>
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center">
+                <span className="w-full border-t border-border/40" />
+              </div>
+              <div className="relative flex justify-center text-xs uppercase">
+                <span className="bg-background px-2 text-muted-foreground/50">or</span>
+              </div>
+            </div>
 
-        <button
-          type="button"
-          onClick={async () => {
-            setGuestLoading(true);
-            setError('');
-            setSuccess('');
-            try {
-              await onGuestLogin();
-            } catch (err) {
-              const msg = err.message || 'Failed to start tester mode';
-              if (msg === 'Failed to fetch' || msg === 'Load failed') {
-                setError('Server is starting up. Please try again in a few seconds.');
-              } else {
-                setError(msg);
-              }
-            } finally {
-              setGuestLoading(false);
-            }
-          }}
-          disabled={guestLoading || loading}
-          className="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 px-4 py-3 text-center text-[14px] font-semibold text-white shadow-lg shadow-emerald-500/20 transition-all hover:from-emerald-600 hover:to-teal-600 disabled:opacity-50 whitespace-normal"
-        >
-          {guestLoading && <Loader2 className="h-4 w-4 animate-spin" />}
-          {guestLoading ? 'Setting up...' : '🎓 Try as Tester (Tutorial Only)'}
-        </button>
-        <p className="text-center text-[11px] leading-relaxed text-muted-foreground/50">
-          No signup needed — see a quick demo of the app
-        </p>
+            <button
+              type="button"
+              onClick={async () => {
+                setGuestLoading(true);
+                setError('');
+                setSuccess('');
+                try {
+                  await onGuestLogin();
+                } catch (err) {
+                  const msg = err.message || 'Failed to start tester mode';
+                  if (msg === 'Failed to fetch' || msg === 'Load failed') {
+                    setError('Server is starting up. Please try again in a few seconds.');
+                  } else {
+                    setError(msg);
+                  }
+                } finally {
+                  setGuestLoading(false);
+                }
+              }}
+              disabled={guestLoading || loading}
+              className="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 px-4 py-3 text-center text-[14px] font-semibold text-white shadow-lg shadow-emerald-500/20 transition-all hover:from-emerald-600 hover:to-teal-600 disabled:opacity-50 whitespace-normal"
+            >
+              {guestLoading && <Loader2 className="h-4 w-4 animate-spin" />}
+              {guestLoading ? 'Setting up...' : '🎓 Try as Tester (Tutorial Only)'}
+            </button>
+            <p className="text-center text-[11px] leading-relaxed text-muted-foreground/50">
+              No signup needed — see a quick demo of the app
+            </p>
+          </>
+        )}
       </form>
 
       <Dialog open={resetOpen} onOpenChange={setResetOpen}>

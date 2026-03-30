@@ -83,7 +83,11 @@ const joinRoomValidation = [
   body('invite_code')
     .trim()
     .notEmpty()
-    .withMessage('Invite code is required'),
+    .withMessage('Invite code is required')
+    .isLength({ min: 6, max: 12 })
+    .withMessage('Invite code must be 6-12 characters')
+    .matches(/^[A-Z2-9]+$/i)
+    .withMessage('Invite code format is invalid'),
 ];
 
 // Event validators

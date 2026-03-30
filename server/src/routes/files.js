@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const multer = require('multer');
+const rateLimit = require('express-rate-limit');
 const fileController = require('../controllers/fileController');
 const { authenticate, requireRoomMember } = require('../middleware/auth');
 const { validate } = require('../middleware/validate');
@@ -13,14 +14,30 @@ const upload = multer({
   limits: {
     fileSize: config.upload.maxFileSize,
   },
+  fileFilter: (_req, file, cb) => {
+    if (!config.upload.allowedTypes.includes(file.mimetype)) {
+      cb(new Error('File type not allowed'));
+      return;
+    }
+    cb(null, true);
+  },
 });
 
 // All file routes require authentication
 router.use(authenticate);
 
+const uploadLimiter = rateLimit({
+  windowMs: 10 * 60 * 1000,
+  max: 20,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many upload attempts. Please wait a few minutes and try again.' },
+});
+
 // POST /rooms/:roomId/files - Upload a file
 router.post(
   '/rooms/:roomId/files',
+  uploadLimiter,
   roomIdParam,
   validate,
   requireRoomMember,

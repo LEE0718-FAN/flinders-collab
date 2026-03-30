@@ -114,7 +114,7 @@ export function useAuth() {
       throw new Error('Please use your @flinders.edu.au email address');
     }
 
-    await apiSignup({
+    return apiSignup({
       email,
       password,
       full_name: metadata.name,
@@ -123,21 +123,6 @@ export function useAuth() {
       university: metadata.university,
       account_type: accountType,
     });
-
-    // After signup, log in
-    const result = await apiLogin({ email, password });
-    const sessionData = buildSessionData(result, {
-      account_type: accountType,
-      major: metadata.major,
-      university: metadata.university,
-    });
-
-    saveSession(sessionData);
-    setSession(sessionData);
-    setUser(sessionData.user);
-    subscribeToPush().catch(() => {});
-
-    return sessionData;
   }, [setSession, setUser]);
 
   const updateUser = useCallback(async (formData) => {

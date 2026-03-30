@@ -1,4 +1,5 @@
 const express = require('express');
+const rateLimit = require('express-rate-limit');
 const router = express.Router();
 const roomController = require('../controllers/roomController');
 const activityController = require('../controllers/activityController');
@@ -14,6 +15,14 @@ const {
 // All room routes require authentication
 router.use(authenticate);
 
+const joinLimiter = rateLimit({
+  windowMs: 10 * 60 * 1000,
+  max: 15,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many join attempts. Please wait a few minutes before trying again.' },
+});
+
 // POST /rooms - Create a new room
 router.post('/', createRoomValidation, validate, roomController.createRoom);
 
@@ -24,7 +33,7 @@ router.get('/', roomController.getRooms);
 router.get('/activity-summary', activityController.getActivitySummary);
 
 // POST /rooms/join - Primary join flow from the dashboard using only an invite code
-router.post('/join', joinRoomValidation, validate, roomController.joinRoomByCode);
+router.post('/join', joinLimiter, joinRoomValidation, validate, roomController.joinRoomByCode);
 
 // GET /rooms/:roomId - Get room details (requires membership)
 router.get(
@@ -38,6 +47,7 @@ router.get(
 // POST /rooms/:roomId/join - Legacy invite-code join route kept for compatibility
 router.post(
   '/:roomId/join',
+  joinLimiter,
   roomIdParam,
   joinRoomValidation,
   validate,

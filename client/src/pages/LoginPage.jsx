@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import AuthLayout from '@/layouts/AuthLayout';
 import LoginForm from '@/components/auth/LoginForm';
 import ReportButton from '@/components/ReportButton';
@@ -8,6 +8,10 @@ import { useAuth } from '@/hooks/useAuth';
 export default function LoginPage() {
   const { login, guestLogin, requestPasswordReset } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+  const testerModeEnabled = import.meta.env.DEV || import.meta.env.VITE_ENABLE_TESTER_MODE === 'true';
+  const signupNotice = location.state?.signupNotice || '';
+  const signupEmail = location.state?.signupEmail || '';
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -38,10 +42,21 @@ export default function LoginPage() {
     await requestPasswordReset(email);
   };
 
+  const verifiedNotice = typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('verified') === '1'
+    ? 'Your email has been verified. You can sign in now.'
+    : '';
+
   return (
     <>
       <AuthLayout>
-        <LoginForm onSubmit={handleLogin} onGuestLogin={handleGuestLogin} onRequestPasswordReset={handlePasswordReset} />
+        <LoginForm
+          onSubmit={handleLogin}
+          onGuestLogin={handleGuestLogin}
+          onRequestPasswordReset={handlePasswordReset}
+          testerModeEnabled={testerModeEnabled}
+          initialSuccess={signupNotice || verifiedNotice}
+          initialEmail={signupEmail}
+        />
       </AuthLayout>
       <ReportButton section="login" floating />
     </>

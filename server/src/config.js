@@ -17,6 +17,9 @@ const config = {
   supabaseProjectRef: process.env.SUPABASE_PROJECT_REF,
   jwtSecret: process.env.JWT_SECRET,
   clientUrl: process.env.CLIENT_URL || 'http://localhost:5173',
+  security: {
+    allowTesterMode: process.env.ALLOW_TESTER_MODE === 'true' || (process.env.NODE_ENV || 'development') !== 'production',
+  },
   upload: {
     maxFileSize: 50 * 1024 * 1024, // 50MB
     allowedTypes: [

@@ -10,8 +10,14 @@ export default function SignupPage() {
   const navigate = useNavigate();
 
   const handleSignup = async (email, password, metadata) => {
-    await signup(email, password, metadata);
-    navigate('/dashboard');
+    const result = await signup(email, password, metadata);
+    navigate('/login', {
+      replace: true,
+      state: {
+        signupNotice: result?.message || 'Check your email to verify your account before signing in.',
+        signupEmail: email,
+      },
+    });
   };
 
   return (
