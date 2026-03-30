@@ -35,6 +35,8 @@ function buildSessionData(result, fallback = {}) {
   };
 }
 
+const PROFILE_SYNC_INTERVAL_MS = 15 * 1000;
+
 export function useAuth() {
   const { user, session, isLoading, setUser, setSession, setLoading, logout: clearAuth } = useAuthStore();
 
@@ -143,6 +145,16 @@ export function useAuth() {
       window.removeEventListener('focus', handleVisibilityChange);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
+  }, [session, syncProfileFromServer]);
+
+  useEffect(() => {
+    if (!session?.access_token) return undefined;
+
+    const intervalId = window.setInterval(() => {
+      syncProfileFromServer(loadSession() || session).catch(() => {});
+    }, PROFILE_SYNC_INTERVAL_MS);
+
+    return () => window.clearInterval(intervalId);
   }, [session, syncProfileFromServer]);
 
   const login = useCallback(async (email, password) => {
