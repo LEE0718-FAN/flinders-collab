@@ -103,8 +103,8 @@ export default function ProfileSettings() {
     }
 
     const trimmedStudentId = studentId.trim();
-    if (trimmedStudentId && !/^\d+$/.test(trimmedStudentId)) {
-      newErrors.studentId = 'Student ID must be numeric';
+    if (trimmedStudentId && !/^[a-zA-Z0-9-]+$/.test(trimmedStudentId)) {
+      newErrors.studentId = 'Student ID can only use letters, numbers, or hyphens';
     }
 
     return newErrors;

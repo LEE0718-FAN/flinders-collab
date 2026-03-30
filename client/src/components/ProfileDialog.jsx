@@ -121,8 +121,8 @@ export default function ProfileDialog({ open, onOpenChange }) {
       return;
     }
 
-    if (trimmedStudentId && !/^\d+$/.test(trimmedStudentId)) {
-      setError('Student ID must be numeric');
+    if (trimmedStudentId && !/^[a-zA-Z0-9-]+$/.test(trimmedStudentId)) {
+      setError('Student ID can only use letters, numbers, or hyphens');
       return;
     }
 

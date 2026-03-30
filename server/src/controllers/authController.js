@@ -440,8 +440,8 @@ async function updateProfile(req, res, next) {
 
     if (student_id !== undefined) {
       const normalizedStudentId = String(student_id || '').trim();
-      if (normalizedStudentId && !/^\d+$/.test(normalizedStudentId)) {
-        return res.status(400).json({ error: 'Student ID must be numeric' });
+      if (normalizedStudentId && !/^[a-zA-Z0-9-]+$/.test(normalizedStudentId)) {
+        return res.status(400).json({ error: 'Student ID can only use letters, numbers, or hyphens' });
       }
       updates.student_id = normalizedStudentId || null;
     }
