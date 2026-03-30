@@ -317,6 +317,8 @@ async function getMe(req, res, next) {
         student_id: req.user.user_metadata?.student_id || null,
         major: req.user.user_metadata?.major || null,
         university: req.user.user_metadata?.university || null,
+        year_level: req.user.user_metadata?.year_level || null,
+        semester: req.user.user_metadata?.semester || null,
         avatar_url: null,
       });
     }
@@ -423,20 +425,40 @@ function normalizeNotificationPreferences(value) {
 async function updateProfile(req, res, next) {
   try {
     const userId = req.user.id;
-    const { full_name } = req.body;
+    const { full_name, student_id, major, year_level, semester } = req.body;
     const updates = {};
 
     // Update name if provided
     if (full_name && full_name.trim()) {
       updates.full_name = full_name.trim();
+    }
 
-      // Also update Supabase auth metadata
-      await supabaseAdmin.auth.admin.updateUserById(userId, {
-        user_metadata: {
-          ...req.user.user_metadata,
-          full_name: updates.full_name,
-        },
-      });
+    if (major !== undefined) {
+      updates.major = String(major || '').trim() || null;
+    }
+
+    if (student_id !== undefined) {
+      const normalizedStudentId = String(student_id || '').trim();
+      if (normalizedStudentId && !/^\d+$/.test(normalizedStudentId)) {
+        return res.status(400).json({ error: 'Student ID must be numeric' });
+      }
+      updates.student_id = normalizedStudentId || null;
+    }
+
+    if (year_level !== undefined) {
+      const parsedYear = Number(year_level);
+      if (!Number.isInteger(parsedYear) || parsedYear < 1 || parsedYear > 7) {
+        return res.status(400).json({ error: 'Year level must be between 1 and 7' });
+      }
+      updates.year_level = parsedYear;
+    }
+
+    if (semester !== undefined) {
+      const parsedSemester = Number(semester);
+      if (!Number.isInteger(parsedSemester) || parsedSemester < 1 || parsedSemester > 3) {
+        return res.status(400).json({ error: 'Semester must be between 1 and 3' });
+      }
+      updates.semester = parsedSemester;
     }
 
     // Handle avatar upload
@@ -477,6 +499,17 @@ async function updateProfile(req, res, next) {
     if (Object.keys(updates).length === 0) {
       return res.status(400).json({ error: 'No updates provided' });
     }
+
+    await supabaseAdmin.auth.admin.updateUserById(userId, {
+      user_metadata: {
+        ...req.user.user_metadata,
+        ...(updates.full_name ? { full_name: updates.full_name } : {}),
+        ...(updates.student_id !== undefined ? { student_id: updates.student_id } : {}),
+        ...(updates.major !== undefined ? { major: updates.major } : {}),
+        ...(updates.year_level !== undefined ? { year_level: updates.year_level } : {}),
+        ...(updates.semester !== undefined ? { semester: updates.semester } : {}),
+      },
+    });
 
     // Update users table
     const { data, error } = await supabaseAdmin

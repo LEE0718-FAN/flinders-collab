@@ -25,8 +25,11 @@ function buildSessionData(result, fallback = {}) {
         full_name: result.user.full_name,
         avatar_url: result.user.avatar_url || null,
         account_type: accountType,
+        student_id: result.user.student_id || fallback.student_id || null,
         major: result.user.major || fallback.major || null,
         university: result.user.university || fallback.university || null,
+        year_level: result.user.year_level || fallback.year_level || null,
+        semester: result.user.semester || fallback.semester || null,
       },
     },
   };
@@ -138,6 +141,10 @@ export function useAuth() {
           name: updated.full_name || currentSession.user.user_metadata?.name,
           full_name: updated.full_name || currentSession.user.user_metadata?.full_name,
           avatar_url: updated.avatar_url || currentSession.user.user_metadata?.avatar_url,
+          student_id: updated.student_id !== undefined ? updated.student_id : currentSession.user.user_metadata?.student_id,
+          major: updated.major !== undefined ? updated.major : currentSession.user.user_metadata?.major,
+          year_level: updated.year_level !== undefined ? updated.year_level : currentSession.user.user_metadata?.year_level,
+          semester: updated.semester !== undefined ? updated.semester : currentSession.user.user_metadata?.semester,
         },
       };
       const newSession = { ...currentSession, user: newUser };

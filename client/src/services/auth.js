@@ -72,6 +72,13 @@ export async function apiUpdateProfile(formData) {
   return parseResponse(res);
 }
 
+export async function apiGetMe() {
+  const res = await fetch(apiUrl('/api/auth/me'), {
+    headers: getAuthHeaders(),
+  });
+  return parseResponse(res);
+}
+
 export async function apiGetPreferences() {
   const res = await fetch(apiUrl('/api/auth/preferences'), {
     headers: getAuthHeaders(),

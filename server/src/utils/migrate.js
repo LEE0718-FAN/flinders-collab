@@ -331,6 +331,9 @@ CREATE INDEX IF NOT EXISTS idx_tasks_room_created ON tasks(room_id, created_at D
 ALTER TABLE users ADD COLUMN IF NOT EXISTS board_last_seen_at TIMESTAMPTZ;
 ALTER TABLE room_members ADD COLUMN IF NOT EXISTS last_visited_at TIMESTAMPTZ;
 CREATE INDEX IF NOT EXISTS idx_room_members_user_last_visited ON room_members(user_id, last_visited_at DESC);
+ALTER TABLE rooms ADD COLUMN IF NOT EXISTS room_type TEXT NOT NULL DEFAULT 'group';
+ALTER TABLE rooms ADD COLUMN IF NOT EXISTS direct_pair_key TEXT;
+CREATE UNIQUE INDEX IF NOT EXISTS idx_rooms_direct_pair_key ON rooms(direct_pair_key) WHERE direct_pair_key IS NOT NULL;
 
 -- Room quick links
 CREATE TABLE IF NOT EXISTS room_quick_links (
@@ -421,6 +424,7 @@ CREATE TABLE IF NOT EXISTS flinders_campus_presence (
   user_id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
   campus TEXT NOT NULL CHECK (campus IN ('city', 'bedford', 'tonsley')),
   activity_status TEXT NOT NULL DEFAULT 'study' CHECK (activity_status IN ('study', 'in_class', 'meal', 'coffee', 'team_up', 'quiet', 'break')),
+  status_message TEXT,
   source TEXT NOT NULL DEFAULT 'manual' CHECK (source IN ('gps', 'manual')),
   sharing_enabled BOOLEAN NOT NULL DEFAULT true,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
@@ -429,17 +433,39 @@ CREATE TABLE IF NOT EXISTS flinders_campus_presence (
 CREATE INDEX IF NOT EXISTS idx_flinders_campus_presence_campus ON flinders_campus_presence(campus);
 CREATE INDEX IF NOT EXISTS idx_flinders_campus_presence_updated ON flinders_campus_presence(updated_at DESC);
 
+CREATE TABLE IF NOT EXISTS flinders_friend_requests (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  requester_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  target_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  message TEXT,
+  status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'accepted', 'declined')),
+  pair_key TEXT NOT NULL,
+  direct_room_id UUID REFERENCES rooms(id) ON DELETE SET NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  responded_at TIMESTAMPTZ
+);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_flinders_friend_requests_pair_pending
+  ON flinders_friend_requests(pair_key)
+  WHERE status = 'pending';
+CREATE INDEX IF NOT EXISTS idx_flinders_friend_requests_requester ON flinders_friend_requests(requester_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_flinders_friend_requests_target ON flinders_friend_requests(target_id, created_at DESC);
+
 DO $$ BEGIN
   IF NOT EXISTS (SELECT 1 FROM information_schema.table_constraints WHERE constraint_name = 'flinders_campus_presence_user_users_fkey' AND table_name = 'flinders_campus_presence') THEN
     ALTER TABLE flinders_campus_presence ADD CONSTRAINT flinders_campus_presence_user_users_fkey FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE;
   END IF;
 END $$;
 ALTER TABLE flinders_campus_presence ADD COLUMN IF NOT EXISTS activity_status TEXT NOT NULL DEFAULT 'study';
+ALTER TABLE flinders_campus_presence ADD COLUMN IF NOT EXISTS status_message TEXT;
 DELETE FROM flinders_campus_presence WHERE campus = 'off_campus';
 ALTER TABLE flinders_campus_presence DROP CONSTRAINT IF EXISTS flinders_campus_presence_campus_check;
 ALTER TABLE flinders_campus_presence ADD CONSTRAINT flinders_campus_presence_campus_check CHECK (campus IN ('city', 'bedford', 'tonsley'));
 ALTER TABLE flinders_campus_presence DROP CONSTRAINT IF EXISTS flinders_campus_presence_activity_status_check;
 ALTER TABLE flinders_campus_presence ADD CONSTRAINT flinders_campus_presence_activity_status_check CHECK (activity_status IN ('study', 'in_class', 'meal', 'coffee', 'team_up', 'quiet', 'break'));
+ALTER TABLE flinders_friend_requests ADD COLUMN IF NOT EXISTS pair_key TEXT;
+UPDATE flinders_friend_requests
+SET pair_key = LEAST(requester_id::text, target_id::text) || ':' || GREATEST(requester_id::text, target_id::text)
+WHERE pair_key IS NULL;
 `;
 
 async function runMigration() {

@@ -44,3 +44,29 @@ export async function clearCampusPresence() {
   });
   return parseResponse(res);
 }
+
+export async function getFriendRequests() {
+  const headers = getAuthHeaders();
+  const res = await fetch(apiUrl('/api/flinders/friend-requests'), { headers });
+  return parseResponse(res);
+}
+
+export async function sendFriendRequest(payload) {
+  const headers = getAuthHeaders();
+  const res = await fetch(apiUrl('/api/flinders/friend-requests'), {
+    method: 'POST',
+    headers,
+    body: JSON.stringify(payload),
+  });
+  return parseResponse(res);
+}
+
+export async function respondToFriendRequest(requestId, action) {
+  const headers = getAuthHeaders();
+  const res = await fetch(apiUrl(`/api/flinders/friend-requests/${requestId}/respond`), {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ action }),
+  });
+  return parseResponse(res);
+}

@@ -25,6 +25,88 @@ function normalizeActivityStatus(value) {
   return FLINAP_ACTIVITY_STATUSES.includes(status) ? status : 'study';
 }
 
+function normalizeStatusMessage(value) {
+  const text = String(value || '').trim().replace(/\s+/g, ' ');
+  return text ? text.slice(0, 80) : null;
+}
+
+function normalizeFriendMessage(value) {
+  const text = String(value || '').trim().replace(/\s+/g, ' ');
+  return text ? text.slice(0, 160) : null;
+}
+
+function buildPairKey(userA, userB) {
+  return [String(userA), String(userB)].sort().join(':');
+}
+
+function generateInviteCode() {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let code = '';
+  for (let i = 0; i < 6; i += 1) {
+    code += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return code;
+}
+
+async function ensureRoomMembership(roomId, userId, role = 'member') {
+  const { data: existing } = await supabaseAdmin
+    .from('room_members')
+    .select('id')
+    .eq('room_id', roomId)
+    .eq('user_id', userId)
+    .maybeSingle();
+
+  if (existing?.id) return;
+
+  await supabaseAdmin
+    .from('room_members')
+    .insert({
+      room_id: roomId,
+      user_id: userId,
+      role,
+      last_visited_at: new Date().toISOString(),
+    });
+}
+
+async function getOrCreateDirectRoom(requesterId, targetId, requesterName, targetName) {
+  const pairKey = buildPairKey(requesterId, targetId);
+
+  const { data: existingRoom } = await supabaseAdmin
+    .from('rooms')
+    .select('id')
+    .eq('direct_pair_key', pairKey)
+    .maybeSingle();
+
+  if (existingRoom?.id) {
+    await ensureRoomMembership(existingRoom.id, requesterId, 'owner');
+    await ensureRoomMembership(existingRoom.id, targetId, 'member');
+    return existingRoom.id;
+  }
+
+  const roomName = `${requesterName || 'Student'} & ${targetName || 'Student'}`;
+  const { data: createdRoom, error: roomError } = await supabaseAdmin
+    .from('rooms')
+    .insert({
+      name: roomName,
+      course_name: 'Direct Chat',
+      description: 'Private chat from Flinders Social',
+      owner_id: requesterId,
+      invite_code: generateInviteCode(),
+      room_type: 'direct',
+      direct_pair_key: pairKey,
+    })
+    .select('id')
+    .single();
+
+  if (roomError || !createdRoom?.id) {
+    throw new Error('Failed to create direct room');
+  }
+
+  await ensureRoomMembership(createdRoom.id, requesterId, 'owner');
+  await ensureRoomMembership(createdRoom.id, targetId, 'member');
+  return createdRoom.id;
+}
+
 function getPresenceCutoffIso() {
   return new Date(Date.now() - FLINAP_STALE_HOURS * 60 * 60 * 1000).toISOString();
 }
@@ -45,8 +127,12 @@ function groupPresenceRows(rows, currentUserId) {
       user_id: row.user_id,
       full_name: row.users?.full_name || 'Student',
       avatar_url: row.users?.avatar_url || null,
+      major: row.users?.major || null,
+      year_level: row.users?.year_level || null,
+      semester: row.users?.semester || null,
       campus,
       activity_status: normalizeActivityStatus(row.activity_status),
+      status_message: normalizeStatusMessage(row.status_message),
       source: row.source || 'manual',
       updated_at: row.updated_at,
       is_me: row.user_id === currentUserId,
@@ -61,6 +147,28 @@ function groupPresenceRows(rows, currentUserId) {
   }
 
   return { campuses, my_presence };
+}
+
+function mapFriendRequestRow(row, currentUserId) {
+  const requester = row.requester || {};
+  const target = row.target || {};
+  const otherUser = row.requester_id === currentUserId ? target : requester;
+  const direction = row.requester_id === currentUserId ? 'outgoing' : 'incoming';
+
+  return {
+    id: row.id,
+    status: row.status,
+    message: normalizeFriendMessage(row.message),
+    direct_room_id: row.direct_room_id || null,
+    created_at: row.created_at,
+    responded_at: row.responded_at || null,
+    direction,
+    other_user: {
+      user_id: otherUser.id || null,
+      full_name: otherUser.full_name || 'Student',
+      avatar_url: otherUser.avatar_url || null,
+    },
+  };
 }
 
 // Shared categorization logic
@@ -643,11 +751,16 @@ router.get('/flinders/campus-presence', async (req, res) => {
         user_id,
         campus,
         activity_status,
+        status_message,
         source,
         updated_at,
         users:user_id (
+          id,
           full_name,
-          avatar_url
+          avatar_url,
+          major,
+          year_level,
+          semester
         )
       `)
       .eq('sharing_enabled', true)
@@ -672,6 +785,7 @@ router.post('/flinders/campus-presence', async (req, res) => {
   try {
     const campus = normalizeCampus(req.body.campus);
     const activityStatus = normalizeActivityStatus(req.body.activity_status);
+    const statusMessage = normalizeStatusMessage(req.body.status_message);
     const source = normalizePresenceSource(req.body.source);
 
     if (!campus) {
@@ -684,6 +798,7 @@ router.post('/flinders/campus-presence', async (req, res) => {
         user_id: req.user.id,
         campus,
         activity_status: activityStatus,
+        status_message: statusMessage,
         source,
         sharing_enabled: true,
         updated_at: new Date().toISOString(),
@@ -692,11 +807,16 @@ router.post('/flinders/campus-presence', async (req, res) => {
         user_id,
         campus,
         activity_status,
+        status_message,
         source,
         updated_at,
         users:user_id (
+          id,
           full_name,
-          avatar_url
+          avatar_url,
+          major,
+          year_level,
+          semester
         )
       `)
       .single();
@@ -709,8 +829,12 @@ router.post('/flinders/campus-presence', async (req, res) => {
       user_id: data.user_id,
       full_name: data.users?.full_name || req.user.user_metadata?.full_name || 'Student',
       avatar_url: data.users?.avatar_url || null,
+      major: data.users?.major || null,
+      year_level: data.users?.year_level || null,
+      semester: data.users?.semester || null,
       campus: data.campus,
       activity_status: normalizeActivityStatus(data.activity_status),
+      status_message: normalizeStatusMessage(data.status_message),
       source: data.source,
       updated_at: data.updated_at,
       is_me: true,
@@ -734,6 +858,212 @@ router.delete('/flinders/campus-presence', async (req, res) => {
     res.json({ message: 'Flinap presence hidden' });
   } catch (err) {
     res.status(500).json({ error: 'Failed to hide Flinap presence' });
+  }
+});
+
+router.get('/flinders/friend-requests', async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { data, error } = await supabaseAdmin
+      .from('flinders_friend_requests')
+      .select(`
+        id,
+        requester_id,
+        target_id,
+        message,
+        status,
+        direct_room_id,
+        created_at,
+        responded_at,
+        requester:requester_id (
+          id,
+          full_name,
+          avatar_url
+        ),
+        target:target_id (
+          id,
+          full_name,
+          avatar_url
+        )
+      `)
+      .or(`requester_id.eq.${userId},target_id.eq.${userId}`)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      return res.status(500).json({ error: 'Failed to load friend requests' });
+    }
+
+    const requests = (data || []).map((row) => mapFriendRequestRow(row, userId));
+    res.json({
+      incoming: requests.filter((row) => row.direction === 'incoming' && row.status === 'pending'),
+      outgoing: requests.filter((row) => row.direction === 'outgoing' && row.status === 'pending'),
+      friends: requests.filter((row) => row.status === 'accepted'),
+    });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to load friend requests' });
+  }
+});
+
+router.post('/flinders/friend-requests', async (req, res) => {
+  try {
+    const requesterId = req.user.id;
+    const targetId = String(req.body.target_user_id || '').trim();
+    const message = normalizeFriendMessage(req.body.message);
+
+    if (!targetId || targetId === requesterId) {
+      return res.status(400).json({ error: 'Choose another student to add.' });
+    }
+
+    const pairKey = buildPairKey(requesterId, targetId);
+    const { data: existing } = await supabaseAdmin
+      .from('flinders_friend_requests')
+      .select('id, status, requester_id, target_id, direct_room_id')
+      .eq('pair_key', pairKey)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (existing?.status === 'accepted') {
+      return res.status(409).json({ error: 'You are already connected.', direct_room_id: existing.direct_room_id || null });
+    }
+
+    if (existing?.status === 'pending') {
+      return res.status(409).json({ error: 'A friend request is already pending.' });
+    }
+
+    const { data, error } = await supabaseAdmin
+      .from('flinders_friend_requests')
+      .insert({
+        requester_id: requesterId,
+        target_id: targetId,
+        message,
+        status: 'pending',
+        pair_key: pairKey,
+      })
+      .select(`
+        id,
+        requester_id,
+        target_id,
+        message,
+        status,
+        direct_room_id,
+        created_at,
+        responded_at,
+        requester:requester_id (
+          id,
+          full_name,
+          avatar_url
+        ),
+        target:target_id (
+          id,
+          full_name,
+          avatar_url
+        )
+      `)
+      .single();
+
+    if (error) {
+      return res.status(500).json({ error: 'Failed to send friend request' });
+    }
+
+    res.status(201).json(mapFriendRequestRow(data, requesterId));
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to send friend request' });
+  }
+});
+
+router.post('/flinders/friend-requests/:requestId/respond', async (req, res) => {
+  try {
+    const requestId = String(req.params.requestId || '').trim();
+    const action = String(req.body.action || '').trim().toLowerCase();
+    const userId = req.user.id;
+
+    if (!['accept', 'decline'].includes(action)) {
+      return res.status(400).json({ error: 'Action must be accept or decline' });
+    }
+
+    const { data: requestRow, error: requestError } = await supabaseAdmin
+      .from('flinders_friend_requests')
+      .select(`
+        id,
+        requester_id,
+        target_id,
+        message,
+        status,
+        pair_key,
+        direct_room_id,
+        requester:requester_id (
+          id,
+          full_name
+        ),
+        target:target_id (
+          id,
+          full_name
+        )
+      `)
+      .eq('id', requestId)
+      .maybeSingle();
+
+    if (requestError || !requestRow) {
+      return res.status(404).json({ error: 'Friend request not found' });
+    }
+
+    if (requestRow.target_id !== userId) {
+      return res.status(403).json({ error: 'You cannot respond to this friend request' });
+    }
+
+    if (requestRow.status !== 'pending') {
+      return res.status(409).json({ error: 'This friend request has already been handled.' });
+    }
+
+    let directRoomId = requestRow.direct_room_id || null;
+    if (action === 'accept') {
+      directRoomId = await getOrCreateDirectRoom(
+        requestRow.requester_id,
+        requestRow.target_id,
+        requestRow.requester?.full_name,
+        requestRow.target?.full_name,
+      );
+    }
+
+    const nextStatus = action === 'accept' ? 'accepted' : 'declined';
+    const { data, error } = await supabaseAdmin
+      .from('flinders_friend_requests')
+      .update({
+        status: nextStatus,
+        direct_room_id: directRoomId,
+        responded_at: new Date().toISOString(),
+      })
+      .eq('id', requestId)
+      .select(`
+        id,
+        requester_id,
+        target_id,
+        message,
+        status,
+        direct_room_id,
+        created_at,
+        responded_at,
+        requester:requester_id (
+          id,
+          full_name,
+          avatar_url
+        ),
+        target:target_id (
+          id,
+          full_name,
+          avatar_url
+        )
+      `)
+      .single();
+
+    if (error) {
+      return res.status(500).json({ error: 'Failed to respond to friend request' });
+    }
+
+    res.json(mapFriendRequestRow(data, userId));
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to respond to friend request' });
   }
 });
 

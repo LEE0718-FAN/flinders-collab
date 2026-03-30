@@ -1,15 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { Loader2 } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/toast';
 import { getCachedPreferences, hydratePreferences, updatePreferences } from '@/lib/preferences';
 
 const PREF_NOTIFICATION_SOUNDS = 'pref-notification-sounds';
-const PREF_COMPACT_MESSAGES = 'pref-compact-messages';
-const PREF_DARK_MODE = 'pref-dark-mode';
-const TUTORIAL_KEY = 'tutorial-completed';
-
 const NOTIFICATION_OPTIONS = [
   {
     key: 'chat',
@@ -99,13 +94,6 @@ export default function PreferenceSettings() {
   const [notificationSounds, setNotificationSounds] = useState(
     () => readBool(PREF_NOTIFICATION_SOUNDS, true)
   );
-  const [compactMessages, setCompactMessages] = useState(
-    () => readBool(PREF_COMPACT_MESSAGES, false)
-  );
-  const [darkMode, setDarkMode] = useState(
-    () => readBool(PREF_DARK_MODE, false)
-  );
-  const [tutorialReset, setTutorialReset] = useState(false);
   const [preferencesReady, setPreferencesReady] = useState(false);
   const [savingNotificationKey, setSavingNotificationKey] = useState('');
   const [notificationPreferences, setNotificationPreferences] = useState(
@@ -129,22 +117,6 @@ export default function PreferenceSettings() {
   const handleNotificationSounds = (value) => {
     localStorage.setItem(PREF_NOTIFICATION_SOUNDS, String(value));
     setNotificationSounds(value);
-  };
-
-  const handleCompactMessages = (value) => {
-    localStorage.setItem(PREF_COMPACT_MESSAGES, String(value));
-    setCompactMessages(value);
-  };
-
-  const handleDarkMode = (value) => {
-    localStorage.setItem(PREF_DARK_MODE, String(value));
-    setDarkMode(value);
-  };
-
-  const handleResetTutorial = () => {
-    localStorage.removeItem(TUTORIAL_KEY);
-    setTutorialReset(true);
-    addToast('Tutorial reset — it will appear on your next visit.', 'success');
   };
 
   const handleNotificationPreferenceChange = async (key, value) => {
@@ -214,53 +186,6 @@ export default function PreferenceSettings() {
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">Display</CardTitle>
-          <CardDescription>Adjust how content appears in the app.</CardDescription>
-        </CardHeader>
-        <CardContent className="divide-y divide-border/50">
-          <PreferenceRow
-            id="pref-compact-messages"
-            label="Compact Message View"
-            description="Show messages in a denser layout with less spacing."
-            checked={compactMessages}
-            onChange={handleCompactMessages}
-          />
-          <PreferenceRow
-            id="pref-dark-mode"
-            label="Dark Mode"
-            description="Use a dark colour scheme across the app."
-            checked={darkMode}
-            onChange={handleDarkMode}
-          />
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">Tutorial</CardTitle>
-          <CardDescription>Manage the onboarding tutorial.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="flex items-center justify-between gap-4">
-            <div className="space-y-0.5">
-              <p className="text-sm font-medium">Reset Tutorial</p>
-              <p className="text-xs text-muted-foreground">
-                Show the getting-started tutorial again on your next visit.
-              </p>
-            </div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleResetTutorial}
-              disabled={tutorialReset}
-            >
-              {tutorialReset ? 'Reset' : 'Reset Tutorial'}
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
     </div>
   );
 }

@@ -451,6 +451,7 @@ export function FlinapPanel({ currentUserId }) {
   });
   const [selectedCampus, setSelectedCampus] = useState('city');
   const [selectedActivity, setSelectedActivity] = useState('study');
+  const [statusNote, setStatusNote] = useState('');
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [locating, setLocating] = useState(false);
@@ -479,6 +480,7 @@ export function FlinapPanel({ currentUserId }) {
       if (data?.my_presence?.activity_status) {
         setSelectedActivity(data.my_presence.activity_status);
       }
+      setStatusNote(data?.my_presence?.status_message || '');
       if (data?.my_presence?.campus) {
         lastSyncedPresenceRef.current = {
           campus: data.my_presence.campus,
@@ -505,11 +507,21 @@ export function FlinapPanel({ currentUserId }) {
     return () => window.clearInterval(intervalId);
   }, [fetchPresence]);
 
-  const syncPresence = useCallback(async (campus, source = 'gps', nextActivity = selectedActivity) => {
+  const syncPresence = useCallback(async (
+    campus,
+    source = 'gps',
+    nextActivity = selectedActivity,
+    nextStatusNote = statusNote,
+  ) => {
     setSyncing(true);
     setError('');
     try {
-      const nextPresence = await updateCampusPresence({ campus, source, activity_status: nextActivity });
+      const nextPresence = await updateCampusPresence({
+        campus,
+        source,
+        activity_status: nextActivity,
+        status_message: nextStatusNote,
+      });
       setPresenceData((prev) => ({
         ...prev,
         my_presence: nextPresence,
@@ -519,6 +531,7 @@ export function FlinapPanel({ currentUserId }) {
         activity: nextActivity,
       };
       setSelectedCampus(campus);
+      setStatusNote(nextPresence?.status_message || nextStatusNote || '');
       fetchPresence({ silent: true });
       return nextPresence;
     } catch (err) {
@@ -527,7 +540,7 @@ export function FlinapPanel({ currentUserId }) {
     } finally {
       setSyncing(false);
     }
-  }, [fetchPresence, selectedActivity]);
+  }, [fetchPresence, selectedActivity, statusNote]);
 
   const handleStartSharing = useCallback(() => {
     if (!navigator.geolocation) {
@@ -548,7 +561,7 @@ export function FlinapPanel({ currentUserId }) {
           return;
         }
 
-        const nextPresence = await syncPresence(campus, 'gps');
+        const nextPresence = await syncPresence(campus, 'gps', selectedActivity, statusNote);
         if (nextPresence) {
           setStatusMessage(`${getCampusMeta(campus).label} is now shared automatically on Flinap.`);
         }
@@ -564,7 +577,7 @@ export function FlinapPanel({ currentUserId }) {
         maximumAge: 120000,
       }
     );
-  }, [syncPresence]);
+  }, [selectedActivity, statusNote, syncPresence]);
 
   const handleHidePresence = async () => {
     setSyncing(true);
@@ -622,13 +635,18 @@ export function FlinapPanel({ currentUserId }) {
     if (presenceData.my_presence.activity_status === selectedActivity) return;
     if (lastSyncedPresenceRef.current.activity === selectedActivity) return;
 
-    syncPresence(presenceData.my_presence.campus, presenceData.my_presence.source || 'gps', selectedActivity)
+    syncPresence(
+      presenceData.my_presence.campus,
+      presenceData.my_presence.source || 'gps',
+      selectedActivity,
+      statusNote,
+    )
       .then((nextPresence) => {
         if (nextPresence) {
           setStatusMessage(`Status updated to ${getActivityMeta(selectedActivity).label}.`);
         }
       });
-  }, [presenceData.my_presence, selectedActivity, syncPresence]);
+  }, [presenceData.my_presence, selectedActivity, statusNote, syncPresence]);
 
   const totalVisible = Object.values(presenceData.campuses || {}).reduce((sum, list) => sum + list.length, 0);
   const selectedCampusMeta = getCampusMeta(selectedCampus);
@@ -811,6 +829,13 @@ export function FlinapPanel({ currentUserId }) {
                           {activity.label}
                         </span>
                       </div>
+                      {member.status_message && (
+                        <div className="mb-1 flex justify-center">
+                          <span className="max-w-[140px] truncate rounded-full bg-slate-900/85 px-2.5 py-1 text-[10px] font-medium text-white shadow-lg">
+                            {member.status_message}
+                          </span>
+                        </div>
+                      )}
                       <div className={`flex h-11 w-11 items-center justify-center rounded-2xl border border-white/80 bg-gradient-to-br ${selectedCampusMeta.accent} text-xs font-black text-white shadow-lg`}>
                         {(member.full_name || 'S').slice(0, 1).toUpperCase()}
                       </div>
@@ -844,6 +869,9 @@ export function FlinapPanel({ currentUserId }) {
                         <span className="mr-1">{getActivityMeta(member.activity_status).emoji}</span>
                         {getActivityMeta(member.activity_status).label}
                       </span>
+                      {member.status_message && (
+                        <span className="text-[11px] text-slate-500">{member.status_message}</span>
+                      )}
                       <span className="text-[11px] text-slate-400">{formatPresenceTime(member.updated_at)}</span>
                     </div>
                   </div>
@@ -861,69 +889,24 @@ export function FlinapPanel({ currentUserId }) {
       </div>
 
       <aside className="hidden h-fit rounded-2xl border border-slate-200 bg-white p-4 shadow-sm lg:sticky lg:top-4 lg:block">
-        <div className="flex items-start gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-slate-100 text-slate-700">
-            <Users className="h-5 w-5" />
-          </div>
-          <div>
-            <h3 className="text-sm font-bold text-slate-900">Campus Sharing</h3>
-            <p className="mt-1 text-[12px] leading-relaxed text-slate-500">
-              Share on/off only. If sharing is on, Flinap checks whether you are at City, Bedford Park, or Tonsley and shows only that campus.
-            </p>
-          </div>
-        </div>
-
-        <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-3">
+        <div className={`rounded-2xl border px-3 py-3 ${sharingEnabled ? 'border-emerald-200 bg-emerald-50' : 'border-slate-200 bg-slate-50'}`}>
           <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">My Status</p>
+          <p className="mt-2 text-sm font-semibold text-slate-900">{sharingEnabled ? 'Sharing is on' : 'Currently hidden'}</p>
           {presenceData.my_presence ? (
-            <div className="mt-2 space-y-1">
-              <p className="text-sm font-bold text-slate-900">{getCampusMeta(presenceData.my_presence.campus).label}</p>
+            <div className="mt-2 space-y-2">
               <p className="text-[12px] text-slate-500">
-                Shared {formatPresenceTime(presenceData.my_presence.updated_at)} via automatic campus detection
+                {getCampusMeta(presenceData.my_presence.campus).label} · {formatPresenceTime(presenceData.my_presence.updated_at)}
               </p>
               <span className={`inline-flex rounded-full border px-2 py-0.5 text-[10px] font-semibold ${getActivityMeta(presenceData.my_presence.activity_status).chip}`}>
                 <span className="mr-1">{getActivityMeta(presenceData.my_presence.activity_status).emoji}</span>
                 {getActivityMeta(presenceData.my_presence.activity_status).label}
               </span>
+              {presenceData.my_presence.status_message && (
+                <p className="text-[12px] text-slate-600">{presenceData.my_presence.status_message}</p>
+              )}
             </div>
           ) : (
-            <p className="mt-2 text-sm text-slate-500">You are currently hidden from Flinap.</p>
-          )}
-        </div>
-
-        <div className="mt-4 space-y-2">
-          <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Sharing Mode</p>
-          <div className={`rounded-2xl border px-3 py-3 ${sharingEnabled ? 'border-emerald-200 bg-emerald-50' : 'border-slate-200 bg-white'}`}>
-            <p className="text-sm font-semibold text-slate-900">{sharingEnabled ? 'Sharing is on' : 'Sharing is off'}</p>
-            <p className="mt-1 text-[12px] text-slate-500">
-              {sharingEnabled
-                ? 'Your campus updates automatically while you keep sharing on.'
-                : 'Turn sharing on and we will detect the campus from your current location.'}
-            </p>
-          </div>
-        </div>
-
-        <div className="mt-4 space-y-2">
-          <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">What Are You Up For?</p>
-          <div className="flex flex-wrap gap-2">
-            {FLINAP_ACTIVITY_OPTIONS.map((activity) => (
-              <button
-                key={activity.key}
-                type="button"
-                onClick={() => setSelectedActivity(activity.key)}
-                className={`rounded-full border px-3 py-1.5 text-[11px] font-semibold transition ${
-                  selectedActivity === activity.key ? activity.chip : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300'
-                }`}
-              >
-                <span className="mr-1">{activity.emoji}</span>
-                {activity.label}
-              </button>
-            ))}
-          </div>
-          {sharingEnabled && (
-            <p className="text-[11px] text-slate-500">
-              Current quick status: <span className="font-semibold text-slate-700">{selectedActivityMeta.label}</span>
-            </p>
+            <p className="mt-2 text-[12px] text-slate-500">Turn sharing on when you want others to find you.</p>
           )}
         </div>
 
@@ -949,6 +932,35 @@ export function FlinapPanel({ currentUserId }) {
           </Button>
         </div>
 
+        <div className="mt-4 space-y-2">
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Update My Status</p>
+          <div className="flex flex-wrap gap-2">
+            {FLINAP_ACTIVITY_OPTIONS.map((activity) => (
+              <button
+                key={activity.key}
+                type="button"
+                onClick={() => setSelectedActivity(activity.key)}
+                className={`rounded-full border px-3 py-1.5 text-[11px] font-semibold transition ${
+                  selectedActivity === activity.key ? activity.chip : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300'
+                }`}
+              >
+                <span className="mr-1">{activity.emoji}</span>
+                {activity.label}
+              </button>
+            ))}
+          </div>
+          <input
+            type="text"
+            value={statusNote}
+            onChange={(event) => setStatusNote(event.target.value.slice(0, 80))}
+            placeholder="Add a short status message"
+            className="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-[12px] text-slate-700 placeholder:text-slate-300 focus:border-slate-300 focus:outline-none"
+          />
+          <p className="text-[11px] text-slate-500">
+            Current: <span className="font-semibold text-slate-700">{selectedActivityMeta.label}</span>
+          </p>
+        </div>
+
         {statusMessage && (
           <div className="mt-4 rounded-xl border border-emerald-100 bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
             {statusMessage}
@@ -961,7 +973,7 @@ export function FlinapPanel({ currentUserId }) {
         )}
 
         <div className="mt-4 rounded-2xl border border-amber-100 bg-amber-50 p-3">
-          <p className="text-[11px] font-semibold uppercase tracking-wide text-amber-700">Privacy</p>
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-amber-700">Notice</p>
           <p className="mt-1 text-[12px] leading-relaxed text-amber-800">
             Flinap only shows a campus-level label to other students. Exact coordinates are turned into a campus match inside your browser first and are not stored on the server.
           </p>
