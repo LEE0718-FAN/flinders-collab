@@ -104,7 +104,7 @@ const FLINAP_CAMPUSES = [
     shortLabel: 'City',
     accent: 'from-indigo-500 to-blue-600',
     light: 'bg-indigo-50 border-indigo-200 text-indigo-700',
-    mapImage: 'https://www.flinders.edu.au/content/dam/images/places/campus-locations/festival-plaza.jpg/_jcr_content/renditions/970.jpg',
+    mapImage: '/images/flinders-city-campus.jpg',
   },
   {
     key: 'bedford',
@@ -112,7 +112,7 @@ const FLINAP_CAMPUSES = [
     shortLabel: 'Bedford',
     accent: 'from-emerald-500 to-teal-600',
     light: 'bg-emerald-50 border-emerald-200 text-emerald-700',
-    mapImage: 'https://www.flinders.edu.au/content/dam/images/places/campus-locations/bedford-park.jpg/_jcr_content/renditions/970.jpg',
+    mapImage: '/images/flinders-bedford-park.jpg',
   },
   {
     key: 'tonsley',
@@ -120,7 +120,7 @@ const FLINAP_CAMPUSES = [
     shortLabel: 'Tonsley',
     accent: 'from-amber-500 to-orange-600',
     light: 'bg-amber-50 border-amber-200 text-amber-700',
-    mapImage: 'https://www.flinders.edu.au/content/dam/images/places/campus-locations/tonsley.jpg/_jcr_content/renditions/970.jpg',
+    mapImage: '/images/flinders-tonsley.jpg',
   },
 ];
 
@@ -918,7 +918,7 @@ export function FlinapPanel({ currentUserId }) {
             </div>
           </div>
 
-          <div className="mb-4 rounded-[28px] bg-[radial-gradient(circle_at_top,_#fef3c7,_#ffffff_38%,_#e0e7ff_70%,_#f8fafc_100%)]">
+          <div className="mb-4 rounded-[28px] bg-[radial-gradient(circle_at_top,_#fef3c7,_#ffffff_38%,_#e0e7ff_70%,_#f8fafc_100%)] lg:hidden">
             <div className="relative min-h-[320px] overflow-visible rounded-[28px] border border-indigo-100 px-4 pb-5 pt-4 shadow-inner sm:px-6 sm:pb-6">
               <div
                 className="absolute inset-0 rounded-[28px] bg-cover bg-center opacity-[0.18]"
