@@ -959,16 +959,16 @@ export function FlinapPanel({ currentUserId }) {
             </Button>
           </div>
 
-          <div className="mb-4 overflow-hidden rounded-[24px] border border-slate-200 bg-[radial-gradient(circle_at_top,_#fef3c7,_#ffffff_38%,_#e0e7ff_70%,_#f8fafc_100%)] p-4">
-            <div className="flex items-center justify-between gap-3">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">Snap Map</p>
-              <div className="rounded-full bg-white/80 px-3 py-1 text-[11px] font-semibold text-slate-600 shadow-sm">
+          <div className="mb-4 rounded-[24px] bg-[radial-gradient(circle_at_top,_#fef3c7,_#ffffff_38%,_#e0e7ff_70%,_#f8fafc_100%)]">
+            <div className="relative min-h-[300px] overflow-visible rounded-[24px] bg-white/45 px-6 pb-6 pt-16 shadow-inner">
+              <div className="absolute left-6 top-5 text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">
+                {selectedCampusMeta.shortLabel}
+              </div>
+              <div className="absolute right-6 top-5 rounded-full bg-white/90 px-3 py-1 text-[11px] font-semibold text-slate-600 shadow-sm">
                 {selectedMembers.length} sharing
               </div>
-            </div>
-            <div className="relative mt-4 min-h-[240px] overflow-hidden rounded-[28px] border border-white/70 bg-white/65 shadow-inner">
-              <div className={`absolute left-1/2 top-1/2 h-28 w-28 -translate-x-1/2 -translate-y-1/2 rounded-full bg-gradient-to-br ${selectedCampusMeta.accent} opacity-15 blur-2xl`} />
-              <div className="relative h-[240px]">
+              <div className={`absolute left-1/2 top-1/2 h-32 w-32 -translate-x-1/2 -translate-y-1/2 rounded-full bg-gradient-to-br ${selectedCampusMeta.accent} opacity-15 blur-2xl`} />
+              <div className="relative h-[220px] overflow-visible">
                 {selectedMembers.length > 0 ? selectedMembers.slice(0, 10).map((member) => {
                   const bubble = getSnapBubblePosition(member.user_id, selectedCampus);
                   const activity = getActivityMeta(member.activity_status);
