@@ -777,7 +777,7 @@ export function FlinapPanel({ currentUserId }) {
     );
 
     if (nextPresence) {
-      setStatusMessage(`Status updated to ${getActivityMeta(pendingActivity).label}. Refreshing your snap...`);
+      setStatusMessage(`Changed to ${getActivityMeta(pendingActivity).label}.`);
       fetchPresence({ silent: true });
     }
 
@@ -786,7 +786,7 @@ export function FlinapPanel({ currentUserId }) {
 
   const handleSubmitStatusNote = useCallback(() => {
     if (!sharingEnabled || !presenceData.my_presence) {
-      setStatusMessage('Turn on sharing first to publish a status message.');
+      setStatusMessage('Turn on sharing first.');
       return;
     }
     setPendingStatusNoteConfirm(true);
@@ -808,7 +808,7 @@ export function FlinapPanel({ currentUserId }) {
     );
 
     if (nextPresence) {
-      setStatusMessage('Status message updated. Refreshing your snap...');
+      setStatusMessage('Message updated.');
       fetchPresence({ silent: true });
     }
 
@@ -955,7 +955,7 @@ export function FlinapPanel({ currentUserId }) {
               disabled={!sharingEnabled || syncing || locating}
               className="mt-2 h-10 rounded-xl"
             >
-              Update Message
+              Update
             </Button>
           </div>
 
@@ -1129,7 +1129,7 @@ export function FlinapPanel({ currentUserId }) {
             disabled={!sharingEnabled || syncing || locating}
             className="h-10 rounded-xl"
           >
-            Update Message
+            Update
           </Button>
           <p className="text-[11px] text-slate-500">
             Current: <span className="font-semibold text-slate-700">{selectedActivityMeta.label}</span>
@@ -1261,13 +1261,13 @@ export function FlinapPanel({ currentUserId }) {
       <AlertDialog open={confirmStatusOpen} onOpenChange={setConfirmStatusOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Change Status?</AlertDialogTitle>
+            <AlertDialogTitle>{pendingStatusNoteConfirm ? 'Update message?' : 'Change status?'}</AlertDialogTitle>
             <AlertDialogDescription>
               {pendingStatusNoteConfirm
-                ? 'Your status message will be updated on your current snap.'
+                ? 'Update your current message?'
                 : pendingActivity
-                  ? `Your current snap will change to ${getActivityMeta(pendingActivity).label}.`
-                  : 'Your current snap status will be updated.'}
+                  ? `Switch to ${getActivityMeta(pendingActivity).label}?`
+                  : 'Update your status?'}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -1279,7 +1279,7 @@ export function FlinapPanel({ currentUserId }) {
               Cancel
             </AlertDialogCancel>
             <AlertDialogAction onClick={pendingStatusNoteConfirm ? handleConfirmStatusNote : handleConfirmStatusChange}>
-              {pendingStatusNoteConfirm ? 'Update Message' : 'Change Status'}
+              {pendingStatusNoteConfirm ? 'Update' : 'Change'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
