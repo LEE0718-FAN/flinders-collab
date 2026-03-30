@@ -1049,7 +1049,7 @@ export function FlinapPanel({ currentUserId }) {
                 value={statusNote}
                 onChange={(event) => setStatusNote(event.target.value.slice(0, 80))}
                 placeholder="Add a short status message"
-                className="h-10 flex-1 rounded-xl border border-slate-200 bg-white px-3 text-[12px] text-slate-700 placeholder:text-slate-300 focus:border-slate-300 focus:outline-none"
+                className="h-11 flex-1 rounded-xl border border-slate-200 bg-white px-3 text-base text-slate-700 placeholder:text-slate-300 focus:border-slate-300 focus:outline-none sm:h-10 sm:text-[12px]"
               />
               <Button
                 type="button"
@@ -1233,7 +1233,7 @@ export function FlinapPanel({ currentUserId }) {
               value={statusNote}
               onChange={(event) => setStatusNote(event.target.value.slice(0, 80))}
               placeholder="Add a short status message"
-              className="h-10 flex-1 rounded-xl border border-slate-200 bg-white px-3 text-[12px] text-slate-700 placeholder:text-slate-300 focus:border-slate-300 focus:outline-none"
+              className="h-11 flex-1 rounded-xl border border-slate-200 bg-white px-3 text-base text-slate-700 placeholder:text-slate-300 focus:border-slate-300 focus:outline-none sm:h-10 sm:text-[12px]"
             />
             <Button
               type="button"
