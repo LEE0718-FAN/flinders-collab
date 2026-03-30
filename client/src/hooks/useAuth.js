@@ -1,6 +1,6 @@
 import { useEffect, useCallback } from 'react';
 import { useAuthStore } from '@/store/authStore';
-import { apiSignup, apiLogin, apiLogout, apiUpdateProfile, apiGuestLogin, apiGuestCleanup, apiRequestPasswordReset, apiRefreshSession } from '@/services/auth';
+import { apiSignup, apiLogin, apiLogout, apiUpdateProfile, apiGuestLogin, apiGuestCleanup, apiRequestPasswordReset, apiRefreshSession, apiGetMe } from '@/services/auth';
 import { saveSession, loadSession, loadStoredSession, clearSession, isSessionExpired } from '@/lib/auth-token';
 import { subscribeToPush } from '@/lib/push';
 import { supabase } from '@/lib/supabase';
@@ -38,6 +38,36 @@ function buildSessionData(result, fallback = {}) {
 export function useAuth() {
   const { user, session, isLoading, setUser, setSession, setLoading, logout: clearAuth } = useAuthStore();
 
+  const syncProfileFromServer = useCallback(async (baseSession) => {
+    if (!baseSession?.access_token || !baseSession?.user) return baseSession;
+
+    try {
+      const profile = await apiGetMe();
+      const syncedUser = {
+        ...baseSession.user,
+        email: profile?.email || baseSession.user.email,
+        user_metadata: {
+          ...baseSession.user.user_metadata,
+          name: profile?.full_name || baseSession.user.user_metadata?.name,
+          full_name: profile?.full_name || baseSession.user.user_metadata?.full_name,
+          avatar_url: profile?.avatar_url || null,
+          student_id: profile?.student_id ?? baseSession.user.user_metadata?.student_id ?? null,
+          major: profile?.major ?? baseSession.user.user_metadata?.major ?? null,
+          university: profile?.university ?? baseSession.user.user_metadata?.university ?? null,
+          year_level: profile?.year_level ?? baseSession.user.user_metadata?.year_level ?? null,
+          semester: profile?.semester ?? baseSession.user.user_metadata?.semester ?? null,
+        },
+      };
+      const syncedSession = { ...baseSession, user: syncedUser };
+      saveSession(syncedSession);
+      setSession(syncedSession);
+      setUser(syncedUser);
+      return syncedSession;
+    } catch {
+      return baseSession;
+    }
+  }, [setSession, setUser]);
+
   // On mount, restore session from localStorage
   useEffect(() => {
     let active = true;
@@ -55,6 +85,7 @@ export function useAuth() {
           setUser(stored.user || null);
           setLoading(false);
           subscribeToPush().catch(() => {});
+          syncProfileFromServer(stored).catch(() => {});
         }
         return;
       }
@@ -78,6 +109,7 @@ export function useAuth() {
         if (active) {
           setSession(sessionData);
           setUser(sessionData.user);
+          syncProfileFromServer(sessionData).catch(() => {});
         }
       } catch {
         clearSession();
@@ -94,7 +126,24 @@ export function useAuth() {
     return () => {
       active = false;
     };
-  }, [setUser, setSession, setLoading]);
+  }, [setUser, setSession, setLoading, syncProfileFromServer]);
+
+  useEffect(() => {
+    if (!session?.access_token) return undefined;
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        syncProfileFromServer(loadSession() || session).catch(() => {});
+      }
+    };
+
+    window.addEventListener('focus', handleVisibilityChange);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => {
+      window.removeEventListener('focus', handleVisibilityChange);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [session, syncProfileFromServer]);
 
   const login = useCallback(async (email, password) => {
     const result = await apiLogin({ email, password });
