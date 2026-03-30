@@ -113,7 +113,7 @@ function SidebarContent({ rooms, location, isAdmin, roomBadgeCounts = {}, user, 
         to="/dashboard"
         isActive={location.pathname === '/dashboard'}
         icon={LayoutDashboard}
-        label="Dashboard"
+        label="Room Hub"
         onIntent={() => preloadRoute('/dashboard')}
       />
       <NavItem
@@ -690,7 +690,7 @@ export default function MainLayout({ children }) {
             <div className="min-w-0 md:hidden">
               <span className="block truncate text-sm font-semibold">Flinders Collab</span>
               <span className="block truncate text-[11px] text-muted-foreground">
-                {location.pathname === '/dashboard' ? 'Dashboard' : displayName}
+                {location.pathname === '/dashboard' ? 'Room Hub' : displayName}
               </span>
             </div>
           </div>
