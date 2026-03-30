@@ -89,6 +89,7 @@ const DashboardPage = lazyRetry(() => import('@/pages/DashboardPage'));
 const RoomPage = lazyRetry(() => import('@/pages/RoomPage'));
 const AdminPage = lazyRetry(() => import('@/pages/AdminPage'));
 const DeadlinesPage = lazyRetry(() => import('@/pages/DeadlinesPage'));
+const BoardPage = lazyRetry(() => import('@/pages/BoardPage'));
 const FlindersLifePage = lazyRetry(() => import('@/pages/FlindersLifePage'));
 const SettingsPage = lazyRetry(() => import('@/pages/SettingsPage'));
 
@@ -208,7 +209,7 @@ export default function App() {
                 <Route path="/dashboard" element={<DashboardPage />} />
                 <Route path="/settings" element={<SettingsPage />} />
                 <Route path="/deadlines" element={<DeadlinesPage />} />
-                <Route path="/board" element={<Navigate to="/flinders-life?tab=flinap" replace />} />
+                <Route path="/board" element={<BoardPage />} />
                 <Route path="/flinders-life" element={<FlindersLifePage />} />
                 <Route path="/rooms/:roomId" element={<RoomPage />} />
                 <Route path="/admin" element={<AdminRoute><AdminPage /></AdminRoute>} />
