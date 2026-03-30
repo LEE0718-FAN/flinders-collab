@@ -3,7 +3,7 @@ import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogClose } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { GraduationCap, Calendar, BookOpen, ExternalLink, Loader2, ChevronDown, ChevronUp, MapPin, Star, Clock, ChevronLeft, ChevronRight, Users, Shield, RefreshCw, EyeOff, UserPlus, MessageCircle, Check, X, Send } from 'lucide-react';
@@ -1268,10 +1268,14 @@ export function FlinapPanel({ currentUserId }) {
       </aside>
 
       <Dialog open={Boolean(activeMember)} onOpenChange={(open) => !open && setActiveMember(null)}>
-        <DialogContent className="sm:max-w-md rounded-3xl border border-slate-200 bg-white p-0 overflow-hidden">
+        <DialogContent showCloseButton={false} className="sm:max-w-md rounded-3xl border border-slate-200 bg-white p-0 overflow-hidden">
           {activeMember && (
             <>
-              <div className={`bg-gradient-to-r ${selectedCampusMeta.accent} px-5 py-5 text-white`}>
+              <div className={`relative bg-gradient-to-r ${selectedCampusMeta.accent} px-5 py-5 text-white`}>
+                <DialogClose className="absolute right-4 top-4 z-10 flex h-9 w-9 items-center justify-center rounded-2xl border border-white/30 bg-white/12 text-white transition hover:bg-white/20">
+                  <X className="h-4 w-4" />
+                  <span className="sr-only">Close</span>
+                </DialogClose>
                 <div className="flex items-center gap-4">
                   <Avatar className="h-14 w-14 rounded-[20px] bg-white/15 shadow-sm">
                     {activeMember.avatar_url && <AvatarImage src={activeMember.avatar_url} alt={activeMember.full_name} className="object-cover" />}
