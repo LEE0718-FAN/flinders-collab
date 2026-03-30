@@ -509,6 +509,7 @@ async function updateProfile(req, res, next) {
         ...(updates.major !== undefined ? { major: updates.major } : {}),
         ...(updates.year_level !== undefined ? { year_level: updates.year_level } : {}),
         ...(updates.semester !== undefined ? { semester: updates.semester } : {}),
+        ...(updates.avatar_url !== undefined ? { avatar_url: updates.avatar_url } : {}),
       },
     });
 

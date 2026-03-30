@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { GraduationCap, Calendar, BookOpen, ExternalLink, Loader2, ChevronDown, ChevronUp, MapPin, Star, Clock, ChevronLeft, ChevronRight, Users, Shield, RefreshCw, EyeOff, UserPlus, MessageCircle, Check, X, Send } from 'lucide-react';
 import { getRecommendedEvents, getCampusPresence, updateCampusPresence, clearCampusPresence, getFriendRequests, sendFriendRequest, respondToFriendRequest } from '@/services/flinders';
 import { hydratePreferences, updatePreferences } from '@/lib/preferences';
@@ -162,6 +163,15 @@ function getAcademicMeta(member) {
   const year = member?.year_level ? `Year ${member.year_level}` : 'Year hidden';
   const semester = member?.semester ? `Sem ${member.semester}` : 'Sem hidden';
   return `${major} · ${year} · ${semester}`;
+}
+
+function getMemberInitials(member) {
+  return String(member?.full_name || 'S')
+    .split(' ')
+    .map((part) => part[0])
+    .join('')
+    .toUpperCase()
+    .slice(0, 2) || 'S';
 }
 
 function hashCode(value) {
@@ -955,9 +965,12 @@ export function FlinapPanel({ currentUserId }) {
                           </span>
                         </div>
                       )}
-                      <div className={`flex h-11 w-11 items-center justify-center rounded-2xl border border-white/80 bg-gradient-to-br ${selectedCampusMeta.accent} text-xs font-black text-white shadow-lg`}>
-                        {(member.full_name || 'S').slice(0, 1).toUpperCase()}
-                      </div>
+                      <Avatar className={`h-11 w-11 rounded-2xl border border-white/80 bg-gradient-to-br ${selectedCampusMeta.accent} shadow-lg`}>
+                        {member.avatar_url && <AvatarImage src={member.avatar_url} alt={member.full_name} className="object-cover" />}
+                        <AvatarFallback className={`rounded-2xl bg-gradient-to-br ${selectedCampusMeta.accent} text-xs font-black text-white`}>
+                          {getMemberInitials(member)}
+                        </AvatarFallback>
+                      </Avatar>
                     </button>
                   );
                 }) : (
@@ -1116,9 +1129,12 @@ export function FlinapPanel({ currentUserId }) {
                   onClick={() => openMemberCard(member)}
                   className={`flex w-full items-center gap-3 rounded-[22px] border px-4 py-3 text-left transition ${member.is_me ? 'border-blue-200 bg-blue-50' : 'border-slate-200 bg-slate-50 hover:bg-white'}`}
                 >
-                  <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-[18px] bg-gradient-to-br ${selectedCampusMeta.accent} text-sm font-black text-white shadow-sm`}>
-                    {(member.full_name || 'S').slice(0, 1).toUpperCase()}
-                  </div>
+                  <Avatar className={`h-12 w-12 shrink-0 rounded-[18px] bg-gradient-to-br ${selectedCampusMeta.accent} shadow-sm`}>
+                    {member.avatar_url && <AvatarImage src={member.avatar_url} alt={member.full_name} className="object-cover" />}
+                    <AvatarFallback className={`rounded-[18px] bg-gradient-to-br ${selectedCampusMeta.accent} text-sm font-black text-white`}>
+                      {getMemberInitials(member)}
+                    </AvatarFallback>
+                  </Avatar>
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
                       <p className="truncate text-sm font-bold text-slate-900">
@@ -1257,9 +1273,12 @@ export function FlinapPanel({ currentUserId }) {
             <>
               <div className={`bg-gradient-to-r ${selectedCampusMeta.accent} px-5 py-5 text-white`}>
                 <div className="flex items-center gap-4">
-                  <div className="flex h-14 w-14 items-center justify-center rounded-[20px] bg-white/15 text-lg font-black shadow-sm">
-                    {(activeMember.full_name || 'S').slice(0, 1).toUpperCase()}
-                  </div>
+                  <Avatar className="h-14 w-14 rounded-[20px] bg-white/15 shadow-sm">
+                    {activeMember.avatar_url && <AvatarImage src={activeMember.avatar_url} alt={activeMember.full_name} className="object-cover" />}
+                    <AvatarFallback className="rounded-[20px] bg-white/15 text-lg font-black text-white">
+                      {getMemberInitials(activeMember)}
+                    </AvatarFallback>
+                  </Avatar>
                   <div className="min-w-0">
                     <DialogTitle className="truncate text-left text-xl font-black">{activeMember.full_name}</DialogTitle>
                     <DialogDescription className="mt-1 text-left text-white/80">
