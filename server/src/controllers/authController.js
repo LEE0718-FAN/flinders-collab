@@ -415,6 +415,7 @@ function normalizeNotificationPreferences(value) {
     announcements: source.announcements !== false,
     board: source.board !== false,
     room_updates: source.room_updates !== false,
+    friend_requests: source.friend_requests !== false,
   };
 }
 

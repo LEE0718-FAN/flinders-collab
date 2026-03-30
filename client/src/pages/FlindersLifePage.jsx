@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
-import { GraduationCap, Calendar, BookOpen, ExternalLink, Loader2, ChevronDown, ChevronUp, MapPin, Star, Clock, ChevronLeft, ChevronRight, Users, Shield, RefreshCw, EyeOff, UserPlus, MessageCircle, Check, X } from 'lucide-react';
+import { GraduationCap, Calendar, BookOpen, ExternalLink, Loader2, ChevronDown, ChevronUp, MapPin, Star, Clock, ChevronLeft, ChevronRight, Users, Shield, RefreshCw, EyeOff, UserPlus, MessageCircle, Check, X, Send } from 'lucide-react';
 import { getRecommendedEvents, getCampusPresence, updateCampusPresence, clearCampusPresence, getFriendRequests, sendFriendRequest, respondToFriendRequest } from '@/services/flinders';
 import { hydratePreferences, updatePreferences } from '@/lib/preferences';
 import OnboardingTour from '@/components/OnboardingTour';
@@ -98,9 +98,30 @@ const DATE_TYPE_COLORS = {
 };
 
 const FLINAP_CAMPUSES = [
-  { key: 'city', label: 'City Campus', shortLabel: 'City', accent: 'from-indigo-500 to-blue-600', light: 'bg-indigo-50 border-indigo-200 text-indigo-700' },
-  { key: 'bedford', label: 'Bedford Park', shortLabel: 'Bedford', accent: 'from-emerald-500 to-teal-600', light: 'bg-emerald-50 border-emerald-200 text-emerald-700' },
-  { key: 'tonsley', label: 'Tonsley', shortLabel: 'Tonsley', accent: 'from-amber-500 to-orange-600', light: 'bg-amber-50 border-amber-200 text-amber-700' },
+  {
+    key: 'city',
+    label: 'City Campus',
+    shortLabel: 'City',
+    accent: 'from-indigo-500 to-blue-600',
+    light: 'bg-indigo-50 border-indigo-200 text-indigo-700',
+    mapImage: 'https://www.flinders.edu.au/content/dam/images/places/campus-locations/festival-plaza.jpg/_jcr_content/renditions/970.jpg',
+  },
+  {
+    key: 'bedford',
+    label: 'Bedford Park',
+    shortLabel: 'Bedford',
+    accent: 'from-emerald-500 to-teal-600',
+    light: 'bg-emerald-50 border-emerald-200 text-emerald-700',
+    mapImage: 'https://www.flinders.edu.au/content/dam/images/places/campus-locations/bedford-park.jpg/_jcr_content/renditions/970.jpg',
+  },
+  {
+    key: 'tonsley',
+    label: 'Tonsley',
+    shortLabel: 'Tonsley',
+    accent: 'from-amber-500 to-orange-600',
+    light: 'bg-amber-50 border-amber-200 text-amber-700',
+    mapImage: 'https://www.flinders.edu.au/content/dam/images/places/campus-locations/tonsley.jpg/_jcr_content/renditions/970.jpg',
+  },
 ];
 
 const FLINAP_GEOFENCES = {
@@ -670,8 +691,6 @@ export function FlinapPanel({ currentUserId }) {
   const selectedCampusMeta = getCampusMeta(selectedCampus);
   const selectedMembers = presenceData.campuses?.[selectedCampus] || [];
   const sharingEnabled = Boolean(presenceData.my_presence);
-  const selectedActivityMeta = getActivityMeta(selectedActivity);
-
   const getFriendRelationship = useCallback((member) => {
     if (!member || member.user_id === currentUserId) {
       return { kind: 'self' };
@@ -882,15 +901,7 @@ export function FlinapPanel({ currentUserId }) {
         </div>
         <div className="p-3 sm:p-4">
           <div className="mb-4 rounded-[24px] border border-slate-200 bg-white p-3 shadow-sm lg:hidden">
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">Quick Share</p>
-                <h4 className="mt-1 text-sm font-black text-slate-900">{selectedCampusMeta.label}</h4>
-              </div>
-              <div className={`rounded-full px-3 py-1 text-[11px] font-semibold ${selectedCampusMeta.light}`}>
-                {selectedMembers.length} here now
-              </div>
-            </div>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">Choose Campus</p>
             <div className="-mx-1 mt-3 flex gap-2 overflow-x-auto px-1 pb-1">
               {FLINAP_CAMPUSES.map((campus) => (
                 <button
@@ -905,70 +916,17 @@ export function FlinapPanel({ currentUserId }) {
                 </button>
               ))}
             </div>
-            <div className="mt-3 grid grid-cols-2 gap-2">
-              <Button
-                type="button"
-                onClick={handleStartSharing}
-                disabled={syncing || locating}
-                className="h-10 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 text-white"
-              >
-                {syncing || locating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Shield className="mr-2 h-4 w-4" />}
-                {sharingEnabled ? 'Refresh' : 'Share'}
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={handleHidePresence}
-                disabled={syncing || locating || !presenceData.my_presence}
-                className="h-10 rounded-xl"
-              >
-                <EyeOff className="mr-2 h-4 w-4" />
-                Hide
-              </Button>
-            </div>
-            <div className="-mx-1 mt-3 flex gap-2 overflow-x-auto px-1 pb-1">
-              {FLINAP_ACTIVITY_OPTIONS.map((activity) => (
-                <button
-                  key={activity.key}
-                  type="button"
-                  onClick={() => handleSelectActivity(activity.key)}
-                  className={`shrink-0 rounded-full border px-3 py-1.5 text-[11px] font-semibold transition ${
-                    selectedActivity === activity.key ? activity.chip : 'border-slate-200 bg-white text-slate-600'
-                  }`}
-                >
-                  <span className="mr-1">{activity.emoji}</span>
-                  {activity.label}
-                </button>
-              ))}
-            </div>
-            <input
-              type="text"
-              value={statusNote}
-              onChange={(event) => setStatusNote(event.target.value.slice(0, 80))}
-              placeholder="Add a short status message"
-              className="mt-3 h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-[12px] text-slate-700 placeholder:text-slate-300 focus:border-slate-300 focus:outline-none"
-            />
-            <Button
-              type="button"
-              variant="outline"
-              onClick={handleSubmitStatusNote}
-              disabled={!sharingEnabled || syncing || locating}
-              className="mt-2 h-10 rounded-xl"
-            >
-              Update
-            </Button>
           </div>
 
-          <div className="mb-4 rounded-[24px] bg-[radial-gradient(circle_at_top,_#fef3c7,_#ffffff_38%,_#e0e7ff_70%,_#f8fafc_100%)]">
-            <div className="relative min-h-[300px] overflow-visible rounded-[24px] bg-white/45 px-6 pb-6 pt-16 shadow-inner">
-              <div className="absolute left-6 top-5 text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">
-                {selectedCampusMeta.shortLabel}
-              </div>
-              <div className="absolute right-6 top-5 rounded-full bg-white/90 px-3 py-1 text-[11px] font-semibold text-slate-600 shadow-sm">
-                {selectedMembers.length} sharing
-              </div>
-              <div className={`absolute left-1/2 top-1/2 h-32 w-32 -translate-x-1/2 -translate-y-1/2 rounded-full bg-gradient-to-br ${selectedCampusMeta.accent} opacity-15 blur-2xl`} />
-              <div className="relative h-[220px] overflow-visible">
+          <div className="mb-4 rounded-[28px] bg-[radial-gradient(circle_at_top,_#fef3c7,_#ffffff_38%,_#e0e7ff_70%,_#f8fafc_100%)]">
+            <div className="relative min-h-[320px] overflow-visible rounded-[28px] border border-indigo-100 px-4 pb-5 pt-4 shadow-inner sm:px-6 sm:pb-6">
+              <div
+                className="absolute inset-0 rounded-[28px] bg-cover bg-center opacity-[0.18]"
+                style={{ backgroundImage: `url(${selectedCampusMeta.mapImage})` }}
+              />
+              <div className="absolute inset-0 rounded-[28px] bg-[linear-gradient(180deg,rgba(255,255,255,0.9),rgba(255,255,255,0.84))]" />
+              <div className={`absolute left-1/2 top-1/2 h-36 w-36 -translate-x-1/2 -translate-y-1/2 rounded-full bg-gradient-to-br ${selectedCampusMeta.accent} opacity-[0.14] blur-3xl`} />
+              <div className="relative h-[250px] overflow-visible sm:h-[280px]">
                 {selectedMembers.length > 0 ? selectedMembers.slice(0, 10).map((member) => {
                   const bubble = getSnapBubblePosition(member.user_id, selectedCampus);
                   const activity = getActivityMeta(member.activity_status);
@@ -1004,7 +962,145 @@ export function FlinapPanel({ currentUserId }) {
                   );
                 }) : (
                   <div className="flex h-full items-center justify-center text-[11px] font-medium text-slate-400">
-                    Waiting for the first snap at {selectedCampusMeta.shortLabel}
+                    No one is visible at {selectedCampusMeta.shortLabel} yet
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <div className="mb-4 rounded-[24px] border border-slate-200 bg-white p-3 shadow-sm lg:hidden">
+            <div className={`rounded-2xl border px-3 py-3 ${sharingEnabled ? 'border-emerald-200 bg-emerald-50' : 'border-slate-200 bg-slate-50'}`}>
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">My Status</p>
+              <p className="mt-2 text-sm font-semibold text-slate-900">{sharingEnabled ? 'Sharing is on' : 'Sharing is off'}</p>
+              {presenceData.my_presence ? (
+                <div className="mt-2 space-y-2">
+                  <p className="text-[12px] text-slate-500">
+                    {getCampusMeta(presenceData.my_presence.campus).label} · {formatPresenceTime(presenceData.my_presence.updated_at)}
+                  </p>
+                  <span className={`inline-flex rounded-full border px-2 py-0.5 text-[10px] font-semibold ${getActivityMeta(presenceData.my_presence.activity_status).chip}`}>
+                    <span className="mr-1">{getActivityMeta(presenceData.my_presence.activity_status).emoji}</span>
+                    {getActivityMeta(presenceData.my_presence.activity_status).label}
+                  </span>
+                  {presenceData.my_presence.status_message && (
+                    <p className="text-[12px] text-slate-600">{presenceData.my_presence.status_message}</p>
+                  )}
+                </div>
+              ) : (
+                <p className="mt-2 text-[12px] text-slate-500">Turn sharing on when you want others to find you.</p>
+              )}
+            </div>
+
+            <div className="mt-3 grid grid-cols-2 gap-2">
+              <Button
+                type="button"
+                onClick={handleStartSharing}
+                disabled={syncing || locating}
+                className="h-10 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 text-white"
+              >
+                {syncing || locating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Shield className="mr-2 h-4 w-4" />}
+                {sharingEnabled ? 'Refresh' : 'Share'}
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleHidePresence}
+                disabled={syncing || locating || !presenceData.my_presence}
+                className="h-10 rounded-xl"
+              >
+                <EyeOff className="mr-2 h-4 w-4" />
+                Hide
+              </Button>
+            </div>
+            <div className="mt-3">
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Update My Status</p>
+            </div>
+            <div className="-mx-1 mt-2 flex gap-2 overflow-x-auto px-1 pb-1">
+              {FLINAP_ACTIVITY_OPTIONS.map((activity) => (
+                <button
+                  key={activity.key}
+                  type="button"
+                  onClick={() => handleSelectActivity(activity.key)}
+                  className={`shrink-0 rounded-full border px-3 py-1.5 text-[11px] font-semibold transition ${
+                    selectedActivity === activity.key ? activity.chip : 'border-slate-200 bg-white text-slate-600'
+                  }`}
+                >
+                  <span className="mr-1">{activity.emoji}</span>
+                  {activity.label}
+                </button>
+              ))}
+            </div>
+            <div className="mt-3 flex items-center gap-2">
+              <input
+                type="text"
+                value={statusNote}
+                onChange={(event) => setStatusNote(event.target.value.slice(0, 80))}
+                placeholder="Add a short status message"
+                className="h-10 flex-1 rounded-xl border border-slate-200 bg-white px-3 text-[12px] text-slate-700 placeholder:text-slate-300 focus:border-slate-300 focus:outline-none"
+              />
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleSubmitStatusNote}
+                disabled={!sharingEnabled || syncing || locating}
+                className="h-10 w-10 rounded-xl p-0"
+              >
+                <Send className="h-4 w-4" />
+              </Button>
+            </div>
+            <div className="mt-3 rounded-2xl border border-amber-100 bg-amber-50 p-3">
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-amber-700">Notice</p>
+              <p className="mt-1 text-[12px] leading-relaxed text-amber-800">
+                Only your campus match is shown. Exact coordinates are not stored.
+              </p>
+            </div>
+          </div>
+
+          <div className="mb-4 hidden rounded-[28px] bg-[radial-gradient(circle_at_top,_#fef3c7,_#ffffff_38%,_#e0e7ff_70%,_#f8fafc_100%)] lg:block">
+            <div className="relative min-h-[340px] overflow-visible rounded-[28px] border border-indigo-100 px-6 pb-6 pt-6 shadow-inner">
+              <div
+                className="absolute inset-0 rounded-[28px] bg-cover bg-center opacity-[0.18]"
+                style={{ backgroundImage: `url(${selectedCampusMeta.mapImage})` }}
+              />
+              <div className="absolute inset-0 rounded-[28px] bg-[linear-gradient(180deg,rgba(255,255,255,0.9),rgba(255,255,255,0.84))]" />
+              <div className={`absolute left-1/2 top-1/2 h-36 w-36 -translate-x-1/2 -translate-y-1/2 rounded-full bg-gradient-to-br ${selectedCampusMeta.accent} opacity-[0.14] blur-3xl`} />
+              <div className="relative h-[280px] overflow-visible">
+                {selectedMembers.length > 0 ? selectedMembers.slice(0, 10).map((member) => {
+                  const bubble = getSnapBubblePosition(member.user_id, selectedCampus);
+                  const activity = getActivityMeta(member.activity_status);
+                  return (
+                    <button
+                      key={member.user_id}
+                      type="button"
+                      onClick={() => openMemberCard(member)}
+                      className="absolute -translate-x-1/2 -translate-y-1/2"
+                      style={{
+                        left: `${bubble.x}%`,
+                        top: `${bubble.y}%`,
+                        animation: `flinap-float 3.8s ease-in-out ${bubble.delay} infinite`,
+                      }}
+                    >
+                      <div className="mb-1 flex justify-center">
+                        <span className={`inline-flex rounded-full border px-2 py-0.5 text-[10px] font-semibold shadow-sm ${activity.chip}`}>
+                          <span className="mr-1">{activity.emoji}</span>
+                          {activity.label}
+                        </span>
+                      </div>
+                      {member.status_message && (
+                        <div className="mb-1 flex justify-center">
+                          <span className="max-w-[140px] truncate rounded-full bg-slate-900/85 px-2.5 py-1 text-[10px] font-medium text-white shadow-lg">
+                            {member.status_message}
+                          </span>
+                        </div>
+                      )}
+                      <div className={`flex h-11 w-11 items-center justify-center rounded-2xl border border-white/80 bg-gradient-to-br ${selectedCampusMeta.accent} text-xs font-black text-white shadow-lg`}>
+                        {(member.full_name || 'S').slice(0, 1).toUpperCase()}
+                      </div>
+                    </button>
+                  );
+                }) : (
+                  <div className="flex h-full items-center justify-center text-[11px] font-medium text-slate-400">
+                    No one is visible at {selectedCampusMeta.shortLabel} yet
                   </div>
                 )}
               </div>
@@ -1098,9 +1194,9 @@ export function FlinapPanel({ currentUserId }) {
           </Button>
         </div>
 
-        <div className="mt-4 space-y-2">
-          <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Update My Status</p>
-          <div className="flex flex-wrap gap-2">
+          <div className="mt-4 space-y-2">
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Update My Status</p>
+            <div className="flex flex-wrap gap-2">
             {FLINAP_ACTIVITY_OPTIONS.map((activity) => (
               <button
                 key={activity.key}
@@ -1115,25 +1211,24 @@ export function FlinapPanel({ currentUserId }) {
               </button>
             ))}
           </div>
-          <input
-            type="text"
-            value={statusNote}
-            onChange={(event) => setStatusNote(event.target.value.slice(0, 80))}
-            placeholder="Add a short status message"
-            className="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-[12px] text-slate-700 placeholder:text-slate-300 focus:border-slate-300 focus:outline-none"
-          />
-          <Button
-            type="button"
-            variant="outline"
-            onClick={handleSubmitStatusNote}
-            disabled={!sharingEnabled || syncing || locating}
-            className="h-10 rounded-xl"
-          >
-            Update
-          </Button>
-          <p className="text-[11px] text-slate-500">
-            Current: <span className="font-semibold text-slate-700">{selectedActivityMeta.label}</span>
-          </p>
+          <div className="flex items-center gap-2">
+            <input
+              type="text"
+              value={statusNote}
+              onChange={(event) => setStatusNote(event.target.value.slice(0, 80))}
+              placeholder="Add a short status message"
+              className="h-10 flex-1 rounded-xl border border-slate-200 bg-white px-3 text-[12px] text-slate-700 placeholder:text-slate-300 focus:border-slate-300 focus:outline-none"
+            />
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleSubmitStatusNote}
+              disabled={!sharingEnabled || syncing || locating}
+              className="h-10 w-10 rounded-xl p-0"
+            >
+              <Send className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
 
         {statusMessage && (

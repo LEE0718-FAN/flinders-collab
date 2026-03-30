@@ -8,7 +8,7 @@ ALTER TABLE users ADD COLUMN IF NOT EXISTS university TEXT;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS room_order JSONB NOT NULL DEFAULT '[]'::jsonb;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS flinders_interests JSONB NOT NULL DEFAULT '[]'::jsonb;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS flinders_favorites JSONB NOT NULL DEFAULT '[]'::jsonb;
-ALTER TABLE users ADD COLUMN IF NOT EXISTS notification_preferences JSONB NOT NULL DEFAULT '{"chat": true, "tasks": true, "schedule": true, "files": true, "announcements": true, "board": true, "room_updates": true}'::jsonb;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS notification_preferences JSONB NOT NULL DEFAULT '{"chat": true, "tasks": true, "schedule": true, "files": true, "announcements": true, "board": true, "room_updates": true, "friend_requests": true}'::jsonb;
 
 -- Allow non-Flinders university emails in the public users table.
 DO $$ DECLARE

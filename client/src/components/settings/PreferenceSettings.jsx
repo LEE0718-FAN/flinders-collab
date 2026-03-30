@@ -37,9 +37,14 @@ const NOTIFICATION_OPTIONS = [
     description: 'Membership and general room activity alerts.',
   },
   {
+    key: 'friend_requests',
+    label: 'Friend Requests',
+    description: 'Alerts when someone adds you or accepts your request.',
+  },
+  {
     key: 'board',
-    label: 'Free Board',
-    description: 'Reserved for Free Board push alerts.',
+    label: 'Flinders Social',
+    description: 'General social activity alerts.',
   },
 ];
 

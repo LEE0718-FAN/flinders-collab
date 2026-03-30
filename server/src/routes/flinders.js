@@ -3,6 +3,7 @@ const router = express.Router();
 const { authenticate } = require('../middleware/auth');
 const { supabaseAdmin } = require('../services/supabase');
 const { crawlFlindersEvents } = require('../utils/eventCrawler');
+const { notifyUsers } = require('../controllers/pushController');
 
 router.use(authenticate);
 
@@ -966,6 +967,13 @@ router.post('/flinders/friend-requests', async (req, res) => {
       return res.status(500).json({ error: 'Failed to send friend request' });
     }
 
+    await notifyUsers([targetId], {
+      type: 'friend_requests',
+      title: 'New friend request',
+      body: `${req.user.user_metadata?.full_name || 'A student'} sent you a friend request on Flinders Social.`,
+      url: '/board',
+    });
+
     res.status(201).json(mapFriendRequestRow(data, requesterId));
   } catch (err) {
     res.status(500).json({ error: 'Failed to send friend request' });
@@ -1059,6 +1067,15 @@ router.post('/flinders/friend-requests/:requestId/respond', async (req, res) => 
 
     if (error) {
       return res.status(500).json({ error: 'Failed to respond to friend request' });
+    }
+
+    if (action === 'accept') {
+      await notifyUsers([requestRow.requester_id], {
+        type: 'friend_requests',
+        title: 'Friend request accepted',
+        body: `${requestRow.target?.full_name || 'A student'} accepted your friend request.`,
+        url: directRoomId ? `/rooms/${directRoomId}` : '/board',
+      });
     }
 
     res.json(mapFriendRequestRow(data, userId));
