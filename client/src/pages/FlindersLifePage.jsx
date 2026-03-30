@@ -1429,15 +1429,15 @@ export function FlinapPanel({ currentUserId }) {
                   <X className="h-4 w-4" />
                   <span className="sr-only">Close</span>
                 </DialogClose>
-                <div className="flex items-center gap-4">
-                  <Avatar className="h-14 w-14 rounded-[20px] bg-white/15 shadow-sm">
+                <div className="flex items-start gap-4 pr-12">
+                  <Avatar className="h-14 w-14 shrink-0 rounded-[20px] bg-white/15 shadow-sm">
                     {activeMember.avatar_url && <AvatarImage src={activeMember.avatar_url} alt={activeMember.full_name} className="object-cover" />}
                     <AvatarFallback className="rounded-[20px] bg-white/15 text-lg font-black text-white">
                       {getMemberInitials(activeMember)}
                     </AvatarFallback>
                   </Avatar>
-                  <div className="min-w-0">
-                    <DialogTitle className="break-words pr-12 text-left text-xl font-black leading-tight">{activeMember.full_name}</DialogTitle>
+                  <div className="min-w-0 flex-1">
+                    <DialogTitle className="text-left text-lg font-black leading-tight break-words sm:text-xl">{activeMember.full_name}</DialogTitle>
                     <DialogDescription className="mt-1 text-left text-white/80">
                       <span className="block text-[15px] font-medium leading-snug text-white/85">
                         {getAcademicMeta(activeMember).major}
