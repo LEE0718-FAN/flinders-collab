@@ -748,6 +748,7 @@ export function FlinapPanel({ currentUserId }) {
   const totalVisible = Object.values(presenceData.campuses || {}).reduce((sum, list) => sum + list.length, 0);
   const selectedCampusMeta = getCampusMeta(selectedCampus);
   const selectedMembers = presenceData.campuses?.[selectedCampus] || [];
+  const incomingRequests = friendState.incoming || [];
   const sharingEnabled = Boolean(presenceData.my_presence);
   const getFriendRelationship = useCallback((member) => {
     if (!member || member.user_id === currentUserId) {
@@ -795,8 +796,8 @@ export function FlinapPanel({ currentUserId }) {
     }
   }, [activeMember, friendRequestMessage, loadFriendState]);
 
-  const handleRespondToRequest = useCallback(async (action) => {
-    const relationship = getFriendRelationship(activeMember);
+  const handleRespondToRequest = useCallback(async (action, requestOverride = null) => {
+    const relationship = requestOverride ? { request: requestOverride } : getFriendRelationship(activeMember);
     if (!relationship.request?.id) return;
     setFriendActionLoading(true);
     try {
@@ -1119,6 +1120,56 @@ export function FlinapPanel({ currentUserId }) {
             </div>
           </div>
 
+          <div className="mb-4 rounded-[24px] border border-slate-200 bg-white p-3 shadow-sm lg:hidden">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Friend Requests</p>
+                <p className="mt-1 text-sm font-semibold text-slate-900">
+                  {incomingRequests.length > 0 ? `${incomingRequests.length} waiting` : 'No new requests'}
+                </p>
+              </div>
+              <div className="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-semibold text-slate-600">
+                {incomingRequests.length}
+              </div>
+            </div>
+
+            {incomingRequests.length > 0 ? (
+              <div className="mt-3 space-y-2">
+                {incomingRequests.map((request) => (
+                  <div key={request.id} className="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-3">
+                    <p className="text-sm font-semibold text-slate-900">{request.other_user?.full_name || 'Student'}</p>
+                    {request.message && (
+                      <p className="mt-1 break-words text-[12px] leading-relaxed text-slate-600">{request.message}</p>
+                    )}
+                    <div className="mt-3 grid grid-cols-2 gap-2">
+                      <Button
+                        type="button"
+                        onClick={() => handleRespondToRequest('accept', request)}
+                        disabled={friendActionLoading}
+                        className="h-10 rounded-xl"
+                      >
+                        <Check className="mr-2 h-4 w-4" />
+                        Accept
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => handleRespondToRequest('decline', request)}
+                        disabled={friendActionLoading}
+                        className="h-10 rounded-xl"
+                      >
+                        <X className="mr-2 h-4 w-4" />
+                        Decline
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="mt-3 text-[12px] text-slate-500">Incoming requests will show here.</p>
+            )}
+          </div>
+
           <div className="mb-4 hidden rounded-[28px] bg-[radial-gradient(circle_at_top,_#eef2ff,_#f8fafc_42%,_#e8eefc_78%,_#eef2ff_100%)] lg:block">
             <div className="relative min-h-[340px] overflow-visible rounded-[28px] border border-indigo-100 px-6 pb-6 pt-6 shadow-inner">
               <div
@@ -1310,6 +1361,56 @@ export function FlinapPanel({ currentUserId }) {
           </div>
         )}
 
+        <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-3">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Friend Requests</p>
+              <p className="mt-1 text-sm font-semibold text-slate-900">
+                {incomingRequests.length > 0 ? `${incomingRequests.length} waiting` : 'No new requests'}
+              </p>
+            </div>
+            <div className="rounded-full bg-white px-2.5 py-1 text-[11px] font-semibold text-slate-600 shadow-sm">
+              {incomingRequests.length}
+            </div>
+          </div>
+
+          {incomingRequests.length > 0 ? (
+            <div className="mt-3 space-y-2">
+              {incomingRequests.map((request) => (
+                <div key={request.id} className="rounded-2xl border border-slate-200 bg-white px-3 py-3">
+                  <p className="text-sm font-semibold text-slate-900">{request.other_user?.full_name || 'Student'}</p>
+                  {request.message && (
+                    <p className="mt-1 break-words text-[12px] leading-relaxed text-slate-600">{request.message}</p>
+                  )}
+                  <div className="mt-3 grid grid-cols-2 gap-2">
+                    <Button
+                      type="button"
+                      onClick={() => handleRespondToRequest('accept', request)}
+                      disabled={friendActionLoading}
+                      className="h-10 rounded-xl"
+                    >
+                      <Check className="mr-2 h-4 w-4" />
+                      Accept
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => handleRespondToRequest('decline', request)}
+                      disabled={friendActionLoading}
+                      className="h-10 rounded-xl"
+                    >
+                      <X className="mr-2 h-4 w-4" />
+                      Decline
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="mt-3 text-[12px] text-slate-500">Incoming requests will show here.</p>
+          )}
+        </div>
+
         <div className="mt-4 rounded-2xl border border-amber-100 bg-amber-50 p-3">
           <p className="text-[11px] font-semibold uppercase tracking-wide text-amber-700">Notice</p>
           <p className="mt-1 text-[12px] leading-relaxed text-amber-800">
@@ -1320,7 +1421,7 @@ export function FlinapPanel({ currentUserId }) {
       </aside>
 
       <Dialog open={Boolean(activeMember)} onOpenChange={(open) => !open && setActiveMember(null)}>
-        <DialogContent showCloseButton={false} className="sm:max-w-md rounded-3xl border border-slate-200 bg-white p-0 overflow-hidden">
+      <DialogContent showCloseButton={false} className="w-[min(calc(100vw-1.5rem),32rem)] sm:max-w-lg rounded-3xl border border-slate-200 bg-white p-0 overflow-hidden">
           {activeMember && (
             <>
               <div className={`relative bg-gradient-to-r ${selectedCampusMeta.accent} px-5 py-5 text-white`}>
@@ -1336,7 +1437,7 @@ export function FlinapPanel({ currentUserId }) {
                     </AvatarFallback>
                   </Avatar>
                   <div className="min-w-0">
-                    <DialogTitle className="truncate text-left text-xl font-black">{activeMember.full_name}</DialogTitle>
+                    <DialogTitle className="break-words pr-12 text-left text-xl font-black leading-tight">{activeMember.full_name}</DialogTitle>
                     <DialogDescription className="mt-1 text-left text-white/80">
                       <span className="block text-[15px] font-medium leading-snug text-white/85">
                         {getAcademicMeta(activeMember).major}
@@ -1400,10 +1501,10 @@ export function FlinapPanel({ currentUserId }) {
                       </>
                     ) : activeRelationship.kind === 'outgoing' ? (
                       <>
-                        <div className="rounded-2xl border border-amber-200 bg-amber-50 px-3 py-3 text-sm text-amber-700">
+                        <div className="rounded-2xl border border-amber-200 bg-amber-50 px-3 py-3 text-sm leading-relaxed text-amber-700">
                           Friend request sent. 1:1 chat opens after they accept.
                         </div>
-                        <Button type="button" variant="outline" disabled className="h-11 w-full rounded-xl">
+                        <Button type="button" variant="outline" disabled className="h-11 w-full rounded-xl text-sm">
                           <MessageCircle className="mr-2 h-4 w-4" />
                           Wait for acceptance
                         </Button>

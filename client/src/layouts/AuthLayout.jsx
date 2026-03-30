@@ -28,7 +28,7 @@ export default function AuthLayout({ children }) {
 
   return (
     <div
-      className="relative flex min-h-[100svh] flex-col overflow-y-auto overflow-x-hidden px-4 py-3 sm:min-h-screen sm:overflow-hidden sm:px-6 sm:py-6"
+      className="relative flex min-h-[100svh] flex-col overflow-y-auto overflow-x-hidden px-4 py-3 sm:min-h-screen sm:px-6 sm:py-6"
       style={{
         paddingTop: 'max(0.75rem, env(safe-area-inset-top))',
         paddingBottom: 'max(6.5rem, calc(env(safe-area-inset-bottom) + 5.25rem))',
@@ -84,7 +84,7 @@ export default function AuthLayout({ children }) {
             <div className="relative">
               {/* Auth card */}
               <Card className="relative rounded-[28px] border border-white/10 bg-white/[0.96] shadow-2xl shadow-black/40 backdrop-blur-xl">
-                <CardContent className="p-4 pb-5 sm:p-6 min-[1380px]:p-7">{children}</CardContent>
+                <CardContent className="max-h-[calc(100svh-10rem)] overflow-y-auto p-4 pb-5 sm:max-h-none sm:p-6 min-[1380px]:p-7">{children}</CardContent>
               </Card>
 
               {/* Desktop side panel */}

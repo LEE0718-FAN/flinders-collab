@@ -17,11 +17,10 @@ export default function LoginPage() {
     if (typeof window === 'undefined') return;
     const search = new URLSearchParams(window.location.search);
     const hash = new URLSearchParams(window.location.hash.replace(/^#/, ''));
-    const isRecoveryLink = search.get('type') === 'recovery'
-      || hash.get('type') === 'recovery'
-      || hash.has('access_token')
-      || search.has('code')
-      || search.has('token_hash');
+    const searchType = search.get('type');
+    const hashType = hash.get('type');
+    const isRecoveryLink = searchType === 'recovery'
+      || hashType === 'recovery';
 
     if (isRecoveryLink) {
       navigate(`/reset-password${window.location.search}${window.location.hash}`, { replace: true });
