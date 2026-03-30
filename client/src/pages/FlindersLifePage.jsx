@@ -163,7 +163,7 @@ function getAcademicMeta(member) {
   const major = member?.major || 'Major not shared';
   const year = member?.year_level ? `Year ${member.year_level}` : 'Year hidden';
   const semester = member?.semester ? `Sem ${member.semester}` : 'Sem hidden';
-  return `${major} · ${year} · ${semester}`;
+  return { major, year, semester };
 }
 
 function getMemberInitials(member) {
@@ -1326,7 +1326,12 @@ export function FlinapPanel({ currentUserId }) {
                   <div className="min-w-0">
                     <DialogTitle className="truncate text-left text-xl font-black">{activeMember.full_name}</DialogTitle>
                     <DialogDescription className="mt-1 text-left text-white/80">
-                      {getAcademicMeta(activeMember)}
+                      <span className="block text-[15px] font-medium leading-snug text-white/85">
+                        {getAcademicMeta(activeMember).major}
+                      </span>
+                      <span className="mt-1 block text-sm leading-snug text-white/70">
+                        {getAcademicMeta(activeMember).year} · {getAcademicMeta(activeMember).semester}
+                      </span>
                     </DialogDescription>
                   </div>
                 </div>
