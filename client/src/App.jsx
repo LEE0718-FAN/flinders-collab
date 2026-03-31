@@ -56,7 +56,19 @@ function useViewportMetrics() {
 
     const scheduleSync = () => {
       window.cancelAnimationFrame(rafId);
-      rafId = window.requestAnimationFrame(sync);
+      rafId = window.requestAnimationFrame(() => {
+        sync();
+        // Prevent iOS/Android PWA from scrolling the page when keyboard opens
+        if (viewport && viewport.offsetTop > 0) {
+          window.scrollTo(0, 0);
+        }
+        if (document.documentElement.scrollTop > 0) {
+          document.documentElement.scrollTop = 0;
+        }
+        if (document.body.scrollTop > 0) {
+          document.body.scrollTop = 0;
+        }
+      });
     };
 
     sync();
