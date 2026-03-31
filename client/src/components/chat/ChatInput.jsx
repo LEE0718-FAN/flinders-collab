@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Send, Paperclip, X, FileText } from 'lucide-react';
 
-export default function ChatInput({ onSend, onFileSelect, uploading }) {
+export default function ChatInput({ onSend, onFileSelect, uploading, embedded = false }) {
   const [message, setMessage] = useState('');
   const [preview, setPreview] = useState(null); // { file, previewUrl, isImage }
   const [customName, setCustomName] = useState('');
@@ -64,9 +64,12 @@ export default function ChatInput({ onSend, onFileSelect, uploading }) {
   };
 
   return (
-    <div className="border-t-0 bg-slate-50 rounded-b-2xl" style={{ paddingBottom: 'max(0.75rem, var(--safe-bottom))' }}>
+    <div
+      className={embedded ? 'border-t border-slate-200/80 bg-white/95 backdrop-blur-sm' : 'rounded-b-2xl border-t-0 bg-slate-50'}
+      style={{ paddingBottom: embedded ? 'max(0.75rem, calc(var(--safe-bottom) + 0.15rem))' : 'max(0.75rem, var(--safe-bottom))' }}
+    >
       {preview && (
-        <div className="px-3 pt-3 sm:px-4 sm:pt-4">
+        <div className={`px-3 ${embedded ? 'pt-2.5 sm:px-4 sm:pt-3' : 'pt-3 sm:px-4 sm:pt-4'}`}>
           <div className="rounded-xl border border-blue-200 bg-blue-50/50 p-3 space-y-2.5">
             <div className="flex items-center gap-3">
               {preview.isImage && preview.previewUrl ? (
@@ -107,7 +110,7 @@ export default function ChatInput({ onSend, onFileSelect, uploading }) {
           </div>
         </div>
       )}
-      <form onSubmit={handleSubmit} className="flex items-center gap-2 p-3 sm:gap-3 sm:p-4">
+      <form onSubmit={handleSubmit} className={`flex items-center gap-2 ${embedded ? 'px-3 pb-2 pt-2 sm:gap-2.5 sm:px-4 sm:pb-3 sm:pt-2.5' : 'p-3 sm:gap-3 sm:p-4'}`}>
         <input
           ref={fileRef}
           type="file"
@@ -119,7 +122,7 @@ export default function ChatInput({ onSend, onFileSelect, uploading }) {
           type="button"
           variant="ghost"
           size="icon"
-          className="h-11 w-11 rounded-full hover:bg-blue-100 shrink-0"
+          className={`${embedded ? 'h-10 w-10' : 'h-11 w-11'} rounded-full hover:bg-blue-100 shrink-0`}
           onClick={() => fileRef.current?.click()}
           disabled={uploading}
         >
@@ -130,13 +133,13 @@ export default function ChatInput({ onSend, onFileSelect, uploading }) {
           value={message}
           onChange={(e) => setMessage(e.target.value)}
           disabled={!!preview || uploading}
-          className="h-11 flex-1 rounded-full border-slate-200 bg-white px-4 text-sm shadow-sm transition-all focus:border-blue-300 focus:shadow-md sm:h-12 sm:px-5"
+          className={`${embedded ? 'h-10 px-3.5 text-[13px] sm:h-11 sm:px-4' : 'h-11 px-4 text-sm sm:h-12 sm:px-5'} flex-1 rounded-full border-slate-200 bg-white shadow-sm transition-all focus:border-blue-300 focus:shadow-md`}
         />
         <Button
           type="submit"
           size="icon"
           disabled={(!message.trim() && !preview) || uploading}
-          className="h-11 w-11 rounded-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg shadow-blue-500/25 transition-all hover:shadow-xl hover:shadow-blue-500/30 disabled:opacity-30 disabled:shadow-none sm:h-12 sm:w-12"
+          className={`${embedded ? 'h-10 w-10 sm:h-11 sm:w-11' : 'h-11 w-11 sm:h-12 sm:w-12'} rounded-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg shadow-blue-500/25 transition-all hover:shadow-xl hover:shadow-blue-500/30 disabled:opacity-30 disabled:shadow-none`}
         >
           <Send className="h-5 w-5" />
         </Button>

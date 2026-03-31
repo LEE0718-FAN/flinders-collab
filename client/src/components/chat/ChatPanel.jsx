@@ -115,12 +115,12 @@ export default function ChatPanel({ roomId, onChatFileUploaded, embedded = false
   }, [on, off]);
 
   const outerClass = embedded
-    ? 'flex h-full flex-col overflow-hidden bg-white'
+    ? 'flex h-full min-h-0 flex-col overflow-hidden bg-white'
     : 'flex h-[min(56svh,32rem)] min-h-[19rem] sm:h-[600px] sm:min-h-[24rem] flex-col overflow-hidden rounded-2xl border border-slate-200/60 bg-white shadow-xl shadow-blue-500/5';
 
   if (loading) {
     return (
-      <div className={embedded ? 'flex h-full items-center justify-center bg-white' : 'flex h-[min(56svh,32rem)] min-h-[19rem] sm:h-[600px] sm:min-h-[24rem] items-center justify-center rounded-2xl border border-slate-200/60 bg-white shadow-xl shadow-blue-500/5'}>
+      <div className={embedded ? 'flex h-full min-h-0 items-center justify-center bg-white' : 'flex h-[min(56svh,32rem)] min-h-[19rem] sm:h-[600px] sm:min-h-[24rem] items-center justify-center rounded-2xl border border-slate-200/60 bg-white shadow-xl shadow-blue-500/5'}>
         <Loader2 className="h-7 w-7 animate-spin text-blue-500" />
       </div>
     );
@@ -144,7 +144,7 @@ export default function ChatPanel({ roomId, onChatFileUploaded, embedded = false
       )}
 
       {/* Messages area */}
-      <div className="flex-1 space-y-3 overflow-y-auto bg-gradient-to-b from-slate-50 to-white p-3 sm:p-5">
+      <div className={`min-h-0 flex-1 space-y-2.5 overflow-y-auto bg-gradient-to-b from-slate-50 to-white ${embedded ? 'px-3 py-2.5 sm:px-4 sm:py-4' : 'p-3 sm:p-5'}`}>
         {error && (
           <div className="flex items-start gap-2 rounded-2xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 shadow-sm">
             <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
@@ -152,12 +152,12 @@ export default function ChatPanel({ roomId, onChatFileUploaded, embedded = false
           </div>
         )}
         {messages.length === 0 && (
-          <div className="py-16 text-center">
-            <div className="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-100 to-indigo-100 shadow-lg shadow-blue-500/10">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" /></svg>
+          <div className={`${embedded ? 'py-10' : 'py-16'} text-center`}>
+            <div className={`mx-auto ${embedded ? 'mb-3 h-14 w-14 rounded-[18px]' : 'mb-4 h-20 w-20 rounded-2xl'} flex items-center justify-center bg-gradient-to-br from-blue-100 to-indigo-100 shadow-lg shadow-blue-500/10`}>
+              <svg xmlns="http://www.w3.org/2000/svg" className={`${embedded ? 'h-7 w-7' : 'h-10 w-10'} text-blue-500`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" /></svg>
             </div>
-            <p className="text-base font-semibold text-slate-600">No messages yet</p>
-            <p className="mt-1.5 text-sm text-slate-400">Start the conversation!</p>
+            <p className={`${embedded ? 'text-sm' : 'text-base'} font-semibold text-slate-600`}>No messages yet</p>
+            <p className={`${embedded ? 'mt-1 text-[12px]' : 'mt-1.5 text-sm'} text-slate-400`}>Start the conversation!</p>
           </div>
         )}
         {messages.map((msg) => (
@@ -165,7 +165,7 @@ export default function ChatPanel({ roomId, onChatFileUploaded, embedded = false
         ))}
         <div ref={bottomRef} />
       </div>
-      <ChatInput onSend={handleSend} onFileSelect={handleFileSelect} uploading={uploading} />
+      <ChatInput onSend={handleSend} onFileSelect={handleFileSelect} uploading={uploading} embedded={embedded} />
     </div>
   );
 }
