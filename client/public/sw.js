@@ -1,4 +1,4 @@
-const CACHE_NAME = 'collab-v1';
+const CACHE_NAME = 'collab-v2';
 const OFFLINE_URLS = [
   '/',
   '/index.html',
@@ -6,6 +6,16 @@ const OFFLINE_URLS = [
   '/icons/icon-192.png',
   '/icons/icon-512.png',
 ];
+
+function isNavigationRequest(request) {
+  return request.mode === 'navigate' || request.destination === 'document';
+}
+
+function isStaticAsset(requestUrl) {
+  return requestUrl.pathname.startsWith('/assets/')
+    || requestUrl.pathname.startsWith('/icons/')
+    || requestUrl.pathname === '/manifest.json';
+}
 
 // Install — cache shell
 self.addEventListener('install', (event) => {
@@ -18,37 +28,72 @@ self.addEventListener('install', (event) => {
 // Activate — clean old caches
 self.addEventListener('activate', (event) => {
   event.waitUntil(
-    caches.keys().then((keys) =>
-      Promise.all(keys.filter((k) => k !== CACHE_NAME).map((k) => caches.delete(k)))
-    )
+    (async () => {
+      const keys = await caches.keys();
+      await Promise.all(keys.filter((k) => k !== CACHE_NAME).map((k) => caches.delete(k)));
+      if ('navigationPreload' in self.registration) {
+        await self.registration.navigationPreload.enable();
+      }
+      await self.clients.claim();
+    })()
   );
-  self.clients.claim();
 });
 
-// Fetch — network first, fallback to cache
+// Fetch — prefer fresh app shell so PWA reflects new deploys quickly
 self.addEventListener('fetch', (event) => {
   const { request } = event;
+  const requestUrl = new URL(request.url);
 
   // Skip non-GET and API/socket requests
   if (request.method !== 'GET') return;
   if (request.url.includes('/api/') || request.url.includes('/socket.io')) return;
+  if (requestUrl.origin !== self.location.origin) return;
 
-  event.respondWith(
-    fetch(request)
-      .then((response) => {
-        // Cache successful responses for offline use
+  if (isNavigationRequest(request)) {
+    event.respondWith((async () => {
+      try {
+        const preload = await event.preloadResponse;
+        if (preload) return preload;
+
+        const response = await fetch(request, { cache: 'no-store' });
+        const cache = await caches.open(CACHE_NAME);
+        cache.put('/index.html', response.clone());
+        return response;
+      } catch {
+        const cached = await caches.match('/index.html');
+        return cached || Response.error();
+      }
+    })());
+    return;
+  }
+
+  if (isStaticAsset(requestUrl)) {
+    event.respondWith((async () => {
+      const cache = await caches.open(CACHE_NAME);
+      try {
+        const response = await fetch(request, { cache: 'no-store' });
         if (response.ok) {
-          const clone = response.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
+          cache.put(request, response.clone());
         }
         return response;
-      })
-      .catch(() => caches.match(request).then((cached) => cached || caches.match('/')))
-  );
+      } catch {
+        const cached = await cache.match(request);
+        return cached || Response.error();
+      }
+    })());
+    return;
+  }
+
+  event.respondWith(fetch(request).catch(() => caches.match(request)));
 });
 
 // Cache API responses for offline viewing (rooms, messages, files)
 self.addEventListener('message', (event) => {
+  if (event.data?.type === 'SKIP_WAITING') {
+    self.skipWaiting();
+    return;
+  }
+
   if (event.data?.type === 'CACHE_API') {
     const { url, data } = event.data;
     caches.open(CACHE_NAME).then((cache) => {

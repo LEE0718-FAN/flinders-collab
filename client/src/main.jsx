@@ -7,7 +7,34 @@ import './index.css';
 
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js', { scope: '/' }).catch((error) => {
+    let refreshing = false;
+
+    navigator.serviceWorker.register('/sw.js', { scope: '/' }).then((registration) => {
+      const requestSkipWaiting = () => {
+        registration.waiting?.postMessage({ type: 'SKIP_WAITING' });
+      };
+
+      if (registration.waiting) {
+        requestSkipWaiting();
+      }
+
+      registration.addEventListener('updatefound', () => {
+        const newWorker = registration.installing;
+        if (!newWorker) return;
+
+        newWorker.addEventListener('statechange', () => {
+          if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+            requestSkipWaiting();
+          }
+        });
+      });
+
+      navigator.serviceWorker.addEventListener('controllerchange', () => {
+        if (refreshing) return;
+        refreshing = true;
+        window.location.reload();
+      });
+    }).catch((error) => {
       console.warn('Service worker registration failed:', error);
     });
   });
