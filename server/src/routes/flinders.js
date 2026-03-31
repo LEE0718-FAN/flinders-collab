@@ -168,6 +168,9 @@ function mapFriendRequestRow(row, currentUserId) {
       user_id: otherUser.id || null,
       full_name: otherUser.full_name || 'Student',
       avatar_url: otherUser.avatar_url || null,
+      major: otherUser.major || null,
+      year_level: otherUser.year_level || null,
+      university_email: otherUser.university_email || null,
     },
   };
 }
@@ -879,12 +882,18 @@ router.get('/flinders/friend-requests', async (req, res) => {
         requester:requester_id (
           id,
           full_name,
-          avatar_url
+          avatar_url,
+          major,
+          year_level,
+          university_email
         ),
         target:target_id (
           id,
           full_name,
-          avatar_url
+          avatar_url,
+          major,
+          year_level,
+          university_email
         )
       `)
       .or(`requester_id.eq.${userId},target_id.eq.${userId}`)

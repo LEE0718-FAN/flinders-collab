@@ -276,7 +276,7 @@ export default function MessagesPage() {
               {/* Chat content */}
               <div className="flex-1 min-h-0">
                 <Suspense fallback={<div className="flex items-center justify-center h-full"><Loader2 className="h-6 w-6 animate-spin text-blue-500" /></div>}>
-                  <ChatPanel roomId={activeChat.roomId} />
+                  <ChatPanel roomId={activeChat.roomId} embedded />
                 </Suspense>
               </div>
             </>

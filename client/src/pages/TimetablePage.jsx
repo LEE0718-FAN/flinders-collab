@@ -69,6 +69,8 @@ export default function TimetablePage() {
   const [chatMembers, setChatMembers] = useState([]);
   const [friendState, setFriendState] = useState({ incoming: [], outgoing: [], friends: [] });
   const [friendLoading, setFriendLoading] = useState(null); // userId being acted on
+  const [friendRequestDialog, setFriendRequestDialog] = useState(null); // { memberId, memberName }
+  const [friendRequestMsg, setFriendRequestMsg] = useState('');
 
   const [searchTimers, setSearchTimers] = useState({});
 
@@ -304,11 +306,22 @@ export default function TimetablePage() {
     return { kind: 'none' };
   };
 
-  const handleAddFriend = async (memberId) => {
-    setFriendLoading(memberId);
+  const showAddFriendDialog = (memberId, memberName) => {
+    setFriendRequestDialog({ memberId, memberName });
+    setFriendRequestMsg('');
+  };
+
+  const handleConfirmAddFriend = async () => {
+    if (!friendRequestDialog) return;
+    setFriendLoading(friendRequestDialog.memberId);
     try {
-      await sendFriendRequest({ target_user_id: memberId });
+      await sendFriendRequest({
+        target_user_id: friendRequestDialog.memberId,
+        message: friendRequestMsg.trim() || undefined,
+      });
       await loadFriends();
+      setFriendRequestDialog(null);
+      setFriendRequestMsg('');
     } catch {} finally { setFriendLoading(null); }
   };
 
@@ -535,7 +548,7 @@ export default function TimetablePage() {
       {/* Chat popup */}
       {chatPopup && (
         <div className="fixed inset-0 z-50 bg-black/40 flex items-end sm:items-center justify-center p-0 sm:p-4" onClick={() => setChatPopup(null)}>
-          <div className={`w-full ${showMembers ? 'sm:max-w-2xl' : 'sm:max-w-lg'} h-[85vh] sm:h-[75vh] bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl flex flex-col overflow-hidden transition-all`} onClick={(e) => e.stopPropagation()}>
+          <div className={`w-full ${showMembers ? 'sm:max-w-3xl' : 'sm:max-w-2xl'} h-[90vh] sm:h-[82vh] bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl flex flex-col overflow-hidden transition-all`} onClick={(e) => e.stopPropagation()}>
             {/* Popup header */}
             <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100 bg-gradient-to-r from-blue-600 to-indigo-600 text-white shrink-0">
               <div className="min-w-0">
@@ -554,7 +567,7 @@ export default function TimetablePage() {
             <div className="flex flex-1 min-h-0">
               <div className="flex-1 min-h-0">
                 <Suspense fallback={<div className="flex items-center justify-center h-full"><Loader2 className="h-6 w-6 animate-spin text-blue-500" /></div>}>
-                  <ChatPanel roomId={chatPopup.roomId} />
+                  <ChatPanel roomId={chatPopup.roomId} embedded />
                 </Suspense>
               </div>
               {showMembers && (
@@ -589,9 +602,9 @@ export default function TimetablePage() {
                                 </button>
                               )}
                               {fs.kind === 'none' && (
-                                <button onClick={() => handleAddFriend(m.id)} disabled={friendLoading === m.id}
-                                  className="flex items-center gap-1 text-[10px] font-medium text-emerald-600 hover:text-emerald-800 transition-colors disabled:opacity-50">
-                                  {friendLoading === m.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <UserPlus className="h-3 w-3" />}
+                                <button onClick={() => showAddFriendDialog(m.id, m.full_name)}
+                                  className="flex items-center gap-1 text-[10px] font-medium text-emerald-600 hover:text-emerald-800 transition-colors">
+                                  <UserPlus className="h-3 w-3" />
                                   Add Friend
                                 </button>
                               )}
@@ -624,6 +637,50 @@ export default function TimetablePage() {
               )}
             </div>
           </div>
+        </div>
+      )}
+      {/* Friend request confirmation dialog */}
+      {friendRequestDialog && (
+        <div className="fixed inset-0 z-[60] bg-black/40 flex items-center justify-center p-4" onClick={() => setFriendRequestDialog(null)}>
+          <Card className="w-full max-w-sm shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <CardContent className="p-5">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="h-10 w-10 rounded-full bg-emerald-100 flex items-center justify-center">
+                  <UserPlus className="h-5 w-5 text-emerald-600" />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-slate-900 text-sm">Send Friend Request</h3>
+                  <p className="text-xs text-slate-500">to {friendRequestDialog.memberName || 'this student'}</p>
+                </div>
+              </div>
+              <div className="mb-4">
+                <label className="text-xs font-medium text-slate-600 mb-1.5 block">Message (optional)</label>
+                <Input
+                  placeholder="Hi! Let's study together..."
+                  value={friendRequestMsg}
+                  onChange={(e) => setFriendRequestMsg(e.target.value)}
+                  className="h-10 rounded-xl"
+                  maxLength={160}
+                />
+                <p className="text-[10px] text-slate-400 mt-1 text-right">{friendRequestMsg.length}/160</p>
+              </div>
+              <div className="flex gap-2">
+                <Button variant="outline" onClick={() => setFriendRequestDialog(null)} className="flex-1 h-10 rounded-xl">Cancel</Button>
+                <Button
+                  onClick={handleConfirmAddFriend}
+                  disabled={friendLoading === friendRequestDialog.memberId}
+                  className="flex-1 h-10 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 text-white"
+                >
+                  {friendLoading === friendRequestDialog.memberId ? (
+                    <Loader2 className="h-4 w-4 animate-spin mr-1" />
+                  ) : (
+                    <UserPlus className="h-4 w-4 mr-1" />
+                  )}
+                  Send Request
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
         </div>
       )}
     </div>

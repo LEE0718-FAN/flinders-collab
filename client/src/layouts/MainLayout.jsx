@@ -171,16 +171,16 @@ function SidebarContent({ rooms, location, isAdmin, roomBadgeCounts = {}, user, 
           Your Rooms
         </span>
         <div className="h-px flex-1 bg-white/5" />
-        {rooms.filter((r) => r.room_type !== 'direct').length > 0 && (
+        {rooms.filter((r) => r.room_type !== 'direct' && r.room_type !== 'topic').length > 0 && (
           <span className="text-[10px] tabular-nums text-slate-500 bg-white/10 px-1.5 py-0.5 rounded-md">
-            {rooms.filter((r) => r.room_type !== 'direct').length}
+            {rooms.filter((r) => r.room_type !== 'direct' && r.room_type !== 'topic').length}
           </span>
         )}
       </div>
 
-      {/* Room list (exclude DM rooms — those appear in Messages) */}
+      {/* Room list (exclude DM + topic rooms — those appear in Messages / Timetable) */}
       <div className="flex flex-col gap-0.5" data-tour="sidebar-rooms">
-        {rooms.filter((r) => r.room_type !== 'direct').map((room) => {
+        {rooms.filter((r) => r.room_type !== 'direct' && r.room_type !== 'topic').map((room) => {
           const unread = roomBadgeCounts[room.id] || 0;
           return (
             <div key={room.id} className="relative">
