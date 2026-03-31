@@ -1,14 +1,14 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
-import { searchTopics, getMyTimetable, addToTimetable, removeTopic, getPopularTimes } from '@/services/timetable';
+import { searchTopics, getMyTimetable, addToTimetable, removeFromTimetable, removeTopic, getPopularTimes } from '@/services/timetable';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import {
   Loader2, Search, Plus, X, BookOpen, Clock, MapPin, Users,
-  MessageSquare, GraduationCap, Trash2, Check,
+  MessageSquare, GraduationCap, Trash2, Check, Pencil,
 } from 'lucide-react';
 
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'];
@@ -58,6 +58,7 @@ export default function TimetablePage() {
   // Class form (offering selection + mini confirm after drag)
   const [classForm, setClassForm] = useState(null);
   const [confirmForm, setConfirmForm] = useState(null); // {topicId, dayOfWeek, startTime, endTime, classType, location}
+  const [editEntry, setEditEntry] = useState(null); // entry being edited
 
   const [searchTimers, setSearchTimers] = useState({});
 
@@ -189,6 +190,51 @@ export default function TimetablePage() {
     } catch {}
   };
 
+  // Open edit modal for an existing entry
+  const openEditEntry = (entry) => {
+    if (dragTopic) return; // don't open edit while in drag mode
+    setEditEntry({
+      id: entry.id,
+      topicId: entry.topic?.id,
+      topicCode: entry.topic?.topic_code,
+      topicTitle: entry.topic?.title,
+      roomId: entry.room_id,
+      dayOfWeek: entry.day_of_week,
+      startTime: entry.start_time?.slice(0, 5) || '',
+      endTime: entry.end_time?.slice(0, 5) || '',
+      classType: entry.class_type || 'lecture',
+      location: entry.location || '',
+    });
+  };
+
+  // Save edited entry (delete old + add new)
+  const handleSaveEdit = async () => {
+    if (!editEntry) return;
+    try {
+      await removeFromTimetable(editEntry.id);
+      await addToTimetable({
+        topicId: editEntry.topicId,
+        dayOfWeek: editEntry.dayOfWeek,
+        startTime: editEntry.startTime,
+        endTime: editEntry.endTime,
+        classType: editEntry.classType,
+        location: editEntry.location,
+      });
+      setEditEntry(null);
+      await loadTimetable();
+    } catch {}
+  };
+
+  // Delete a single entry
+  const handleDeleteEntry = async () => {
+    if (!editEntry) return;
+    try {
+      await removeFromTimetable(editEntry.id);
+      setEditEntry(null);
+      await loadTimetable();
+    } catch {}
+  };
+
   const addSlot = () => {
     const nextId = Math.max(...slots.map((s) => s.id)) + 1;
     setSlots((prev) => [...prev, { id: nextId, query: '', results: [], selectedTopic: null, searching: false, adding: false, searched: false }]);
@@ -269,12 +315,13 @@ export default function TimetablePage() {
             onQueryChange={onQueryChange} selectTopic={selectTopic}
             handleRemoveTopic={handleRemoveTopic} addAnotherClass={addAnotherClass}
             addSlot={addSlot} removeSlot={removeSlot} goToRoom={goToRoom}
+            openEditEntry={openEditEntry}
           />
         ) : (
           <CalendarView
             entries={calendarEntries} topicColorMap={topicColorMap} goToRoom={goToRoom}
             timetable={timetable} dragTopic={dragTopic} popularTimes={popularTimes}
-            onDragComplete={handleDragComplete}
+            onDragComplete={handleDragComplete} openEditEntry={openEditEntry}
           />
         )}
       </div>
@@ -301,6 +348,73 @@ export default function TimetablePage() {
                   None of these? Add manually on calendar
                 </button>
                 <Button variant="outline" onClick={() => setClassForm(null)} className="w-full h-10 rounded-xl mt-2">Cancel</Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* Edit entry modal */}
+      {editEntry && (
+        <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4" onClick={() => setEditEntry(null)}>
+          <Card className="w-full max-w-sm shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <CardContent className="p-5">
+              <div className="flex items-center justify-between mb-1">
+                <h3 className="font-semibold text-slate-900">Edit Class</h3>
+                <Button variant="ghost" size="sm" onClick={() => goToRoom(editEntry.roomId)} className="h-7 text-xs text-blue-600" disabled={!editEntry.roomId}>
+                  <MessageSquare className="h-3.5 w-3.5 mr-1" />Chat
+                </Button>
+              </div>
+              <p className="text-sm text-slate-500 mb-4">{editEntry.topicCode} — {editEntry.topicTitle}</p>
+
+              <div className="space-y-3">
+                <div>
+                  <label className="text-xs font-medium text-slate-600 mb-1 block">Day</label>
+                  <div className="flex gap-1">
+                    {DAYS.map((day, i) => (
+                      <Button key={day} variant={editEntry.dayOfWeek === i ? 'default' : 'outline'} size="sm"
+                        onClick={() => setEditEntry((e) => ({ ...e, dayOfWeek: i }))} className="h-8 text-xs rounded-full flex-1">
+                        {day}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-xs font-medium text-slate-600 mb-1 block">Start</label>
+                    <Input type="time" value={editEntry.startTime}
+                      onChange={(e) => setEditEntry((prev) => ({ ...prev, startTime: e.target.value }))} className="h-9 rounded-lg" />
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-slate-600 mb-1 block">End</label>
+                    <Input type="time" value={editEntry.endTime}
+                      onChange={(e) => setEditEntry((prev) => ({ ...prev, endTime: e.target.value }))} className="h-9 rounded-lg" />
+                  </div>
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-slate-600 mb-1 block">Type</label>
+                  <div className="flex gap-1 flex-wrap">
+                    {['lecture', 'tutorial', 'practical', 'workshop', 'seminar'].map((type) => (
+                      <Button key={type} variant={editEntry.classType === type ? 'default' : 'outline'} size="sm"
+                        onClick={() => setEditEntry((e) => ({ ...e, classType: type }))} className="h-8 text-xs rounded-full capitalize">
+                        {type}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-slate-600 mb-1 block">Location</label>
+                  <Input placeholder="e.g. Room 101" value={editEntry.location}
+                    onChange={(e) => setEditEntry((prev) => ({ ...prev, location: e.target.value }))} className="h-9 rounded-lg" />
+                </div>
+              </div>
+
+              <div className="flex gap-2 mt-4">
+                <Button variant="outline" onClick={handleDeleteEntry} className="h-10 rounded-xl text-red-500 hover:bg-red-50 hover:text-red-600 border-red-200">
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+                <Button variant="outline" onClick={() => setEditEntry(null)} className="flex-1 h-10 rounded-xl">Cancel</Button>
+                <Button onClick={handleSaveEdit} className="flex-1 h-10 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600">Save</Button>
               </div>
             </CardContent>
           </Card>
@@ -347,7 +461,7 @@ export default function TimetablePage() {
 }
 
 /* ========== Setup View ========== */
-function SetupView({ slots, timetable, topicColorMap, onQueryChange, selectTopic, handleRemoveTopic, addAnotherClass, addSlot, removeSlot, goToRoom }) {
+function SetupView({ slots, timetable, topicColorMap, onQueryChange, selectTopic, handleRemoveTopic, addAnotherClass, addSlot, removeSlot, goToRoom, openEditEntry }) {
   return (
     <div className="space-y-4">
       <p className="text-sm text-slate-500">Add your courses below, then drag on the calendar to set class times.</p>
@@ -427,13 +541,15 @@ function SetupView({ slots, timetable, topicColorMap, onQueryChange, selectTopic
               {slot.selectedTopic && topicEntries.length > 0 && (
                 <div className="space-y-2 mt-2">
                   {topicEntries.map((entry) => (
-                    <div key={entry.id} className={`flex items-center gap-3 px-3 py-2 rounded-lg ${color?.bg || 'bg-slate-50'}`}>
+                    <button key={entry.id} onClick={() => openEditEntry(entry)}
+                      className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg ${color?.bg || 'bg-slate-50'} hover:ring-2 hover:ring-blue-300 transition-all text-left`}>
                       <Clock className={`h-3.5 w-3.5 ${color?.text || 'text-slate-500'}`} />
                       <span className="text-sm font-medium">{DAYS[entry.day_of_week]}</span>
                       <span className="text-sm text-slate-600">{entry.start_time?.slice(0,5)} — {entry.end_time?.slice(0,5)}</span>
                       {entry.class_type && <Badge className="rounded-full text-[10px] bg-white/60 border-0 capitalize">{entry.class_type}</Badge>}
                       {entry.location && <span className="text-[11px] text-slate-400 flex items-center gap-1"><MapPin className="h-3 w-3" />{entry.location}</span>}
-                    </div>
+                      <Pencil className="h-3 w-3 text-slate-400 ml-auto shrink-0" />
+                    </button>
                   ))}
                 </div>
               )}
@@ -449,7 +565,7 @@ function SetupView({ slots, timetable, topicColorMap, onQueryChange, selectTopic
 }
 
 /* ========== Calendar View with Drag ========== */
-function CalendarView({ entries, topicColorMap, goToRoom, timetable, dragTopic, popularTimes, onDragComplete }) {
+function CalendarView({ entries, topicColorMap, goToRoom, timetable, dragTopic, popularTimes, onDragComplete, openEditEntry }) {
   const gridRef = useRef(null);
   const [dragging, setDragging] = useState(null); // {dayOfWeek, startHour, currentHour}
 
@@ -594,8 +710,8 @@ function CalendarView({ entries, topicColorMap, goToRoom, timetable, dragTopic, 
                 const width = `calc((100% - 60px) / 5 - 4px)`;
                 const color = topicColorMap[entry.topic?.id];
                 return (
-                  <button key={entry.id} onClick={() => goToRoom(entry.room_id)}
-                    className={`absolute rounded-lg p-1.5 overflow-hidden cursor-pointer hover:shadow-lg transition-shadow border ${color?.bg || 'bg-blue-100'} ${color?.border || 'border-blue-300'} ${color?.text || 'text-blue-800'}`}
+                  <button key={entry.id} onClick={() => openEditEntry(entry)}
+                    className={`absolute rounded-lg p-1.5 overflow-hidden cursor-pointer hover:shadow-lg hover:ring-2 hover:ring-blue-400 transition-all border ${color?.bg || 'bg-blue-100'} ${color?.border || 'border-blue-300'} ${color?.text || 'text-blue-800'}`}
                     style={{ top: `${top}px`, height: `${Math.max(height, 28)}px`, left, width }}>
                     <div className="text-[11px] font-bold leading-tight truncate">{entry.topic?.topic_code}</div>
                     {height >= 42 && <div className="text-[10px] opacity-70 truncate capitalize">{entry.class_type}</div>}

@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef, lazy, Suspense } from 'react';
-import { useParams, useLocation } from 'react-router-dom';
+import { useParams, useLocation, useNavigate } from 'react-router-dom';
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import MemberList from '@/components/room/MemberList';
-import { getQuickLinks, getMembers, getRoom, getRoomActivity, markRoomVisited as markRoomVisitedApi } from '@/services/rooms';
+import { getQuickLinks, getMembers, getRoom, getRoomActivity, markRoomVisited as markRoomVisitedApi, leaveRoom } from '@/services/rooms';
 
 // Lazy-load heavy tab components to reduce initial bundle (~150-200KB savings)
 const TaskList = lazy(() => import('@/components/room/TaskList'));
@@ -21,7 +21,7 @@ import { getTasks } from '@/services/tasks';
 import { copyToClipboard } from '@/lib/native';
 import { getRoomPalette } from '@/components/room/RoomCard';
 import { useAuth } from '@/hooks/useAuth';
-import { Loader2, Copy, Check, Plus, MessageSquare, FileUp, CalendarPlus, CheckSquare, Activity, Link2, Users, Megaphone, X, Filter, GraduationCap } from 'lucide-react';
+import { Loader2, Copy, Check, Plus, MessageSquare, FileUp, CalendarPlus, CheckSquare, Activity, Link2, Users, Megaphone, X, Filter, GraduationCap, LogOut } from 'lucide-react';
 // useRef already imported above
 import { Button } from '@/components/ui/button';
 import ReportButton from '@/components/ReportButton';
@@ -48,6 +48,7 @@ const APP_SOFT_REFRESH_EVENT = 'app-soft-refresh';
 export default function RoomPage() {
   const { roomId } = useParams();
   const location = useLocation();
+  const navigate = useNavigate();
   const { user } = useAuth();
   const navState = location.state || {};
   const [room, setRoom] = useState(null);
@@ -61,6 +62,14 @@ export default function RoomPage() {
   const [copied, setCopied] = useState(false);
   const [activeTab, setActiveTab] = useState(navState.tab || 'members');
   const isTopicRoom = room?.room_type === 'topic';
+  const [leaveConfirm, setLeaveConfirm] = useState(false);
+
+  const handleLeaveTopicRoom = async () => {
+    try {
+      await leaveRoom(roomId);
+      navigate('/timetable');
+    } catch {}
+  };
   const [activities, setActivities] = useState([]);
   const [quickLinks, setQuickLinks] = useState([]);
   const [error, setError] = useState('');
@@ -533,6 +542,22 @@ export default function RoomPage() {
                       <Users className="h-3.5 w-3.5" />
                       {members.length} member{members.length !== 1 ? 's' : ''}
                     </p>
+                  </div>
+                  <div className="shrink-0">
+                    {!leaveConfirm ? (
+                      <button onClick={() => setLeaveConfirm(true)} className="flex items-center gap-1.5 bg-white/15 rounded-full px-3 py-1.5 text-xs hover:bg-red-500/60 transition-colors">
+                        <LogOut className="h-3.5 w-3.5" />Leave
+                      </button>
+                    ) : (
+                      <div className="flex items-center gap-1.5">
+                        <button onClick={handleLeaveTopicRoom} className="flex items-center gap-1 bg-red-500 rounded-full px-3 py-1.5 text-xs font-medium hover:bg-red-600 transition-colors">
+                          Leave
+                        </button>
+                        <button onClick={() => setLeaveConfirm(false)} className="bg-white/20 rounded-full px-2.5 py-1.5 text-xs hover:bg-white/30 transition-colors">
+                          Cancel
+                        </button>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
