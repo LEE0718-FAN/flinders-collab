@@ -2,19 +2,33 @@ const { supabaseAdmin } = require('../services/supabase');
 
 const SITEMAP_INDEX = 'https://handbook.flinders.edu.au/sitemap.xml';
 const TOPIC_YEAR = 2026;
-const BATCH_SIZE = 3;
-const BATCH_DELAY_MS = 500;
+const CONCURRENCY = 5;
+const DELAY_BETWEEN_MS = 200;
+const FETCH_TIMEOUT_MS = 10000;
+
+/**
+ * Fetch with timeout to prevent hanging requests.
+ */
+async function fetchWithTimeout(url, timeoutMs = FETCH_TIMEOUT_MS) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const res = await fetch(url, { signal: controller.signal });
+    return res;
+  } finally {
+    clearTimeout(timer);
+  }
+}
 
 /**
  * Fetch and parse sitemap XML to extract topic URLs for the target year.
  */
 async function getTopicUrls() {
   console.log('[topic-crawler] Fetching sitemap index...');
-  const indexRes = await fetch(SITEMAP_INDEX);
+  const indexRes = await fetchWithTimeout(SITEMAP_INDEX, 15000);
   if (!indexRes.ok) throw new Error(`Sitemap index returned ${indexRes.status}`);
   const indexXml = await indexRes.text();
 
-  // Extract child sitemap URLs
   const sitemapUrls = [...indexXml.matchAll(/<loc>(https:\/\/handbook\.flinders\.edu\.au\/sitemap\/[^<]+)<\/loc>/g)]
     .map((m) => m[1]);
 
@@ -24,18 +38,16 @@ async function getTopicUrls() {
 
   for (const sitemapUrl of sitemapUrls) {
     try {
-      const res = await fetch(sitemapUrl);
+      const res = await fetchWithTimeout(sitemapUrl, 15000);
       if (!res.ok) continue;
       const xml = await res.text();
 
-      // Extract topic URLs matching our target year
       const pattern = new RegExp(`<loc>(https://handbook\\.flinders\\.edu\\.au/topics/${TOPIC_YEAR}/[^<]+)</loc>`, 'g');
-      const matches = [...xml.matchAll(pattern)];
-      for (const m of matches) {
+      for (const m of xml.matchAll(pattern)) {
         topicUrls.push(m[1]);
       }
     } catch (err) {
-      console.log(`[topic-crawler] Failed to fetch sitemap: ${sitemapUrl}`, err.message);
+      console.log(`[topic-crawler] Sitemap fetch failed: ${sitemapUrl}`, err.message);
     }
   }
 
@@ -48,11 +60,10 @@ async function getTopicUrls() {
  */
 async function fetchTopicData(url) {
   try {
-    const res = await fetch(url);
+    const res = await fetchWithTimeout(url);
     if (!res.ok) return null;
     const html = await res.text();
 
-    // Extract __NEXT_DATA__ JSON
     const nextDataMatch = html.match(/<script id="__NEXT_DATA__"[^>]*>([\s\S]*?)<\/script>/);
     if (!nextDataMatch) return null;
 
@@ -60,27 +71,17 @@ async function fetchTopicData(url) {
     const pageContent = nextData?.props?.pageProps?.pageContent;
     if (!pageContent) return null;
 
-    // Extract topic code from URL as fallback
     const urlCode = url.split('/').pop().toUpperCase();
 
-    // Parse offerings for semesters, campuses, delivery modes
     const offerings = pageContent.offering || [];
     const semesters = [...new Set(offerings.map((o) => o.teaching_period?.value).filter(Boolean))];
     const campuses = [...new Set(offerings.map((o) => o.location?.value).filter(Boolean))];
     const deliveryModes = [...new Set(offerings.map((o) => o.attendance_mode?.value).filter(Boolean))];
 
-    // Strip HTML from description
     const description = (pageContent.description || '')
-      .replace(/<[^>]*>/g, '')
-      .replace(/&\w+;/g, ' ')
-      .trim()
-      .slice(0, 2000);
-
-    // Strip HTML from prerequisites
+      .replace(/<[^>]*>/g, '').replace(/&\w+;/g, ' ').trim().slice(0, 2000);
     const prerequisites = (pageContent.pre_requisites || '')
-      .replace(/<[^>]*>/g, '')
-      .replace(/&\w+;/g, ' ')
-      .trim();
+      .replace(/<[^>]*>/g, '').replace(/&\w+;/g, ' ').trim();
 
     return {
       topic_code: (pageContent.code || urlCode).toUpperCase(),
@@ -99,80 +100,85 @@ async function fetchTopicData(url) {
       crawled_at: new Date().toISOString(),
     };
   } catch (err) {
-    console.log(`[topic-crawler] Failed to parse: ${url}`, err.message);
+    // Silently skip failed pages
     return null;
   }
 }
 
 /**
- * Process URLs in batches with delay to be respectful to the server.
- */
-async function processBatch(urls) {
-  const results = await Promise.all(urls.map((url) => fetchTopicData(url)));
-  return results.filter(Boolean);
-}
-
-/**
  * Run the full topic crawl: fetch sitemap → scrape each topic → upsert to DB.
+ * Each URL is processed one at a time with error isolation — a single failure never stops the crawl.
  */
 async function crawlFlindersTopics() {
   console.log('[topic-crawler] Starting topic crawl...');
   const start = Date.now();
 
+  let urls;
   try {
-    const urls = await getTopicUrls();
-    if (urls.length === 0) {
-      console.log('[topic-crawler] No topic URLs found, aborting');
-      return { upserted: 0, total: 0 };
-    }
+    urls = await getTopicUrls();
+  } catch (err) {
+    console.error('[topic-crawler] Failed to get URLs:', err.message);
+    return { error: err.message };
+  }
 
-    let upserted = 0;
-    let failed = 0;
+  if (urls.length === 0) {
+    console.log('[topic-crawler] No topic URLs found, aborting');
+    return { upserted: 0, total: 0 };
+  }
 
-    for (let i = 0; i < urls.length; i += BATCH_SIZE) {
-      const batch = urls.slice(i, i + BATCH_SIZE);
-      const topics = await processBatch(batch);
+  let upserted = 0;
+  let skipped = 0;
+  let failed = 0;
 
-      for (const topic of topics) {
+  // Process sequentially with small concurrency window
+  for (let i = 0; i < urls.length; i += CONCURRENCY) {
+    const batch = urls.slice(i, i + CONCURRENCY);
+
+    // Fetch all in batch concurrently, each with its own try-catch
+    const results = await Promise.allSettled(batch.map((url) => fetchTopicData(url)));
+
+    for (const result of results) {
+      if (result.status !== 'fulfilled' || !result.value) {
+        skipped++;
+        continue;
+      }
+
+      try {
         const { error } = await supabaseAdmin
           .from('flinders_topics')
-          .upsert(topic, { onConflict: 'topic_code,year' });
+          .upsert(result.value, { onConflict: 'topic_code,year' });
 
         if (error) {
           failed++;
-          if (failed <= 5) console.log(`[topic-crawler] Upsert error for ${topic.topic_code}:`, error.message);
         } else {
           upserted++;
         }
-      }
-
-      // Progress log every 100
-      if ((i + BATCH_SIZE) % 100 < BATCH_SIZE) {
-        console.log(`[topic-crawler] Progress: ${Math.min(i + BATCH_SIZE, urls.length)}/${urls.length} (${upserted} upserted)`);
-      }
-
-      // Rate limit: delay between batches
-      if (i + BATCH_SIZE < urls.length) {
-        await new Promise((r) => setTimeout(r, BATCH_DELAY_MS));
+      } catch {
+        failed++;
       }
     }
 
-    const duration = ((Date.now() - start) / 1000).toFixed(1);
-    console.log(`[topic-crawler] Done in ${duration}s: ${upserted} upserted, ${failed} failed out of ${urls.length} URLs`);
-    return { upserted, failed, total: urls.length, duration };
-  } catch (err) {
-    console.error('[topic-crawler] Crawl failed:', err.message);
-    return { error: err.message };
+    // Progress log every 200
+    const progress = Math.min(i + CONCURRENCY, urls.length);
+    if (progress % 200 < CONCURRENCY) {
+      console.log(`[topic-crawler] ${progress}/${urls.length} — ${upserted} ok, ${skipped} skip, ${failed} fail`);
+    }
+
+    // Small delay between batches
+    if (i + CONCURRENCY < urls.length) {
+      await new Promise((r) => setTimeout(r, DELAY_BETWEEN_MS));
+    }
   }
+
+  const duration = ((Date.now() - start) / 1000).toFixed(1);
+  console.log(`[topic-crawler] Done in ${duration}s: ${upserted} upserted, ${skipped} skipped, ${failed} failed / ${urls.length} total`);
+  return { upserted, skipped, failed, total: urls.length, duration };
 }
 
 /**
  * Start the topic crawler on a weekly schedule.
- * Only runs the full crawl if the DB has fewer than 500 topics (i.e., initial or incomplete crawl).
- * Otherwise, waits for the weekly interval.
  */
 function startTopicCrawler() {
-  // Check if we need an initial crawl (DB might already be populated from local run)
   setTimeout(async () => {
     try {
       const { count } = await supabaseAdmin
@@ -190,7 +196,6 @@ function startTopicCrawler() {
     }
   }, 30000);
 
-  // Re-crawl weekly (every 7 days)
   const WEEKLY_MS = 7 * 24 * 60 * 60 * 1000;
   setInterval(crawlFlindersTopics, WEEKLY_MS);
   console.log('[topic-crawler] Scheduled weekly crawl');
