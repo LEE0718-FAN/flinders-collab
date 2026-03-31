@@ -10,6 +10,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { avatarLarge } from '@/lib/avatar';
 import { apiGetMe } from '@/services/auth';
 import { FLINDERS_PROGRAMS } from '@/lib/flinders-programs';
+import AvatarCropDialog from '@/components/AvatarCropDialog';
 
 export default function ProfileDialog({ open, onOpenChange }) {
   const { user, updateUser } = useAuth();
@@ -21,6 +22,8 @@ export default function ProfileDialog({ open, onOpenChange }) {
   const [highlightIndex, setHighlightIndex] = useState(-1);
   const [avatarFile, setAvatarFile] = useState(null);
   const [avatarPreview, setAvatarPreview] = useState(null);
+  const [cropSource, setCropSource] = useState(null);
+  const [cropMeta, setCropMeta] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const fileInputRef = useRef(null);
@@ -107,9 +110,11 @@ export default function ProfileDialog({ open, onOpenChange }) {
     }
 
     setError('');
-    setAvatarFile(file);
     const reader = new FileReader();
-    reader.onload = (ev) => setAvatarPreview(ev.target.result);
+    reader.onload = (ev) => {
+      setCropSource(ev.target.result);
+      setCropMeta({ fileName: file.name, mimeType: file.type });
+    };
     reader.readAsDataURL(file);
   };
 
@@ -150,6 +155,8 @@ export default function ProfileDialog({ open, onOpenChange }) {
     if (!isOpen) {
       setAvatarFile(null);
       setAvatarPreview(null);
+      setCropSource(null);
+      setCropMeta(null);
       setError('');
       setShowSuggestions(false);
       setHighlightIndex(-1);
@@ -298,6 +305,24 @@ export default function ProfileDialog({ open, onOpenChange }) {
           </div>
         </div>
       </DialogContent>
+      <AvatarCropDialog
+        open={Boolean(cropSource)}
+        imageSrc={cropSource}
+        fileName={cropMeta?.fileName}
+        mimeType={cropMeta?.mimeType}
+        onOpenChange={(isOpen) => {
+          if (!isOpen) {
+            setCropSource(null);
+            setCropMeta(null);
+          }
+        }}
+        onConfirm={async (croppedFile, previewUrl) => {
+          setAvatarFile(croppedFile);
+          setAvatarPreview(previewUrl);
+          setCropSource(null);
+          setCropMeta(null);
+        }}
+      />
     </Dialog>
   );
 }

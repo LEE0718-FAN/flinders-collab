@@ -6,6 +6,7 @@ import { apiUrl } from '@/lib/api';
 import { getAuthHeaders, parseResponse } from '@/lib/api-headers';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -628,13 +629,12 @@ export default function TimetablePage() {
                       return (
                         <div key={m.id} className="px-2 py-2 rounded-lg hover:bg-white transition-colors">
                           <div className="flex items-center gap-2">
-                            {m.avatar_url ? (
-                              <img src={avatarThumb(m.avatar_url)} alt="" className="h-7 w-7 rounded-full object-cover shrink-0" />
-                            ) : (
-                              <div className="h-7 w-7 rounded-full bg-blue-100 flex items-center justify-center text-[11px] font-bold text-blue-600 shrink-0">
+                            <Avatar className="h-7 w-7 shrink-0">
+                              {m.avatar_url ? <AvatarImage src={avatarThumb(m.avatar_url)} alt={m.full_name || 'User'} className="object-cover" /> : null}
+                              <AvatarFallback className="bg-blue-100 text-[11px] font-bold text-blue-600">
                                 {(m.full_name || '?')[0].toUpperCase()}
-                              </div>
-                            )}
+                              </AvatarFallback>
+                            </Avatar>
                             <div className="min-w-0 flex-1">
                               <div className="text-xs font-medium text-slate-800 truncate">{m.full_name || 'User'}</div>
                               {m.major && <div className="text-[10px] text-slate-400 truncate">{m.major}</div>}

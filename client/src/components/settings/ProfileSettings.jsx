@@ -9,6 +9,7 @@ import { useToast } from '@/components/ui/toast';
 import { apiGetMe } from '@/services/auth';
 import { FLINDERS_PROGRAMS } from '@/lib/flinders-programs';
 import { avatarLarge } from '@/lib/avatar';
+import AvatarCropDialog from '@/components/AvatarCropDialog';
 
 export default function ProfileSettings() {
   const { user, updateUser } = useAuth();
@@ -19,6 +20,8 @@ export default function ProfileSettings() {
   const [major, setMajor] = useState(user?.user_metadata?.major || '');
   const [avatarFile, setAvatarFile] = useState(null);
   const [avatarPreview, setAvatarPreview] = useState(null);
+  const [cropSource, setCropSource] = useState(null);
+  const [cropMeta, setCropMeta] = useState(null);
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
   const fileInputRef = useRef(null);
@@ -132,9 +135,11 @@ export default function ProfileSettings() {
     }
 
     setErrors((prev) => ({ ...prev, avatar: undefined }));
-    setAvatarFile(file);
     const reader = new FileReader();
-    reader.onload = (ev) => setAvatarPreview(ev.target.result);
+    reader.onload = (ev) => {
+      setCropSource(ev.target.result);
+      setCropMeta({ fileName: file.name, mimeType: file.type });
+    };
     reader.readAsDataURL(file);
   };
 
@@ -158,6 +163,8 @@ export default function ProfileSettings() {
       await updateUser(formData);
       setAvatarFile(null);
       setAvatarPreview(null);
+      setCropSource(null);
+      setCropMeta(null);
       addToast('Profile updated successfully', 'success');
     } catch (err) {
       addToast(err.message || 'Failed to update profile', 'error');
@@ -167,12 +174,13 @@ export default function ProfileSettings() {
   };
 
   return (
-    <Card className="overflow-hidden rounded-2xl border-slate-200/80 shadow-sm">
-      <CardHeader className="pb-4">
-        <CardTitle className="text-lg">Profile</CardTitle>
-        <CardDescription>Update your personal information and avatar.</CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-5 px-4 pb-5 sm:px-6 sm:pb-6">
+    <>
+      <Card className="overflow-hidden rounded-2xl border-slate-200/80 shadow-sm">
+        <CardHeader className="pb-4">
+          <CardTitle className="text-lg">Profile</CardTitle>
+          <CardDescription>Update your personal information and avatar.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-5 px-4 pb-5 sm:px-6 sm:pb-6">
         {/* Avatar upload */}
         <div className="flex items-center gap-3 sm:gap-4">
           <div
@@ -294,11 +302,30 @@ export default function ProfileSettings() {
           )}
         </div>
 
-        <Button onClick={handleSave} disabled={loading} className="w-full sm:w-auto">
-          {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-          {loading ? 'Saving...' : 'Save Changes'}
-        </Button>
-      </CardContent>
-    </Card>
+          <Button onClick={handleSave} disabled={loading} className="w-full sm:w-auto">
+            {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            {loading ? 'Saving...' : 'Save Changes'}
+          </Button>
+        </CardContent>
+      </Card>
+      <AvatarCropDialog
+        open={Boolean(cropSource)}
+        imageSrc={cropSource}
+        fileName={cropMeta?.fileName}
+        mimeType={cropMeta?.mimeType}
+        onOpenChange={(isOpen) => {
+          if (!isOpen) {
+            setCropSource(null);
+            setCropMeta(null);
+          }
+        }}
+        onConfirm={async (croppedFile, previewUrl) => {
+          setAvatarFile(croppedFile);
+          setAvatarPreview(previewUrl);
+          setCropSource(null);
+          setCropMeta(null);
+        }}
+      />
+    </>
   );
 }
