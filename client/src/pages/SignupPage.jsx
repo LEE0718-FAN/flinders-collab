@@ -6,24 +6,18 @@ import ReportButton from '@/components/ReportButton';
 import { useAuth } from '@/hooks/useAuth';
 
 export default function SignupPage() {
-  const { signup } = useAuth();
+  const { completeSignup } = useAuth();
   const navigate = useNavigate();
 
-  const handleSignup = async (email, password, metadata) => {
-    const result = await signup(email, password, metadata);
-    navigate('/login', {
-      replace: true,
-      state: {
-        signupNotice: result?.message || 'Check your email to verify your account before signing in.',
-        signupEmail: email,
-      },
-    });
+  const handleComplete = async (data) => {
+    await completeSignup(data);
+    navigate('/dashboard', { replace: true });
   };
 
   return (
     <>
       <AuthLayout>
-        <SignupForm onSubmit={handleSignup} />
+        <SignupForm onComplete={handleComplete} />
       </AuthLayout>
       <ReportButton section="signup" floating />
     </>

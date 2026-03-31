@@ -10,6 +10,33 @@ export async function apiSignup(userData) {
   return parseResponse(res);
 }
 
+export async function apiSendVerification(email, accountType) {
+  const res = await fetch(apiUrl('/api/auth/verify-email/send'), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, account_type: accountType }),
+  });
+  return parseResponse(res);
+}
+
+export async function apiVerifyEmailCode(email, token) {
+  const res = await fetch(apiUrl('/api/auth/verify-email/confirm'), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, token }),
+  });
+  return parseResponse(res);
+}
+
+export async function apiCompleteSignup(data) {
+  const res = await fetch(apiUrl('/api/auth/complete-signup'), {
+    method: 'POST',
+    headers: getAuthHeaders(),
+    body: JSON.stringify(data),
+  });
+  return parseResponse(res);
+}
+
 export async function apiLogin(credentials) {
   const res = await fetch(apiUrl('/api/auth/login'), {
     method: 'POST',

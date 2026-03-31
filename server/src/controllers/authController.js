@@ -533,6 +533,171 @@ async function updateProfile(req, res, next) {
 }
 
 /**
+ * POST /auth/verify-email/send
+ * Send a verification OTP to the given email before completing signup.
+ */
+async function sendEmailVerification(req, res, next) {
+  try {
+    const email = String(req.body.email || '').trim().toLowerCase();
+    const accountType = req.body.account_type || 'flinders';
+
+    if (!email || !email.includes('@')) {
+      return res.status(400).json({ error: 'Valid email is required' });
+    }
+
+    if (accountType !== 'general' && !isUniversityEmail(email)) {
+      return res.status(400).json({ error: 'Must use a Flinders University email address' });
+    }
+
+    // Check if a fully-registered user with this email already exists
+    const { data: existingProfile } = await supabaseAdmin
+      .from('users')
+      .select('id')
+      .eq('email', email)
+      .maybeSingle();
+    if (existingProfile) {
+      return res.status(409).json({ error: 'An account with this email already exists. Please sign in instead.' });
+    }
+
+    const { error } = await supabasePublic.auth.signInWithOtp({
+      email,
+      options: { shouldCreateUser: true },
+    });
+
+    if (error) {
+      return res.status(400).json({ error: error.message });
+    }
+
+    res.json({ message: 'Verification code sent', email });
+  } catch (err) {
+    next(err);
+  }
+}
+
+/**
+ * POST /auth/verify-email/confirm
+ * Verify the OTP code and return a session.
+ */
+async function verifyEmailCode(req, res, next) {
+  try {
+    const email = String(req.body.email || '').trim().toLowerCase();
+    const token = String(req.body.token || '').trim();
+
+    if (!email || !token) {
+      return res.status(400).json({ error: 'Email and verification code are required' });
+    }
+
+    const { data, error } = await supabasePublic.auth.verifyOtp({
+      email,
+      token,
+      type: 'email',
+    });
+
+    if (error) {
+      return res.status(400).json({ error: 'Invalid or expired verification code. Please try again.' });
+    }
+
+    if (!data?.session) {
+      return res.status(400).json({ error: 'Verification failed. Please request a new code.' });
+    }
+
+    res.json({
+      message: 'Email verified',
+      session: {
+        access_token: data.session.access_token,
+        refresh_token: data.session.refresh_token,
+        expires_at: data.session.expires_at,
+      },
+      user: {
+        id: data.user.id,
+        email: data.user.email,
+      },
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
+/**
+ * POST /auth/complete-signup
+ * Complete signup after email verification — set password and profile.
+ * Requires authentication (session from OTP verification).
+ */
+async function completeSignup(req, res, next) {
+  try {
+    const userId = req.user.id;
+    const { password, full_name, student_id, major, university, account_type } = req.body;
+
+    const normalizedAccountType = account_type || 'flinders';
+    const normalizedMajor = String(major || '').trim() || null;
+    const normalizedUniversity = normalizedAccountType === 'general'
+      ? (String(university || '').trim() || null)
+      : 'Flinders University';
+
+    if (!password || password.length < 6) {
+      return res.status(400).json({ error: 'Password must be at least 6 characters' });
+    }
+
+    if (!String(full_name || '').trim()) {
+      return res.status(400).json({ error: 'Full name is required' });
+    }
+
+    if (!normalizedMajor) {
+      return res.status(400).json({ error: 'Major or degree program is required' });
+    }
+
+    if (normalizedAccountType === 'general' && !normalizedUniversity) {
+      return res.status(400).json({ error: 'University name is required' });
+    }
+
+    // Set password and metadata on the OTP-created user
+    const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(userId, {
+      password,
+      user_metadata: {
+        full_name: String(full_name).trim(),
+        student_id: normalizedAccountType === 'flinders' ? student_id : null,
+        major: normalizedMajor,
+        university: normalizedUniversity,
+        account_type: normalizedAccountType,
+      },
+    });
+
+    if (updateError) {
+      return res.status(500).json({ error: 'Failed to complete signup. Please try again.' });
+    }
+
+    // Create user profile
+    const { data: authUser } = await supabaseAdmin.auth.admin.getUserById(userId);
+    if (authUser?.user) {
+      await ensureUserProfile(authUser.user);
+    }
+
+    // Fetch profile for response
+    const { data: profile } = await supabaseAdmin
+      .from('users')
+      .select('is_admin, avatar_url, full_name, major, university')
+      .eq('id', userId)
+      .single();
+
+    res.json({
+      message: 'Signup complete',
+      user: {
+        id: userId,
+        email: req.user.email,
+        full_name: profile?.full_name || String(full_name).trim(),
+        avatar_url: profile?.avatar_url || null,
+        is_admin: profile?.is_admin || false,
+        account_type: normalizedAccountType,
+        major: profile?.major || normalizedMajor,
+        university: profile?.university || normalizedUniversity,
+      },
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
+/**
  * POST /auth/guest
  * Create a temporary tester account, sign in, and return session.
  */
@@ -660,6 +825,9 @@ module.exports = {
   getPreferences,
   updatePreferences,
   updateProfile,
+  sendEmailVerification,
+  verifyEmailCode,
+  completeSignup,
   guestLogin,
   guestCleanup,
 };

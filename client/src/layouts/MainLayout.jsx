@@ -43,7 +43,7 @@ function getRoomPalette(room) {
   return roomPalettes[Math.abs(hash) % roomPalettes.length];
 }
 
-function NavItem({ to, isActive, icon: Icon, label, palette, badgeCount = 0, badgeLabel = '', onIntent }) {
+function NavItem({ to, isActive, icon: Icon, label, palette, badgeCount = 0, badgeLabel = '', onIntent, tourId }) {
   const roomStyle = palette
     ? isActive
       ? { background: palette.icon + '22' }
@@ -56,6 +56,7 @@ function NavItem({ to, isActive, icon: Icon, label, palette, badgeCount = 0, bad
   return (
     <Link to={to}>
       <button
+        data-tour={tourId}
         onMouseEnter={onIntent}
         onFocus={onIntent}
         onTouchStart={onIntent}
@@ -114,6 +115,7 @@ function SidebarContent({ rooms, location, isAdmin, roomBadgeCounts = {}, user, 
         isActive={location.pathname === '/dashboard'}
         icon={LayoutDashboard}
         label="Room Hub"
+        tourId="nav-room-hub"
         onIntent={() => preloadRoute('/dashboard')}
       />
       <NavItem
@@ -121,6 +123,7 @@ function SidebarContent({ rooms, location, isAdmin, roomBadgeCounts = {}, user, 
         isActive={location.pathname === '/deadlines'}
         icon={CalendarClock}
         label="Deadlines"
+        tourId="nav-deadlines"
         badgeCount={deadlineCount}
         onIntent={() => preloadRoute('/deadlines')}
       />
@@ -129,6 +132,7 @@ function SidebarContent({ rooms, location, isAdmin, roomBadgeCounts = {}, user, 
         isActive={location.pathname === '/board'}
         icon={MessageSquare}
         label="Flinders Social"
+        tourId="nav-social"
         onIntent={() => preloadRoute('/board')}
       />
       {(user?.account_type || user?.user_metadata?.account_type || 'flinders') !== 'general' && (
@@ -137,6 +141,7 @@ function SidebarContent({ rooms, location, isAdmin, roomBadgeCounts = {}, user, 
           isActive={location.pathname === '/flinders-life'}
           icon={GraduationCap}
           label="Flinders Life"
+          tourId="nav-life"
           onIntent={() => preloadRoute('/flinders-life')}
         />
       )}

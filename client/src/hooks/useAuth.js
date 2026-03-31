@@ -1,6 +1,6 @@
 import { useEffect, useCallback } from 'react';
 import { useAuthStore } from '@/store/authStore';
-import { apiSignup, apiLogin, apiLogout, apiUpdateProfile, apiGuestLogin, apiGuestCleanup, apiRequestPasswordReset, apiRefreshSession, apiGetMe } from '@/services/auth';
+import { apiSignup, apiLogin, apiLogout, apiUpdateProfile, apiGuestLogin, apiGuestCleanup, apiRequestPasswordReset, apiRefreshSession, apiGetMe, apiCompleteSignup } from '@/services/auth';
 import { saveSession, loadSession, loadStoredSession, clearSession, isSessionExpired } from '@/lib/auth-token';
 import { subscribeToPush } from '@/lib/push';
 import { supabase } from '@/lib/supabase';
@@ -238,6 +238,62 @@ export function useAuth() {
     }
   }, []);
 
+  const completeSignup = useCallback(async ({ session: otpSession, password, full_name, student_id, major, university, account_type }) => {
+    // Temporarily store the OTP session so apiCompleteSignup can use auth headers
+    const tempSession = {
+      access_token: otpSession.access_token,
+      refresh_token: otpSession.refresh_token,
+      expires_at: otpSession.expires_at,
+      user: { id: 'pending' },
+    };
+    saveSession(tempSession);
+
+    try {
+      const result = await apiCompleteSignup({
+        password,
+        full_name,
+        student_id,
+        major,
+        university,
+        account_type,
+      });
+
+      const sessionData = {
+        access_token: otpSession.access_token,
+        refresh_token: otpSession.refresh_token,
+        expires_at: otpSession.expires_at,
+        account_type: account_type || 'flinders',
+        is_tester: false,
+        user: {
+          id: result.user.id,
+          email: result.user.email,
+          is_admin: result.user.is_admin || false,
+          is_tester: false,
+          account_type: account_type || 'flinders',
+          user_metadata: {
+            name: result.user.full_name,
+            full_name: result.user.full_name,
+            avatar_url: result.user.avatar_url || null,
+            account_type: account_type || 'flinders',
+            student_id: student_id || null,
+            major: result.user.major || major || null,
+            university: result.user.university || university || null,
+          },
+        },
+      };
+
+      saveSession(sessionData);
+      setSession(sessionData);
+      setUser(sessionData.user);
+      subscribeToPush().catch(() => {});
+
+      return sessionData;
+    } catch (err) {
+      clearSession();
+      throw err;
+    }
+  }, [setSession, setUser]);
+
   const guestLogin = useCallback(async () => {
     const result = await apiGuestLogin();
     const sessionData = buildSessionData(result, { is_tester: true, account_type: 'flinders' });
@@ -275,5 +331,5 @@ export function useAuth() {
     }
   }, [clearAuth, guestCleanup]);
 
-  return { user, session, isLoading, login, signup, logout, updateUser, requestPasswordReset, guestLogin, guestCleanup };
+  return { user, session, isLoading, login, signup, completeSignup, logout, updateUser, requestPasswordReset, guestLogin, guestCleanup };
 }

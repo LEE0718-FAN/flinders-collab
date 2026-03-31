@@ -36,8 +36,17 @@ const signupLimiter = rateLimit({
   message: { error: 'Too many signup attempts. Please try again in 15 minutes.' },
 });
 
-// POST /auth/signup - Register a new user
+// POST /auth/signup - Register a new user (legacy)
 router.post('/signup', signupLimiter, signupValidation, validate, authController.signup);
+
+// POST /auth/verify-email/send - Send email verification OTP
+router.post('/verify-email/send', signupLimiter, authController.sendEmailVerification);
+
+// POST /auth/verify-email/confirm - Verify OTP code
+router.post('/verify-email/confirm', signupLimiter, authController.verifyEmailCode);
+
+// POST /auth/complete-signup - Complete signup after email verification
+router.post('/complete-signup', authenticate, authController.completeSignup);
 
 // POST /auth/login - Sign in
 router.post('/login', loginLimiter, loginValidation, validate, authController.login);

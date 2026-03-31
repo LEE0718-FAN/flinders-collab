@@ -174,8 +174,17 @@ export default function LoginForm({
         </div>
 
         {success && (
-          <div className="rounded-xl border border-emerald-100 bg-emerald-50 px-4 py-3">
-            <p className="break-words text-sm text-emerald-700">{success}</p>
+          <div className="rounded-2xl border-2 border-amber-300 bg-gradient-to-br from-amber-50 to-orange-50 px-5 py-5 text-center shadow-md animate-in fade-in slide-in-from-top-2 duration-300">
+            <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-amber-100">
+              <Mail className="h-6 w-6 text-amber-600" />
+            </div>
+            <p className="text-[16px] font-extrabold text-amber-900">Almost done! Check your email</p>
+            <p className="mt-2 text-[13px] leading-relaxed text-amber-800/80">
+              {success}
+            </p>
+            <p className="mt-2.5 text-[12px] font-semibold text-amber-700/70">
+              Don't forget to check your spam folder
+            </p>
           </div>
         )}
 
@@ -203,21 +212,18 @@ export default function LoginForm({
             <span className="w-full border-t border-border/40" />
           </div>
           <div className="relative flex justify-center text-xs uppercase">
-            <span className="bg-background px-2 text-muted-foreground/50">or</span>
+            <span className="bg-background px-2 text-muted-foreground/50">New here?</span>
           </div>
         </div>
 
-        <Button
-          type="button"
-          variant="outline"
-          className="w-full h-12 rounded-xl border-2 border-blue-600/30 text-blue-600 hover:bg-blue-50 hover:border-blue-600/50 font-semibold text-[15px]"
-          asChild
+        <Link
+          to="/signup"
+          className="group flex w-full items-center justify-center gap-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 px-4 py-3.5 font-semibold text-[15px] text-white shadow-lg shadow-emerald-500/20 transition-all hover:from-emerald-600 hover:to-teal-600 hover:shadow-emerald-500/30 active:scale-[0.98]"
         >
-          <Link to="/signup">
-            <UserPlus className="mr-2 h-4 w-4" />
-            Create an Account
-          </Link>
-        </Button>
+          <UserPlus className="h-5 w-5" />
+          Create an Account
+          <span className="ml-0.5 text-white/70 transition-transform group-hover:translate-x-0.5">&rarr;</span>
+        </Link>
 
         {testerModeEnabled && (
           <>
