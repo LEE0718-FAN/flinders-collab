@@ -105,13 +105,28 @@ if (config.nodeEnv === 'production') {
       immutable: true,
     })
   );
+  app.get('/sw.js', (req, res) => {
+    res.set('Cache-Control', 'no-cache, no-store, must-revalidate');
+    res.set('Service-Worker-Allowed', '/');
+    res.sendFile(path.join(clientDist, 'sw.js'));
+  });
+  app.get('/manifest.json', (req, res) => {
+    res.set('Cache-Control', 'no-cache, no-store, must-revalidate');
+    res.sendFile(path.join(clientDist, 'manifest.json'));
+  });
   app.use(
     express.static(clientDist, {
       maxAge: '1h',
+      setHeaders: (res, filePath) => {
+        if (filePath.endsWith('index.html')) {
+          res.set('Cache-Control', 'no-cache, no-store, must-revalidate');
+        }
+      },
     })
   );
   // SPA fallback — any non-API route serves index.html
   app.get(/^\/(?!api).*/, (req, res) => {
+    res.set('Cache-Control', 'no-cache, no-store, must-revalidate');
     res.sendFile(path.join(clientDist, 'index.html'));
   });
 }

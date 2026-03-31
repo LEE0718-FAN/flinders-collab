@@ -181,13 +181,34 @@ async function getRooms(req, res, next) {
       }
     }
 
+    const topicLinkedRoomIds = new Set();
+    if (roomIds.length > 0) {
+      const { data: topicRoomRows } = await supabaseAdmin
+        .from('topic_rooms')
+        .select('room_id')
+        .in('room_id', roomIds);
+      (topicRoomRows || []).forEach((row) => {
+        if (row?.room_id) topicLinkedRoomIds.add(row.room_id);
+      });
+    }
+
     const rooms = data.map((entry) => ({
       ...entry.rooms,
       my_role: entry.role,
       joined_at: entry.joined_at,
       last_visited_at: entry.last_visited_at || null,
       member_count: countMap[entry.rooms.id] || 0,
-    }));
+    })).filter((room) => {
+      const isTopicRoom = room.room_type === 'topic'
+        || topicLinkedRoomIds.has(room.id)
+        || (
+          room.owner_id == null
+          && typeof room.description === 'string'
+          && room.description.startsWith('Auto-created chat room for ')
+        );
+
+      return !isTopicRoom;
+    });
 
     res.json(rooms);
   } catch (err) {
