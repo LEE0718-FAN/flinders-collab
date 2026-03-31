@@ -156,11 +156,14 @@ function mapFriendRequestRow(row, currentUserId) {
   const otherUser = row.requester_id === currentUserId ? target : requester;
   const direction = row.requester_id === currentUserId ? 'outgoing' : 'incoming';
 
+  const locationVisibleTo = Array.isArray(row.location_visible_to) ? row.location_visible_to : [];
+
   return {
     id: row.id,
     status: row.status,
     message: normalizeFriendMessage(row.message),
     direct_room_id: row.direct_room_id || null,
+    location_shared: locationVisibleTo.includes(currentUserId),
     created_at: row.created_at,
     responded_at: row.responded_at || null,
     direction,
@@ -877,6 +880,7 @@ router.get('/flinders/friend-requests', async (req, res) => {
         message,
         status,
         direct_room_id,
+        location_visible_to,
         created_at,
         responded_at,
         requester:requester_id (
@@ -897,6 +901,7 @@ router.get('/flinders/friend-requests', async (req, res) => {
         )
       `)
       .or(`requester_id.eq.${userId},target_id.eq.${userId}`)
+      .not('status', 'eq', 'blocked')
       .order('created_at', { ascending: false });
 
     if (error) {
@@ -1090,6 +1095,111 @@ router.post('/flinders/friend-requests/:requestId/respond', async (req, res) => 
     res.json(mapFriendRequestRow(data, userId));
   } catch (err) {
     res.status(500).json({ error: 'Failed to respond to friend request' });
+  }
+});
+
+// DELETE /flinders/friend-requests/:requestId — Remove/unfriend
+router.delete('/flinders/friend-requests/:requestId', async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const requestId = String(req.params.requestId || '').trim();
+
+    const { data: row } = await supabaseAdmin
+      .from('flinders_friend_requests')
+      .select('id, requester_id, target_id, direct_room_id')
+      .eq('id', requestId)
+      .maybeSingle();
+
+    if (!row) return res.status(404).json({ error: 'Not found' });
+    if (row.requester_id !== userId && row.target_id !== userId) {
+      return res.status(403).json({ error: 'Not your friend request' });
+    }
+
+    // Delete the friend request
+    await supabaseAdmin.from('flinders_friend_requests').delete().eq('id', requestId);
+
+    // Optionally clean up the DM room
+    if (row.direct_room_id) {
+      await supabaseAdmin.from('room_members').delete().eq('room_id', row.direct_room_id);
+      await supabaseAdmin.from('rooms').delete().eq('id', row.direct_room_id);
+    }
+
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to remove friend' });
+  }
+});
+
+// POST /flinders/friend-requests/:requestId/block — Block a user
+router.post('/flinders/friend-requests/:requestId/block', async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const requestId = String(req.params.requestId || '').trim();
+
+    const { data: row } = await supabaseAdmin
+      .from('flinders_friend_requests')
+      .select('id, requester_id, target_id, direct_room_id')
+      .eq('id', requestId)
+      .maybeSingle();
+
+    if (!row) return res.status(404).json({ error: 'Not found' });
+    if (row.requester_id !== userId && row.target_id !== userId) {
+      return res.status(403).json({ error: 'Not your friend request' });
+    }
+
+    // Update status to blocked
+    await supabaseAdmin
+      .from('flinders_friend_requests')
+      .update({ status: 'blocked', responded_at: new Date().toISOString() })
+      .eq('id', requestId);
+
+    // Clean up DM room if exists
+    if (row.direct_room_id) {
+      await supabaseAdmin.from('room_members').delete().eq('room_id', row.direct_room_id);
+      await supabaseAdmin.from('rooms').delete().eq('id', row.direct_room_id);
+    }
+
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to block user' });
+  }
+});
+
+// PATCH /flinders/friend-requests/:requestId/location-visibility — Toggle location sharing
+router.patch('/flinders/friend-requests/:requestId/location-visibility', async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const requestId = String(req.params.requestId || '').trim();
+    const { visible } = req.body;
+
+    const { data: row } = await supabaseAdmin
+      .from('flinders_friend_requests')
+      .select('id, requester_id, target_id, location_visible_to')
+      .eq('id', requestId)
+      .maybeSingle();
+
+    if (!row) return res.status(404).json({ error: 'Not found' });
+    if (row.requester_id !== userId && row.target_id !== userId) {
+      return res.status(403).json({ error: 'Not your friend request' });
+    }
+
+    // location_visible_to is a JSONB array of user IDs who can see the other's location
+    const currentList = Array.isArray(row.location_visible_to) ? row.location_visible_to : [];
+    let nextList;
+    if (visible) {
+      nextList = currentList.includes(userId) ? currentList : [...currentList, userId];
+    } else {
+      nextList = currentList.filter((id) => id !== userId);
+    }
+
+    await supabaseAdmin
+      .from('flinders_friend_requests')
+      .update({ location_visible_to: nextList })
+      .eq('id', requestId);
+
+    res.json({ success: true, location_visible_to: nextList });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to update location visibility' });
   }
 });
 

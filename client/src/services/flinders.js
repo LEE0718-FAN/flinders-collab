@@ -70,3 +70,31 @@ export async function respondToFriendRequest(requestId, action) {
   });
   return parseResponse(res);
 }
+
+export async function removeFriend(requestId) {
+  const headers = getAuthHeaders();
+  const res = await fetch(apiUrl(`/api/flinders/friend-requests/${requestId}`), {
+    method: 'DELETE',
+    headers,
+  });
+  return parseResponse(res);
+}
+
+export async function blockFriend(requestId) {
+  const headers = getAuthHeaders();
+  const res = await fetch(apiUrl(`/api/flinders/friend-requests/${requestId}/block`), {
+    method: 'POST',
+    headers,
+  });
+  return parseResponse(res);
+}
+
+export async function toggleFriendLocationVisibility(requestId, visible) {
+  const headers = getAuthHeaders();
+  const res = await fetch(apiUrl(`/api/flinders/friend-requests/${requestId}/location-visibility`), {
+    method: 'PATCH',
+    headers,
+    body: JSON.stringify({ visible }),
+  });
+  return parseResponse(res);
+}

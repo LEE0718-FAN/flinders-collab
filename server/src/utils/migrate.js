@@ -471,6 +471,7 @@ ALTER TABLE flinders_campus_presence ADD CONSTRAINT flinders_campus_presence_cam
 ALTER TABLE flinders_campus_presence DROP CONSTRAINT IF EXISTS flinders_campus_presence_activity_status_check;
 ALTER TABLE flinders_campus_presence ADD CONSTRAINT flinders_campus_presence_activity_status_check CHECK (activity_status IN ('study', 'in_class', 'meal', 'coffee', 'team_up', 'quiet', 'break'));
 ALTER TABLE flinders_friend_requests ADD COLUMN IF NOT EXISTS pair_key TEXT;
+ALTER TABLE flinders_friend_requests ADD COLUMN IF NOT EXISTS location_visible_to JSONB NOT NULL DEFAULT '[]'::jsonb;
 UPDATE flinders_friend_requests
 SET pair_key = LEAST(requester_id::text, target_id::text) || ':' || GREATEST(requester_id::text, target_id::text)
 WHERE pair_key IS NULL;
