@@ -62,3 +62,11 @@ export async function ensureRoomMember(roomId) {
   });
   return parseResponse(res);
 }
+
+export async function openTopicChat(topicId) {
+  const res = await fetch(apiUrl(`/api/timetable/topic/${topicId}/open-chat`), {
+    method: 'POST',
+    headers: getAuthHeaders(),
+  });
+  return parseResponse(res);
+}

@@ -472,6 +472,112 @@ async function ensureTopicRoomMember(req, res, next) {
   }
 }
 
+/**
+ * POST /timetable/topic/:topicId/open-chat
+ * Resolve a topic to its canonical chat room, ensure the user is joined, and return members.
+ */
+async function openTopicChat(req, res, next) {
+  try {
+    const userId = req.user.id;
+    const { topicId } = req.params;
+
+    if (!topicId) {
+      return res.status(400).json({ error: 'topicId is required' });
+    }
+
+    const { data: hasTopicRows, error: hasTopicError } = await supabaseAdmin
+      .from('user_timetable')
+      .select('room_id')
+      .eq('user_id', userId)
+      .eq('topic_id', topicId)
+      .order('added_at', { ascending: true })
+      .limit(1);
+
+    if (hasTopicError) {
+      console.error('open-topic-chat timetable lookup error:', hasTopicError.message);
+      return res.status(500).json({ error: 'Failed to verify topic membership' });
+    }
+
+    const timetableRow = hasTopicRows?.[0] || null;
+    if (!timetableRow) {
+      return res.status(403).json({ error: 'Topic not in your timetable' });
+    }
+
+    const { data: canonicalRoomRows, error: canonicalRoomError } = await supabaseAdmin
+      .from('topic_rooms')
+      .select('room_id')
+      .eq('topic_id', topicId)
+      .order('created_at', { ascending: true })
+      .limit(1);
+
+    if (canonicalRoomError) {
+      console.error('open-topic-chat canonical room lookup error:', canonicalRoomError.message);
+      return res.status(500).json({ error: 'Failed to resolve topic room' });
+    }
+
+    const canonicalRoomId = canonicalRoomRows?.[0]?.room_id || timetableRow.room_id || null;
+    if (!canonicalRoomId) {
+      return res.status(404).json({ error: 'Topic room not found' });
+    }
+
+    if (timetableRow.room_id !== canonicalRoomId) {
+      await supabaseAdmin
+        .from('user_timetable')
+        .update({ room_id: canonicalRoomId })
+        .eq('user_id', userId)
+        .eq('topic_id', topicId);
+    }
+
+    const { data: existingMemberRows, error: memberLookupError } = await supabaseAdmin
+      .from('room_members')
+      .select('id')
+      .eq('room_id', canonicalRoomId)
+      .eq('user_id', userId)
+      .limit(1);
+
+    if (memberLookupError) {
+      console.error('open-topic-chat member lookup error:', memberLookupError.message);
+      return res.status(500).json({ error: 'Failed to verify chat membership' });
+    }
+
+    if (!existingMemberRows?.[0]) {
+      const { error: joinError } = await supabaseAdmin
+        .from('room_members')
+        .insert({ room_id: canonicalRoomId, user_id: userId, role: 'member' });
+
+      if (joinError) {
+        console.error('open-topic-chat join error:', joinError.message);
+        return res.status(500).json({ error: 'Failed to join topic chat' });
+      }
+    }
+
+    const { data: members, error: membersError } = await supabaseAdmin
+      .from('room_members')
+      .select(`
+        id, role, joined_at,
+        users (id, full_name, university_email, avatar_url, major)
+      `)
+      .eq('room_id', canonicalRoomId)
+      .order('joined_at', { ascending: true });
+
+    if (membersError) {
+      console.error('open-topic-chat members query error:', membersError.message);
+      return res.status(500).json({ error: 'Failed to load topic chat members' });
+    }
+
+    const result = (members || []).map((entry) => ({
+      ...(entry.users || {}),
+      role: entry.role,
+      joined_at: entry.joined_at,
+    }));
+
+    res.json({ canonicalRoomId, members: result });
+  } catch (err) {
+    console.error('open-topic-chat fatal error:', err.message);
+    next(err);
+  }
+}
+
 function generateInviteCode() {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
   let code = '';
@@ -528,4 +634,5 @@ module.exports = {
   getTopicMembers,
   getPopularTimes,
   ensureTopicRoomMember,
+  openTopicChat,
 };

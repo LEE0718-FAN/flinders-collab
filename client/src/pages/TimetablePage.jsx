@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useRef, lazy, Suspense } from 
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
-import { searchTopics, getMyTimetable, addToTimetable, removeFromTimetable, removeTopic, getPopularTimes, ensureRoomMember } from '@/services/timetable';
+import { searchTopics, getMyTimetable, addToTimetable, removeFromTimetable, removeTopic, getPopularTimes, ensureRoomMember, openTopicChat } from '@/services/timetable';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -308,14 +308,16 @@ export default function TimetablePage() {
 
     if (!initialRoomId) return;
 
-    setChatPopup({ roomId: initialRoomId, topicCode: topicCode || '', topicTitle: topicTitle || '' });
+    setChatPopup({ roomId: initialRoomId, topicId, topicCode: topicCode || '', topicTitle: topicTitle || '' });
     setChatOpening(true);
     setChatOpenError('');
     setShowMembers(false);
     setChatMembers([]);
 
     try {
-      const data = await ensureRoomMember(initialRoomId);
+      const data = topicId
+        ? await openTopicChat(topicId)
+        : await ensureRoomMember(initialRoomId);
       const members = data?.members || data || [];
       const canonicalRoomId = data?.canonicalRoomId || initialRoomId;
       setChatMembers(Array.isArray(members) ? members : []);
@@ -671,7 +673,7 @@ export default function TimetablePage() {
                       <p className="text-sm font-semibold text-slate-700">Unable to open chat</p>
                       <p className="mt-1 text-xs leading-relaxed text-slate-500">{chatOpenError}</p>
                       <Button
-                        onClick={() => openChat(chatPopup.roomId, chatPopup.topicCode, chatPopup.topicTitle)}
+                        onClick={() => openChat(chatPopup.roomId, chatPopup.topicCode, chatPopup.topicTitle, chatPopup.topicId)}
                         className="mt-4 h-9 rounded-full bg-blue-600 px-4 text-xs text-white hover:bg-blue-700"
                       >
                         Try again

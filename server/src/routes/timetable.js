@@ -26,6 +26,9 @@ router.get('/topic/:topicId/members', timetableController.getTopicMembers);
 // Get popular times for a topic (from other students)
 router.get('/topic/:topicId/popular-times', timetableController.getPopularTimes);
 
+// Resolve a topic to its canonical chat room and ensure membership
+router.post('/topic/:topicId/open-chat', timetableController.openTopicChat);
+
 // Ensure membership in a topic room + get members
 router.post('/room/:roomId/ensure-member', timetableController.ensureTopicRoomMember);
 
