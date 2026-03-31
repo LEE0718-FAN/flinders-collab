@@ -99,18 +99,20 @@ async function requireRoomMember(req, res, next) {
       .select('id, role')
       .eq('room_id', roomId)
       .eq('user_id', userId)
-      .single();
+      .limit(1);
 
-    if (error || !data) {
+    if (error || !data?.[0]) {
       memberCache.delete(cacheKey);
       return res.status(403).json({
         error: 'You are not a member of this room',
       });
     }
 
+    const membership = data[0];
+
     // Cache the result
-    memberCache.set(cacheKey, { role: data.role, ts: Date.now() });
-    req.memberRole = data.role;
+    memberCache.set(cacheKey, { role: membership.role, ts: Date.now() });
+    req.memberRole = membership.role;
     next();
   } catch (err) {
     console.error('Room member check error:', err.message);

@@ -1122,7 +1122,7 @@ function MonitoringTab() {
                   { label: 'Email OTP Verification', ok: true, desc: 'Email ownership verified before account creation' },
                   { label: 'JWT Token Validation', ok: true, desc: 'Every API request validated via signed JWT' },
                   { label: 'Service Role Key Server-Only', ok: true, desc: 'Admin key never exposed to client' },
-                  { label: 'Session Auto-Sync', ok: true, desc: 'Profile syncs on focus + 15s intervals' },
+                  { label: 'Session Auto-Sync', ok: true, desc: 'Profile syncs on focus + 5s intervals' },
                 ].map((item) => (
                   <div key={item.label} className="flex items-start gap-2.5 py-2 border-b border-slate-100 last:border-0">
                     {item.ok ? <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0 mt-0.5" /> : <XCircle className="h-4 w-4 text-red-500 shrink-0 mt-0.5" />}

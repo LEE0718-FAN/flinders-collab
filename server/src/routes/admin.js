@@ -163,7 +163,7 @@ router.get('/crawlers', async (req, res) => {
         },
         topics: {
           label: 'Timetable Buddy Topics',
-          schedule: `Auto refresh every 24 hours (${currentYear})`,
+          schedule: `Auto refresh every 7 days (${currentYear})`,
           source: 'Flinders handbook sitemap + topic pages',
           latestCrawledAt: latestTopicAt,
           latestItemTitle: latestTopic?.topic_code ? `${latestTopic.topic_code} — ${latestTopic.title || ''}` : null,

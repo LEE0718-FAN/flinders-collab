@@ -13,6 +13,7 @@ import { supabase } from '@/lib/supabase';
 import { avatarThumb, avatarMedium } from '@/lib/avatar';
 import OnboardingTour from '@/components/OnboardingTour';
 import PageTour from '@/components/PageTour';
+import { useToast } from '@/components/ui/toast';
 import { format, parseISO, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isToday, getDay, addMonths, subMonths, isWithinInterval } from 'date-fns';
 import { useAuth } from '@/hooks/useAuth';
 import { useNavigate } from 'react-router-dom';
@@ -491,6 +492,7 @@ function EmptyState({ icon: Icon, message }) {
 
 export function FlinapPanel({ currentUserId }) {
   const navigate = useNavigate();
+  const { addToast } = useToast();
   const [presenceData, setPresenceData] = useState({
     campuses: { city: [], bedford: [], tonsley: [] },
     my_presence: null,
@@ -813,6 +815,16 @@ export function FlinapPanel({ currentUserId }) {
       }
     };
   }, [clearOutsideCampusTimeout, fetchPresence, presenceData.my_presence, selectedActivity, syncPresence]);
+
+  useEffect(() => {
+    if (!statusMessage) return;
+    addToast({ message: statusMessage, type: 'success', key: `flinap-status-${statusMessage}` });
+  }, [addToast, statusMessage]);
+
+  useEffect(() => {
+    if (!error) return;
+    addToast({ message: error, type: 'error', key: `flinap-error-${error}` });
+  }, [addToast, error]);
 
   const totalVisible = Object.values(presenceData.campuses || {}).reduce((sum, list) => sum + list.length, 0);
   const selectedCampusMeta = getCampusMeta(selectedCampus);

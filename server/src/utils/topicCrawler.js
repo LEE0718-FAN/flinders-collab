@@ -1,10 +1,11 @@
 const { supabaseAdmin } = require('../services/supabase');
 
 const SITEMAP_INDEX = 'https://handbook.flinders.edu.au/sitemap.xml';
-const TOPIC_YEAR = 2026;
+const TOPIC_YEAR = Number(process.env.TOPIC_CRAWL_YEAR || new Date().getFullYear());
 const CONCURRENCY = 5;
 const DELAY_BETWEEN_MS = 200;
 const FETCH_TIMEOUT_MS = 10000;
+let isTopicCrawlRunning = false;
 
 /**
  * Fetch with timeout to prevent hanging requests.
@@ -119,69 +120,79 @@ async function fetchTopicData(url) {
  * Each URL is processed one at a time with error isolation — a single failure never stops the crawl.
  */
 async function crawlFlindersTopics() {
-  console.log('[topic-crawler] Starting topic crawl...');
-  const start = Date.now();
+  if (isTopicCrawlRunning) {
+    console.log('[topic-crawler] Previous crawl still running, skipping this cycle');
+    return { skipped: true };
+  }
 
-  let urls;
+  isTopicCrawlRunning = true;
   try {
-    urls = await getTopicUrls();
-  } catch (err) {
-    console.error('[topic-crawler] Failed to get URLs:', err.message);
-    return { error: err.message };
-  }
+    console.log('[topic-crawler] Starting topic crawl...');
+    const start = Date.now();
 
-  if (urls.length === 0) {
-    console.log('[topic-crawler] No topic URLs found, aborting');
-    return { upserted: 0, total: 0 };
-  }
+    let urls;
+    try {
+      urls = await getTopicUrls();
+    } catch (err) {
+      console.error('[topic-crawler] Failed to get URLs:', err.message);
+      return { error: err.message };
+    }
 
-  let upserted = 0;
-  let skipped = 0;
-  let failed = 0;
+    if (urls.length === 0) {
+      console.log('[topic-crawler] No topic URLs found, aborting');
+      return { upserted: 0, total: 0 };
+    }
 
-  // Process sequentially with small concurrency window
-  for (let i = 0; i < urls.length; i += CONCURRENCY) {
-    const batch = urls.slice(i, i + CONCURRENCY);
+    let upserted = 0;
+    let skipped = 0;
+    let failed = 0;
 
-    // Fetch all in batch concurrently, each with its own try-catch
-    const results = await Promise.allSettled(batch.map((url) => fetchTopicData(url)));
+    // Process sequentially with small concurrency window
+    for (let i = 0; i < urls.length; i += CONCURRENCY) {
+      const batch = urls.slice(i, i + CONCURRENCY);
 
-    for (const result of results) {
-      if (result.status !== 'fulfilled' || !result.value) {
-        skipped++;
-        continue;
-      }
+      // Fetch all in batch concurrently, each with its own try-catch
+      const results = await Promise.allSettled(batch.map((url) => fetchTopicData(url)));
 
-      try {
-        const { error } = await supabaseAdmin
-          .from('flinders_topics')
-          .upsert(result.value, { onConflict: 'topic_code,year' });
-
-        if (error) {
-          failed++;
-        } else {
-          upserted++;
+      for (const result of results) {
+        if (result.status !== 'fulfilled' || !result.value) {
+          skipped++;
+          continue;
         }
-      } catch {
-        failed++;
+
+        try {
+          const { error } = await supabaseAdmin
+            .from('flinders_topics')
+            .upsert(result.value, { onConflict: 'topic_code,year' });
+
+          if (error) {
+            failed++;
+          } else {
+            upserted++;
+          }
+        } catch {
+          failed++;
+        }
+      }
+
+      // Progress log every 200
+      const progress = Math.min(i + CONCURRENCY, urls.length);
+      if (progress % 200 < CONCURRENCY) {
+        console.log(`[topic-crawler] ${progress}/${urls.length} — ${upserted} ok, ${skipped} skip, ${failed} fail`);
+      }
+
+      // Small delay between batches
+      if (i + CONCURRENCY < urls.length) {
+        await new Promise((r) => setTimeout(r, DELAY_BETWEEN_MS));
       }
     }
 
-    // Progress log every 200
-    const progress = Math.min(i + CONCURRENCY, urls.length);
-    if (progress % 200 < CONCURRENCY) {
-      console.log(`[topic-crawler] ${progress}/${urls.length} — ${upserted} ok, ${skipped} skip, ${failed} fail`);
-    }
-
-    // Small delay between batches
-    if (i + CONCURRENCY < urls.length) {
-      await new Promise((r) => setTimeout(r, DELAY_BETWEEN_MS));
-    }
+    const duration = ((Date.now() - start) / 1000).toFixed(1);
+    console.log(`[topic-crawler] Done in ${duration}s: ${upserted} upserted, ${skipped} skipped, ${failed} failed / ${urls.length} total`);
+    return { upserted, skipped, failed, total: urls.length, duration };
+  } finally {
+    isTopicCrawlRunning = false;
   }
-
-  const duration = ((Date.now() - start) / 1000).toFixed(1);
-  console.log(`[topic-crawler] Done in ${duration}s: ${upserted} upserted, ${skipped} skipped, ${failed} failed / ${urls.length} total`);
-  return { upserted, skipped, failed, total: urls.length, duration };
 }
 
 /**

@@ -175,7 +175,7 @@ export default function ProfileSettings() {
 
   return (
     <>
-      <Card className="overflow-hidden rounded-2xl border-slate-200/80 shadow-sm">
+      <Card className="overflow-visible rounded-2xl border-slate-200/80 shadow-sm">
         <CardHeader className="pb-4">
           <CardTitle className="text-lg">Profile</CardTitle>
           <CardDescription>Update your personal information and avatar.</CardDescription>

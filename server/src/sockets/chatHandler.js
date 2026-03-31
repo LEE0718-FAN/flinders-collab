@@ -18,9 +18,9 @@ async function isRoomMember(roomId, userId) {
     .select('id')
     .eq('room_id', roomId)
     .eq('user_id', userId)
-    .maybeSingle();
+    .limit(1);
 
-  const result = !!data;
+  const result = Boolean(data?.[0]);
   membershipCache.set(cacheKey, { result, ts: Date.now() });
   return result;
 }
@@ -54,20 +54,24 @@ function chatHandler(io, socket) {
           .from('topic_rooms')
           .select('topic_id')
           .eq('room_id', roomId)
-          .maybeSingle();
+          .limit(1);
 
-        if (topicRoom) {
+        const topicRoomEntry = topicRoom?.[0] || null;
+
+        if (topicRoomEntry) {
           // Find canonical (oldest) room for this topic
           const { data: canonicalRoom } = await supabaseAdmin
             .from('topic_rooms')
             .select('room_id')
-            .eq('topic_id', topicRoom.topic_id)
+            .eq('topic_id', topicRoomEntry.topic_id)
             .order('room_id', { ascending: true })
             .limit(1)
-            .maybeSingle();
+            .limit(1);
 
-          if (canonicalRoom && canonicalRoom.room_id !== roomId) {
-            effectiveRoomId = canonicalRoom.room_id;
+          const canonicalRoomEntry = canonicalRoom?.[0] || null;
+
+          if (canonicalRoomEntry && canonicalRoomEntry.room_id !== roomId) {
+            effectiveRoomId = canonicalRoomEntry.room_id;
             member = await isRoomMember(effectiveRoomId, userId);
           }
 
@@ -76,11 +80,11 @@ function chatHandler(io, socket) {
               .from('user_timetable')
               .select('id')
               .eq('user_id', userId)
-              .eq('topic_id', topicRoom.topic_id)
+              .eq('topic_id', topicRoomEntry.topic_id)
               .limit(1)
-              .maybeSingle();
+              .limit(1);
 
-            if (hasTopic) {
+            if (hasTopic?.[0]) {
               await supabaseAdmin
                 .from('room_members')
                 .insert({ room_id: effectiveRoomId, user_id: userId, role: 'member' });

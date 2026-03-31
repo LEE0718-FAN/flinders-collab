@@ -821,7 +821,7 @@ function SetupView({ slots, timetable, topicColorMap, onQueryChange, selectTopic
         const color = slot.selectedTopic ? topicColorMap[slot.selectedTopic.id] || getColorForIndex(idx) : null;
         const topicEntries = slot.selectedTopic ? timetable.filter((e) => e.topic?.id === slot.selectedTopic.id) : [];
         return (
-          <Card key={slot.id} className={`overflow-hidden rounded-[22px] shadow-sm transition-all ${color ? `${color.border} border-l-4` : 'border-slate-200'}`}>
+          <Card key={slot.id} className={`overflow-visible rounded-[22px] shadow-sm transition-all ${color ? `${color.border} border-l-4` : 'border-slate-200'}`}>
             <CardContent className="p-3 sm:p-4">
               <div className="mb-2.5 flex items-start gap-2">
                 <div className={`h-8 w-8 rounded-lg flex items-center justify-center text-sm font-bold text-white ${color ? color.accent : 'bg-slate-300'}`}>{idx + 1}</div>

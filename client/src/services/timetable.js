@@ -1,7 +1,7 @@
 import { apiUrl } from '@/lib/api';
 import { getAuthHeaders, parseResponse } from '@/lib/api-headers';
 
-export async function searchTopics(query, year = 2026) {
+export async function searchTopics(query, year = new Date().getFullYear()) {
   const res = await fetch(
     apiUrl(`/api/timetable/topics/search?q=${encodeURIComponent(query)}&year=${year}`),
     { headers: getAuthHeaders() }

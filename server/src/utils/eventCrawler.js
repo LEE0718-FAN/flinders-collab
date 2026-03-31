@@ -1,8 +1,21 @@
 const { supabaseAdmin } = require('../services/supabase');
 
 const WP_EVENTS_URL = 'https://events.flinders.edu.au/wp-json/wp/v2/ajde_events?per_page=50';
+const EVENT_FETCH_TIMEOUT_MS = 10000;
+const EVENT_INTERVAL_MS = 30 * 60 * 1000;
 const WEEKDAY_PATTERN = '(?:Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday)';
 const MONTH_PATTERN = '(?:January|February|March|April|May|June|July|August|September|October|November|December)';
+let isEventCrawlRunning = false;
+
+async function fetchWithTimeout(url, timeoutMs = EVENT_FETCH_TIMEOUT_MS) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(url, { signal: controller.signal });
+  } finally {
+    clearTimeout(timer);
+  }
+}
 
 const categoryPatterns = {
   'IT & Computing': [/\bcomputer\b/i, /\bI\.?T\.?\b/, /\btech\b/i, /\btechnolog/i, /\bsoftware\b/i, /\bcyber/i, /\bdata\b/i, /\bdigital\b/i, /\b(?:A\.?I\.?|artificial intelligence)\b/i, /\bmachine learning\b/i, /\bcoding\b/i, /\bprogramming\b/i, /\bhackathon\b/i, /\binformation technology\b/i, /\bSTEM\b/],
@@ -241,7 +254,7 @@ function parseLocationFromContent(contentHtml) {
 async function fetchEventPageSchema(eventUrl) {
   if (!eventUrl) return null;
   try {
-    const res = await fetch(eventUrl);
+    const res = await fetchWithTimeout(eventUrl);
     if (!res.ok) return null;
     const html = await res.text();
     const result = {};
@@ -340,11 +353,31 @@ function formatTimeAmPm(date) {
   return min > 0 ? `${h}:${String(min).padStart(2, '0')}${ampm}` : `${h}${ampm}`;
 }
 
+function shouldRefreshSchema(event, existingRecord) {
+  if (!existingRecord) return true;
+
+  const rawJson = existingRecord.raw_json || {};
+  const modifiedChanged = rawJson.modified !== event.modified || rawJson.modified_gmt !== event.modified_gmt;
+  if (modifiedChanged) return true;
+
+  if (!existingRecord.start_time || !existingRecord.location || !existingRecord.time_display) {
+    return true;
+  }
+
+  return false;
+}
+
 async function crawlFlindersEvents() {
+  if (isEventCrawlRunning) {
+    console.log('[event-crawler] Previous crawl still running, skipping this cycle');
+    return { skipped: true };
+  }
+
+  isEventCrawlRunning = true;
   console.log('[event-crawler] Starting daily event crawl...');
 
   try {
-    const response = await fetch(WP_EVENTS_URL);
+    const response = await fetchWithTimeout(WP_EVENTS_URL, 15000);
     if (!response.ok) {
       console.log('[event-crawler] WordPress API returned', response.status);
       return;
@@ -356,6 +389,15 @@ async function crawlFlindersEvents() {
       return;
     }
 
+    const wpIds = data.map((event) => event.id).filter(Boolean);
+    const { data: existingRows } = wpIds.length > 0
+      ? await supabaseAdmin
+        .from('flinders_events_cache')
+        .select('wp_id, start_time, end_time, time_display, location, cost, raw_json')
+        .in('wp_id', wpIds)
+      : { data: [] };
+    const existingByWpId = new Map((existingRows || []).map((row) => [row.wp_id, row]));
+
     let upserted = 0;
     for (const ev of data) {
       const title = ev.title?.rendered || '';
@@ -363,15 +405,14 @@ async function crawlFlindersEvents() {
       const content = ev.content?.rendered || '';
       const classList = ev.class_list || [];
       const categories = categorizeEvent(title, excerpt, content);
+      const existingRecord = existingByWpId.get(ev.id);
       let parsed = parseEventDateFromContent(content);
       let location = parseLocationFromContent(content) || parseLocationFromClassList(classList);
-      let cost = null;
+      let cost = existingRecord?.cost || null;
 
-      // Always fetch individual event page for reliable schema.org data
-      if (ev.link) {
+      if (ev.link && shouldRefreshSchema(ev, existingRecord)) {
         const schema = await fetchEventPageSchema(ev.link);
         if (schema) {
-          // Schema.org is the most reliable source — always prefer it
           if (schema.start_time) {
             parsed = {
               start_time: schema.start_time,
@@ -382,6 +423,13 @@ async function crawlFlindersEvents() {
           if (schema.location) location = schema.location;
           if (schema.cost) cost = schema.cost;
         }
+      } else if (existingRecord) {
+        parsed = {
+          start_time: existingRecord.start_time || parsed?.start_time || null,
+          end_time: existingRecord.end_time || parsed?.end_time || null,
+          time_display: existingRecord.time_display || parsed?.time_display || '',
+        };
+        location = existingRecord.location || location;
       }
 
       const record = {
@@ -420,14 +468,15 @@ async function crawlFlindersEvents() {
     console.log(`[event-crawler] Crawled ${upserted}/${data.length} events, cleaned old entries`);
   } catch (err) {
     console.error('[event-crawler] Error:', err.message);
+  } finally {
+    isEventCrawlRunning = false;
   }
 }
 
 function startEventCrawler() {
   crawlFlindersEvents();
-  const INTERVAL_MS = 24 * 60 * 60 * 1000;
-  setInterval(crawlFlindersEvents, INTERVAL_MS);
-  console.log('[event-crawler] Scheduled daily crawl (every 24h)');
+  setInterval(crawlFlindersEvents, EVENT_INTERVAL_MS);
+  console.log('[event-crawler] Scheduled event crawl (every 30m)');
 }
 
 module.exports = { crawlFlindersEvents, startEventCrawler };

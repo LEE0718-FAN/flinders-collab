@@ -2,12 +2,12 @@ const { supabaseAdmin } = require('../services/supabase');
 const { fetchSingleTopic } = require('../utils/topicCrawler');
 
 /**
- * GET /timetable/topics/search?q=COMP&year=2026
+ * GET /timetable/topics/search?q=COMP&year=current
  * Search topics by code or title.
  */
 async function searchTopics(req, res, next) {
   try {
-    const { q, year = 2026 } = req.query;
+    const { q, year = new Date().getFullYear() } = req.query;
     if (!q || q.trim().length < 2) {
       return res.json([]);
     }
@@ -98,13 +98,20 @@ async function addToTimetable(req, res, next) {
 
     // 2. Find or create the topic room
     let roomId;
-    const { data: existingTopicRoom } = await supabaseAdmin
+    const { data: existingTopicRoomRows, error: topicRoomLookupError } = await supabaseAdmin
       .from('topic_rooms')
       .select('room_id')
       .eq('topic_id', topicId)
-      .maybeSingle();
+      .order('created_at', { ascending: true })
+      .limit(1);
 
-    if (existingTopicRoom) {
+    if (topicRoomLookupError) {
+      return res.status(500).json({ error: 'Failed to look up topic room: ' + topicRoomLookupError.message });
+    }
+
+    const existingTopicRoom = existingTopicRoomRows?.[0] || null;
+
+    if (existingTopicRoom?.room_id) {
       roomId = existingTopicRoom.room_id;
     } else {
       // Create a new room for this topic
@@ -126,19 +133,37 @@ async function addToTimetable(req, res, next) {
 
       roomId = newRoom.id;
 
-      // Link topic → room
-      await supabaseAdmin
+      // Link topic → room. If another request linked first, fall back to the canonical room.
+      const { error: topicLinkError } = await supabaseAdmin
         .from('topic_rooms')
         .insert({ topic_id: topicId, room_id: roomId });
+
+      if (topicLinkError) {
+        const { data: canonicalRows, error: canonicalLookupError } = await supabaseAdmin
+          .from('topic_rooms')
+          .select('room_id')
+          .eq('topic_id', topicId)
+          .order('created_at', { ascending: true })
+          .limit(1);
+
+        const canonicalRoomId = canonicalRows?.[0]?.room_id || null;
+        if (canonicalLookupError || !canonicalRoomId) {
+          return res.status(500).json({ error: 'Failed to link topic room: ' + topicLinkError.message });
+        }
+
+        roomId = canonicalRoomId;
+      }
     }
 
     // 3. Auto-join the room (if not already a member)
-    const { data: existingMember } = await supabaseAdmin
+    const { data: existingMemberRows } = await supabaseAdmin
       .from('room_members')
       .select('id')
       .eq('room_id', roomId)
       .eq('user_id', userId)
-      .maybeSingle();
+      .limit(1);
+
+    const existingMember = existingMemberRows?.[0] || null;
 
     if (!existingMember) {
       await supabaseAdmin
@@ -277,11 +302,14 @@ async function getTopicMembers(req, res, next) {
   try {
     const { topicId } = req.params;
 
-    const { data: topicRoom } = await supabaseAdmin
+    const { data: topicRoomRows } = await supabaseAdmin
       .from('topic_rooms')
       .select('room_id')
       .eq('topic_id', topicId)
-      .maybeSingle();
+      .order('created_at', { ascending: true })
+      .limit(1);
+
+    const topicRoom = topicRoomRows?.[0] || null;
 
     if (!topicRoom) return res.json({ count: 0 });
 
