@@ -698,7 +698,7 @@ function MonitoringTab() {
                 </h4>
                 <FeatureRow label="Plan" value="Free" badge="bg-emerald-100 text-emerald-700 border-emerald-200" />
                 <FeatureRow label="Runtime" value="Node.js (Express)" />
-                <FeatureRow label="Region" value="Oregon, US" />
+                <FeatureRow label="Region" value="Singapore" />
                 <FeatureRow label="Auto Deploy" value="On push to main" status="healthy" />
                 <FeatureRow label="HTTPS/SSL" value="Enabled" status="healthy" />
                 <FeatureRow label="Custom Domain" value="Not configured" status="warning" />
