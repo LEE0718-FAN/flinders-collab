@@ -3,7 +3,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Camera, Loader2 } from 'lucide-react';
+import { Camera, Loader2, RefreshCw } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/components/ui/toast';
 import { apiGetMe } from '@/services/auth';
@@ -12,7 +12,7 @@ import { avatarLarge } from '@/lib/avatar';
 import AvatarCropDialog from '@/components/AvatarCropDialog';
 
 export default function ProfileSettings() {
-  const { user, updateUser } = useAuth();
+  const { user, updateUser, refreshProfile } = useAuth();
   const { addToast } = useToast();
 
   const [name, setName] = useState(user?.user_metadata?.name || '');
@@ -23,6 +23,7 @@ export default function ProfileSettings() {
   const [cropSource, setCropSource] = useState(null);
   const [cropMeta, setCropMeta] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [syncing, setSyncing] = useState(false);
   const [errors, setErrors] = useState({});
   const fileInputRef = useRef(null);
   const majorInputRef = useRef(null);
@@ -302,10 +303,40 @@ export default function ProfileSettings() {
           )}
         </div>
 
-          <Button onClick={handleSave} disabled={loading} className="w-full sm:w-auto">
-            {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            {loading ? 'Saving...' : 'Save Changes'}
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button onClick={handleSave} disabled={loading} className="w-full sm:w-auto">
+              {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {loading ? 'Saving...' : 'Save Changes'}
+            </Button>
+            <Button
+              variant="outline"
+              disabled={syncing || loading}
+              className="w-full sm:w-auto"
+              onClick={async () => {
+                setSyncing(true);
+                try {
+                  await refreshProfile();
+                  const fresh = await apiGetMe();
+                  if (fresh?.user_metadata) {
+                    setName(fresh.user_metadata.name || fresh.user_metadata.full_name || '');
+                    setStudentId(fresh.user_metadata.student_id || '');
+                    setMajor(fresh.user_metadata.major || '');
+                    setMajorQuery(fresh.user_metadata.major || '');
+                  }
+                  setAvatarPreview(null);
+                  setAvatarFile(null);
+                  addToast('Profile synced from server', 'success');
+                } catch {
+                  addToast('Sync failed — try again', 'error');
+                } finally {
+                  setSyncing(false);
+                }
+              }}
+            >
+              <RefreshCw className={`mr-2 h-4 w-4 ${syncing ? 'animate-spin' : ''}`} />
+              {syncing ? 'Syncing...' : 'Sync Profile'}
+            </Button>
+          </div>
         </CardContent>
       </Card>
       <AvatarCropDialog
