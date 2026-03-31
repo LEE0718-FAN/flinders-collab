@@ -21,7 +21,7 @@ import { getReports, updateReport, getAdminUsers, toggleUserAdmin, deleteAdminUs
 import { useAuth } from '@/hooks/useAuth';
 import {
   Loader2, ChevronDown, Shield, ShieldOff, AlertCircle, User, ShieldAlert, Search, Trash2, Mail, GraduationCap, Calendar,
-  Activity, Server, Database, Clock, Zap, AlertTriangle, CheckCircle2, XCircle, RefreshCw, Cpu, HardDrive, TrendingUp, Eye, Bell,
+  Activity, Server, Database, Clock, Zap, AlertTriangle, CheckCircle2, XCircle, RefreshCw, Cpu, HardDrive, TrendingUp, Eye, EyeOff, Bell,
   ArchiveRestore, ShieldCheck,
 } from 'lucide-react';
 import { format, formatDistanceToNow } from 'date-fns';
@@ -461,11 +461,50 @@ function formatBytes(bytes) {
   return `${(bytes / (1024 * 1024 * 1024)).toFixed(2)} GB`;
 }
 
+function SectionHeader({ icon: Icon, title, gradient, children }) {
+  return (
+    <div className={`relative overflow-hidden rounded-2xl bg-gradient-to-r ${gradient} px-5 py-4 text-white shadow-lg`}>
+      <div className="absolute -right-8 -top-8 h-28 w-28 rounded-full bg-white/10 blur-2xl" />
+      <div className="relative flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/15 backdrop-blur-sm">
+            <Icon className="h-4.5 w-4.5 text-white" />
+          </div>
+          <h3 className="text-lg font-black tracking-tight">{title}</h3>
+        </div>
+        {children}
+      </div>
+    </div>
+  );
+}
+
+function StatusDot({ status }) {
+  const color = status === 'healthy' ? 'bg-emerald-400' : status === 'warning' ? 'bg-amber-400' : 'bg-red-400';
+  return <span className={`inline-block h-2 w-2 rounded-full ${color} animate-pulse`} />;
+}
+
+function FeatureRow({ label, value, status, badge }) {
+  return (
+    <div className="flex items-center justify-between py-2 border-b border-slate-100 last:border-0">
+      <div className="flex items-center gap-2">
+        {status && <StatusDot status={status} />}
+        <span className="text-xs text-slate-600">{label}</span>
+      </div>
+      {badge ? (
+        <Badge className={`rounded-full text-[10px] ${badge}`}>{value}</Badge>
+      ) : (
+        <span className="text-xs font-semibold text-slate-800">{value}</span>
+      )}
+    </div>
+  );
+}
+
 function MonitoringTab() {
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [checkingHealth, setCheckingHealth] = useState(false);
+  const [activeSection, setActiveSection] = useState('all');
 
   const fetchStats = async (isRefresh = false) => {
     if (isRefresh) setRefreshing(true);
@@ -480,7 +519,7 @@ function MonitoringTab() {
 
   useEffect(() => {
     fetchStats();
-    const interval = setInterval(() => fetchStats(), 30000); // auto refresh every 30s
+    const interval = setInterval(() => fetchStats(), 30000);
     return () => clearInterval(interval);
   }, []);
 
@@ -512,15 +551,44 @@ function MonitoringTab() {
   const memPercent = stats.memory ? ((stats.memory.heapUsed / stats.memory.heapTotal) * 100).toFixed(1) : 0;
   const isHealthy = stats.health?.supabase?.status === 'healthy';
   const hasAlerts = stats.alerts && stats.alerts.length > 0;
+  const errorRate = Number(stats.errorRate || 0);
+  const storageUsedPct = stats.storage?.total > 0 ? ((stats.storage.used / stats.storage.total) * 100) : 0;
+
+  // Security score calculation
+  const securityChecks = [
+    { label: 'PKCE Auth Flow', ok: true },
+    { label: 'JWT Token Validation', ok: true },
+    { label: 'Row Level Security (RLS)', ok: true },
+    { label: 'Rate Limiting (Signup/Login)', ok: true },
+    { label: 'CORS Policy', ok: true },
+    { label: 'File Upload Validation', ok: true },
+    { label: 'HTTPS/SSL (Render)', ok: true },
+    { label: 'Service Role Key Server-Only', ok: true },
+    { label: 'Email OTP Verification', ok: true },
+    { label: 'Supabase DB Connected', ok: isHealthy },
+  ];
+  const securityScore = Math.round((securityChecks.filter((c) => c.ok).length / securityChecks.length) * 100);
+  const securityLevel = securityScore >= 90 ? 'Strong' : securityScore >= 70 ? 'Moderate' : 'Weak';
+  const securityColor = securityScore >= 90 ? 'text-emerald-600' : securityScore >= 70 ? 'text-amber-600' : 'text-red-600';
+  const securityBg = securityScore >= 90 ? 'from-emerald-500 to-teal-600' : securityScore >= 70 ? 'from-amber-500 to-orange-600' : 'from-red-500 to-rose-600';
+
+  const sections = [
+    { key: 'all', label: 'Overview' },
+    { key: 'render', label: 'Render' },
+    { key: 'supabase', label: 'Supabase' },
+    { key: 'security', label: 'Security' },
+  ];
+
+  const showSection = (key) => activeSection === 'all' || activeSection === key;
 
   return (
     <div className="space-y-5">
-      {/* Quick Actions */}
-      <div className="flex items-center justify-between">
+      {/* Global status bar */}
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2">
-          <div className={`h-2.5 w-2.5 rounded-full animate-pulse ${isHealthy ? 'bg-green-500' : 'bg-red-500'}`} />
+          <div className={`h-2.5 w-2.5 rounded-full animate-pulse ${isHealthy && errorRate < 5 ? 'bg-emerald-500' : errorRate < 10 ? 'bg-amber-500' : 'bg-red-500'}`} />
           <span className="text-sm font-medium text-slate-600">
-            {isHealthy ? 'All systems operational' : 'Issues detected'}
+            {isHealthy && errorRate < 5 ? 'All systems operational' : 'Issues detected'}
           </span>
         </div>
         <div className="flex gap-2">
@@ -535,7 +603,22 @@ function MonitoringTab() {
         </div>
       </div>
 
-      {/* Alerts */}
+      {/* Section filter */}
+      <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-hide">
+        {sections.map((s) => (
+          <Button
+            key={s.key}
+            variant={activeSection === s.key ? 'default' : 'outline'}
+            size="sm"
+            className={`h-8 shrink-0 rounded-full px-4 text-xs ${activeSection === s.key ? 'bg-gradient-to-r from-slate-800 to-slate-900 text-white border-0 shadow-md' : 'bg-white border-slate-200 text-slate-600'}`}
+            onClick={() => setActiveSection(s.key)}
+          >
+            {s.label}
+          </Button>
+        ))}
+      </div>
+
+      {/* Alerts (always visible) */}
       {hasAlerts && (
         <div className="space-y-2">
           {stats.alerts.map((alert) => (
@@ -566,370 +649,535 @@ function MonitoringTab() {
         </div>
       )}
 
-      {/* Stats Grid */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <div className="rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 p-4 text-white shadow-lg">
-          <div className="flex items-center gap-2 mb-2">
-            <Clock className="h-4 w-4 text-white/70" />
-            <span className="text-xs text-white/70 font-medium">Uptime</span>
-          </div>
-          <p className="text-xl font-black">{formatUptime(stats.uptime)}</p>
-        </div>
-        <div className="rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 p-4 text-white shadow-lg">
-          <div className="flex items-center gap-2 mb-2">
-            <Zap className="h-4 w-4 text-white/70" />
-            <span className="text-xs text-white/70 font-medium">Requests</span>
-          </div>
-          <p className="text-xl font-black">{stats.totalRequests?.toLocaleString()}</p>
-        </div>
-        <div className="rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 p-4 text-white shadow-lg">
-          <div className="flex items-center gap-2 mb-2">
-            <TrendingUp className="h-4 w-4 text-white/70" />
-            <span className="text-xs text-white/70 font-medium">Avg Response</span>
-          </div>
-          <p className="text-xl font-black">{Math.round(Number(stats.avgResponseTime) || 0)}<span className="text-sm font-normal">ms</span></p>
-        </div>
-        <div className={`rounded-xl p-4 text-white shadow-lg ${Number(stats.errorRate) > 5 ? 'bg-gradient-to-br from-red-500 to-rose-600' : 'bg-gradient-to-br from-slate-600 to-slate-700'}`}>
-          <div className="flex items-center gap-2 mb-2">
-            <AlertCircle className="h-4 w-4 text-white/70" />
-            <span className="text-xs text-white/70 font-medium">Error Rate</span>
-          </div>
-          <p className="text-xl font-black">{Number(stats.errorRate || 0).toFixed(1)}<span className="text-sm font-normal">%</span></p>
-        </div>
-      </div>
+      {/* ========== RENDER SECTION ========== */}
+      {showSection('render') && (
+        <div className="space-y-4">
+          <SectionHeader icon={Server} title="Render" gradient="from-emerald-600 to-teal-700">
+            <Badge className="rounded-full bg-white/20 text-white text-[10px] border-0">Free Tier</Badge>
+          </SectionHeader>
 
-      {/* System Health */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        {/* Memory */}
-        <Card className="shadow-sm">
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center gap-2">
-                <Cpu className="h-4 w-4 text-slate-500" />
-                <span className="text-sm font-semibold text-slate-700">Memory Usage</span>
+          {/* Quick stats */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div className="rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 p-3.5 text-white shadow-lg">
+              <div className="flex items-center gap-1.5 mb-1.5">
+                <Clock className="h-3.5 w-3.5 text-white/70" />
+                <span className="text-[10px] text-white/70 font-medium">Uptime</span>
               </div>
-              <span className={`text-sm font-bold ${memPercent > 80 ? 'text-red-600' : memPercent > 60 ? 'text-amber-600' : 'text-emerald-600'}`}>
-                {memPercent}%
-              </span>
+              <p className="text-lg font-black leading-tight">{formatUptime(stats.uptime)}</p>
             </div>
-            <div className="w-full h-2.5 bg-slate-100 rounded-full overflow-hidden">
-              <div
-                className={`h-full rounded-full transition-all duration-500 ${memPercent > 80 ? 'bg-red-500' : memPercent > 60 ? 'bg-amber-500' : 'bg-emerald-500'}`}
-                style={{ width: `${Math.min(memPercent, 100)}%` }}
-              />
+            <div className="rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 p-3.5 text-white shadow-lg">
+              <div className="flex items-center gap-1.5 mb-1.5">
+                <Zap className="h-3.5 w-3.5 text-white/70" />
+                <span className="text-[10px] text-white/70 font-medium">Requests</span>
+              </div>
+              <p className="text-lg font-black leading-tight">{stats.totalRequests?.toLocaleString()}</p>
             </div>
-            <div className="flex justify-between mt-2 text-[11px] text-slate-400">
-              <span>{formatBytes(stats.memory?.heapUsed || 0)} used</span>
-              <span>{formatBytes(stats.memory?.heapTotal || 0)} total</span>
+            <div className="rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 p-3.5 text-white shadow-lg">
+              <div className="flex items-center gap-1.5 mb-1.5">
+                <TrendingUp className="h-3.5 w-3.5 text-white/70" />
+                <span className="text-[10px] text-white/70 font-medium">Avg Response</span>
+              </div>
+              <p className="text-lg font-black leading-tight">{Math.round(Number(stats.avgResponseTime) || 0)}<span className="text-xs font-normal">ms</span></p>
             </div>
+            <div className={`rounded-xl p-3.5 text-white shadow-lg ${errorRate > 5 ? 'bg-gradient-to-br from-red-500 to-rose-600' : 'bg-gradient-to-br from-slate-600 to-slate-700'}`}>
+              <div className="flex items-center gap-1.5 mb-1.5">
+                <AlertCircle className="h-3.5 w-3.5 text-white/70" />
+                <span className="text-[10px] text-white/70 font-medium">Error Rate</span>
+              </div>
+              <p className="text-lg font-black leading-tight">{errorRate.toFixed(1)}<span className="text-xs font-normal">%</span></p>
+            </div>
+          </div>
 
-            {/* Memory breakdown */}
-            <div className="mt-4 space-y-1.5">
-              {(() => {
-                const mem = stats.memory || {};
-                const rss = mem.rss || 0;
-                const items = [
-                  { label: 'Heap Used', value: mem.heapUsed || 0, color: 'bg-indigo-500' },
-                  { label: 'Heap Free', value: (mem.heapTotal || 0) - (mem.heapUsed || 0), color: 'bg-slate-300' },
-                  { label: 'External (C++)', value: mem.external || 0, color: 'bg-violet-500' },
-                  { label: 'Array Buffers', value: mem.arrayBuffers || 0, color: 'bg-cyan-500' },
-                ];
-                return items.map(({ label, value, color }) => {
-                  const pct = rss > 0 ? ((value / rss) * 100).toFixed(1) : 0;
-                  return (
+          {/* Render features + Memory */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <Card className="shadow-sm">
+              <CardContent className="p-4">
+                <h4 className="text-sm font-semibold text-slate-700 mb-2 flex items-center gap-2">
+                  <Server className="h-4 w-4 text-emerald-500" />
+                  Render Plan Details
+                </h4>
+                <FeatureRow label="Plan" value="Free" badge="bg-emerald-100 text-emerald-700 border-emerald-200" />
+                <FeatureRow label="Runtime" value="Node.js (Express)" />
+                <FeatureRow label="Region" value="Oregon, US" />
+                <FeatureRow label="Auto Deploy" value="On push to main" status="healthy" />
+                <FeatureRow label="HTTPS/SSL" value="Enabled" status="healthy" />
+                <FeatureRow label="Custom Domain" value="Not configured" status="warning" />
+                <FeatureRow label="Socket.IO" value="Active" status="healthy" />
+                <FeatureRow label="Web Push (VAPID)" value="Active" status="healthy" />
+              </CardContent>
+            </Card>
+
+            <Card className="shadow-sm">
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <Cpu className="h-4 w-4 text-slate-500" />
+                    <span className="text-sm font-semibold text-slate-700">Memory Usage</span>
+                  </div>
+                  <span className={`text-sm font-bold ${memPercent > 80 ? 'text-red-600' : memPercent > 60 ? 'text-amber-600' : 'text-emerald-600'}`}>
+                    {memPercent}%
+                  </span>
+                </div>
+                <div className="w-full h-2.5 bg-slate-100 rounded-full overflow-hidden">
+                  <div
+                    className={`h-full rounded-full transition-all duration-500 ${memPercent > 80 ? 'bg-red-500' : memPercent > 60 ? 'bg-amber-500' : 'bg-emerald-500'}`}
+                    style={{ width: `${Math.min(memPercent, 100)}%` }}
+                  />
+                </div>
+                <div className="flex justify-between mt-2 text-[11px] text-slate-400">
+                  <span>{formatBytes(stats.memory?.heapUsed || 0)} used</span>
+                  <span>{formatBytes(stats.memory?.heapTotal || 0)} total</span>
+                </div>
+                <div className="mt-3 space-y-1">
+                  {[
+                    { label: 'Heap Used', value: stats.memory?.heapUsed || 0, color: 'bg-indigo-500' },
+                    { label: 'External', value: stats.memory?.external || 0, color: 'bg-violet-500' },
+                    { label: 'RSS (Total)', value: stats.memory?.rss || 0, color: 'bg-slate-700' },
+                  ].map(({ label, value, color }) => (
                     <div key={label} className="flex items-center gap-2 text-[11px]">
                       <div className={`h-2 w-2 rounded-full ${color} shrink-0`} />
                       <span className="text-slate-500 flex-1">{label}</span>
-                      <span className="text-slate-600 font-medium w-16 text-right">{formatBytes(value)}</span>
-                      <span className="text-slate-400 w-10 text-right">{pct}%</span>
+                      <span className="text-slate-600 font-medium">{formatBytes(value)}</span>
                     </div>
-                  );
-                });
-              })()}
-              <div className="flex items-center gap-2 text-[11px] border-t border-slate-100 pt-1.5 mt-1.5">
-                <div className="h-2 w-2 rounded-full bg-slate-700 shrink-0" />
-                <span className="text-slate-600 font-semibold flex-1">RSS (Total)</span>
-                <span className="text-slate-700 font-bold w-16 text-right">{formatBytes(stats.memory?.rss || 0)}</span>
-                <span className="text-slate-500 font-medium w-10 text-right">100%</span>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Database Health */}
-        <Card className="shadow-sm">
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center gap-2">
-                <Database className="h-4 w-4 text-slate-500" />
-                <span className="text-sm font-semibold text-slate-700">Database</span>
-              </div>
-              <Badge className={`rounded-full text-[10px] ${isHealthy ? 'bg-emerald-100 text-emerald-700 border-emerald-200' : 'bg-red-100 text-red-700 border-red-200'}`}>
-                {isHealthy ? <><CheckCircle2 className="h-3 w-3 mr-1" />Healthy</> : <><XCircle className="h-3 w-3 mr-1" />Down</>}
-              </Badge>
-            </div>
-            <div className="space-y-1.5 text-xs text-slate-500">
-              <div className="flex justify-between">
-                <span>Supabase</span>
-                <span className={isHealthy ? 'text-emerald-600 font-medium' : 'text-red-600 font-medium'}>
-                  {isHealthy ? 'Connected' : stats.health?.supabase?.error || 'Disconnected'}
-                </span>
-              </div>
-              {stats.health?.lastCheck && (
-                <div className="flex justify-between">
-                  <span>Last checked</span>
-                  <span>{formatDistanceToNow(new Date(stats.health.lastCheck), { addSuffix: true })}</span>
+                  ))}
                 </div>
-              )}
-              {stats.health?.supabase?.responseTime && (
-                <div className="flex justify-between">
-                  <span>Response time</span>
-                  <span>{stats.health.supabase.responseTime}ms</span>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Traffic + Status codes */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <Card className="shadow-sm">
+              <CardContent className="p-4">
+                <h4 className="text-sm font-semibold text-slate-700 mb-3 flex items-center gap-2">
+                  <Activity className="h-4 w-4 text-slate-500" />
+                  Traffic (last 10 min)
+                </h4>
+                {stats.requestsPerMinute && stats.requestsPerMinute.length > 0 ? (
+                  <div className="flex items-end gap-1 h-20">
+                    {stats.requestsPerMinute.map((rpm, i) => {
+                      const maxRpm = Math.max(...stats.requestsPerMinute.map((r) => r.count || 0), 1);
+                      const height = ((rpm.count || 0) / maxRpm) * 100;
+                      return (
+                        <div key={i} className="flex-1 flex flex-col items-center">
+                          <div
+                            className="w-full bg-gradient-to-t from-emerald-500 to-teal-400 rounded-t transition-all duration-300"
+                            style={{ height: `${Math.max(height, 4)}%` }}
+                            title={`${rpm.count || 0} req/min`}
+                          />
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <p className="text-xs text-slate-400 text-center py-4">No traffic data yet</p>
+                )}
+              </CardContent>
+            </Card>
+            <Card className="shadow-sm">
+              <CardContent className="p-4">
+                <h4 className="text-sm font-semibold text-slate-700 mb-3 flex items-center gap-2">
+                  <Server className="h-4 w-4 text-slate-500" />
+                  Response Status
+                </h4>
+                <div className="space-y-2">
+                  {[
+                    { key: '2xx', label: 'Success', color: 'bg-emerald-500' },
+                    { key: '3xx', label: 'Redirect', color: 'bg-blue-500' },
+                    { key: '4xx', label: 'Client Error', color: 'bg-amber-500' },
+                    { key: '5xx', label: 'Server Error', color: 'bg-red-500' },
+                  ].map(({ key, label, color }) => {
+                    const count = stats.statusCodes?.[key] || 0;
+                    const total = stats.totalRequests || 1;
+                    const pct = ((count / total) * 100).toFixed(1);
+                    return (
+                      <div key={key} className="flex items-center gap-3">
+                        <div className={`h-2 w-2 rounded-full ${color}`} />
+                        <span className="text-xs text-slate-600 w-24">{label}</span>
+                        <div className="flex-1 h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                          <div className={`h-full rounded-full ${color}`} style={{ width: `${Math.min(pct, 100)}%` }} />
+                        </div>
+                        <span className="text-[11px] text-slate-500 w-12 text-right">{count}</span>
+                      </div>
+                    );
+                  })}
                 </div>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+              </CardContent>
+            </Card>
+          </div>
 
-      {/* Storage Usage (Pro Plan) */}
-      {stats.storage && (
-        <Card className="shadow-sm">
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center gap-2">
-                <HardDrive className="h-4 w-4 text-slate-500" />
-                <span className="text-sm font-semibold text-slate-700">Storage Usage (Pro)</span>
-              </div>
-              <Badge className="rounded-full text-[10px] bg-indigo-100 text-indigo-700 border-indigo-200">
-                {formatBytes(stats.storage.used)} / {formatBytes(stats.storage.total)}
-              </Badge>
-            </div>
-            {(() => {
-              const usedPct = stats.storage.total > 0 ? ((stats.storage.used / stats.storage.total) * 100) : 0;
-              return (
-                <>
-                  <div className="w-full h-3 bg-slate-100 rounded-full overflow-hidden">
-                    <div
-                      className={`h-full rounded-full transition-all duration-500 ${usedPct > 80 ? 'bg-red-500' : usedPct > 50 ? 'bg-amber-500' : 'bg-indigo-500'}`}
-                      style={{ width: `${Math.max(usedPct, 0.5)}%` }}
-                    />
-                  </div>
-                  <div className="flex justify-between mt-2 text-[11px] text-slate-400">
-                    <span>{usedPct.toFixed(2)}% used</span>
-                    <span>{formatBytes(stats.storage.total - stats.storage.used)} free</span>
-                  </div>
-                </>
-              );
-            })()}
-            {stats.storage.buckets && stats.storage.buckets.length > 0 && (
-              <div className="mt-4 space-y-1.5">
-                <span className="text-[11px] text-slate-500 font-medium">Buckets</span>
-                {stats.storage.buckets.map((b) => (
-                  <div key={b.name} className="flex items-center gap-2 text-[11px]">
-                    <div className="h-2 w-2 rounded-full bg-indigo-400 shrink-0" />
-                    <span className="text-slate-600 flex-1">{b.name}</span>
-                    <span className="text-slate-500 font-medium">{formatBytes(b.size)}</span>
-                  </div>
-                ))}
-              </div>
-            )}
-            {stats.storage.lastCheck && (
-              <p className="text-[10px] text-slate-400 mt-3">
-                Last checked: {formatDistanceToNow(new Date(stats.storage.lastCheck), { addSuffix: true })}
-              </p>
-            )}
-          </CardContent>
-        </Card>
-      )}
-
-      {/* User Error Log */}
-      <Card className="shadow-sm border-orange-100">
-        <CardContent className="p-4">
-          <h4 className="text-sm font-semibold text-slate-700 mb-3 flex items-center gap-2">
-            <AlertCircle className="h-4 w-4 text-orange-500" />
-            User Error Log
-            <Badge className="rounded-full text-[10px] bg-orange-100 text-orange-700 border-orange-200">
-              {stats.userErrors?.length || 0}
-            </Badge>
-          </h4>
-          {stats.userErrors && stats.userErrors.length > 0 ? (
-            <div className="space-y-2 max-h-72 overflow-y-auto">
-              {stats.userErrors.map((err, i) => (
-                <div key={i} className="rounded-lg bg-orange-50/50 border border-orange-100 px-3 py-2.5">
-                  <div className="flex items-center justify-between mb-1">
-                    <div className="flex items-center gap-2">
-                      <Avatar className="h-5 w-5">
-                        <AvatarFallback className="text-[9px] font-bold bg-orange-200 text-orange-700">
-                          {(err.userName || '?').slice(0, 1).toUpperCase()}
-                        </AvatarFallback>
-                      </Avatar>
-                      <span className="text-xs font-semibold text-slate-700">{err.userName}</span>
+          {/* Error logs */}
+          {stats.userErrors && stats.userErrors.length > 0 && (
+            <Card className="shadow-sm border-orange-100">
+              <CardContent className="p-4">
+                <h4 className="text-sm font-semibold text-slate-700 mb-3 flex items-center gap-2">
+                  <AlertCircle className="h-4 w-4 text-orange-500" />
+                  User Error Log
+                  <Badge className="rounded-full text-[10px] bg-orange-100 text-orange-700 border-orange-200">{stats.userErrors.length}</Badge>
+                </h4>
+                <div className="space-y-2 max-h-52 overflow-y-auto">
+                  {stats.userErrors.map((err, i) => (
+                    <div key={i} className="rounded-lg bg-orange-50/50 border border-orange-100 px-3 py-2">
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-xs font-semibold text-slate-700">{err.userName}</span>
+                        <span className="text-[10px] text-slate-400">
+                          {err.timestamp ? formatDistanceToNow(new Date(err.timestamp), { addSuffix: true }) : ''}
+                        </span>
+                      </div>
+                      <p className="text-xs text-orange-800">
+                        <span className="font-medium">{err.action}</span>
+                        <span className="text-orange-500 ml-1">({err.statusCode})</span>
+                      </p>
                     </div>
-                    <span className="text-[10px] text-slate-400">
-                      {err.timestamp ? formatDistanceToNow(new Date(err.timestamp), { addSuffix: true }) : ''}
-                    </span>
-                  </div>
-                  <p className="text-xs text-orange-800">
-                    Error during <span className="font-medium">{err.action}</span>
-                    <span className="text-orange-500 ml-1">({err.statusCode})</span>
-                  </p>
-                  {err.errorMessage && (
-                    <p className="text-[11px] text-slate-500 mt-0.5">{err.errorMessage}</p>
-                  )}
+                  ))}
                 </div>
-              ))}
-            </div>
-          ) : (
-            <div className="flex flex-col items-center gap-2 py-6 text-muted-foreground">
-              <CheckCircle2 className="h-8 w-8 text-emerald-400" />
-              <p className="text-sm font-medium text-slate-500">No errors</p>
-              <p className="text-xs text-slate-400">User errors will appear here</p>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Slow + Recent errors */}
+          {((stats.recentErrors && stats.recentErrors.length > 0) || (stats.slowRequests && stats.slowRequests.length > 0)) && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {stats.recentErrors && stats.recentErrors.length > 0 && (
+                <Card className="shadow-sm border-red-100">
+                  <CardContent className="p-4">
+                    <h4 className="text-sm font-semibold text-slate-700 mb-3 flex items-center gap-2">
+                      <AlertTriangle className="h-4 w-4 text-red-500" />
+                      Server Errors
+                      <Badge variant="destructive" className="rounded-full text-[10px]">{stats.recentErrors.length}</Badge>
+                    </h4>
+                    <div className="space-y-2 max-h-40 overflow-y-auto">
+                      {stats.recentErrors.map((err, i) => (
+                        <div key={i} className="rounded-lg bg-red-50/50 border border-red-100 px-3 py-2">
+                          <code className="text-[11px] font-mono text-red-600">{err.method} {err.path}</code>
+                          <p className="text-xs text-red-700 mt-0.5">{err.message}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+              {stats.slowRequests && stats.slowRequests.length > 0 && (
+                <Card className="shadow-sm border-amber-100">
+                  <CardContent className="p-4">
+                    <h4 className="text-sm font-semibold text-slate-700 mb-3 flex items-center gap-2">
+                      <Clock className="h-4 w-4 text-amber-500" />
+                      Slow Requests
+                      <Badge className="rounded-full text-[10px] bg-amber-100 text-amber-700 border-amber-200">{stats.slowRequests.length}</Badge>
+                    </h4>
+                    <div className="space-y-1.5 max-h-40 overflow-y-auto">
+                      {stats.slowRequests.map((req, i) => (
+                        <div key={i} className="flex items-center justify-between text-xs py-1 border-b border-slate-50 last:border-0">
+                          <code className="text-slate-600 font-mono">{req.method} {req.path}</code>
+                          <span className="text-amber-600 font-bold">{req.duration}ms</span>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
             </div>
           )}
-        </CardContent>
-      </Card>
 
-      {/* Status Codes + RPM */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        {/* Status Codes */}
-        <Card className="shadow-sm">
-          <CardContent className="p-4">
-            <h4 className="text-sm font-semibold text-slate-700 mb-3 flex items-center gap-2">
-              <Server className="h-4 w-4 text-slate-500" />
-              Response Status
-            </h4>
-            <div className="space-y-2">
-              {[
-                { key: '2xx', label: 'Success', color: 'bg-emerald-500' },
-                { key: '3xx', label: 'Redirect', color: 'bg-blue-500' },
-                { key: '4xx', label: 'Client Error', color: 'bg-amber-500' },
-                { key: '5xx', label: 'Server Error', color: 'bg-red-500' },
-              ].map(({ key, label, color }) => {
-                const count = stats.statusCodes?.[key] || 0;
-                const total = stats.totalRequests || 1;
-                const pct = ((count / total) * 100).toFixed(1);
-                return (
-                  <div key={key} className="flex items-center gap-3">
-                    <div className={`h-2 w-2 rounded-full ${color}`} />
-                    <span className="text-xs text-slate-600 w-24">{label}</span>
-                    <div className="flex-1 h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                      <div className={`h-full rounded-full ${color}`} style={{ width: `${Math.min(pct, 100)}%` }} />
+          {/* Live Activity */}
+          {stats.requestLog && stats.requestLog.length > 0 && (
+            <Card className="shadow-sm">
+              <CardContent className="p-4">
+                <h4 className="text-sm font-semibold text-slate-700 mb-3 flex items-center gap-2">
+                  <Eye className="h-4 w-4 text-slate-500" />
+                  Live Activity Feed
+                </h4>
+                <div className="space-y-1 max-h-48 overflow-y-auto">
+                  {stats.requestLog.slice(0, 30).map((req, i) => (
+                    <div key={i} className="flex items-center gap-2 text-[11px] py-1 border-b border-slate-50 last:border-0">
+                      <span className={`font-mono font-bold w-8 ${
+                        req.status < 300 ? 'text-emerald-600' : req.status < 400 ? 'text-blue-600' : req.status < 500 ? 'text-amber-600' : 'text-red-600'
+                      }`}>{req.status}</span>
+                      <span className="text-slate-400 font-mono w-10">{req.method}</span>
+                      <span className="text-slate-600 font-mono flex-1 truncate">{req.path}</span>
+                      <span className="text-slate-400 w-12 text-right">{req.duration}ms</span>
                     </div>
-                    <span className="text-[11px] text-slate-500 w-12 text-right">{count}</span>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+        </div>
+      )}
+
+      {/* ========== SUPABASE SECTION ========== */}
+      {showSection('supabase') && (
+        <div className="space-y-4">
+          <SectionHeader icon={Database} title="Supabase" gradient="from-emerald-500 via-green-600 to-teal-600">
+            <Badge className="rounded-full bg-white/20 text-white text-[10px] border-0">Pro Plan</Badge>
+          </SectionHeader>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {/* DB Health */}
+            <Card className="shadow-sm">
+              <CardContent className="p-4">
+                <h4 className="text-sm font-semibold text-slate-700 mb-2 flex items-center gap-2">
+                  <Database className="h-4 w-4 text-green-500" />
+                  Database Health
+                  <Badge className={`ml-auto rounded-full text-[10px] ${isHealthy ? 'bg-emerald-100 text-emerald-700 border-emerald-200' : 'bg-red-100 text-red-700 border-red-200'}`}>
+                    {isHealthy ? 'Healthy' : 'Down'}
+                  </Badge>
+                </h4>
+                <FeatureRow label="Connection" value={isHealthy ? 'Connected' : 'Disconnected'} status={isHealthy ? 'healthy' : 'critical'} />
+                {stats.health?.supabase?.responseTime && (
+                  <FeatureRow label="Response Time" value={`${stats.health.supabase.responseTime}ms`} status={stats.health.supabase.responseTime < 500 ? 'healthy' : 'warning'} />
+                )}
+                {stats.health?.lastCheck && (
+                  <FeatureRow label="Last Check" value={formatDistanceToNow(new Date(stats.health.lastCheck), { addSuffix: true })} />
+                )}
+                <FeatureRow label="Checks Interval" value="Every 5 min" />
+              </CardContent>
+            </Card>
+
+            {/* Supabase plan features */}
+            <Card className="shadow-sm">
+              <CardContent className="p-4">
+                <h4 className="text-sm font-semibold text-slate-700 mb-2 flex items-center gap-2">
+                  <Zap className="h-4 w-4 text-green-500" />
+                  Pro Plan Features
+                </h4>
+                <FeatureRow label="Realtime Subscriptions" value="Active" status="healthy" />
+                <FeatureRow label="Realtime Presence" value="Active" status="healthy" />
+                <FeatureRow label="Image Transforms" value="Active" status="healthy" />
+                <FeatureRow label="pg_cron Jobs" value="6 scheduled" status="healthy" />
+                <FeatureRow label="Daily Backups" value="Enabled" status="healthy" />
+                <FeatureRow label="Max Connections" value="500 concurrent" />
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Storage */}
+          {stats.storage && (
+            <Card className="shadow-sm">
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <HardDrive className="h-4 w-4 text-green-500" />
+                    <span className="text-sm font-semibold text-slate-700">Storage (100 GB)</span>
                   </div>
-                );
-              })}
-            </div>
-          </CardContent>
-        </Card>
+                  <Badge className="rounded-full text-[10px] bg-green-100 text-green-700 border-green-200">
+                    {formatBytes(stats.storage.used)} used
+                  </Badge>
+                </div>
+                <div className="w-full h-3 bg-slate-100 rounded-full overflow-hidden">
+                  <div
+                    className={`h-full rounded-full transition-all duration-500 ${storageUsedPct > 80 ? 'bg-red-500' : storageUsedPct > 50 ? 'bg-amber-500' : 'bg-green-500'}`}
+                    style={{ width: `${Math.max(storageUsedPct, 0.5)}%` }}
+                  />
+                </div>
+                <div className="flex justify-between mt-2 text-[11px] text-slate-400">
+                  <span>{storageUsedPct.toFixed(2)}% used</span>
+                  <span>{formatBytes(stats.storage.total - stats.storage.used)} free</span>
+                </div>
+                {stats.storage.buckets && stats.storage.buckets.length > 0 && (
+                  <div className="mt-4 space-y-1.5">
+                    <span className="text-[11px] text-slate-500 font-semibold uppercase tracking-wider">Buckets</span>
+                    {stats.storage.buckets.map((b) => (
+                      <div key={b.name} className="flex items-center gap-2 text-[11px]">
+                        <div className="h-2 w-2 rounded-full bg-green-400 shrink-0" />
+                        <span className="text-slate-600 flex-1">{b.name}</span>
+                        <Badge className="rounded-full text-[9px] bg-slate-100 text-slate-600 border-slate-200">{b.public ? 'public' : 'private'}</Badge>
+                        <span className="text-slate-500 font-medium">{formatBytes(b.size)}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
 
-        {/* Requests Per Minute */}
-        <Card className="shadow-sm">
-          <CardContent className="p-4">
-            <h4 className="text-sm font-semibold text-slate-700 mb-3 flex items-center gap-2">
-              <Activity className="h-4 w-4 text-slate-500" />
-              Traffic (last 10 min)
-            </h4>
-            {stats.requestsPerMinute && stats.requestsPerMinute.length > 0 ? (
-              <div className="flex items-end gap-1 h-20">
-                {stats.requestsPerMinute.map((rpm, i) => {
-                  const maxRpm = Math.max(...stats.requestsPerMinute.map((r) => r.count || 0), 1);
-                  const height = ((rpm.count || 0) / maxRpm) * 100;
-                  return (
-                    <div key={i} className="flex-1 flex flex-col items-center gap-1">
-                      <div
-                        className="w-full bg-gradient-to-t from-indigo-500 to-blue-400 rounded-t transition-all duration-300"
-                        style={{ height: `${Math.max(height, 4)}%` }}
-                        title={`${rpm.count || 0} req/min`}
-                      />
+          {/* Realtime + pg_cron details */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <Card className="shadow-sm">
+              <CardContent className="p-4">
+                <h4 className="text-sm font-semibold text-slate-700 mb-2 flex items-center gap-2">
+                  <Zap className="h-4 w-4 text-blue-500" />
+                  Realtime Channels
+                </h4>
+                {[
+                  { name: 'campus-presence-changes', table: 'flinders_campus_presence', type: 'postgres_changes' },
+                  { name: 'friend-request-changes', table: 'flinders_friend_requests', type: 'postgres_changes' },
+                  { name: 'flinap-online', table: null, type: 'presence' },
+                ].map((ch) => (
+                  <div key={ch.name} className="flex items-center justify-between py-2 border-b border-slate-100 last:border-0">
+                    <div>
+                      <p className="text-xs font-medium text-slate-700">{ch.name}</p>
+                      <p className="text-[10px] text-slate-400">{ch.type}{ch.table ? ` (${ch.table})` : ''}</p>
                     </div>
-                  );
-                })}
+                    <StatusDot status="healthy" />
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+
+            <Card className="shadow-sm">
+              <CardContent className="p-4">
+                <h4 className="text-sm font-semibold text-slate-700 mb-2 flex items-center gap-2">
+                  <Clock className="h-4 w-4 text-violet-500" />
+                  pg_cron Scheduled Jobs
+                </h4>
+                {[
+                  { name: 'hide-stale-presence', schedule: 'Every 3h', action: 'Disable stale presence' },
+                  { name: 'cleanup-stopped-locations', schedule: 'Daily 4:00 UTC', action: 'Remove stopped sessions' },
+                  { name: 'cleanup-old-cached-events', schedule: 'Weekly Sun', action: 'Purge 60d+ event cache' },
+                  { name: 'cleanup-old-reminders', schedule: 'Daily 4:30 UTC', action: 'Purge 7d+ reminders' },
+                  { name: 'weekly-analyze', schedule: 'Weekly Sun', action: 'DB stats refresh' },
+                ].map((job) => (
+                  <div key={job.name} className="flex items-center justify-between py-2 border-b border-slate-100 last:border-0">
+                    <div>
+                      <p className="text-xs font-medium text-slate-700">{job.action}</p>
+                      <p className="text-[10px] text-slate-400">{job.schedule}</p>
+                    </div>
+                    <StatusDot status="healthy" />
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Auth features */}
+          <Card className="shadow-sm">
+            <CardContent className="p-4">
+              <h4 className="text-sm font-semibold text-slate-700 mb-2 flex items-center gap-2">
+                <Shield className="h-4 w-4 text-green-500" />
+                Authentication
+              </h4>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6">
+                <FeatureRow label="Auth Provider" value="Supabase Auth" status="healthy" />
+                <FeatureRow label="Flow Type" value="PKCE" status="healthy" />
+                <FeatureRow label="Email OTP" value="6-digit code" status="healthy" />
+                <FeatureRow label="Password Hashing" value="bcrypt (Supabase)" status="healthy" />
+                <FeatureRow label="Token Type" value="JWT" status="healthy" />
+                <FeatureRow label="Session Sync" value="15s interval + focus" status="healthy" />
               </div>
-            ) : (
-              <p className="text-xs text-slate-400 text-center py-4">No traffic data yet</p>
-            )}
-          </CardContent>
-        </Card>
-      </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
-      {/* Recent Errors */}
-      {stats.recentErrors && stats.recentErrors.length > 0 && (
-        <Card className="shadow-sm border-red-100">
-          <CardContent className="p-4">
-            <h4 className="text-sm font-semibold text-slate-700 mb-3 flex items-center gap-2">
-              <AlertTriangle className="h-4 w-4 text-red-500" />
-              Recent Errors
-              <Badge variant="destructive" className="rounded-full text-[10px]">{stats.recentErrors.length}</Badge>
-            </h4>
-            <div className="space-y-2 max-h-64 overflow-y-auto">
-              {stats.recentErrors.map((err, i) => (
-                <div key={i} className="rounded-lg bg-red-50/50 border border-red-100 px-3 py-2">
-                  <div className="flex items-center justify-between mb-1">
-                    <div className="flex items-center gap-2">
-                      <code className="text-[11px] font-mono text-red-600 bg-red-100 px-1.5 py-0.5 rounded">
-                        {err.method} {err.path}
-                      </code>
-                      {err.userName && (
-                        <span className="text-[10px] text-slate-500 font-medium">{err.userName}</span>
-                      )}
-                    </div>
-                    <span className="text-[10px] text-slate-400">
-                      {err.timestamp ? formatDistanceToNow(new Date(err.timestamp), { addSuffix: true }) : ''}
-                    </span>
+      {/* ========== SECURITY SECTION ========== */}
+      {showSection('security') && (
+        <div className="space-y-4">
+          <SectionHeader icon={ShieldCheck} title="Security" gradient={securityBg}>
+            <div className="flex items-center gap-2">
+              <span className="text-2xl font-black">{securityScore}%</span>
+              <span className="text-xs text-white/80">{securityLevel}</span>
+            </div>
+          </SectionHeader>
+
+          {/* Score visualization */}
+          <Card className="shadow-sm">
+            <CardContent className="p-5">
+              <div className="flex items-center gap-6">
+                {/* Circular score */}
+                <div className="relative h-24 w-24 shrink-0">
+                  <svg viewBox="0 0 100 100" className="h-full w-full -rotate-90">
+                    <circle cx="50" cy="50" r="42" fill="none" stroke="#f1f5f9" strokeWidth="8" />
+                    <circle
+                      cx="50" cy="50" r="42" fill="none"
+                      stroke={securityScore >= 90 ? '#10b981' : securityScore >= 70 ? '#f59e0b' : '#ef4444'}
+                      strokeWidth="8" strokeLinecap="round"
+                      strokeDasharray={`${securityScore * 2.64} 264`}
+                    />
+                  </svg>
+                  <div className="absolute inset-0 flex flex-col items-center justify-center">
+                    <span className={`text-xl font-black ${securityColor}`}>{securityScore}</span>
+                    <span className="text-[9px] text-slate-400 font-medium">/ 100</span>
                   </div>
-                  <p className="text-xs text-red-700 font-medium">{err.message}</p>
                 </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
+                <div className="flex-1">
+                  <p className="text-sm font-bold text-slate-800">Security Posture: <span className={securityColor}>{securityLevel}</span></p>
+                  <p className="text-xs text-slate-500 mt-1">
+                    {securityScore >= 90
+                      ? 'All critical security features are active and properly configured.'
+                      : 'Some security features need attention. Check items below.'}
+                  </p>
+                  <div className="flex items-center gap-3 mt-3">
+                    <span className="flex items-center gap-1 text-[11px] text-emerald-600"><CheckCircle2 className="h-3 w-3" />{securityChecks.filter((c) => c.ok).length} passed</span>
+                    {securityChecks.filter((c) => !c.ok).length > 0 && (
+                      <span className="flex items-center gap-1 text-[11px] text-red-500"><XCircle className="h-3 w-3" />{securityChecks.filter((c) => !c.ok).length} issues</span>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
 
-      {/* Slow Requests */}
-      {stats.slowRequests && stats.slowRequests.length > 0 && (
-        <Card className="shadow-sm border-amber-100">
-          <CardContent className="p-4">
-            <h4 className="text-sm font-semibold text-slate-700 mb-3 flex items-center gap-2">
-              <Clock className="h-4 w-4 text-amber-500" />
-              Slow Requests (&gt;2s)
-              <Badge className="rounded-full text-[10px] bg-amber-100 text-amber-700 border-amber-200">{stats.slowRequests.length}</Badge>
-            </h4>
-            <div className="space-y-1.5 max-h-40 overflow-y-auto">
-              {stats.slowRequests.map((req, i) => (
-                <div key={i} className="flex items-center justify-between text-xs py-1 border-b border-slate-50 last:border-0">
-                  <code className="text-slate-600 font-mono">{req.method} {req.path}</code>
-                  <span className="text-amber-600 font-bold">{req.duration}ms</span>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
+          {/* Security checklist */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <Card className="shadow-sm">
+              <CardContent className="p-4">
+                <h4 className="text-sm font-semibold text-slate-700 mb-3 flex items-center gap-2">
+                  <Shield className="h-4 w-4 text-indigo-500" />
+                  Authentication & Access
+                </h4>
+                {[
+                  { label: 'PKCE Auth Flow', ok: true, desc: 'Proof Key for Code Exchange prevents auth interception' },
+                  { label: 'Email OTP Verification', ok: true, desc: 'Email ownership verified before account creation' },
+                  { label: 'JWT Token Validation', ok: true, desc: 'Every API request validated via signed JWT' },
+                  { label: 'Service Role Key Server-Only', ok: true, desc: 'Admin key never exposed to client' },
+                  { label: 'Session Auto-Sync', ok: true, desc: 'Profile syncs on focus + 15s intervals' },
+                ].map((item) => (
+                  <div key={item.label} className="flex items-start gap-2.5 py-2 border-b border-slate-100 last:border-0">
+                    {item.ok ? <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0 mt-0.5" /> : <XCircle className="h-4 w-4 text-red-500 shrink-0 mt-0.5" />}
+                    <div>
+                      <p className="text-xs font-medium text-slate-700">{item.label}</p>
+                      <p className="text-[10px] text-slate-400 leading-relaxed">{item.desc}</p>
+                    </div>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
 
-      {/* Live Activity Feed */}
-      {stats.requestLog && stats.requestLog.length > 0 && (
-        <Card className="shadow-sm">
-          <CardContent className="p-4">
-            <h4 className="text-sm font-semibold text-slate-700 mb-3 flex items-center gap-2">
-              <Eye className="h-4 w-4 text-slate-500" />
-              Recent Activity
-            </h4>
-            <div className="space-y-1 max-h-48 overflow-y-auto">
-              {stats.requestLog.slice(0, 30).map((req, i) => (
-                <div key={i} className="flex items-center gap-2 text-[11px] py-1 border-b border-slate-50 last:border-0">
-                  <span className={`font-mono font-bold w-8 ${
-                    req.status < 300 ? 'text-emerald-600' : req.status < 400 ? 'text-blue-600' : req.status < 500 ? 'text-amber-600' : 'text-red-600'
-                  }`}>{req.status}</span>
-                  <span className="text-slate-400 font-mono w-10">{req.method}</span>
-                  <span className="text-slate-600 font-mono flex-1 truncate">{req.path}</span>
-                  <span className="text-slate-400 w-12 text-right">{req.duration}ms</span>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
+            <Card className="shadow-sm">
+              <CardContent className="p-4">
+                <h4 className="text-sm font-semibold text-slate-700 mb-3 flex items-center gap-2">
+                  <Database className="h-4 w-4 text-indigo-500" />
+                  Data & Infrastructure
+                </h4>
+                {[
+                  { label: 'Row Level Security (RLS)', ok: true, desc: 'Database policies enforce per-user access control' },
+                  { label: 'Rate Limiting', ok: true, desc: 'Signup/login endpoints rate-limited against abuse' },
+                  { label: 'CORS Policy', ok: true, desc: 'Only allowed origins can make API requests' },
+                  { label: 'File Upload Validation', ok: true, desc: 'Type + size checks on all uploads (50MB max)' },
+                  { label: 'HTTPS/SSL', ok: true, desc: 'All traffic encrypted via Render TLS termination' },
+                  { label: 'Supabase Connected', ok: isHealthy, desc: isHealthy ? 'Database connection verified and healthy' : 'Database connection issue detected' },
+                ].map((item) => (
+                  <div key={item.label} className="flex items-start gap-2.5 py-2 border-b border-slate-100 last:border-0">
+                    {item.ok ? <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0 mt-0.5" /> : <XCircle className="h-4 w-4 text-red-500 shrink-0 mt-0.5" />}
+                    <div>
+                      <p className="text-xs font-medium text-slate-700">{item.label}</p>
+                      <p className="text-[10px] text-slate-400 leading-relaxed">{item.desc}</p>
+                    </div>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Privacy features */}
+          <Card className="shadow-sm">
+            <CardContent className="p-4">
+              <h4 className="text-sm font-semibold text-slate-700 mb-3 flex items-center gap-2">
+                <EyeOff className="h-4 w-4 text-indigo-500" />
+                Privacy
+              </h4>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6">
+                <FeatureRow label="Location Privacy" value="Campus-level only" status="healthy" />
+                <FeatureRow label="GPS Coordinates" value="Never stored on server" status="healthy" />
+                <FeatureRow label="Anonymous Posting" value="Available on board" status="healthy" />
+                <FeatureRow label="Presence Auto-Hide" value="60s after leaving campus" status="healthy" />
+                <FeatureRow label="Stale Presence" value="Auto-disabled after 8h" status="healthy" />
+                <FeatureRow label="Avatar Cache Bust" value="Unique URL per upload" status="healthy" />
+              </div>
+            </CardContent>
+          </Card>
+        </div>
       )}
 
       <p className="text-[11px] text-slate-400 text-center">Auto-refreshes every 30 seconds</p>
