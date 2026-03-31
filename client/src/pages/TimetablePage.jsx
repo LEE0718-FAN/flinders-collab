@@ -249,7 +249,7 @@ export default function TimetablePage() {
         <div className="max-w-5xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-2">
             <GraduationCap className="h-5 w-5 text-blue-600" />
-            <h1 className="text-lg font-bold text-slate-900">My Timetable</h1>
+            <h1 className="text-lg font-bold text-slate-900">Timetable Buddy</h1>
             {timetable.length > 0 && (
               <Badge className="rounded-full bg-blue-100 text-blue-700 border-blue-200 text-[10px]">
                 {uniqueTopicIds.length} topics

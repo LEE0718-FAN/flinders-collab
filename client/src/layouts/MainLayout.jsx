@@ -132,7 +132,7 @@ function SidebarContent({ rooms, location, isAdmin, roomBadgeCounts = {}, user, 
         to="/board"
         isActive={location.pathname === '/board'}
         icon={MessageSquare}
-        label="Flinders Social"
+        label="Where are you?"
         tourId="nav-social"
         onIntent={() => preloadRoute('/board')}
       />
@@ -151,7 +151,7 @@ function SidebarContent({ rooms, location, isAdmin, roomBadgeCounts = {}, user, 
           to="/timetable"
           isActive={location.pathname === '/timetable'}
           icon={CalendarDays}
-          label="My Timetable"
+          label="Timetable Buddy"
           tourId="nav-timetable"
           onIntent={() => preloadRoute('/timetable')}
         />
