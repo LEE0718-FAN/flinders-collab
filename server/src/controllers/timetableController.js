@@ -102,7 +102,7 @@ async function addToTimetable(req, res, next) {
       .from('topic_rooms')
       .select('room_id')
       .eq('topic_id', topicId)
-      .single();
+      .maybeSingle();
 
     if (existingTopicRoom) {
       roomId = existingTopicRoom.room_id;
@@ -138,7 +138,7 @@ async function addToTimetable(req, res, next) {
       .select('id')
       .eq('room_id', roomId)
       .eq('user_id', userId)
-      .single();
+      .maybeSingle();
 
     if (!existingMember) {
       await supabaseAdmin
@@ -281,7 +281,7 @@ async function getTopicMembers(req, res, next) {
       .from('topic_rooms')
       .select('room_id')
       .eq('topic_id', topicId)
-      .single();
+      .maybeSingle();
 
     if (!topicRoom) return res.json({ count: 0 });
 
