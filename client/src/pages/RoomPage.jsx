@@ -564,48 +564,15 @@ export default function RoomPage() {
           );
         })()}
 
-        {/* Topic rooms: chat-only layout */}
+        {/* Topic rooms: direct group chat — no tabs */}
         {isTopicRoom && (
-          <Tabs value={activeTab} onValueChange={setActiveTab}>
-            <TabsList className="w-max min-w-full justify-start gap-1 rounded-xl border bg-white p-1.5 shadow-sm">
-              <TabsTrigger value="chat" className="min-h-[40px] shrink-0 px-3 text-sm data-[state=active]:bg-indigo-50 data-[state=active]:font-semibold data-[state=active]:text-indigo-700">
-                <MessageSquare className="h-4 w-4 mr-1.5" />Chat
-              </TabsTrigger>
-              <TabsTrigger value="files" className="min-h-[40px] shrink-0 px-3 text-sm data-[state=active]:bg-indigo-50 data-[state=active]:font-semibold data-[state=active]:text-indigo-700">
-                <FileUp className="h-4 w-4 mr-1.5" />Files
-              </TabsTrigger>
-              <TabsTrigger value="members" className="min-h-[40px] shrink-0 px-3 text-sm data-[state=active]:bg-indigo-50 data-[state=active]:font-semibold data-[state=active]:text-indigo-700">
-                <Users className="h-4 w-4 mr-1.5" />Members
-              </TabsTrigger>
-            </TabsList>
-
-            <TabsContent value="chat"><Suspense fallback={<div className="flex min-h-[14rem] items-center justify-center rounded-2xl border border-slate-200 bg-white"><Loader2 className="h-6 w-6 animate-spin text-indigo-500" /></div>}>
-              <Card>
-                <CardContent className="p-0">
-                  <ChatPanel roomId={roomId} onChatFileUploaded={handleFileUploaded} />
-                </CardContent>
-              </Card>
-            </Suspense></TabsContent>
-
-            <TabsContent value="files" className="space-y-4"><Suspense fallback={<div className="flex min-h-[14rem] items-center justify-center rounded-2xl border border-slate-200 bg-white"><Loader2 className="h-6 w-6 animate-spin text-indigo-500" /></div>}>
-              <div className="flex items-center justify-between mb-2">
-                <h2 className="text-lg font-semibold">Shared Files</h2>
-                <FileUpload roomId={roomId} onUploaded={handleFileUploaded} category="lecture" events={events} />
-              </div>
-              <FileList files={files} roomId={roomId} onFilesChange={setFiles} members={members} />
-            </Suspense></TabsContent>
-
-            <TabsContent value="members">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-lg">Members ({members.length})</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <MemberList members={members} />
-                </CardContent>
-              </Card>
-            </TabsContent>
-          </Tabs>
+          <Suspense fallback={<div className="flex min-h-[20rem] items-center justify-center rounded-2xl border border-slate-200 bg-white"><Loader2 className="h-6 w-6 animate-spin text-indigo-500" /></div>}>
+            <Card className="overflow-hidden">
+              <CardContent className="p-0">
+                <ChatPanel roomId={roomId} onChatFileUploaded={handleFileUploaded} />
+              </CardContent>
+            </Card>
+          </Suspense>
         )}
 
         {/* Regular rooms: full layout */}
