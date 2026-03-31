@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, lazy, Suspense } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { searchTopics, getMyTimetable, addToTimetable, removeFromTimetable, removeTopic, getPopularTimes } from '@/services/timetable';
@@ -10,6 +10,8 @@ import {
   Loader2, Search, Plus, X, BookOpen, Clock, MapPin, Users,
   MessageSquare, GraduationCap, Trash2, Check, Pencil,
 } from 'lucide-react';
+
+const ChatPanel = lazy(() => import('@/components/chat/ChatPanel'));
 
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'];
 const HOURS = Array.from({ length: 13 }, (_, i) => i + 8); // 8am–8pm
@@ -59,6 +61,7 @@ export default function TimetablePage() {
   const [classForm, setClassForm] = useState(null);
   const [confirmForm, setConfirmForm] = useState(null); // {topicId, dayOfWeek, startTime, endTime, classType, location}
   const [editEntry, setEditEntry] = useState(null); // entry being edited
+  const [chatPopup, setChatPopup] = useState(null); // {roomId, topicCode, topicTitle}
 
   const [searchTimers, setSearchTimers] = useState({});
 
@@ -247,6 +250,10 @@ export default function TimetablePage() {
     setSlots((prev) => prev.filter((s) => s.id !== slotId));
   };
 
+  const openChat = (roomId, topicCode, topicTitle) => {
+    if (roomId) setChatPopup({ roomId, topicCode: topicCode || '', topicTitle: topicTitle || '' });
+  };
+
   const goToRoom = (roomId) => { if (roomId) navigate(`/rooms/${roomId}`); };
 
   const calendarEntries = timetable.filter((e) => e.day_of_week != null && e.start_time);
@@ -314,12 +321,12 @@ export default function TimetablePage() {
             slots={slots} timetable={timetable} topicColorMap={topicColorMap}
             onQueryChange={onQueryChange} selectTopic={selectTopic}
             handleRemoveTopic={handleRemoveTopic} addAnotherClass={addAnotherClass}
-            addSlot={addSlot} removeSlot={removeSlot} goToRoom={goToRoom}
+            addSlot={addSlot} removeSlot={removeSlot} openChat={openChat}
             openEditEntry={openEditEntry}
           />
         ) : (
           <CalendarView
-            entries={calendarEntries} topicColorMap={topicColorMap} goToRoom={goToRoom}
+            entries={calendarEntries} topicColorMap={topicColorMap} openChat={openChat}
             timetable={timetable} dragTopic={dragTopic} popularTimes={popularTimes}
             onDragComplete={handleDragComplete} openEditEntry={openEditEntry}
           />
@@ -361,7 +368,7 @@ export default function TimetablePage() {
             <CardContent className="p-5">
               <div className="flex items-center justify-between mb-1">
                 <h3 className="font-semibold text-slate-900">Edit Class</h3>
-                <Button variant="ghost" size="sm" onClick={() => goToRoom(editEntry.roomId)} className="h-7 text-xs text-blue-600" disabled={!editEntry.roomId}>
+                <Button variant="ghost" size="sm" onClick={() => { setEditEntry(null); openChat(editEntry.roomId, editEntry.topicCode, editEntry.topicTitle); }} className="h-7 text-xs text-blue-600" disabled={!editEntry.roomId}>
                   <MessageSquare className="h-3.5 w-3.5 mr-1" />Chat
                 </Button>
               </div>
@@ -456,12 +463,35 @@ export default function TimetablePage() {
           </Card>
         </div>
       )}
+
+      {/* Chat popup */}
+      {chatPopup && (
+        <div className="fixed inset-0 z-50 bg-black/40 flex items-end sm:items-center justify-center p-0 sm:p-4" onClick={() => setChatPopup(null)}>
+          <div className="w-full sm:max-w-lg h-[85vh] sm:h-[75vh] bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl flex flex-col overflow-hidden" onClick={(e) => e.stopPropagation()}>
+            {/* Popup header */}
+            <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100 bg-gradient-to-r from-blue-600 to-indigo-600 text-white shrink-0">
+              <div className="min-w-0">
+                <h3 className="font-bold text-sm truncate">{chatPopup.topicCode}{chatPopup.topicTitle ? ` — ${chatPopup.topicTitle}` : ''}</h3>
+              </div>
+              <button onClick={() => setChatPopup(null)} className="shrink-0 ml-2 p-1.5 rounded-full hover:bg-white/20 transition-colors">
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            {/* Chat content */}
+            <div className="flex-1 min-h-0">
+              <Suspense fallback={<div className="flex items-center justify-center h-full"><Loader2 className="h-6 w-6 animate-spin text-blue-500" /></div>}>
+                <ChatPanel roomId={chatPopup.roomId} />
+              </Suspense>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
 
 /* ========== Setup View ========== */
-function SetupView({ slots, timetable, topicColorMap, onQueryChange, selectTopic, handleRemoveTopic, addAnotherClass, addSlot, removeSlot, goToRoom, openEditEntry }) {
+function SetupView({ slots, timetable, topicColorMap, onQueryChange, selectTopic, handleRemoveTopic, addAnotherClass, addSlot, removeSlot, openChat, openEditEntry }) {
   return (
     <div className="space-y-4">
       <p className="text-sm text-slate-500">Add your courses below, then drag on the calendar to set class times.</p>
@@ -485,7 +515,7 @@ function SetupView({ slots, timetable, topicColorMap, onQueryChange, selectTopic
                 <div className="flex gap-1 ml-auto">
                   {slot.selectedTopic && (
                     <>
-                      <Button variant="ghost" size="sm" onClick={() => goToRoom(topicEntries[0]?.room_id)} className="h-7 text-xs text-blue-600" disabled={!topicEntries[0]?.room_id}>
+                      <Button variant="ghost" size="sm" onClick={() => openChat(topicEntries[0]?.room_id, slot.selectedTopic.topic_code, slot.selectedTopic.title)} className="h-7 text-xs text-blue-600" disabled={!topicEntries[0]?.room_id}>
                         <MessageSquare className="h-3.5 w-3.5 mr-1" />Chat
                       </Button>
                       <Button variant="ghost" size="sm" onClick={() => addAnotherClass(slot.selectedTopic)} className="h-7 text-xs text-emerald-600">
@@ -565,7 +595,7 @@ function SetupView({ slots, timetable, topicColorMap, onQueryChange, selectTopic
 }
 
 /* ========== Calendar View with Drag ========== */
-function CalendarView({ entries, topicColorMap, goToRoom, timetable, dragTopic, popularTimes, onDragComplete, openEditEntry }) {
+function CalendarView({ entries, topicColorMap, openChat, timetable, dragTopic, popularTimes, onDragComplete, openEditEntry }) {
   const gridRef = useRef(null);
   const [dragging, setDragging] = useState(null); // {dayOfWeek, startHour, currentHour}
 
@@ -626,7 +656,7 @@ function CalendarView({ entries, topicColorMap, goToRoom, timetable, dragTopic, 
           {uniqueTopics.map((topic) => {
             const color = topicColorMap[topic.id];
             return (
-              <button key={topic.id} onClick={() => goToRoom(topic.roomId)}
+              <button key={topic.id} onClick={() => openChat(topic.roomId, topic.topic_code, topic.title)}
                 className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium ${color?.bg} ${color?.text} ${color?.border} border hover:shadow-md transition-shadow`}>
                 <MessageSquare className="h-3 w-3" />{topic.topic_code}
               </button>
