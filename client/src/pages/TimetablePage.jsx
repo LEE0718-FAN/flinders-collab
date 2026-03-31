@@ -132,17 +132,21 @@ export default function TimetablePage() {
           : s
       )
     );
-    // Show class time form
+    // Show class time form with offerings
     setClassForm({
       slotId,
       topicId: topic.id,
       topicCode: topic.topic_code,
       topicTitle: topic.title,
+      offerings: topic.offerings || [],
+      step: (topic.offerings && topic.offerings.length > 0) ? 'offering' : 'time', // show offering selection first if available
+      selectedOffering: null,
       dayOfWeek: 0,
       startTime: '09:00',
       endTime: '11:00',
       classType: 'lecture',
       location: '',
+      manualMode: false,
     });
   };
 
@@ -180,11 +184,15 @@ export default function TimetablePage() {
       topicId: topic.id,
       topicCode: topic.topic_code,
       topicTitle: topic.title,
+      offerings: topic.offerings || [],
+      step: 'time', // skip offering for additional classes
+      selectedOffering: null,
       dayOfWeek: 0,
       startTime: '09:00',
       endTime: '11:00',
       classType: 'tutorial',
       location: '',
+      manualMode: false,
     });
   };
 
@@ -481,99 +489,167 @@ function SetupView({
       {/* Class time form modal */}
       {classForm && (
         <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
-          <Card className="w-full max-w-md shadow-2xl">
+          <Card className="w-full max-w-md shadow-2xl max-h-[90vh] overflow-auto">
             <CardContent className="p-5">
-              <h3 className="font-semibold text-slate-900 mb-1">Add Class Time</h3>
+              <h3 className="font-semibold text-slate-900 mb-1">
+                {classForm.step === 'offering' ? 'Select Your Class' : 'Set Class Time'}
+              </h3>
               <p className="text-sm text-slate-500 mb-4">
                 {classForm.topicCode} — {classForm.topicTitle}
               </p>
 
-              <div className="space-y-3">
-                {/* Day */}
-                <div>
-                  <label className="text-xs font-medium text-slate-600 mb-1 block">Day</label>
-                  <div className="flex gap-1">
-                    {DAYS.map((day, i) => (
-                      <Button
-                        key={day}
-                        variant={classForm.dayOfWeek === i ? 'default' : 'outline'}
-                        size="sm"
-                        onClick={() => setClassForm((f) => ({ ...f, dayOfWeek: i }))}
-                        className="flex-1 h-9 text-xs rounded-lg"
-                      >
-                        {day}
-                      </Button>
-                    ))}
-                  </div>
-                </div>
+              {/* Step 1: Offering selection */}
+              {classForm.step === 'offering' && (
+                <div className="space-y-2">
+                  <label className="text-xs font-medium text-slate-600 mb-1 block">Available classes</label>
+                  {classForm.offerings.map((offering, i) => (
+                    <button
+                      key={i}
+                      onClick={() => setClassForm((f) => ({
+                        ...f,
+                        selectedOffering: offering,
+                        location: offering.campus || '',
+                        step: 'time',
+                      }))}
+                      className={`w-full text-left p-3 rounded-xl border-2 transition-all hover:border-blue-400 hover:bg-blue-50 ${
+                        classForm.selectedOffering === offering ? 'border-blue-500 bg-blue-50' : 'border-slate-200'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2">
+                        <Badge className="rounded-full text-[10px] bg-blue-100 text-blue-700 border-blue-200">
+                          {offering.semester || 'TBC'}
+                        </Badge>
+                        <span className="text-sm font-medium text-slate-800">{offering.campus || 'TBC'}</span>
+                      </div>
+                      <div className="text-[11px] text-slate-400 mt-1">
+                        {offering.mode || 'In person'}
+                      </div>
+                    </button>
+                  ))}
 
-                {/* Time */}
-                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    onClick={() => setClassForm((f) => ({ ...f, step: 'time', manualMode: true }))}
+                    className="w-full text-center text-xs text-slate-400 hover:text-blue-500 py-2 mt-2"
+                  >
+                    None of these? Enter manually
+                  </button>
+
+                  <Button
+                    variant="outline"
+                    onClick={() => setClassForm(null)}
+                    className="w-full h-10 rounded-xl mt-2"
+                  >
+                    Cancel
+                  </Button>
+                </div>
+              )}
+
+              {/* Step 2: Time entry */}
+              {classForm.step === 'time' && (
+                <div className="space-y-3">
+                  {classForm.selectedOffering && (
+                    <div className="flex items-center gap-2 p-2 bg-blue-50 rounded-lg text-xs text-blue-700 mb-2">
+                      <Badge className="rounded-full text-[10px] bg-blue-100 border-blue-200">
+                        {classForm.selectedOffering.semester}
+                      </Badge>
+                      <span>{classForm.selectedOffering.campus}</span>
+                      <span className="text-blue-400">·</span>
+                      <span>{classForm.selectedOffering.mode}</span>
+                    </div>
+                  )}
+
+                  {/* Day */}
                   <div>
-                    <label className="text-xs font-medium text-slate-600 mb-1 block">Start</label>
+                    <label className="text-xs font-medium text-slate-600 mb-1 block">Day</label>
+                    <div className="flex gap-1">
+                      {DAYS.map((day, i) => (
+                        <Button
+                          key={day}
+                          variant={classForm.dayOfWeek === i ? 'default' : 'outline'}
+                          size="sm"
+                          onClick={() => setClassForm((f) => ({ ...f, dayOfWeek: i }))}
+                          className="flex-1 h-9 text-xs rounded-lg"
+                        >
+                          {day}
+                        </Button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Time */}
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-xs font-medium text-slate-600 mb-1 block">Start</label>
+                      <Input
+                        type="time"
+                        value={classForm.startTime}
+                        onChange={(e) => setClassForm((f) => ({ ...f, startTime: e.target.value }))}
+                        className="h-9 rounded-lg"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs font-medium text-slate-600 mb-1 block">End</label>
+                      <Input
+                        type="time"
+                        value={classForm.endTime}
+                        onChange={(e) => setClassForm((f) => ({ ...f, endTime: e.target.value }))}
+                        className="h-9 rounded-lg"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Class type */}
+                  <div>
+                    <label className="text-xs font-medium text-slate-600 mb-1 block">Type</label>
+                    <div className="flex gap-1 flex-wrap">
+                      {['lecture', 'tutorial', 'practical', 'workshop', 'seminar'].map((type) => (
+                        <Button
+                          key={type}
+                          variant={classForm.classType === type ? 'default' : 'outline'}
+                          size="sm"
+                          onClick={() => setClassForm((f) => ({ ...f, classType: type }))}
+                          className="h-8 text-xs rounded-full capitalize"
+                        >
+                          {type}
+                        </Button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Location */}
+                  <div>
+                    <label className="text-xs font-medium text-slate-600 mb-1 block">Location (optional)</label>
                     <Input
-                      type="time"
-                      value={classForm.startTime}
-                      onChange={(e) => setClassForm((f) => ({ ...f, startTime: e.target.value }))}
+                      placeholder="e.g. Room 101, Engineering Building"
+                      value={classForm.location}
+                      onChange={(e) => setClassForm((f) => ({ ...f, location: e.target.value }))}
                       className="h-9 rounded-lg"
                     />
                   </div>
-                  <div>
-                    <label className="text-xs font-medium text-slate-600 mb-1 block">End</label>
-                    <Input
-                      type="time"
-                      value={classForm.endTime}
-                      onChange={(e) => setClassForm((f) => ({ ...f, endTime: e.target.value }))}
-                      className="h-9 rounded-lg"
-                    />
+
+                  <div className="flex gap-2 mt-3">
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        if (classForm.offerings.length > 0 && !classForm.manualMode) {
+                          setClassForm((f) => ({ ...f, step: 'offering', selectedOffering: null }));
+                        } else {
+                          setClassForm(null);
+                        }
+                      }}
+                      className="flex-1 h-10 rounded-xl"
+                    >
+                      {classForm.offerings.length > 0 && !classForm.manualMode ? 'Back' : 'Cancel'}
+                    </Button>
+                    <Button
+                      onClick={handleAddClass}
+                      className="flex-1 h-10 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600"
+                    >
+                      Add to Timetable
+                    </Button>
                   </div>
                 </div>
-
-                {/* Class type */}
-                <div>
-                  <label className="text-xs font-medium text-slate-600 mb-1 block">Type</label>
-                  <div className="flex gap-1 flex-wrap">
-                    {['lecture', 'tutorial', 'practical', 'workshop', 'seminar'].map((type) => (
-                      <Button
-                        key={type}
-                        variant={classForm.classType === type ? 'default' : 'outline'}
-                        size="sm"
-                        onClick={() => setClassForm((f) => ({ ...f, classType: type }))}
-                        className="h-8 text-xs rounded-full capitalize"
-                      >
-                        {type}
-                      </Button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Location */}
-                <div>
-                  <label className="text-xs font-medium text-slate-600 mb-1 block">Location (optional)</label>
-                  <Input
-                    placeholder="e.g. Room 101, Engineering Building"
-                    value={classForm.location}
-                    onChange={(e) => setClassForm((f) => ({ ...f, location: e.target.value }))}
-                    className="h-9 rounded-lg"
-                  />
-                </div>
-              </div>
-
-              <div className="flex gap-2 mt-5">
-                <Button
-                  variant="outline"
-                  onClick={() => setClassForm(null)}
-                  className="flex-1 h-10 rounded-xl"
-                >
-                  Cancel
-                </Button>
-                <Button
-                  onClick={handleAddClass}
-                  className="flex-1 h-10 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600"
-                >
-                  Add to Timetable
-                </Button>
-              </div>
+              )}
             </CardContent>
           </Card>
         </div>

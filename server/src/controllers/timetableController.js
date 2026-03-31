@@ -17,7 +17,7 @@ async function searchTopics(req, res, next) {
     // Search by topic_code prefix first, then by title
     const { data, error } = await supabaseAdmin
       .from('flinders_topics')
-      .select('id, topic_code, title, credit_points, level, school, semesters, campuses, delivery_modes')
+      .select('id, topic_code, title, credit_points, level, school, semesters, campuses, delivery_modes, offerings')
       .eq('year', parseInt(year))
       .or(`topic_code.ilike.%${search}%,title.ilike.%${search}%`)
       .order('topic_code')
@@ -32,7 +32,7 @@ async function searchTopics(req, res, next) {
         if (fetched) {
           const { data: retryData } = await supabaseAdmin
             .from('flinders_topics')
-            .select('id, topic_code, title, credit_points, level, school, semesters, campuses, delivery_modes')
+            .select('id, topic_code, title, credit_points, level, school, semesters, campuses, delivery_modes, offerings')
             .eq('topic_code', fetched.topic_code)
             .eq('year', parseInt(year))
             .limit(1);

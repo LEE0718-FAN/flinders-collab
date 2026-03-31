@@ -73,10 +73,18 @@ async function fetchTopicData(url) {
 
     const urlCode = url.split('/').pop().toUpperCase();
 
-    const offerings = pageContent.offering || [];
-    const semesters = [...new Set(offerings.map((o) => o.teaching_period?.value).filter(Boolean))];
-    const campuses = [...new Set(offerings.map((o) => o.location?.value).filter(Boolean))];
-    const deliveryModes = [...new Set(offerings.map((o) => o.attendance_mode?.value).filter(Boolean))];
+    const rawOfferings = pageContent.offering || [];
+    const semesters = [...new Set(rawOfferings.map((o) => o.admission_calendar?.value || o.teaching_period?.value).filter(Boolean))];
+    const campuses = [...new Set(rawOfferings.map((o) => o.location?.value).filter(Boolean))];
+    const deliveryModes = [...new Set(rawOfferings.map((o) => o.mode?.value || o.attendance_mode?.value).filter(Boolean))];
+
+    // Structured offerings for timetable selection
+    const offerings = rawOfferings.map((o) => ({
+      semester: o.admission_calendar?.value || o.teaching_period?.value || null,
+      campus: o.location?.value || null,
+      mode: o.mode?.value || o.attendance_mode?.value || null,
+      display_name: o.display_name || null,
+    })).filter((o) => o.semester || o.campus);
 
     const description = (pageContent.description || '')
       .replace(/<[^>]*>/g, '').replace(/&\w+;/g, ' ').trim().slice(0, 2000);
@@ -95,6 +103,7 @@ async function fetchTopicData(url) {
       semesters: semesters.length > 0 ? semesters : null,
       campuses: campuses.length > 0 ? campuses : null,
       delivery_modes: deliveryModes.length > 0 ? deliveryModes : null,
+      offerings: offerings.length > 0 ? offerings : null,
       prerequisites: prerequisites || null,
       handbook_url: url,
       crawled_at: new Date().toISOString(),

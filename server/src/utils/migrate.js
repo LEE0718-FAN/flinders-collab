@@ -520,10 +520,12 @@ CREATE TABLE IF NOT EXISTS flinders_topics (
     campuses TEXT[],
     delivery_modes TEXT[],
     prerequisites TEXT,
+    offerings JSONB,
     handbook_url TEXT,
     crawled_at TIMESTAMPTZ DEFAULT now(),
     UNIQUE(topic_code, year)
 );
+ALTER TABLE flinders_topics ADD COLUMN IF NOT EXISTS offerings JSONB;
 CREATE INDEX IF NOT EXISTS idx_flinders_topics_code ON flinders_topics (topic_code);
 CREATE INDEX IF NOT EXISTS idx_flinders_topics_title ON flinders_topics USING gin (to_tsvector('english', title));
 CREATE INDEX IF NOT EXISTS idx_flinders_topics_year ON flinders_topics (year);

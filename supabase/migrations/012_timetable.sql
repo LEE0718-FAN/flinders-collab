@@ -17,6 +17,7 @@ CREATE TABLE IF NOT EXISTS flinders_topics (
     campuses TEXT[],                         -- e.g. {"Bedford Park"}
     delivery_modes TEXT[],                   -- e.g. {"In person"}
     prerequisites TEXT,
+    offerings JSONB,                        -- [{semester, campus, mode, display_name}]
     handbook_url TEXT,
     crawled_at TIMESTAMPTZ DEFAULT now(),
     UNIQUE(topic_code, year)
