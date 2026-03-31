@@ -54,3 +54,11 @@ export async function getTopicMembers(topicId) {
   });
   return parseResponse(res);
 }
+
+export async function ensureRoomMember(roomId) {
+  const res = await fetch(apiUrl(`/api/timetable/room/${roomId}/ensure-member`), {
+    method: 'POST',
+    headers: getAuthHeaders(),
+  });
+  return parseResponse(res);
+}

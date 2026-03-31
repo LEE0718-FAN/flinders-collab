@@ -164,7 +164,7 @@ export default function ProfileDialog({ open, onOpenChange }) {
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="max-h-[calc(100dvh-1.5rem)] w-[min(calc(100vw-1rem),46rem)] max-w-[46rem] overflow-y-auto rounded-[28px] border border-slate-200 bg-white p-0">
-        <div className="p-6 sm:p-8">
+        <div className="p-5 pb-[max(1.25rem,var(--safe-bottom))] sm:p-8">
           <DialogHeader className="text-left">
             <DialogTitle className="text-2xl font-bold text-slate-900">Profile</DialogTitle>
             <DialogDescription className="text-sm text-slate-500">
@@ -172,8 +172,8 @@ export default function ProfileDialog({ open, onOpenChange }) {
             </DialogDescription>
           </DialogHeader>
 
-          <div className="mt-8 space-y-8">
-            <div className="flex items-center gap-5">
+          <div className="mt-6 space-y-6 sm:mt-8 sm:space-y-8">
+            <div className="flex flex-col items-start gap-4 sm:flex-row sm:items-center sm:gap-5">
               <div className="relative cursor-pointer group" onClick={() => fileInputRef.current?.click()}>
                 <Avatar className="h-24 w-24 ring-4 ring-indigo-100 shadow">
                   {(avatarPreview || currentAvatarUrl) && (
@@ -195,7 +195,7 @@ export default function ProfileDialog({ open, onOpenChange }) {
                 />
               </div>
               <div>
-                <p className="text-2xl font-semibold text-slate-900">Profile Photo</p>
+                <p className="text-xl font-semibold text-slate-900 sm:text-2xl">Profile Photo</p>
                 <p className="mt-1 text-sm text-slate-500">PNG, JPG or WebP, max 5MB</p>
               </div>
             </div>

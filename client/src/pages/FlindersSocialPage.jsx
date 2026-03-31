@@ -72,9 +72,9 @@ export default function FlindersSocialPage() {
   };
 
   return (
-    <div className="px-2 py-3 sm:px-0">
+    <div className="px-0.5 py-1.5 sm:px-0 sm:py-3">
       <Dialog open={gateOpen}>
-        <DialogContent className="sm:max-w-md rounded-2xl">
+        <DialogContent className="w-[min(calc(100vw-1rem),28rem)] rounded-2xl sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Complete Your Social Profile</DialogTitle>
             <DialogDescription>
@@ -122,19 +122,13 @@ export default function FlindersSocialPage() {
         </DialogContent>
       </Dialog>
 
-      <div data-tour="social-hero" className="relative mb-5 overflow-hidden rounded-2xl bg-gradient-to-br from-indigo-500 via-blue-600 to-cyan-500 px-5 py-6 shadow-lg sm:px-7 sm:py-8">
-        <div
-          className="pointer-events-none absolute inset-0 opacity-20"
-          style={{ background: 'radial-gradient(ellipse at 30% 20%, rgba(255,255,255,0.45) 0%, transparent 60%)' }}
-        />
-        <div className="relative flex items-center gap-3">
-          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white/20 shadow-inner backdrop-blur-sm">
-            <MessageSquare className="h-6 w-6 text-white" />
-          </div>
-          <div>
-            <h1 className="text-xl font-bold text-white sm:text-2xl">Flinders Social</h1>
-            <p className="mt-0.5 text-xs text-white/80">Campus-only live sharing, snap map and status updates</p>
-          </div>
+      <div data-tour="social-hero" className="mb-3 flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-3.5 py-3 shadow-sm sm:hidden">
+        <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-500 to-cyan-500 text-white shadow-sm">
+          <MessageSquare className="h-5 w-5" />
+        </div>
+        <div className="min-w-0">
+          <h1 className="truncate text-sm font-bold text-slate-900">Flinders Social</h1>
+          <p className="truncate text-[11px] text-slate-500">Campus map and live sharing</p>
         </div>
       </div>
 

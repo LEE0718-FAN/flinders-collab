@@ -1760,35 +1760,35 @@ export default function FlindersLifePage() {
       />
       {/* Hero */}
       <div
-        className="relative mb-5 overflow-hidden rounded-2xl bg-gradient-to-br from-amber-400 via-yellow-500 to-amber-600 px-5 py-6 shadow-lg sm:px-7 sm:py-8"
+        className="relative mb-4 overflow-hidden rounded-[24px] bg-gradient-to-br from-amber-400 via-yellow-500 to-amber-600 px-4 py-5 shadow-lg sm:mb-5 sm:rounded-2xl sm:px-7 sm:py-8"
         data-tutorial="flinders-hero"
       >
         <div className="pointer-events-none absolute inset-0 opacity-20" style={{ background: 'radial-gradient(ellipse at 30% 20%, rgba(255,255,255,0.4) 0%, transparent 60%)' }} />
-        <div className="relative flex items-center gap-3">
-          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white/20 shadow-inner backdrop-blur-sm">
+        <div className="relative flex items-start gap-3 sm:items-center">
+          <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white/20 shadow-inner backdrop-blur-sm sm:h-12 sm:w-12">
             <GraduationCap className="h-6 w-6 text-white" />
           </div>
           <div>
-            <h1 className="text-xl font-bold text-white sm:text-2xl">Flinders Life</h1>
-            <p className="mt-0.5 text-xs text-white/80">Events, academic calendar & study resources</p>
+            <h1 className="text-lg font-bold text-white sm:text-2xl">Flinders Life</h1>
+            <p className="mt-1 text-[12px] text-white/80 sm:text-xs">Events, academic calendar & study resources</p>
           </div>
         </div>
       </div>
 
       <Tabs defaultValue="events" className="w-full">
-        <div className="-mx-1 mb-4 overflow-x-auto px-1">
-          <TabsList className="w-max min-w-full justify-start gap-1 sm:w-full sm:justify-center">
-            <TabsTrigger value="events" className="shrink-0 gap-1.5 px-3 text-xs sm:text-sm" data-tutorial="flinders-tab-events"><Calendar className="h-4 w-4" />Events</TabsTrigger>
-            <TabsTrigger value="academic-calendar" className="shrink-0 gap-1.5 px-3 text-xs sm:text-sm" data-tutorial="flinders-tab-academic-calendar"><Calendar className="h-4 w-4" />Academic Calendar</TabsTrigger>
-            <TabsTrigger value="study-rooms" className="shrink-0 gap-1.5 px-3 text-xs sm:text-sm" data-tutorial="flinders-tab-study-rooms"><BookOpen className="h-4 w-4" />Study Rooms</TabsTrigger>
+        <div className="mb-3 sm:mb-4">
+          <TabsList className="grid h-auto w-full grid-cols-3 gap-1 rounded-[22px] border border-slate-200 bg-white p-1 shadow-sm sm:w-max sm:min-w-full sm:justify-start">
+            <TabsTrigger value="events" className="gap-1 rounded-2xl px-2 py-2 text-[11px] sm:px-3 sm:text-sm" data-tutorial="flinders-tab-events"><Calendar className="h-3.5 w-3.5 sm:h-4 sm:w-4" />Events</TabsTrigger>
+            <TabsTrigger value="academic-calendar" className="gap-1 rounded-2xl px-2 py-2 text-[11px] sm:px-3 sm:text-sm" data-tutorial="flinders-tab-academic-calendar"><Calendar className="h-3.5 w-3.5 sm:h-4 sm:w-4" />Academic</TabsTrigger>
+            <TabsTrigger value="study-rooms" className="gap-1 rounded-2xl px-2 py-2 text-[11px] sm:px-3 sm:text-sm" data-tutorial="flinders-tab-study-rooms"><BookOpen className="h-3.5 w-3.5 sm:h-4 sm:w-4" />Rooms</TabsTrigger>
           </TabsList>
         </div>
 
         {/* ── Events ── */}
         <TabsContent value="events" data-tutorial="flinders-panel-events">
           {eventsLoading ? <LoadingState tutorialId="flinders-events-loading" /> : (
-            <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_18rem]" data-tutorial="flinders-events-content">
-              <div className="space-y-4">
+            <div className="grid gap-3.5 lg:grid-cols-[minmax(0,1fr)_18rem] lg:gap-4" data-tutorial="flinders-events-content">
+              <div className="space-y-3.5 sm:space-y-4">
               {showFavorites && (
                 <div data-tutorial="flinders-events-favorites">
                   <h2 className="text-sm font-bold text-slate-800 mb-2 flex items-center gap-2">
@@ -1838,7 +1838,7 @@ export default function FlindersLifePage() {
               {eventData.all.length === 0 && <EmptyState icon={Calendar} message="No upcoming events. Check back later!" />}
               </div>
 
-              <aside className="h-fit rounded-2xl border border-slate-200 bg-white p-4 shadow-sm lg:sticky lg:top-4" data-tutorial="flinders-events-interest-picker">
+              <aside className="h-fit rounded-[22px] border border-slate-200 bg-white p-3.5 shadow-sm lg:sticky lg:top-4 lg:rounded-2xl lg:p-4" data-tutorial="flinders-events-interest-picker">
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <h2 className="text-sm font-bold text-slate-800">Filter Events</h2>

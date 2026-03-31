@@ -428,6 +428,44 @@ function generateInviteCode() {
   return code;
 }
 
+/**
+ * POST /timetable/room/:roomId/ensure-member
+ * Re-join a topic room if the user has timetable entries for it but left the room.
+ */
+async function ensureRoomMember(req, res, next) {
+  try {
+    const userId = req.user.id;
+    const { roomId } = req.params;
+
+    const { data: room } = await supabaseAdmin
+      .from('rooms')
+      .select('id, room_type')
+      .eq('id', roomId)
+      .single();
+
+    if (!room || room.room_type !== 'topic') {
+      return res.status(400).json({ error: 'Not a topic room' });
+    }
+
+    const { data: existing } = await supabaseAdmin
+      .from('room_members')
+      .select('id')
+      .eq('room_id', roomId)
+      .eq('user_id', userId)
+      .single();
+
+    if (existing) return res.json({ joined: false, already_member: true });
+
+    await supabaseAdmin
+      .from('room_members')
+      .insert({ room_id: roomId, user_id: userId, role: 'member' });
+
+    res.json({ joined: true });
+  } catch (err) {
+    next(err);
+  }
+}
+
 module.exports = {
   searchTopics,
   getMyTimetable,

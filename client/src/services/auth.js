@@ -1,6 +1,16 @@
 import { apiUrl } from '@/lib/api';
 import { getAuthHeaders, parseResponse } from '@/lib/api-headers';
 
+function buildBearerHeaders(accessToken, isJson = true) {
+  if (!accessToken) {
+    return getAuthHeaders(isJson);
+  }
+
+  const headers = { Authorization: `Bearer ${accessToken}` };
+  if (isJson) headers['Content-Type'] = 'application/json';
+  return headers;
+}
+
 export async function apiSignup(userData) {
   const res = await fetch(apiUrl('/api/auth/signup'), {
     method: 'POST',
@@ -65,10 +75,10 @@ export async function apiRequestPasswordReset(email) {
   return data;
 }
 
-export async function apiLogout() {
+export async function apiLogout(accessToken) {
   const res = await fetch(apiUrl('/api/auth/logout'), {
     method: 'POST',
-    headers: getAuthHeaders(),
+    headers: buildBearerHeaders(accessToken),
   });
   return parseResponse(res);
 }
@@ -81,10 +91,10 @@ export async function apiGuestLogin() {
   return parseResponse(res);
 }
 
-export async function apiGuestCleanup() {
+export async function apiGuestCleanup(accessToken) {
   const res = await fetch(apiUrl('/api/auth/guest/cleanup'), {
     method: 'POST',
-    headers: getAuthHeaders(),
+    headers: buildBearerHeaders(accessToken),
   });
   return parseResponse(res);
 }

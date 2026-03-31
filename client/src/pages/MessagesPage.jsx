@@ -12,6 +12,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { avatarMedium, avatarThumb } from '@/lib/avatar';
 
 const ChatPanel = lazy(() => import('@/components/chat/ChatPanel'));
 
@@ -172,24 +173,29 @@ export default function MessagesPage() {
   const showChatMobile = activeChat !== null || profileFriend !== null;
 
   return (
-    <div className="h-full flex flex-col bg-white">
+    <div className="flex h-full min-h-0 flex-col overflow-hidden rounded-[24px] border border-slate-200/70 bg-white shadow-sm">
       {/* Header */}
-      <div className="sticky top-0 z-10 bg-white/80 backdrop-blur-md border-b border-slate-100 px-4 py-3 safe-area-top">
-        <div className="max-w-5xl mx-auto flex items-center gap-2">
+      <div className="sticky top-0 z-10 border-b border-slate-100 bg-white/92 px-3 py-3 backdrop-blur-md safe-area-top sm:px-4">
+        <div className="flex w-full items-center gap-2">
           {showChatMobile && (
             <button onClick={() => { setActiveChat(null); setProfileFriend(null); }} className="sm:hidden p-1 -ml-1 rounded-lg hover:bg-slate-100">
               <ArrowLeft className="h-5 w-5 text-slate-600" />
             </button>
           )}
           <MessageSquare className="h-5 w-5 text-blue-600" />
-          <h1 className="text-lg font-bold text-slate-900">Messages</h1>
+          <div className="min-w-0 flex-1">
+            <h1 className="truncate text-base font-bold text-slate-900 sm:text-lg">Messages</h1>
+            <p className="truncate text-[11px] text-slate-400 sm:hidden">
+              {incoming.length > 0 ? `${incoming.length} pending request${incoming.length > 1 ? 's' : ''}` : 'Direct messages and friend profile'}
+            </p>
+          </div>
           {friends.length > 0 && (
-            <Badge className="rounded-full bg-blue-100 text-blue-700 border-blue-200 text-[10px]">
+            <Badge className="hidden rounded-full border-blue-200 bg-blue-100 text-[10px] text-blue-700 sm:inline-flex">
               {friends.length} friends
             </Badge>
           )}
           {incoming.length > 0 && (
-            <Badge className="rounded-full bg-amber-100 text-amber-700 border-amber-200 text-[10px]">
+            <Badge className="rounded-full border-amber-200 bg-amber-100 text-[10px] text-amber-700">
               {incoming.length} pending
             </Badge>
           )}
@@ -197,11 +203,11 @@ export default function MessagesPage() {
       </div>
 
       {/* Main content */}
-      <div className="flex-1 flex min-h-0 max-w-5xl mx-auto w-full">
+      <div className="flex min-h-0 w-full flex-1">
         {/* Left panel: Friend list */}
         <div className={`w-full sm:w-80 sm:border-r border-slate-100 flex flex-col shrink-0 ${showChatMobile ? 'hidden sm:flex' : 'flex'}`}>
           {/* Search */}
-          <div className="p-3 border-b border-slate-50">
+          <div className="border-b border-slate-50 p-3">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
               <Input
@@ -268,12 +274,12 @@ export default function MessagesPage() {
                 <div key={f.id} className="relative group">
                   <button
                     onClick={() => openChat(f)}
-                    className={`w-full flex items-center gap-3 px-3 py-3 transition-colors text-left ${
+                    className={`w-full flex items-center gap-3 px-3 py-3 pr-11 transition-colors text-left ${
                       isActive ? 'bg-blue-50' : 'hover:bg-slate-50'
                     }`}
                   >
                     {f.other_user?.avatar_url ? (
-                      <img src={f.other_user.avatar_url} alt="" className="h-11 w-11 rounded-full object-cover shrink-0" />
+                      <img src={avatarThumb(f.other_user.avatar_url)} alt="" className="h-11 w-11 rounded-full object-cover shrink-0" />
                     ) : (
                       <div className="h-11 w-11 rounded-full bg-gradient-to-br from-blue-400 to-indigo-500 flex items-center justify-center text-sm font-bold text-white shrink-0">
                         {(f.other_user?.full_name || '?')[0].toUpperCase()}
@@ -299,10 +305,10 @@ export default function MessagesPage() {
                     </div>
                   </button>
                   {/* Context menu trigger */}
-                  <div className="absolute right-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity" ref={menuOpenId === f.id ? menuRef : null}>
+                  <div className="absolute right-2 top-1/2 -translate-y-1/2 opacity-100 transition-opacity sm:opacity-0 sm:group-hover:opacity-100" ref={menuOpenId === f.id ? menuRef : null}>
                     <button
                       onClick={(e) => { e.stopPropagation(); setMenuOpenId(menuOpenId === f.id ? null : f.id); }}
-                      className="h-7 w-7 rounded-full hover:bg-slate-200 flex items-center justify-center"
+                      className="flex h-8 w-8 items-center justify-center rounded-full bg-white/90 shadow-sm hover:bg-slate-200 sm:h-7 sm:w-7 sm:bg-transparent sm:shadow-none"
                     >
                       <MoreVertical className="h-3.5 w-3.5 text-slate-400" />
                     </button>
@@ -348,15 +354,15 @@ export default function MessagesPage() {
           {profileFriend ? (
             /* Friend Profile Panel */
             <div className="flex-1 overflow-y-auto">
-              <div className="px-4 py-3 border-b border-slate-100 flex items-center gap-2 shrink-0">
+              <div className="flex shrink-0 items-center gap-2 border-b border-slate-100 px-4 py-3">
                 <button onClick={() => setProfileFriend(null)} className="p-1 -ml-1 rounded-lg hover:bg-slate-100">
                   <ArrowLeft className="h-4 w-4 text-slate-500" />
                 </button>
                 <span className="text-sm font-semibold text-slate-700">Friend Profile</span>
               </div>
-              <div className="p-6 flex flex-col items-center">
+              <div className="flex flex-col items-center p-5 sm:p-6">
                 {profileFriend.other_user?.avatar_url ? (
-                  <img src={profileFriend.other_user.avatar_url} alt="" className="h-20 w-20 rounded-full object-cover mb-3" />
+                  <img src={avatarMedium(profileFriend.other_user.avatar_url)} alt="" className="mb-3 h-20 w-20 rounded-full object-cover" />
                 ) : (
                   <div className="h-20 w-20 rounded-full bg-gradient-to-br from-blue-400 to-indigo-500 flex items-center justify-center text-2xl font-bold text-white mb-3">
                     {(profileFriend.other_user?.full_name || '?')[0].toUpperCase()}
@@ -368,7 +374,7 @@ export default function MessagesPage() {
                 )}
               </div>
 
-              <div className="px-6 space-y-3">
+              <div className="space-y-3 px-4 pb-5 sm:px-6">
                 {/* Info cards */}
                 {profileFriend.other_user?.major && (
                   <div className="flex items-center gap-3 p-3 rounded-xl bg-slate-50">
@@ -423,7 +429,7 @@ export default function MessagesPage() {
                 </div>
 
                 {/* Actions */}
-                <div className="pt-3 space-y-2">
+                <div className="space-y-2 pt-3">
                   <Button
                     onClick={() => { openChat(profileFriend); }}
                     className="w-full bg-blue-600 hover:bg-blue-700 text-white rounded-xl"
@@ -450,12 +456,12 @@ export default function MessagesPage() {
           ) : activeChat ? (
             <>
               {/* Chat header */}
-              <div className="flex items-center gap-3 px-4 py-3 border-b border-slate-100 bg-gradient-to-r from-blue-600 to-indigo-600 text-white shrink-0">
+              <div className="flex shrink-0 items-center gap-3 border-b border-slate-100 bg-gradient-to-r from-blue-600 to-indigo-600 px-3 py-3 text-white sm:px-4">
                 <button onClick={() => setActiveChat(null)} className="sm:hidden p-1 -ml-1 rounded-lg hover:bg-white/20">
                   <ArrowLeft className="h-4 w-4" />
                 </button>
                 {activeChat.friend.other_user?.avatar_url ? (
-                  <img src={activeChat.friend.other_user.avatar_url} alt="" className="h-8 w-8 rounded-full object-cover" />
+                  <img src={avatarThumb(activeChat.friend.other_user.avatar_url)} alt="" className="h-8 w-8 rounded-full object-cover" />
                 ) : (
                   <div className="h-8 w-8 rounded-full bg-white/20 flex items-center justify-center text-xs font-bold">
                     {(activeChat.friend.other_user?.full_name || '?')[0].toUpperCase()}
@@ -497,7 +503,7 @@ export default function MessagesPage() {
       {/* Confirm Remove/Block Dialog */}
       {confirmAction && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4" onClick={() => !actionLoading && setConfirmAction(null)}>
-          <div className="bg-white rounded-2xl shadow-xl max-w-sm w-full p-6" onClick={(e) => e.stopPropagation()}>
+          <div className="max-h-[calc(var(--viewport-dynamic-height,100dvh)-1.5rem)] w-full max-w-sm overflow-y-auto rounded-2xl bg-white p-5 shadow-xl sm:p-6" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-center mb-4">
               <div className={`h-12 w-12 rounded-full flex items-center justify-center ${confirmAction.type === 'block' ? 'bg-red-100' : 'bg-amber-100'}`}>
                 {confirmAction.type === 'block' ? <Ban className="h-6 w-6 text-red-500" /> : <UserX className="h-6 w-6 text-amber-500" />}

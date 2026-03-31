@@ -101,13 +101,13 @@ export default function DeadlinesPage() {
           },
         ]}
       />
-      <div className="space-y-6">
+      <div className="space-y-4 sm:space-y-6">
         {/* Header */}
-        <div data-tour="deadlines-header" className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-orange-500 via-rose-500 to-pink-600 px-8 py-8 text-white shadow-xl">
+        <div data-tour="deadlines-header" className="relative overflow-hidden rounded-[24px] bg-gradient-to-r from-orange-500 via-rose-500 to-pink-600 px-4 py-5 text-white shadow-lg sm:rounded-2xl sm:px-8 sm:py-8">
           <div className="absolute -right-12 -top-12 h-40 w-40 rounded-full bg-white/10 blur-2xl" />
           <div className="relative">
-            <h1 className="text-2xl sm:text-3xl font-black tracking-tight">Upcoming Deadlines</h1>
-            <p className="mt-2 text-white/70">All your upcoming events across every room</p>
+            <h1 className="text-[1.7rem] font-black tracking-tight sm:text-3xl">Upcoming Deadlines</h1>
+            <p className="mt-1.5 text-[13px] text-white/75 sm:mt-2 sm:text-base">All your upcoming events across every room</p>
           </div>
         </div>
 
@@ -121,7 +121,7 @@ export default function DeadlinesPage() {
                   key={cat}
                   variant={filter === cat ? 'default' : 'outline'}
                   size="sm"
-                  className={`h-auto min-h-[2.25rem] shrink-0 whitespace-nowrap rounded-full px-3 py-1.5 text-xs gap-1.5 ${filter === cat ? 'bg-gradient-to-r from-orange-500 to-rose-500 text-white border-0 shadow-md' : ''}`}
+                  className={`h-auto min-h-[2.15rem] shrink-0 whitespace-nowrap rounded-full px-2.5 py-1.5 text-[11px] gap-1.5 sm:px-3 sm:text-xs ${filter === cat ? 'bg-gradient-to-r from-orange-500 to-rose-500 text-white border-0 shadow-md' : ''}`}
                   onClick={() => setFilter(cat)}
                 >
                   {cat === 'all' ? '🔍' : info.icon}
@@ -164,31 +164,31 @@ export default function DeadlinesPage() {
               return (
                 <div
                   key={event.id}
-                  className="flex items-start gap-3 rounded-xl border bg-white px-3.5 py-3.5 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md sm:items-center sm:gap-4 sm:px-5 sm:py-4"
+                  className="flex items-start gap-3 rounded-2xl border bg-white px-3 py-3 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md sm:items-center sm:gap-4 sm:px-5 sm:py-4"
                   style={{ borderLeftWidth: '4px', borderLeftColor: palette.accent }}
                   onClick={() => navigate(`/rooms/${event.room_id}`, {
                     state: { tab: 'schedule', eventDate: startDate.toISOString().slice(0, 10) },
                   })}
                 >
                   <span
-                    className="shrink-0 rounded-full px-2.5 py-1 text-xs font-bold sm:px-3 sm:text-sm"
+                    className="shrink-0 rounded-full px-2 py-1 text-[11px] font-bold sm:px-3 sm:text-sm"
                     style={{ backgroundColor: palette.pillBg, color: palette.pillText }}
                   >
                     {event.room_name}
                   </span>
 
                   <div className="flex-1 min-w-0">
-                    <p className="line-clamp-2 break-words text-[14px] font-semibold leading-snug sm:text-[15px]">
+                    <p className="line-clamp-2 break-words text-[13px] font-semibold leading-snug sm:text-[15px]">
                       {event.title}
                     </p>
-                    <div className="mt-1 space-y-0.5 text-[12px] text-muted-foreground sm:text-[13px]">
+                    <div className="mt-1 space-y-0.5 text-[11px] text-muted-foreground sm:text-[13px]">
                       <p className="break-words text-muted-foreground/75">{catInfo.label}</p>
                       <p className="break-words">{format(startDate, 'EEE, MMM d · h:mm a')}</p>
                     </div>
                   </div>
 
                   <div className="shrink-0 text-right">
-                    <span className={`inline-block rounded-full px-2.5 py-1 text-sm font-bold ${badgeBg} sm:px-3`}>
+                    <span className={`inline-block rounded-full px-2.5 py-1 text-[13px] font-bold ${badgeBg} sm:px-3 sm:text-sm`}>
                       {badgeText}
                     </span>
                     <p className="mt-1 text-[11px] leading-snug text-muted-foreground sm:text-xs">

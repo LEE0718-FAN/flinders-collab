@@ -146,7 +146,7 @@ export default function RoomCard({ room, onDeleted, draggableProps, suppressNavi
     <div className="h-full">
       <div
         {...draggableProps}
-        className="relative flex h-full flex-col overflow-hidden rounded-2xl border-2 text-card-foreground transition-all duration-300 ease-out md:cursor-grab md:hover:-translate-y-1.5 md:hover:scale-[1.01] md:active:cursor-grabbing"
+        className="relative flex h-full flex-col overflow-hidden rounded-[22px] border-2 text-card-foreground transition-all duration-300 ease-out md:cursor-grab md:hover:-translate-y-1.5 md:hover:scale-[1.01] md:active:cursor-grabbing"
         style={{
           background: '#ffffff',
           borderColor: palette.border,
@@ -163,18 +163,18 @@ export default function RoomCard({ room, onDeleted, draggableProps, suppressNavi
         }}
       >
         {/* Gradient accent bar */}
-        <div className="h-1.5 rounded-t-2xl" style={{ background: palette.accent }} />
+        <div className="h-1.5 rounded-t-[22px]" style={{ background: palette.accent }} />
 
         {/* Gradient header area */}
-        <div className="relative h-10" style={{ background: palette.headerGradient }} />
+        <div className="relative h-8 sm:h-10" style={{ background: palette.headerGradient }} />
 
         {/* Badges — overlapping gradient/white boundary */}
-        <div className="relative px-4" style={{ marginTop: '-10px', zIndex: 1 }}>
-          <div className="flex items-center gap-1.5 h-6">
+        <div className="relative px-3.5 sm:px-4" style={{ marginTop: '-10px', zIndex: 1 }}>
+          <div className="flex min-h-6 flex-wrap items-center gap-1.5">
             {courseLabel && (
               <Badge
                 variant="secondary"
-                className="max-w-[11rem] truncate rounded-full border-0 bg-white/90 text-xs text-foreground shadow-sm"
+                className="max-w-[9rem] truncate rounded-full border-0 bg-white/90 px-2 py-0.5 text-[11px] text-foreground shadow-sm sm:max-w-[11rem] sm:text-xs"
               >
                 {courseLabel}
               </Badge>
@@ -182,7 +182,7 @@ export default function RoomCard({ room, onDeleted, draggableProps, suppressNavi
             {isOwner && (
               <Badge
                 variant="outline"
-                className="gap-1 text-xs bg-white/90 text-foreground shadow-sm border-0 rounded-full"
+                className="gap-1 rounded-full border-0 bg-white/90 px-2 py-0.5 text-[11px] text-foreground shadow-sm sm:text-xs"
               >
                 <Crown className="h-3 w-3" />
                 Owner
@@ -192,24 +192,24 @@ export default function RoomCard({ room, onDeleted, draggableProps, suppressNavi
         </div>
 
         {/* Top section: title + description */}
-        <div className="flex-1 px-4 pt-2 pb-0">
+        <div className="flex-1 px-3.5 pb-0 pt-2 sm:px-4">
           {/* Title — single line, truncated */}
-          <h3 className="text-sm font-bold leading-snug truncate">
+          <h3 className="truncate text-[15px] font-bold leading-snug sm:text-sm">
             {room.name}
           </h3>
 
           {/* Description — single line */}
-          <p className="mt-0.5 truncate text-xs text-muted-foreground">
+          <p className="mt-0.5 truncate text-[12px] text-muted-foreground">
             {room.description || '\u00A0'}
           </p>
         </div>
 
         {/* Footer — pinned to bottom */}
-        <div className="px-4 pb-4 pt-2">
+        <div className="px-3.5 pb-3.5 pt-2 sm:px-4 sm:pb-4">
           <div className="flex items-center justify-between border-t pt-3" style={{ borderColor: palette.divider }}>
             <div className="flex items-center gap-3 text-sm">
               <span
-                className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold"
+                className="flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold sm:text-xs"
                 style={{ backgroundColor: palette.pillBg, color: palette.pillText }}
               >
                 <Users className="h-3.5 w-3.5" />
@@ -221,7 +221,7 @@ export default function RoomCard({ room, onDeleted, draggableProps, suppressNavi
               <Button
                 variant="outline"
                 size="sm"
-                className={`h-9 sm:h-7 gap-1.5 text-xs opacity-100 sm:opacity-50 hover:opacity-100 transition-opacity ${
+                className={`h-8 gap-1.5 rounded-xl px-2.5 text-[11px] opacity-100 transition-opacity sm:h-7 sm:text-xs sm:opacity-50 hover:opacity-100 ${
                   isOwner
                     ? 'text-red-600 border-red-200 hover:bg-red-50 hover:text-red-700'
                     : 'text-orange-600 border-orange-200 hover:bg-orange-50 hover:text-orange-700'
@@ -237,7 +237,7 @@ export default function RoomCard({ room, onDeleted, draggableProps, suppressNavi
                   <><LogOut className="h-3.5 w-3.5" />Leave</>
                 )}
               </Button>
-              <ArrowRight className="h-4 w-4 text-muted-foreground transition-transform duration-200" style={{ transform: hovered ? 'translateX(2px)' : 'none' }} />
+              <ArrowRight className="hidden h-4 w-4 text-muted-foreground transition-transform duration-200 sm:block" style={{ transform: hovered ? 'translateX(2px)' : 'none' }} />
             </div>
           </div>
         </div>

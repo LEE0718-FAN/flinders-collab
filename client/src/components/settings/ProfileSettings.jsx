@@ -8,6 +8,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/components/ui/toast';
 import { apiGetMe } from '@/services/auth';
 import { FLINDERS_PROGRAMS } from '@/lib/flinders-programs';
+import { avatarLarge } from '@/lib/avatar';
 
 export default function ProfileSettings() {
   const { user, updateUser } = useAuth();
@@ -55,6 +56,13 @@ export default function ProfileSettings() {
     return () => {
       active = false;
     };
+  }, [user?.user_metadata?.major, user?.user_metadata?.name, user?.user_metadata?.student_id]);
+
+  useEffect(() => {
+    setName(user?.user_metadata?.name || '');
+    setStudentId(user?.user_metadata?.student_id || '');
+    setMajor(user?.user_metadata?.major || '');
+    setMajorQuery(user?.user_metadata?.major || '');
   }, [user?.user_metadata?.major, user?.user_metadata?.name, user?.user_metadata?.student_id]);
 
   useEffect(() => {
@@ -159,21 +167,21 @@ export default function ProfileSettings() {
   };
 
   return (
-    <Card>
-      <CardHeader>
+    <Card className="overflow-hidden rounded-2xl border-slate-200/80 shadow-sm">
+      <CardHeader className="pb-4">
         <CardTitle className="text-lg">Profile</CardTitle>
         <CardDescription>Update your personal information and avatar.</CardDescription>
       </CardHeader>
-      <CardContent className="space-y-6">
+      <CardContent className="space-y-5 px-4 pb-5 sm:px-6 sm:pb-6">
         {/* Avatar upload */}
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-3 sm:gap-4">
           <div
             className="relative group cursor-pointer"
             onClick={() => fileInputRef.current?.click()}
           >
             <Avatar className="h-20 w-20 ring-4 ring-indigo-100 shadow">
               {(avatarPreview || currentAvatarUrl) && (
-                <AvatarImage src={avatarPreview || currentAvatarUrl} alt="Profile" className="object-cover" />
+                <AvatarImage src={avatarPreview || avatarLarge(currentAvatarUrl)} alt="Profile" className="object-cover" />
               )}
               <AvatarFallback className="bg-gradient-to-br from-blue-500 to-indigo-600 text-lg font-bold text-white">
                 {initials}
@@ -190,7 +198,7 @@ export default function ProfileSettings() {
               onChange={handleFileSelect}
             />
           </div>
-          <div>
+          <div className="min-w-0">
             <p className="text-sm font-medium">Profile Photo</p>
             <p className="text-xs text-muted-foreground">PNG, JPG or WebP, max 5MB</p>
             {errors.avatar && <p className="text-xs text-destructive mt-1">{errors.avatar}</p>}

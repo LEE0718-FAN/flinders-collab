@@ -148,12 +148,12 @@ export default function PreferenceSettings() {
 
   return (
     <div className="space-y-4">
-      <Card>
+      <Card className="overflow-hidden rounded-2xl border-slate-200/80 shadow-sm">
         <CardHeader>
           <CardTitle className="text-lg">Push Notifications</CardTitle>
           <CardDescription>Choose which alerts should reach your mobile app.</CardDescription>
         </CardHeader>
-        <CardContent className="divide-y divide-border/50">
+        <CardContent className="divide-y divide-border/50 px-4 pb-4 sm:px-6 sm:pb-6">
           {!preferencesReady ? (
             <div className="flex items-center gap-2 py-4 text-sm text-muted-foreground">
               <Loader2 className="h-4 w-4 animate-spin" />
@@ -175,12 +175,12 @@ export default function PreferenceSettings() {
         </CardContent>
       </Card>
 
-      <Card>
+      <Card className="overflow-hidden rounded-2xl border-slate-200/80 shadow-sm">
         <CardHeader>
           <CardTitle className="text-lg">Notifications</CardTitle>
           <CardDescription>Control sound and alert preferences.</CardDescription>
         </CardHeader>
-        <CardContent className="divide-y divide-border/50">
+        <CardContent className="divide-y divide-border/50 px-4 pb-4 sm:px-6 sm:pb-6">
           <PreferenceRow
             id="pref-notification-sounds"
             label="Notification Sounds"

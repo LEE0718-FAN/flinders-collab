@@ -4,6 +4,7 @@ import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { Download, FileText, X } from 'lucide-react';
 import { getFileDownloadUrl } from '@/services/files';
+import { avatarThumb } from '@/lib/avatar';
 
 function ImageLightbox({ src, alt, onClose }) {
   return (
@@ -136,7 +137,7 @@ export default function MessageBubble({ message, isOwn }) {
   return (
     <div className={cn('flex gap-3', isOwn ? 'flex-row-reverse' : 'flex-row')} style={{ alignItems: 'flex-start' }}>
       <Avatar className="h-9 w-9 shrink-0 ring-2 ring-white shadow-md mt-1">
-        {avatarUrl && <AvatarImage src={avatarUrl} alt={displayName} className="object-cover" />}
+        {avatarUrl && <AvatarImage src={avatarThumb(avatarUrl)} alt={displayName} className="object-cover" />}
         <AvatarFallback className="bg-gradient-to-br from-blue-500 to-indigo-500 text-white text-xs font-bold">{initials}</AvatarFallback>
       </Avatar>
       <div className={cn('max-w-[78%] min-w-0', isOwn ? 'text-right' : 'text-left')}>

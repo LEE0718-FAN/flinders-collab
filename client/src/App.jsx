@@ -27,19 +27,30 @@ function useViewportMetrics() {
     const root = document.documentElement;
     const viewport = window.visualViewport;
     let rafId = 0;
+    let stableHeight = 0;
+    let lastWidth = 0;
 
     const sync = () => {
       const height = Math.round(viewport?.height || window.innerHeight || 0);
       const width = Math.round(viewport?.width || window.innerWidth || 0);
 
       if (height > 0) {
-        root.style.setProperty('--viewport-height', `${height}px`);
-        root.style.setProperty('--viewport-stable-height', `${height}px`);
         root.style.setProperty('--viewport-dynamic-height', `${height}px`);
+        root.style.setProperty('--viewport-height', `${height}px`);
+
+        if (!stableHeight || (lastWidth && Math.abs(width - lastWidth) > 120)) {
+          stableHeight = height;
+        } else {
+          stableHeight = Math.max(stableHeight, height);
+        }
+
+        root.style.setProperty('--viewport-stable-height', `${stableHeight}px`);
+        root.style.setProperty('--keyboard-inset', `${Math.max(0, stableHeight - height)}px`);
       }
 
       if (width > 0) {
         root.style.setProperty('--viewport-width', `${width}px`);
+        lastWidth = width;
       }
     };
 

@@ -212,10 +212,11 @@ export function useAuth() {
       saveSession(newSession);
       setSession(newSession);
       setUser(newUser);
+      syncProfileFromServer(newSession).catch(() => {});
     }
 
     return updated;
-  }, [setSession, setUser]);
+  }, [setSession, setUser, syncProfileFromServer]);
 
   const requestPasswordReset = useCallback(async (email) => {
     const normalizedEmail = String(email || '').trim().toLowerCase();
@@ -307,27 +308,33 @@ export function useAuth() {
   }, [setSession, setUser]);
 
   const guestCleanup = useCallback(async () => {
-    try {
-      await apiGuestCleanup();
-    } catch { /* ignore */ }
+    const currentSession = loadSession();
+    const accessToken = currentSession?.access_token || null;
     clearSession();
     clearAuth();
+
+    try {
+      await apiGuestCleanup(accessToken);
+    } catch { /* ignore */ }
   }, [clearAuth]);
 
   const logout = useCallback(async () => {
-    // If tester, do full cleanup instead of just logout
     const currentSession = loadSession();
+    const accessToken = currentSession?.access_token || null;
+
+    clearSession();
+    clearAuth();
+
+    // If tester, do full cleanup instead of just logout
     if (currentSession?.is_tester) {
       await guestCleanup();
       return;
     }
+
     try {
-      await apiLogout();
+      await apiLogout(accessToken);
     } catch {
-      // Clear local session even if remote revoke fails
-    } finally {
-      clearSession();
-      clearAuth();
+      // Local logout already completed.
     }
   }, [clearAuth, guestCleanup]);
 

@@ -13,16 +13,31 @@ const DEFAULT_SIZE = 200;
 export function optimizedAvatarUrl(url, size = DEFAULT_SIZE) {
   if (!url || typeof url !== 'string') return url;
 
-  // Only transform Supabase storage URLs
-  if (!url.includes('/storage/v1/object/public/')) return url;
+  try {
+    const parsed = new URL(url, window.location.origin);
+    if (!parsed.pathname.includes('/storage/v1/object/public/')) {
+      return parsed.toString();
+    }
 
-  const transformed = url.replace(
-    '/storage/v1/object/public/',
-    '/storage/v1/render/image/public/',
-  );
+    parsed.pathname = parsed.pathname.replace(
+      '/storage/v1/object/public/',
+      '/storage/v1/render/image/public/',
+    );
+    parsed.searchParams.set('width', String(size));
+    parsed.searchParams.set('height', String(size));
+    parsed.searchParams.set('resize', 'cover');
+    return parsed.toString();
+  } catch {
+    if (!url.includes('/storage/v1/object/public/')) return url;
 
-  const separator = transformed.includes('?') ? '&' : '?';
-  return `${transformed}${separator}width=${size}&height=${size}&resize=cover`;
+    const transformed = url.replace(
+      '/storage/v1/object/public/',
+      '/storage/v1/render/image/public/',
+    );
+
+    const separator = transformed.includes('?') ? '&' : '?';
+    return `${transformed}${separator}width=${size}&height=${size}&resize=cover`;
+  }
 }
 
 /**

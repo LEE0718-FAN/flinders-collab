@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { getFriendRequests, sendFriendRequest, respondToFriendRequest } from '@/services/flinders';
 import { socket } from '@/lib/socket';
+import { avatarThumb } from '@/lib/avatar';
 
 const ChatPanel = lazy(() => import('@/components/chat/ChatPanel'));
 
@@ -398,26 +399,26 @@ export default function TimetablePage() {
   return (
     <div className="min-h-full bg-gradient-to-b from-slate-50 to-white">
       {/* Header */}
-      <div className="sticky top-0 z-20 bg-white/80 backdrop-blur-md border-b border-slate-100 px-4 py-3 safe-area-top">
-        <div className="max-w-5xl mx-auto flex items-center justify-between">
+      <div className="sticky top-0 z-20 border-b border-slate-100 bg-white/90 px-3 py-3 backdrop-blur-md safe-area-top sm:px-4">
+        <div className="mx-auto flex max-w-5xl flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-2">
             <GraduationCap className="h-5 w-5 text-blue-600" />
-            <h1 className="text-lg font-bold text-slate-900">Timetable Buddy</h1>
+            <h1 className="text-base font-bold text-slate-900 sm:text-lg">Timetable Buddy</h1>
             {uniqueTopicIds.length > 0 && (
               <Badge className="rounded-full bg-blue-100 text-blue-700 border-blue-200 text-[10px]">{uniqueTopicIds.length} topics</Badge>
             )}
           </div>
-          <div className="flex gap-2">
+          <div className="grid grid-cols-2 gap-2 sm:flex">
             {dragTopic && (
-              <Button size="sm" onClick={finishAdding} className="h-8 text-xs rounded-full bg-emerald-600 hover:bg-emerald-700">
+              <Button size="sm" onClick={finishAdding} className="col-span-2 h-9 rounded-full text-xs bg-emerald-600 hover:bg-emerald-700 sm:col-span-1 sm:h-8">
                 <Check className="h-3.5 w-3.5 mr-1" />
                 Done
               </Button>
             )}
-            <Button variant={view === 'setup' ? 'default' : 'outline'} size="sm" onClick={() => { setView('setup'); finishAdding(); }} className="h-8 text-xs rounded-full">
+            <Button variant={view === 'setup' ? 'default' : 'outline'} size="sm" onClick={() => { setView('setup'); finishAdding(); }} className="h-9 rounded-full text-xs sm:h-8">
               <BookOpen className="h-3.5 w-3.5 mr-1" />Courses
             </Button>
-            <Button variant={view === 'calendar' ? 'default' : 'outline'} size="sm" onClick={() => setView('calendar')} className="h-8 text-xs rounded-full" disabled={timetable.length === 0 && !dragTopic}>
+            <Button variant={view === 'calendar' ? 'default' : 'outline'} size="sm" onClick={() => setView('calendar')} className="h-9 rounded-full text-xs sm:h-8" disabled={timetable.length === 0 && !dragTopic}>
               <Clock className="h-3.5 w-3.5 mr-1" />Timetable
             </Button>
           </div>
@@ -441,7 +442,7 @@ export default function TimetablePage() {
         </div>
       )}
 
-      <div className="max-w-5xl mx-auto p-4">
+      <div className="mx-auto max-w-5xl px-2 py-3 sm:p-4">
         {view === 'setup' ? (
           <SetupView
             slots={slots} timetable={timetable} topicColorMap={topicColorMap}
@@ -628,7 +629,7 @@ export default function TimetablePage() {
                         <div key={m.id} className="px-2 py-2 rounded-lg hover:bg-white transition-colors">
                           <div className="flex items-center gap-2">
                             {m.avatar_url ? (
-                              <img src={m.avatar_url} alt="" className="h-7 w-7 rounded-full object-cover shrink-0" />
+                              <img src={avatarThumb(m.avatar_url)} alt="" className="h-7 w-7 rounded-full object-cover shrink-0" />
                             ) : (
                               <div className="h-7 w-7 rounded-full bg-blue-100 flex items-center justify-center text-[11px] font-bold text-blue-600 shrink-0">
                                 {(m.full_name || '?')[0].toUpperCase()}
@@ -736,26 +737,26 @@ export default function TimetablePage() {
 /* ========== Setup View ========== */
 function SetupView({ slots, timetable, topicColorMap, onQueryChange, selectTopic, handleRemoveTopic, addAnotherClass, addSlot, removeSlot, openChat, openEditEntry }) {
   return (
-    <div className="space-y-4">
-      <p className="text-sm text-slate-500">Add your courses below, then drag on the calendar to set class times.</p>
+    <div className="space-y-3.5 sm:space-y-4">
+      <p className="px-1 text-[13px] leading-relaxed text-slate-500 sm:px-0 sm:text-sm">Add your courses below, then drag on the calendar to set class times.</p>
       {slots.map((slot, idx) => {
         const color = slot.selectedTopic ? topicColorMap[slot.selectedTopic.id] || getColorForIndex(idx) : null;
         const topicEntries = slot.selectedTopic ? timetable.filter((e) => e.topic?.id === slot.selectedTopic.id) : [];
         return (
-          <Card key={slot.id} className={`shadow-sm transition-all ${color ? `${color.border} border-l-4` : 'border-slate-200'}`}>
-            <CardContent className="p-4">
-              <div className="flex items-center gap-2 mb-3">
+          <Card key={slot.id} className={`overflow-hidden rounded-[22px] shadow-sm transition-all ${color ? `${color.border} border-l-4` : 'border-slate-200'}`}>
+            <CardContent className="p-3.5 sm:p-4">
+              <div className="mb-3 flex items-start gap-2">
                 <div className={`h-8 w-8 rounded-lg flex items-center justify-center text-sm font-bold text-white ${color ? color.accent : 'bg-slate-300'}`}>{idx + 1}</div>
                 {slot.selectedTopic ? (
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-start gap-2">
                       <span className="font-semibold text-slate-900">{slot.selectedTopic.topic_code}</span>
-                      <span className="text-sm text-slate-500 truncate">{slot.selectedTopic.title}</span>
+                      <span className="truncate text-[13px] text-slate-500 sm:text-sm">{slot.selectedTopic.title}</span>
                     </div>
                     {slot.selectedTopic.school && <p className="text-[11px] text-slate-400 truncate">{slot.selectedTopic.school}</p>}
                   </div>
                 ) : <span className="text-sm text-slate-400">Course {idx + 1}</span>}
-                <div className="flex gap-1 ml-auto">
+                <div className="ml-auto flex flex-wrap justify-end gap-1">
                   {slot.selectedTopic && (
                     <>
                       <Button variant="ghost" size="sm" onClick={() => openChat(topicEntries[0]?.room_id, slot.selectedTopic.topic_code, slot.selectedTopic.title)} className="h-7 text-xs text-blue-600" disabled={!topicEntries[0]?.room_id}>
@@ -830,7 +831,7 @@ function SetupView({ slots, timetable, topicColorMap, onQueryChange, selectTopic
           </Card>
         );
       })}
-      <Button variant="outline" onClick={addSlot} className="w-full h-11 rounded-xl border-dashed border-2 border-slate-200 text-slate-400 hover:text-blue-500 hover:border-blue-300">
+      <Button variant="outline" onClick={addSlot} className="h-11 w-full rounded-2xl border-2 border-dashed border-slate-200 text-slate-400 hover:border-blue-300 hover:text-blue-500">
         <Plus className="h-4 w-4 mr-2" />Add another course
       </Button>
     </div>
@@ -892,16 +893,16 @@ function CalendarView({ entries, topicColorMap, openChat, timetable, dragTopic, 
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3.5 sm:space-y-4">
       {/* Legend */}
       {uniqueTopics.length > 0 && (
-        <div className="flex flex-wrap gap-2">
+        <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 scrollbar-hide sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0">
           {uniqueTopics.map((topic) => {
             const color = topicColorMap[topic.id];
             const unread = topicUnread[topic.roomId] || 0;
             return (
               <button key={topic.id} onClick={() => openChat(topic.roomId, topic.topic_code, topic.title)}
-                className={`relative flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium ${color?.bg} ${color?.text} ${color?.border} border hover:shadow-md transition-shadow`}>
+                className={`relative flex shrink-0 items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-medium ${color?.bg} ${color?.text} ${color?.border} transition-shadow hover:shadow-md`}>
                 <MessageSquare className="h-3 w-3" />{topic.topic_code}
                 {unread > 0 && (
                   <span className="absolute -top-1.5 -right-1.5 flex h-4.5 min-w-4.5 items-center justify-center rounded-full bg-rose-500 px-1 text-[9px] font-bold text-white shadow-sm">
@@ -915,9 +916,12 @@ function CalendarView({ entries, topicColorMap, openChat, timetable, dragTopic, 
       )}
 
       {/* Calendar grid */}
-      <Card className="shadow-sm overflow-hidden">
-        <div className="overflow-x-auto">
-          <div className="min-w-[640px]">
+      <Card className="overflow-hidden rounded-[22px] border-slate-200 shadow-sm">
+        <div className="border-b border-slate-100 bg-slate-50/80 px-3 py-2 text-[11px] font-medium text-slate-500 sm:hidden">
+          Swipe left and right to see the full timetable.
+        </div>
+        <div className="overflow-x-auto overscroll-x-contain">
+          <div className="min-w-[760px]">
             {/* Day headers */}
             <div className="grid grid-cols-[60px_repeat(5,1fr)] border-b border-slate-100">
               <div className="p-2" />
