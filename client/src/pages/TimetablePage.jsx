@@ -68,6 +68,8 @@ export default function TimetablePage() {
   const [confirmForm, setConfirmForm] = useState(null); // {topicId, dayOfWeek, startTime, endTime, classType, location}
   const [editEntry, setEditEntry] = useState(null); // entry being edited
   const [chatPopup, setChatPopup] = useState(null); // {roomId, topicCode, topicTitle}
+  const [chatOpening, setChatOpening] = useState(false);
+  const [chatOpenError, setChatOpenError] = useState('');
   const [showMembers, setShowMembers] = useState(false);
   const [chatMembers, setChatMembers] = useState([]);
   const [friendState, setFriendState] = useState({ incoming: [], outgoing: [], friends: [] });
@@ -307,6 +309,8 @@ export default function TimetablePage() {
     if (!initialRoomId) return;
 
     setChatPopup({ roomId: initialRoomId, topicCode: topicCode || '', topicTitle: topicTitle || '' });
+    setChatOpening(true);
+    setChatOpenError('');
     setShowMembers(false);
     setChatMembers([]);
 
@@ -321,6 +325,9 @@ export default function TimetablePage() {
     } catch (err) {
       console.error('ensure-member failed:', err);
       setChatMembers([]);
+      setChatOpenError(err?.message || 'Failed to open this topic chat.');
+    } finally {
+      setChatOpening(false);
     }
   };
 
@@ -626,7 +633,7 @@ export default function TimetablePage() {
 
       {/* Chat popup */}
       {chatPopup && typeof document !== 'undefined' && createPortal(
-        <div className="fixed inset-0 z-[90] flex items-stretch justify-center bg-black/55 p-0 sm:items-center sm:p-4" onClick={() => setChatPopup(null)}>
+        <div className="fixed inset-0 z-[90] flex items-stretch justify-center bg-black/55 p-0 sm:items-center sm:p-4" onClick={() => { setChatPopup(null); setChatOpenError(''); }}>
           <div
             className={`relative flex h-[var(--viewport-dynamic-height,100dvh)] w-full min-h-0 flex-col overflow-hidden bg-white shadow-2xl sm:h-[82vh] ${showMembers ? 'sm:max-w-3xl' : 'sm:max-w-2xl'} sm:rounded-2xl`}
             onClick={(e) => e.stopPropagation()}
@@ -643,7 +650,7 @@ export default function TimetablePage() {
                 <button onClick={() => setShowMembers((v) => !v)} className={`rounded-full p-2 transition-colors ${showMembers ? 'bg-white/30' : 'hover:bg-white/20'}`} title="Toggle members">
                   <Users className="h-4 w-4" />
                 </button>
-                <button onClick={() => setChatPopup(null)} className="rounded-full p-2 transition-colors hover:bg-white/20">
+                <button onClick={() => { setChatPopup(null); setChatOpenError(''); }} className="rounded-full p-2 transition-colors hover:bg-white/20">
                   <X className="h-4 w-4" />
                 </button>
               </div>
@@ -651,9 +658,31 @@ export default function TimetablePage() {
 
             <div className="flex min-h-0 flex-1">
               <div className="min-h-0 flex-1">
-                <Suspense fallback={<div className="flex h-full items-center justify-center"><Loader2 className="h-6 w-6 animate-spin text-blue-500" /></div>}>
-                  <ChatPanel roomId={chatPopup.roomId} embedded />
-                </Suspense>
+                {chatOpening ? (
+                  <div className="flex h-full items-center justify-center bg-white">
+                    <div className="flex flex-col items-center gap-2 text-sm text-slate-500">
+                      <Loader2 className="h-6 w-6 animate-spin text-blue-500" />
+                      <span>Opening topic chat...</span>
+                    </div>
+                  </div>
+                ) : chatOpenError ? (
+                  <div className="flex h-full items-center justify-center bg-white px-6">
+                    <div className="max-w-sm text-center">
+                      <p className="text-sm font-semibold text-slate-700">Unable to open chat</p>
+                      <p className="mt-1 text-xs leading-relaxed text-slate-500">{chatOpenError}</p>
+                      <Button
+                        onClick={() => openChat(chatPopup.roomId, chatPopup.topicCode, chatPopup.topicTitle)}
+                        className="mt-4 h-9 rounded-full bg-blue-600 px-4 text-xs text-white hover:bg-blue-700"
+                      >
+                        Try again
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <Suspense fallback={<div className="flex h-full items-center justify-center"><Loader2 className="h-6 w-6 animate-spin text-blue-500" /></div>}>
+                    <ChatPanel roomId={chatPopup.roomId} embedded />
+                  </Suspense>
+                )}
               </div>
 
               {showMembers && (
