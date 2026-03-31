@@ -35,7 +35,7 @@ function buildSessionData(result, fallback = {}) {
   };
 }
 
-const PROFILE_SYNC_INTERVAL_MS = 15 * 1000;
+const PROFILE_SYNC_INTERVAL_MS = 5 * 1000;
 
 export function useAuth() {
   const { user, session, isLoading, setUser, setSession, setLoading, logout: clearAuth } = useAuthStore();
@@ -45,6 +45,8 @@ export function useAuth() {
 
     try {
       const profile = await apiGetMe();
+      const nextAvatarUrl = profile?.avatar_url || null;
+      const prevAvatarUrl = baseSession.user.user_metadata?.avatar_url || null;
       const syncedUser = {
         ...baseSession.user,
         email: profile?.email || baseSession.user.email,
@@ -52,7 +54,7 @@ export function useAuth() {
           ...baseSession.user.user_metadata,
           name: profile?.full_name || baseSession.user.user_metadata?.name,
           full_name: profile?.full_name || baseSession.user.user_metadata?.full_name,
-          avatar_url: profile?.avatar_url || null,
+          avatar_url: nextAvatarUrl,
           student_id: profile?.student_id ?? baseSession.user.user_metadata?.student_id ?? null,
           major: profile?.major ?? baseSession.user.user_metadata?.major ?? null,
           university: profile?.university ?? baseSession.user.user_metadata?.university ?? null,
@@ -64,6 +66,9 @@ export function useAuth() {
       saveSession(syncedSession);
       setSession(syncedSession);
       setUser(syncedUser);
+      if (typeof window !== 'undefined' && nextAvatarUrl !== prevAvatarUrl) {
+        window.dispatchEvent(new CustomEvent('profile-updated', { detail: { avatar_url: nextAvatarUrl } }));
+      }
       return syncedSession;
     } catch {
       return baseSession;
@@ -212,6 +217,9 @@ export function useAuth() {
       saveSession(newSession);
       setSession(newSession);
       setUser(newUser);
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('profile-updated', { detail: { avatar_url: updated.avatar_url || null } }));
+      }
       syncProfileFromServer(newSession).catch(() => {});
     }
 
