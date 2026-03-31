@@ -9,6 +9,7 @@ import { Loader2, CalendarDays, Clock, Filter } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import OnboardingTour from '@/components/OnboardingTour';
+import PageTour from '@/components/PageTour';
 
 const CATEGORY_INFO = {
   meeting:      { icon: '👥', label: 'Meeting' },
@@ -89,9 +90,20 @@ export default function DeadlinesPage() {
           },
         ]}
       />
+      <PageTour
+        tourId="deadlines"
+        steps={[
+          {
+            target: '[data-tour="deadlines-header"]',
+            title: 'Deadlines',
+            desc: 'All your upcoming events and deadlines across every room show up here. Create a room, schedule events, and never miss a thing!',
+            position: 'bottom',
+          },
+        ]}
+      />
       <div className="space-y-6">
         {/* Header */}
-        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-orange-500 via-rose-500 to-pink-600 px-8 py-8 text-white shadow-xl">
+        <div data-tour="deadlines-header" className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-orange-500 via-rose-500 to-pink-600 px-8 py-8 text-white shadow-xl">
           <div className="absolute -right-12 -top-12 h-40 w-40 rounded-full bg-white/10 blur-2xl" />
           <div className="relative">
             <h1 className="text-2xl sm:text-3xl font-black tracking-tight">Upcoming Deadlines</h1>

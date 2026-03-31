@@ -10,6 +10,7 @@ import { GraduationCap, Calendar, BookOpen, ExternalLink, Loader2, ChevronDown, 
 import { getRecommendedEvents, getCampusPresence, updateCampusPresence, clearCampusPresence, getFriendRequests, sendFriendRequest, respondToFriendRequest } from '@/services/flinders';
 import { hydratePreferences, updatePreferences } from '@/lib/preferences';
 import OnboardingTour from '@/components/OnboardingTour';
+import PageTour from '@/components/PageTour';
 import { format, parseISO, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isToday, getDay, addMonths, subMonths, isWithinInterval } from 'date-fns';
 import { useAuth } from '@/hooks/useAuth';
 import { useNavigate } from 'react-router-dom';
@@ -1654,6 +1655,30 @@ export default function FlindersLifePage() {
             title: 'Flinders Life',
             description: 'Events, academic calendar, study rooms — pick your interests for recommendations!',
             icon: '\u{1F393}',
+          },
+        ]}
+      />
+      <PageTour
+        tourId="flinders-life"
+        delay={800}
+        steps={[
+          {
+            target: '[data-tutorial="flinders-tab-events"]',
+            title: 'Campus Events',
+            desc: 'Browse events happening across campus. Filter by your interests and save your favourites!',
+            position: 'bottom',
+          },
+          {
+            target: '[data-tutorial="flinders-tab-academic-calendar"]',
+            title: 'Academic Calendar',
+            desc: 'View semester dates, holidays, exam periods, and important deadlines at a glance.',
+            position: 'bottom',
+          },
+          {
+            target: '[data-tutorial="flinders-tab-study-rooms"]',
+            title: 'Study Rooms',
+            desc: 'Book study rooms at City Campus, Bedford Park, or Tonsley — links straight to the booking system.',
+            position: 'bottom',
           },
         ]}
       />

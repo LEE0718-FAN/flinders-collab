@@ -7,6 +7,7 @@ import { apiGetMe } from '@/services/auth';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import PageTour from '@/components/PageTour';
 
 export default function FlindersSocialPage() {
   const { user, updateUser } = useAuth();
@@ -121,7 +122,7 @@ export default function FlindersSocialPage() {
         </DialogContent>
       </Dialog>
 
-      <div className="relative mb-5 overflow-hidden rounded-2xl bg-gradient-to-br from-indigo-500 via-blue-600 to-cyan-500 px-5 py-6 shadow-lg sm:px-7 sm:py-8">
+      <div data-tour="social-hero" className="relative mb-5 overflow-hidden rounded-2xl bg-gradient-to-br from-indigo-500 via-blue-600 to-cyan-500 px-5 py-6 shadow-lg sm:px-7 sm:py-8">
         <div
           className="pointer-events-none absolute inset-0 opacity-20"
           style={{ background: 'radial-gradient(ellipse at 30% 20%, rgba(255,255,255,0.45) 0%, transparent 60%)' }}
@@ -137,7 +138,31 @@ export default function FlindersSocialPage() {
         </div>
       </div>
 
-      {!gateOpen && <FlinapPanel currentUserId={user?.id || null} />}
+      {!gateOpen && (
+        <>
+          <PageTour
+            tourId="social"
+            delay={800}
+            steps={[
+              {
+                target: '[data-tour="social-hero"]',
+                title: 'Flinders Social',
+                desc: 'Share your location on campus, set your status, and see where your friends are!',
+                position: 'bottom',
+              },
+              {
+                target: '[data-tour="social-map"]',
+                title: 'Live Campus Map',
+                desc: 'Your location shows up here. Chat with friends and send friend requests!',
+                position: 'top',
+              },
+            ]}
+          />
+          <div data-tour="social-map">
+            <FlinapPanel currentUserId={user?.id || null} />
+          </div>
+        </>
+      )}
     </div>
   );
 }
