@@ -323,6 +323,7 @@ async function getMe(req, res, next) {
       });
     }
 
+    res.set('Cache-Control', 'no-cache, no-store, must-revalidate');
     res.json(data);
   } catch (err) {
     next(err);
@@ -494,7 +495,7 @@ async function updateProfile(req, res, next) {
         .from('avatars')
         .getPublicUrl(filePath);
 
-      updates.avatar_url = urlData.publicUrl;
+      updates.avatar_url = urlData.publicUrl + '?v=' + Date.now();
     }
 
     if (Object.keys(updates).length === 0) {
