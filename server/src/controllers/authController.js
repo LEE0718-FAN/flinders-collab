@@ -553,7 +553,7 @@ async function sendEmailVerification(req, res, next) {
     const { data: existingProfile } = await supabaseAdmin
       .from('users')
       .select('id')
-      .eq('email', email)
+      .eq('university_email', email)
       .maybeSingle();
     if (existingProfile) {
       return res.status(409).json({ error: 'An account with this email already exists. Please sign in instead.' });
