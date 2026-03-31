@@ -24,6 +24,7 @@ const flindersRoutes = require('./routes/flinders');
 const announcementRoutes = require('./routes/announcements');
 const adminRoutes = require('./routes/admin');
 const pushRoutes = require('./routes/push');
+const timetableRoutes = require('./routes/timetable');
 
 // Create Express app and HTTP server
 const app = express();
@@ -88,6 +89,7 @@ app.use('/api', messageRoutes);
 app.use('/api', taskRoutes);
 app.use('/api', reportRoutes);
 app.use('/api', boardRoutes);
+app.use('/api/timetable', timetableRoutes);
 app.use('/api', flindersRoutes);
 app.use('/api', announcementRoutes);
 app.use('/api/admin', adminRoutes);
@@ -138,6 +140,10 @@ server.listen(PORT, () => {
   // Start daily Flinders event crawler (runs immediately, then every 24h)
   const { startEventCrawler } = require('./utils/eventCrawler');
   startEventCrawler();
+
+  // Start weekly Flinders topic crawler (handbook → DB, runs on boot + weekly)
+  const { startTopicCrawler } = require('./utils/topicCrawler');
+  startTopicCrawler();
 
   // Start deadline reminder scheduler (runs immediately, then hourly with per-day dedupe)
   const { startDeadlineReminderScheduler } = require('./utils/deadlineReminders');

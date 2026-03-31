@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { LayoutDashboard, LogOut, Menu, Users, ChevronRight, Shield, User, CalendarClock, MessageSquare, Wrench, GraduationCap, Settings } from 'lucide-react';
+import { LayoutDashboard, LogOut, Menu, Users, ChevronRight, Shield, User, CalendarClock, CalendarDays, MessageSquare, Wrench, GraduationCap, Settings } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
@@ -144,6 +144,16 @@ function SidebarContent({ rooms, location, isAdmin, roomBadgeCounts = {}, user, 
           label="Flinders Life"
           tourId="nav-life"
           onIntent={() => preloadRoute('/flinders-life')}
+        />
+      )}
+      {(user?.account_type || user?.user_metadata?.account_type || 'flinders') !== 'general' && (
+        <NavItem
+          to="/timetable"
+          isActive={location.pathname === '/timetable'}
+          icon={CalendarDays}
+          label="My Timetable"
+          tourId="nav-timetable"
+          onIntent={() => preloadRoute('/timetable')}
         />
       )}
       {/* Room section divider */}

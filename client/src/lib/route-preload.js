@@ -3,6 +3,7 @@ const preloaders = {
   '/deadlines': () => import('@/pages/DeadlinesPage'),
   '/board': () => import('@/pages/BoardPage'),
   '/flinders-life': () => import('@/pages/FlindersLifePage'),
+  '/timetable': () => import('@/pages/TimetablePage'),
   '/admin': () => import('@/pages/AdminPage'),
   '/rooms/:roomId': () => import('@/pages/RoomPage'),
 };
@@ -23,6 +24,9 @@ export function preloadSidebarRoutes({ includeAdmin = false, includeFlindersLife
   preloadRoute('/dashboard');
   preloadRoute('/deadlines');
   preloadRoute('/board');
-  if (includeFlindersLife) preloadRoute('/flinders-life');
+  if (includeFlindersLife) {
+    preloadRoute('/flinders-life');
+    preloadRoute('/timetable');
+  }
   if (includeAdmin) preloadRoute('/admin');
 }

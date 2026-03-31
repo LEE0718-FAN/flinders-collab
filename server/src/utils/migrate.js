@@ -501,6 +501,74 @@ DO $$ BEGIN
     CREATE POLICY own_presence_all ON flinders_campus_presence FOR ALL TO authenticated USING (user_id = auth.uid()) WITH CHECK (user_id = auth.uid());
   END IF;
 END $$;
+
+-- ============================================================
+-- Timetable: course topics + student timetable
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS flinders_topics (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    topic_code TEXT NOT NULL,
+    title TEXT NOT NULL,
+    description TEXT,
+    credit_points TEXT,
+    level TEXT,
+    school TEXT,
+    academic_org TEXT,
+    year INT NOT NULL DEFAULT 2026,
+    semesters TEXT[],
+    campuses TEXT[],
+    delivery_modes TEXT[],
+    prerequisites TEXT,
+    handbook_url TEXT,
+    crawled_at TIMESTAMPTZ DEFAULT now(),
+    UNIQUE(topic_code, year)
+);
+CREATE INDEX IF NOT EXISTS idx_flinders_topics_code ON flinders_topics (topic_code);
+CREATE INDEX IF NOT EXISTS idx_flinders_topics_title ON flinders_topics USING gin (to_tsvector('english', title));
+CREATE INDEX IF NOT EXISTS idx_flinders_topics_year ON flinders_topics (year);
+
+CREATE TABLE IF NOT EXISTS user_timetable (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    topic_id UUID NOT NULL REFERENCES flinders_topics(id) ON DELETE CASCADE,
+    room_id UUID REFERENCES rooms(id) ON DELETE SET NULL,
+    day_of_week INT,
+    start_time TIME,
+    end_time TIME,
+    class_type TEXT,
+    location TEXT,
+    added_at TIMESTAMPTZ DEFAULT now(),
+    UNIQUE(user_id, topic_id, day_of_week, start_time)
+);
+CREATE INDEX IF NOT EXISTS idx_user_timetable_user ON user_timetable (user_id);
+CREATE INDEX IF NOT EXISTS idx_user_timetable_topic ON user_timetable (topic_id);
+
+CREATE TABLE IF NOT EXISTS topic_rooms (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    topic_id UUID NOT NULL REFERENCES flinders_topics(id) ON DELETE CASCADE,
+    room_id UUID NOT NULL REFERENCES rooms(id) ON DELETE CASCADE,
+    created_at TIMESTAMPTZ DEFAULT now(),
+    UNIQUE(topic_id)
+);
+CREATE INDEX IF NOT EXISTS idx_topic_rooms_topic ON topic_rooms (topic_id);
+
+ALTER TABLE flinders_topics ENABLE ROW LEVEL SECURITY;
+ALTER TABLE user_timetable ENABLE ROW LEVEL SECURITY;
+ALTER TABLE topic_rooms ENABLE ROW LEVEL SECURITY;
+
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'flinders_topics' AND policyname = 'topics_select_all') THEN
+    CREATE POLICY topics_select_all ON flinders_topics FOR SELECT TO authenticated USING (true);
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'user_timetable' AND policyname = 'timetable_own') THEN
+    CREATE POLICY timetable_own ON user_timetable FOR ALL TO authenticated
+      USING (user_id = auth.uid()) WITH CHECK (user_id = auth.uid());
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'topic_rooms' AND policyname = 'topic_rooms_select_all') THEN
+    CREATE POLICY topic_rooms_select_all ON topic_rooms FOR SELECT TO authenticated USING (true);
+  END IF;
+END $$;
 `;
 
 async function runMigration() {
