@@ -307,35 +307,28 @@ export function useAuth() {
     return sessionData;
   }, [setSession, setUser]);
 
-  const guestCleanup = useCallback(async () => {
+  const guestCleanup = useCallback(() => {
     const currentSession = loadSession();
     const accessToken = currentSession?.access_token || null;
     clearSession();
     clearAuth();
 
-    try {
-      await apiGuestCleanup(accessToken);
-    } catch { /* ignore */ }
+    apiGuestCleanup(accessToken).catch(() => {});
   }, [clearAuth]);
 
-  const logout = useCallback(async () => {
+  const logout = useCallback(() => {
     const currentSession = loadSession();
     const accessToken = currentSession?.access_token || null;
 
     clearSession();
     clearAuth();
 
-    // If tester, do full cleanup instead of just logout
     if (currentSession?.is_tester) {
-      await guestCleanup();
+      apiGuestCleanup(accessToken).catch(() => {});
       return;
     }
 
-    try {
-      await apiLogout(accessToken);
-    } catch {
-      // Local logout already completed.
-    }
+    apiLogout(accessToken).catch(() => {});
   }, [clearAuth, guestCleanup]);
 
   return { user, session, isLoading, login, signup, completeSignup, logout, updateUser, requestPasswordReset, guestLogin, guestCleanup };

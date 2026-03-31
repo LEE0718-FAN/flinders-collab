@@ -259,6 +259,7 @@ export default function MainLayout({ children }) {
   const [rooms, setRooms] = useState([]);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [logoutOpen, setLogoutOpen] = useState(false);
+  const [logoutPending, setLogoutPending] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [maintenance, setMaintenance] = useState(null); // { type, message, minutesUntil }
   const [announcementUnreadCounts, setAnnouncementUnreadCounts] = useState({});
@@ -576,9 +577,13 @@ export default function MainLayout({ children }) {
     };
   }, []);
 
-  const handleLogout = async () => {
-    await logout();
+  const handleLogout = () => {
+    if (logoutPending) return;
+    setLogoutPending(true);
+    setLogoutOpen(false);
+    logout();
     navigate('/login', { replace: true });
+    window.setTimeout(() => setLogoutPending(false), 300);
   };
 
   const initials = user?.user_metadata?.name
@@ -924,8 +929,8 @@ export default function MainLayout({ children }) {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleLogout} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-              Yes, Sign Out
+            <AlertDialogAction onClick={handleLogout} disabled={logoutPending} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              {logoutPending ? 'Signing out...' : 'Yes, Sign Out'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
