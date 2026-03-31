@@ -60,6 +60,7 @@ export default function RoomPage() {
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState(false);
   const [activeTab, setActiveTab] = useState(navState.tab || 'members');
+  const isTopicRoom = room?.room_type === 'topic';
   const [activities, setActivities] = useState([]);
   const [quickLinks, setQuickLinks] = useState([]);
   const [error, setError] = useState('');
@@ -279,6 +280,13 @@ export default function RoomPage() {
     return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [eventsLoaded, activeTab]);
+
+  // Topic rooms default to chat tab
+  useEffect(() => {
+    if (room?.room_type === 'topic' && !navState.tab) {
+      setActiveTab('chat');
+    }
+  }, [room?.room_type, navState.tab]);
 
   // Listen for external event creation (e.g. tutorial) to refetch events
   useEffect(() => {
@@ -509,6 +517,27 @@ export default function RoomPage() {
       <div className="space-y-5 pb-20 sm:space-y-6 sm:pb-0">
         {(() => {
           const palette = room ? getRoomPalette(room) : { headerGradient: 'linear-gradient(135deg, #0ea5e9, #7dd3fc)', accent: '#7dd3fc' };
+          if (isTopicRoom) {
+            return (
+              <div className="relative overflow-hidden rounded-2xl px-4 sm:px-6 md:px-8 py-4 sm:py-5 text-white shadow-xl mb-4" style={{ background: palette.headerGradient }}>
+                <div className="absolute -right-12 -top-12 h-40 w-40 rounded-full bg-white/10 blur-2xl" />
+                <div className="relative flex items-center justify-between gap-3">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
+                      <h1 className="text-lg sm:text-xl font-black text-white tracking-tight">{room?.name}</h1>
+                      {room?.course_name && (
+                        <Badge className="bg-white/20 text-white border-0 rounded-full text-xs">{room.course_name}</Badge>
+                      )}
+                    </div>
+                    <p className="mt-1 text-white/70 text-xs flex items-center gap-1.5">
+                      <Users className="h-3.5 w-3.5" />
+                      {members.length} member{members.length !== 1 ? 's' : ''}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            );
+          }
           return (
             <div className="relative overflow-hidden rounded-2xl px-4 sm:px-6 md:px-8 py-5 sm:py-6 text-white shadow-xl mb-6" style={{ background: palette.headerGradient }}>
               <div className="absolute -right-12 -top-12 h-40 w-40 rounded-full bg-white/10 blur-2xl" />
@@ -535,6 +564,52 @@ export default function RoomPage() {
           );
         })()}
 
+        {/* Topic rooms: chat-only layout */}
+        {isTopicRoom && (
+          <Tabs value={activeTab} onValueChange={setActiveTab}>
+            <TabsList className="w-max min-w-full justify-start gap-1 rounded-xl border bg-white p-1.5 shadow-sm">
+              <TabsTrigger value="chat" className="min-h-[40px] shrink-0 px-3 text-sm data-[state=active]:bg-indigo-50 data-[state=active]:font-semibold data-[state=active]:text-indigo-700">
+                <MessageSquare className="h-4 w-4 mr-1.5" />Chat
+              </TabsTrigger>
+              <TabsTrigger value="files" className="min-h-[40px] shrink-0 px-3 text-sm data-[state=active]:bg-indigo-50 data-[state=active]:font-semibold data-[state=active]:text-indigo-700">
+                <FileUp className="h-4 w-4 mr-1.5" />Files
+              </TabsTrigger>
+              <TabsTrigger value="members" className="min-h-[40px] shrink-0 px-3 text-sm data-[state=active]:bg-indigo-50 data-[state=active]:font-semibold data-[state=active]:text-indigo-700">
+                <Users className="h-4 w-4 mr-1.5" />Members
+              </TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="chat"><Suspense fallback={<div className="flex min-h-[14rem] items-center justify-center rounded-2xl border border-slate-200 bg-white"><Loader2 className="h-6 w-6 animate-spin text-indigo-500" /></div>}>
+              <Card>
+                <CardContent className="p-0">
+                  <ChatPanel roomId={roomId} onChatFileUploaded={handleFileUploaded} />
+                </CardContent>
+              </Card>
+            </Suspense></TabsContent>
+
+            <TabsContent value="files" className="space-y-4"><Suspense fallback={<div className="flex min-h-[14rem] items-center justify-center rounded-2xl border border-slate-200 bg-white"><Loader2 className="h-6 w-6 animate-spin text-indigo-500" /></div>}>
+              <div className="flex items-center justify-between mb-2">
+                <h2 className="text-lg font-semibold">Shared Files</h2>
+                <FileUpload roomId={roomId} onUploaded={handleFileUploaded} category="lecture" events={events} />
+              </div>
+              <FileList files={files} roomId={roomId} onFilesChange={setFiles} members={members} />
+            </Suspense></TabsContent>
+
+            <TabsContent value="members">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">Members ({members.length})</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <MemberList members={members} />
+                </CardContent>
+              </Card>
+            </TabsContent>
+          </Tabs>
+        )}
+
+        {/* Regular rooms: full layout */}
+        {!isTopicRoom && <>
         {/* Announcements */}
         {announcements.length > 0 && (
           <div className="space-y-2">
@@ -924,6 +999,7 @@ export default function RoomPage() {
           </TabsContent>
 
         </Tabs>
+        </>}
       </div>
       <ReportButton section={activeTab} roomId={roomId} floating />
     </>
