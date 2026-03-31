@@ -39,28 +39,18 @@ async function runOptimization() {
   }
 
   try {
-    // 2. Clean up stale campus presence (older than 8 hours)
+    // 2. Hide stale campus presence (older than 8 hours) — don't delete, just disable
     const { count: presenceCount } = await supabaseAdmin
       .from('flinders_campus_presence')
-      .delete({ count: 'exact' })
+      .update({ sharing_enabled: false })
+      .eq('sharing_enabled', true)
       .lt('updated_at', new Date(Date.now() - 8 * 60 * 60 * 1000).toISOString());
-    results.push(`Stale campus presence: ${presenceCount || 0} removed`);
+    results.push(`Stale campus presence hidden: ${presenceCount || 0}`);
   } catch (err) {
     results.push(`Presence cleanup failed: ${err.message}`);
   }
 
-  try {
-    // 3. Clean up old read messages metadata (older than 30 days)
-    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
-    const { count: msgCount } = await supabaseAdmin
-      .from('messages')
-      .delete({ count: 'exact' })
-      .eq('type', 'system')
-      .lt('created_at', thirtyDaysAgo);
-    results.push(`Old system messages: ${msgCount || 0} removed`);
-  } catch (err) {
-    results.push(`Message cleanup skipped: ${err.message}`);
-  }
+  // System messages (join/leave/upload history) are kept permanently — they're part of room history
 
   try {
     // 3. Clean up resolved alerts from monitor (in-memory, no DB)

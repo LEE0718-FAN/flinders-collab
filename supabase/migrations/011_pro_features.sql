@@ -15,15 +15,15 @@ ALTER TABLE flinders_friend_requests REPLICA IDENTITY FULL;
 -- 3. Enable pg_cron extension (Pro plan)
 CREATE EXTENSION IF NOT EXISTS pg_cron WITH SCHEMA extensions;
 
--- 4. Scheduled cleanup: stale campus presence (older than 8 hours)
+-- 4. Hide stale campus presence (older than 8 hours) — disable, never delete
 -- Runs every 3 hours
 SELECT cron.schedule(
-  'cleanup-stale-presence',
+  'hide-stale-presence',
   '0 */3 * * *',
-  $$DELETE FROM flinders_campus_presence WHERE updated_at < now() - interval '8 hours'$$
+  $$UPDATE flinders_campus_presence SET sharing_enabled = false WHERE sharing_enabled = true AND updated_at < now() - interval '8 hours'$$
 );
 
--- 5. Scheduled cleanup: stopped location sessions older than 24h
+-- 5. Cleanup: stopped location sessions older than 24h (safe — user already stopped)
 -- Runs daily at 4:00 AM UTC (2:30 PM ACDT)
 SELECT cron.schedule(
   'cleanup-stopped-locations',
@@ -31,15 +31,7 @@ SELECT cron.schedule(
   $$DELETE FROM location_sessions WHERE status = 'stopped' AND updated_at < now() - interval '24 hours'$$
 );
 
--- 6. Scheduled cleanup: old system messages (> 30 days)
--- Runs daily at 4:15 AM UTC
-SELECT cron.schedule(
-  'cleanup-old-system-messages',
-  '15 4 * * *',
-  $$DELETE FROM messages WHERE message_type = 'system' AND created_at < now() - interval '30 days'$$
-);
-
--- 7. Scheduled cleanup: old cached Flinders events (> 60 days)
+-- 6. Cleanup: old cached Flinders events (> 60 days, re-crawlable external data)
 -- Runs weekly on Sunday at 5:00 AM UTC
 SELECT cron.schedule(
   'cleanup-old-cached-events',
@@ -47,7 +39,7 @@ SELECT cron.schedule(
   $$DELETE FROM flinders_events_cache WHERE event_date < now() - interval '60 days'$$
 );
 
--- 8. Scheduled cleanup: expired deadline reminders (> 7 days past)
+-- 7. Cleanup: expired deadline reminders (> 7 days past, dedup records only)
 -- Runs daily at 4:30 AM UTC
 SELECT cron.schedule(
   'cleanup-old-reminders',
@@ -55,7 +47,7 @@ SELECT cron.schedule(
   $$DELETE FROM deadline_reminders WHERE reminder_date < CURRENT_DATE - interval '7 days'$$
 );
 
--- 9. Weekly ANALYZE to keep query planner stats fresh
+-- 8. Weekly ANALYZE to keep query planner stats fresh (no data changes)
 -- Runs Sunday at 5:30 AM UTC
 SELECT cron.schedule(
   'weekly-analyze',
@@ -63,8 +55,12 @@ SELECT cron.schedule(
   $$ANALYZE$$
 );
 
--- 10. RLS policies for Realtime subscriptions on campus presence
--- Authenticated users can see all shared presence (already enforced by sharing_enabled filter in app)
+-- NOTE: System messages (join/leave/upload) are NEVER deleted — they're room history.
+-- NOTE: Campus presence rows are NEVER deleted — only sharing_enabled is toggled off.
+
+-- 9. RLS policies for Realtime subscriptions on campus presence
+ALTER TABLE flinders_campus_presence ENABLE ROW LEVEL SECURITY;
+
 DO $$ BEGIN
   IF NOT EXISTS (
     SELECT 1 FROM pg_policies WHERE tablename = 'flinders_campus_presence' AND policyname = 'realtime_select_presence'
@@ -75,10 +71,6 @@ DO $$ BEGIN
   END IF;
 END $$;
 
--- Enable RLS on the table if not already
-ALTER TABLE flinders_campus_presence ENABLE ROW LEVEL SECURITY;
-
--- Allow users to manage their own presence
 DO $$ BEGIN
   IF NOT EXISTS (
     SELECT 1 FROM pg_policies WHERE tablename = 'flinders_campus_presence' AND policyname = 'own_presence_all'
