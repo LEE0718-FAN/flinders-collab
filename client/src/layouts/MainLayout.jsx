@@ -128,6 +128,16 @@ function SidebarContent({ rooms, location, isAdmin, roomBadgeCounts = {}, user, 
         badgeCount={deadlineCount}
         onIntent={() => preloadRoute('/deadlines')}
       />
+      {(user?.account_type || user?.user_metadata?.account_type || 'flinders') !== 'general' && (
+        <NavItem
+          to="/timetable"
+          isActive={location.pathname === '/timetable'}
+          icon={CalendarDays}
+          label="Timetable Buddy"
+          tourId="nav-timetable"
+          onIntent={() => preloadRoute('/timetable')}
+        />
+      )}
       <NavItem
         to="/board"
         isActive={location.pathname === '/board'}
@@ -135,15 +145,6 @@ function SidebarContent({ rooms, location, isAdmin, roomBadgeCounts = {}, user, 
         label="Where are you?"
         tourId="nav-social"
         onIntent={() => preloadRoute('/board')}
-      />
-      <NavItem
-        to="/messages"
-        isActive={location.pathname === '/messages'}
-        icon={Mail}
-        label="Messages"
-        tourId="nav-messages"
-        badgeCount={dmUnreadCount + (dmMessageBadge || 0)}
-        onIntent={() => preloadRoute('/messages')}
       />
       {(user?.account_type || user?.user_metadata?.account_type || 'flinders') !== 'general' && (
         <NavItem
@@ -155,16 +156,15 @@ function SidebarContent({ rooms, location, isAdmin, roomBadgeCounts = {}, user, 
           onIntent={() => preloadRoute('/flinders-life')}
         />
       )}
-      {(user?.account_type || user?.user_metadata?.account_type || 'flinders') !== 'general' && (
-        <NavItem
-          to="/timetable"
-          isActive={location.pathname === '/timetable'}
-          icon={CalendarDays}
-          label="Timetable Buddy"
-          tourId="nav-timetable"
-          onIntent={() => preloadRoute('/timetable')}
-        />
-      )}
+      <NavItem
+        to="/messages"
+        isActive={location.pathname === '/messages'}
+        icon={Mail}
+        label="Messages"
+        tourId="nav-messages"
+        badgeCount={dmUnreadCount + (dmMessageBadge || 0)}
+        onIntent={() => preloadRoute('/messages')}
+      />
       {/* Room section divider */}
       <div className="mt-5 mb-1 flex items-center gap-2 px-3">
         <span className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-500">
