@@ -17,6 +17,7 @@ import {
 import { getFriendRequests, sendFriendRequest, respondToFriendRequest } from '@/services/flinders';
 import { socket } from '@/lib/socket';
 import { avatarThumb } from '@/lib/avatar';
+import PageTour from '@/components/PageTour';
 
 const ChatPanel = lazy(() => import('@/components/chat/ChatPanel'));
 
@@ -400,8 +401,37 @@ export default function TimetablePage() {
 
   return (
     <div className="min-h-full bg-gradient-to-b from-slate-50 to-white">
+      <PageTour
+        tourId="timetable"
+        steps={[
+          {
+            target: '[data-tour="timetable-header"]',
+            title: 'Timetable Buddy',
+            desc: 'Manage your subjects and switch between course setup and weekly timetable here.',
+            position: 'bottom',
+          },
+          {
+            target: '[data-tour="timetable-courses-tab"]',
+            title: 'Courses',
+            desc: 'Add topics, open topic chat, and manage class entries from this tab.',
+            position: 'bottom',
+          },
+          {
+            target: '[data-tour="timetable-calendar-tab"]',
+            title: 'Timetable',
+            desc: 'Review your weekly class blocks and tap a topic chip to open its chat.',
+            position: 'bottom',
+          },
+          {
+            target: '[data-tour="timetable-course-list"]',
+            title: 'Topic Cards',
+            desc: 'Each card keeps the useful actions close together so mobile scrolling stays short.',
+            position: 'top',
+          },
+        ]}
+      />
       {/* Header */}
-      <div className="sticky top-0 z-20 border-b border-slate-100 bg-white/90 px-3 py-3 backdrop-blur-md safe-area-top sm:px-4">
+      <div data-tour="timetable-header" className="sticky top-0 z-20 border-b border-slate-100 bg-white/90 px-3 py-3 backdrop-blur-md safe-area-top sm:px-4">
         <div className="mx-auto flex max-w-5xl flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-2">
             <GraduationCap className="h-5 w-5 text-blue-600" />
@@ -417,10 +447,10 @@ export default function TimetablePage() {
                 Done
               </Button>
             )}
-            <Button variant={view === 'setup' ? 'default' : 'outline'} size="sm" onClick={() => { setView('setup'); finishAdding(); }} className="h-9 rounded-full text-xs sm:h-8">
+            <Button data-tour="timetable-courses-tab" variant={view === 'setup' ? 'default' : 'outline'} size="sm" onClick={() => { setView('setup'); finishAdding(); }} className="h-9 rounded-full text-xs sm:h-8">
               <BookOpen className="h-3.5 w-3.5 mr-1" />Courses
             </Button>
-            <Button variant={view === 'calendar' ? 'default' : 'outline'} size="sm" onClick={() => setView('calendar')} className="h-9 rounded-full text-xs sm:h-8" disabled={timetable.length === 0 && !dragTopic}>
+            <Button data-tour="timetable-calendar-tab" variant={view === 'calendar' ? 'default' : 'outline'} size="sm" onClick={() => setView('calendar')} className="h-9 rounded-full text-xs sm:h-8" disabled={timetable.length === 0 && !dragTopic}>
               <Clock className="h-3.5 w-3.5 mr-1" />Timetable
             </Button>
           </div>
@@ -444,7 +474,7 @@ export default function TimetablePage() {
         </div>
       )}
 
-      <div className="mx-auto max-w-5xl px-2 py-3 sm:p-4">
+      <div data-tour={view === 'setup' ? 'timetable-course-list' : undefined} className="mx-auto max-w-5xl px-2 py-3 sm:p-4">
         {view === 'setup' ? (
           <SetupView
             slots={slots} timetable={timetable} topicColorMap={topicColorMap}
@@ -734,15 +764,15 @@ export default function TimetablePage() {
 /* ========== Setup View ========== */
 function SetupView({ slots, timetable, topicColorMap, onQueryChange, selectTopic, handleRemoveTopic, addAnotherClass, addSlot, removeSlot, openChat, openEditEntry }) {
   return (
-    <div className="space-y-3.5 sm:space-y-4">
-      <p className="px-1 text-[13px] leading-relaxed text-slate-500 sm:px-0 sm:text-sm">Add your courses below, then drag on the calendar to set class times.</p>
+    <div className="space-y-3 sm:space-y-4">
+      <p className="px-1 text-[12px] leading-relaxed text-slate-500 sm:px-0 sm:text-sm">Add your courses below, then drag on the calendar to set class times.</p>
       {slots.map((slot, idx) => {
         const color = slot.selectedTopic ? topicColorMap[slot.selectedTopic.id] || getColorForIndex(idx) : null;
         const topicEntries = slot.selectedTopic ? timetable.filter((e) => e.topic?.id === slot.selectedTopic.id) : [];
         return (
           <Card key={slot.id} className={`overflow-hidden rounded-[22px] shadow-sm transition-all ${color ? `${color.border} border-l-4` : 'border-slate-200'}`}>
-            <CardContent className="p-3.5 sm:p-4">
-              <div className="mb-3 flex items-start gap-2">
+            <CardContent className="p-3 sm:p-4">
+              <div className="mb-2.5 flex items-start gap-2">
                 <div className={`h-8 w-8 rounded-lg flex items-center justify-center text-sm font-bold text-white ${color ? color.accent : 'bg-slate-300'}`}>{idx + 1}</div>
                 <div className="min-w-0 flex-1">
                   {slot.selectedTopic ? (
@@ -751,19 +781,28 @@ function SetupView({ slots, timetable, topicColorMap, onQueryChange, selectTopic
                       <span className="font-semibold text-slate-900">{slot.selectedTopic.topic_code}</span>
                       <span className="text-[13px] leading-snug text-slate-500 sm:truncate sm:text-sm">{slot.selectedTopic.title}</span>
                     </div>
-                    {slot.selectedTopic.school && <p className="text-[11px] text-slate-400 truncate">{slot.selectedTopic.school}</p>}
+                    {slot.selectedTopic.school && <p className="text-[10px] text-slate-400 truncate">{slot.selectedTopic.school}</p>}
                     </>
                   ) : <span className="text-sm text-slate-400">Course {idx + 1}</span>}
                 </div>
                 <div className="ml-auto shrink-0">
-                  {!slot.selectedTopic && slots.length > 1 && (
+                  {slot.selectedTopic ? (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleRemoveTopic(slot.selectedTopic.id)}
+                      className="h-8 rounded-lg px-2.5 text-[11px] font-medium text-red-500 hover:bg-red-50 hover:text-red-600 sm:h-7 sm:px-2"
+                    >
+                      <Trash2 className="mr-1.5 h-3.5 w-3.5" />Remove
+                    </Button>
+                  ) : slots.length > 1 && (
                     <Button variant="ghost" size="sm" onClick={() => removeSlot(slot.id)} className="h-7 px-2 text-xs text-slate-400"><X className="h-3.5 w-3.5" /></Button>
                   )}
                 </div>
               </div>
 
               {slot.selectedTopic && (
-                <div className="mb-3 grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:justify-end">
+                <div className="mb-2 grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:justify-end">
                   <Button
                     variant="outline"
                     size="sm"
@@ -780,14 +819,6 @@ function SetupView({ slots, timetable, topicColorMap, onQueryChange, selectTopic
                     className="h-9 rounded-xl border-emerald-200 bg-emerald-50 text-xs text-emerald-700 hover:bg-emerald-100 sm:h-8 sm:w-auto"
                   >
                     <Plus className="mr-1.5 h-3.5 w-3.5" />Add class
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => handleRemoveTopic(slot.selectedTopic.id)}
-                    className="col-span-2 h-9 rounded-xl text-xs text-red-500 hover:bg-red-50 sm:col-span-1 sm:h-8 sm:w-auto"
-                  >
-                    <Trash2 className="mr-1.5 h-3.5 w-3.5" />Remove topic
                   </Button>
                 </div>
               )}
@@ -829,10 +860,10 @@ function SetupView({ slots, timetable, topicColorMap, onQueryChange, selectTopic
               )}
 
               {slot.selectedTopic && topicEntries.length > 0 && (
-                <div className="space-y-2 mt-2">
+                <div className="mt-1.5 space-y-1.5">
                   {topicEntries.map((entry) => (
                     <button key={entry.id} onClick={() => openEditEntry(entry)}
-                      className={`w-full rounded-xl px-3 py-2.5 text-left transition-all hover:ring-2 hover:ring-blue-300 ${color?.bg || 'bg-slate-50'}`}>
+                      className={`w-full rounded-xl px-3 py-2 text-left transition-all hover:ring-2 hover:ring-blue-300 ${color?.bg || 'bg-slate-50'}`}>
                       <div className="flex items-start gap-2">
                         <Clock className={`mt-0.5 h-3.5 w-3.5 shrink-0 ${color?.text || 'text-slate-500'}`} />
                         <div className="min-w-0 flex-1">

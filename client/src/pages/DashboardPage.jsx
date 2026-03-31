@@ -356,9 +356,9 @@ export default function DashboardPage() {
           },
         ]}
       />
-      <div className="space-y-5 sm:space-y-8">
+      <div className="space-y-4 sm:space-y-8">
         {/* Hero Banner */}
-        <div className="relative overflow-hidden rounded-[24px] bg-gradient-to-r from-blue-600 via-indigo-600 to-violet-700 px-4 py-5 text-white shadow-lg sm:rounded-2xl sm:px-6 sm:py-8 md:px-8 md:py-10">
+        <div className="relative overflow-hidden rounded-[22px] bg-gradient-to-r from-blue-600 via-indigo-600 to-violet-700 px-3.5 py-4 text-white shadow-lg sm:rounded-2xl sm:px-6 sm:py-8 md:px-8 md:py-10">
           {/* Shimmer overlay */}
           <div className="absolute inset-0 overflow-hidden">
             <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent animate-shimmer" />
@@ -367,28 +367,28 @@ export default function DashboardPage() {
           <div className="absolute -right-12 -top-12 h-48 w-48 rounded-full bg-white/10 blur-2xl" />
           <div className="absolute -left-8 -bottom-8 h-32 w-32 rounded-full bg-indigo-400/20 blur-xl" />
           <div className="relative">
-            <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+            <div className="flex flex-col gap-3.5 lg:flex-row lg:items-end lg:justify-between">
               <div>
-                <p className="inline-flex items-center rounded-full border border-white/15 bg-white/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.22em] text-white/80">
+                <p className="inline-flex items-center rounded-full border border-white/15 bg-white/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-white/80 sm:px-3 sm:text-xs">
                   Room hub
                 </p>
-                <h1 className="mt-3 text-[1.85rem] font-black tracking-tight leading-tight sm:text-3xl md:text-4xl">Welcome back, {displayName}!</h1>
-                <p className="mt-2 max-w-2xl text-[13px] leading-relaxed text-white/75 sm:text-base">
+                <h1 className="mt-2.5 text-[1.55rem] font-black leading-tight tracking-tight sm:mt-3 sm:text-3xl md:text-4xl">Welcome back, {displayName}!</h1>
+                <p className="mt-1.5 max-w-2xl text-[12px] leading-relaxed text-white/75 sm:mt-2 sm:text-base">
                   Create a fresh room, join with an invite code, and keep your latest study spaces within easy reach on web and Android.
                 </p>
               </div>
               <div className="grid grid-cols-2 gap-2 self-start lg:min-w-[240px]">
-                <div className="rounded-2xl border border-white/10 bg-white/10 px-3 py-3 backdrop-blur-sm">
+                <div className="rounded-2xl border border-white/10 bg-white/10 px-3 py-2.5 backdrop-blur-sm">
                   <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-white/60">Rooms</p>
-                  <p className="mt-1.5 text-[1.75rem] font-black">{visibleRooms.length}</p>
+                  <p className="mt-1 text-[1.5rem] font-black sm:mt-1.5 sm:text-[1.75rem]">{visibleRooms.length}</p>
                 </div>
-                <div className="rounded-2xl border border-white/10 bg-white/10 px-3 py-3 backdrop-blur-sm">
+                <div className="rounded-2xl border border-white/10 bg-white/10 px-3 py-2.5 backdrop-blur-sm">
                   <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-white/60">Meetings</p>
-                  <p className="mt-1.5 text-[1.75rem] font-black">{upcomingEvents.length}</p>
+                  <p className="mt-1 text-[1.5rem] font-black sm:mt-1.5 sm:text-[1.75rem]">{upcomingEvents.length}</p>
                 </div>
               </div>
             </div>
-            <div className="mt-5 grid grid-cols-1 gap-2 sm:flex sm:flex-row" data-tour="create-join-buttons">
+            <div className="mt-3.5 grid grid-cols-1 gap-2 sm:mt-5 sm:flex sm:flex-row" data-tour="create-join-buttons">
               <span data-tour="create-room">
                 <CreateRoomDialog
                   onCreateStart={handleCreateStart}
@@ -411,7 +411,7 @@ export default function DashboardPage() {
 
         {/* Upcoming Meetings */}
         {upcomingEvents.length > 0 && (
-          <div className="space-y-2.5">
+          <div className="space-y-2">
             <div className="flex items-center justify-between">
               <h2 className="text-base font-bold text-foreground sm:text-lg">Upcoming Meetings</h2>
               <span className="rounded-full bg-white px-2.5 py-1 text-xs font-semibold text-slate-500 shadow-sm">
@@ -431,7 +431,7 @@ export default function DashboardPage() {
               return (
                 <div
                   key={event.id}
-                  className="flex items-center gap-3 rounded-2xl border bg-white px-3.5 py-3 shadow-sm transition-all cursor-pointer hover:shadow-md"
+                  className="flex items-center gap-3 rounded-2xl border bg-white px-3 py-2.5 shadow-sm transition-all cursor-pointer hover:shadow-md"
                   style={{ borderLeftWidth: '4px', borderLeftColor: palette.accent }}
                   onClick={() => navigate(`/rooms/${event.room_id}`)}
                 >
@@ -469,8 +469,8 @@ export default function DashboardPage() {
         </div>
 
         {loading ? (
-          <div className="flex justify-center py-16">
-            <div className="rounded-2xl bg-white p-8 shadow-card flex flex-col items-center gap-3 sm:p-10">
+          <div className="flex justify-center py-10 sm:py-16">
+            <div className="rounded-2xl bg-white p-6 shadow-card flex flex-col items-center gap-3 sm:p-10">
               <Loader2 className="h-8 w-8 animate-spin text-indigo-500" />
               <p className="text-sm text-muted-foreground">Loading your rooms...</p>
             </div>

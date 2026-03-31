@@ -19,6 +19,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { getReports, updateReport, getAdminUsers, toggleUserAdmin, deleteAdminUser, getMonitorStats, resolveAlert, triggerHealthCheck, getDeletedFiles, restoreDeletedFile, getFileIntegrityReport, getCrawlerStats, runEventCrawler, runTopicCrawler } from '@/services/reports';
 import { useAuth } from '@/hooks/useAuth';
+import PageTour from '@/components/PageTour';
 import {
   Loader2, ChevronDown, Shield, ShieldOff, AlertCircle, User, ShieldAlert, Search, Trash2, Mail, GraduationCap, Calendar,
   Activity, Server, Database, Clock, Zap, AlertTriangle, CheckCircle2, XCircle, RefreshCw, Cpu, HardDrive, TrendingUp, Eye, EyeOff, Bell,
@@ -1522,8 +1523,31 @@ export default function AdminPage() {
 
   return (
     <>
+      <PageTour
+        tourId="admin"
+        steps={[
+          {
+            target: '[data-tour="admin-header"]',
+            title: 'Admin Panel',
+            desc: 'This is the control surface for platform health, moderation, and maintenance.',
+            position: 'bottom',
+          },
+          {
+            target: '[data-tour="admin-tabs"]',
+            title: 'Admin Sections',
+            desc: 'Switch between monitoring, crawler control, reports, users, and file backups here.',
+            position: 'bottom',
+          },
+          {
+            target: '[data-tour="admin-crawlers-tab"]',
+            title: 'Crawlers',
+            desc: 'Use this tab to inspect scheduled crawlers and trigger safe refreshes when needed.',
+            position: 'bottom',
+          },
+        ]}
+      />
       <div className="space-y-6">
-        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-slate-900 via-slate-800 to-indigo-900 px-8 py-8 text-white shadow-xl">
+        <div data-tour="admin-header" className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-slate-900 via-slate-800 to-indigo-900 px-8 py-8 text-white shadow-xl">
           <div className="absolute -right-12 -top-12 h-40 w-40 rounded-full bg-indigo-500/20 blur-2xl" />
           <div className="relative flex items-center gap-4">
             <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white/10 backdrop-blur-sm">
@@ -1537,12 +1561,12 @@ export default function AdminPage() {
         </div>
 
         <Tabs defaultValue="monitoring">
-          <TabsList className="bg-white rounded-2xl p-2 shadow-lg border">
+          <TabsList data-tour="admin-tabs" className="bg-white rounded-2xl p-2 shadow-lg border">
             <TabsTrigger value="monitoring" className="rounded-xl data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-600 data-[state=active]:to-indigo-600 data-[state=active]:text-white data-[state=active]:shadow-md text-slate-500 gap-1.5">
               <Activity className="h-3.5 w-3.5" />
               Monitoring
             </TabsTrigger>
-            <TabsTrigger value="crawlers" className="rounded-xl data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-600 data-[state=active]:to-indigo-600 data-[state=active]:text-white data-[state=active]:shadow-md text-slate-500 gap-1.5">
+            <TabsTrigger data-tour="admin-crawlers-tab" value="crawlers" className="rounded-xl data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-600 data-[state=active]:to-indigo-600 data-[state=active]:text-white data-[state=active]:shadow-md text-slate-500 gap-1.5">
               <RefreshCw className="h-3.5 w-3.5" />
               Crawlers
             </TabsTrigger>

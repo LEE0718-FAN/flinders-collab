@@ -13,6 +13,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { avatarMedium, avatarThumb } from '@/lib/avatar';
+import PageTour from '@/components/PageTour';
 
 const ChatPanel = lazy(() => import('@/components/chat/ChatPanel'));
 
@@ -173,9 +174,32 @@ export default function MessagesPage() {
   const showChatMobile = activeChat !== null || profileFriend !== null;
 
   return (
-    <div className="flex h-full min-h-0 flex-col overflow-hidden rounded-[24px] border border-slate-200/70 bg-white shadow-sm">
+    <div className="flex h-full min-h-0 flex-col overflow-hidden rounded-[22px] border border-slate-200/70 bg-white shadow-sm">
+      <PageTour
+        tourId="messages"
+        steps={[
+          {
+            target: '[data-tour="messages-header"]',
+            title: 'Messages',
+            desc: 'Direct messages and friend requests are managed from here.',
+            position: 'bottom',
+          },
+          {
+            target: '[data-tour="messages-search"]',
+            title: 'Search Friends',
+            desc: 'Filter your conversations quickly when the friend list grows.',
+            position: 'bottom',
+          },
+          {
+            target: '[data-tour="messages-list"]',
+            title: 'Conversation List',
+            desc: 'Open a chat, view a profile, or manage a friend from each row menu.',
+            position: 'right',
+          },
+        ]}
+      />
       {/* Header */}
-      <div className="sticky top-0 z-10 border-b border-slate-100 bg-white/92 px-3 py-3 backdrop-blur-md safe-area-top sm:px-4">
+      <div data-tour="messages-header" className="sticky top-0 z-10 border-b border-slate-100 bg-white/92 px-3 py-2.5 backdrop-blur-md safe-area-top sm:px-4 sm:py-3">
         <div className="flex w-full items-center gap-2">
           {showChatMobile && (
             <button onClick={() => { setActiveChat(null); setProfileFriend(null); }} className="sm:hidden p-1 -ml-1 rounded-lg hover:bg-slate-100">
@@ -207,14 +231,14 @@ export default function MessagesPage() {
         {/* Left panel: Friend list */}
         <div className={`w-full sm:w-80 sm:border-r border-slate-100 flex flex-col shrink-0 ${showChatMobile ? 'hidden sm:flex' : 'flex'}`}>
           {/* Search */}
-          <div className="border-b border-slate-50 p-3">
+          <div data-tour="messages-search" className="border-b border-slate-50 p-2.5 sm:p-3">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
               <Input
                 placeholder="Search friends..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="pl-9 h-9 rounded-xl bg-slate-50 border-slate-200 text-sm"
+                className="h-8.5 rounded-xl border-slate-200 bg-slate-50 pl-9 text-sm"
               />
             </div>
           </div>
@@ -255,7 +279,7 @@ export default function MessagesPage() {
           )}
 
           {/* Friend list / conversations */}
-          <div className="flex-1 overflow-y-auto">
+          <div data-tour="messages-list" className="flex-1 overflow-y-auto">
             {sortedFriends.length === 0 && (
               <div className="text-center py-16 px-4">
                 <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-100 to-indigo-100">

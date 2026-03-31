@@ -764,10 +764,10 @@ export default function MainLayout({ children }) {
       <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
         {/* Top Bar */}
         <header
-          className="sticky top-0 z-30 flex min-h-16 shrink-0 items-center justify-between gap-3 border-b-2 border-slate-200 bg-white/90 backdrop-blur-xl"
+          className="sticky top-0 z-30 flex min-h-[3.5rem] shrink-0 items-center justify-between gap-2 border-b-2 border-slate-200 bg-white/90 backdrop-blur-xl sm:min-h-16 sm:gap-3"
           style={{
-            paddingTop: 'max(0.5rem, var(--safe-top))',
-            paddingBottom: '0.5rem',
+            paddingTop: 'max(0.375rem, var(--safe-top))',
+            paddingBottom: '0.375rem',
             paddingLeft: 'max(0.75rem, var(--safe-left))',
             paddingRight: 'max(0.75rem, var(--safe-right))',
           }}
@@ -885,7 +885,7 @@ export default function MainLayout({ children }) {
         )}
 
         {mobileUnreadItems.length > 0 && location.pathname !== '/messages' && (
-          <div className="border-b border-slate-200/70 bg-white/92 px-3 py-2 backdrop-blur md:hidden">
+          <div className="border-b border-slate-200/70 bg-white/92 px-2.5 py-1.5 backdrop-blur md:hidden">
             <div className="mb-1 flex items-center justify-between">
               <span className="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500">
                 Updates
@@ -900,7 +900,7 @@ export default function MainLayout({ children }) {
                   key={item.key}
                   type="button"
                   onClick={() => navigate(item.to)}
-                  className={`inline-flex shrink-0 items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-semibold shadow-sm ${item.accentClass}`}
+                  className={`inline-flex shrink-0 items-center gap-2 rounded-full border px-2.5 py-1 text-[11px] font-semibold shadow-sm ${item.accentClass}`}
                 >
                   <span className="max-w-[9.5rem] truncate">{item.label}</span>
                   <span className="inline-flex min-w-5 items-center justify-center rounded-full bg-white/90 px-1.5 py-0.5 text-[10px] font-bold">
@@ -916,16 +916,16 @@ export default function MainLayout({ children }) {
         <main
           ref={mainScrollRef}
           data-main-scroll-container="true"
-          className="relative flex-1 overflow-y-auto bg-slate-50 p-2.5 pb-5 sm:p-4 md:p-6 custom-scrollbar animate-fade-in"
+          className="relative flex-1 overflow-y-auto bg-slate-50 p-2 pb-4 sm:p-4 md:p-6 custom-scrollbar animate-fade-in"
           onTouchStart={handleMainTouchStart}
           onTouchMove={handleMainTouchMove}
           onTouchEnd={handleMainTouchEnd}
           onTouchCancel={handleMainTouchEnd}
           style={{
-            paddingTop: '0.5rem',
-            paddingBottom: 'max(1.5rem, var(--safe-bottom))',
-            paddingLeft: 'max(0.625rem, var(--safe-left))',
-            paddingRight: 'max(0.625rem, var(--safe-right))',
+            paddingTop: '0.375rem',
+            paddingBottom: 'max(1rem, var(--safe-bottom))',
+            paddingLeft: 'max(0.5rem, var(--safe-left))',
+            paddingRight: 'max(0.5rem, var(--safe-right))',
           }}
         >
           <div
