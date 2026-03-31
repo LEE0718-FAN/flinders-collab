@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef, lazy, Suspense } from 'react';
+import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { searchTopics, getMyTimetable, addToTimetable, removeFromTimetable, removeTopic, getPopularTimes } from '@/services/timetable';
@@ -594,40 +595,43 @@ export default function TimetablePage() {
       )}
 
       {/* Chat popup */}
-      {chatPopup && (
-        <div className="fixed inset-0 z-50 bg-black/40 flex items-end sm:items-center justify-center p-0 sm:p-4" onClick={() => setChatPopup(null)}>
-          <div className={`w-full ${showMembers ? 'sm:max-w-3xl' : 'sm:max-w-2xl'} h-[90vh] sm:h-[82vh] bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl flex flex-col overflow-hidden transition-all`} onClick={(e) => e.stopPropagation()}>
-            {/* Popup header */}
-            <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100 bg-gradient-to-r from-blue-600 to-indigo-600 text-white shrink-0">
+      {chatPopup && typeof document !== 'undefined' && createPortal(
+        <div className="fixed inset-0 z-[90] flex items-end justify-center bg-black/55 p-0 sm:items-center sm:p-4" onClick={() => setChatPopup(null)}>
+          <div
+            className={`relative flex h-[var(--viewport-dynamic-height,100dvh)] w-full flex-col overflow-hidden bg-white shadow-2xl sm:h-[82vh] ${showMembers ? 'sm:max-w-3xl' : 'sm:max-w-2xl'} sm:rounded-2xl`}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex shrink-0 items-center justify-between border-b border-slate-100 bg-gradient-to-r from-blue-600 to-indigo-600 px-4 py-3 text-white">
               <div className="min-w-0">
-                <h3 className="font-bold text-sm truncate">{chatPopup.topicCode}{chatPopup.topicTitle ? ` — ${chatPopup.topicTitle}` : ''}</h3>
+                <h3 className="truncate text-sm font-bold">{chatPopup.topicCode}{chatPopup.topicTitle ? ` — ${chatPopup.topicTitle}` : ''}</h3>
               </div>
-              <div className="flex items-center gap-1 shrink-0 ml-2">
-                <button onClick={() => setShowMembers((v) => !v)} className={`p-1.5 rounded-full transition-colors ${showMembers ? 'bg-white/30' : 'hover:bg-white/20'}`} title="Toggle members">
+              <div className="ml-2 flex shrink-0 items-center gap-1">
+                <button onClick={() => setShowMembers((v) => !v)} className={`rounded-full p-1.5 transition-colors ${showMembers ? 'bg-white/30' : 'hover:bg-white/20'}`} title="Toggle members">
                   <Users className="h-4 w-4" />
                 </button>
-                <button onClick={() => setChatPopup(null)} className="p-1.5 rounded-full hover:bg-white/20 transition-colors">
+                <button onClick={() => setChatPopup(null)} className="rounded-full p-1.5 transition-colors hover:bg-white/20">
                   <X className="h-4 w-4" />
                 </button>
               </div>
             </div>
-            {/* Chat + Members */}
-            <div className="flex flex-1 min-h-0">
-              <div className="flex-1 min-h-0">
-                <Suspense fallback={<div className="flex items-center justify-center h-full"><Loader2 className="h-6 w-6 animate-spin text-blue-500" /></div>}>
+
+            <div className="flex min-h-0 flex-1">
+              <div className="min-h-0 flex-1">
+                <Suspense fallback={<div className="flex h-full items-center justify-center"><Loader2 className="h-6 w-6 animate-spin text-blue-500" /></div>}>
                   <ChatPanel roomId={chatPopup.roomId} embedded />
                 </Suspense>
               </div>
+
               {showMembers && (
-                <div className="w-56 border-l border-slate-200 bg-slate-50 flex flex-col shrink-0">
-                  <div className="px-3 py-2 border-b border-slate-200 text-xs font-semibold text-slate-500">
+                <div className="absolute inset-y-0 right-0 z-10 flex w-[84vw] max-w-[18rem] flex-col border-l border-slate-200 bg-slate-50 shadow-2xl sm:static sm:w-56 sm:max-w-none sm:shadow-none">
+                  <div className="border-b border-slate-200 px-3 py-3 text-xs font-semibold text-slate-500">
                     Members ({chatMembers.length})
                   </div>
                   <div className="flex-1 overflow-y-auto p-2 space-y-0.5">
                     {chatMembers.map((m) => {
                       const fs = getFriendStatus(m.id);
                       return (
-                        <div key={m.id} className="px-2 py-2 rounded-lg hover:bg-white transition-colors">
+                        <div key={m.id} className="rounded-lg px-2 py-2 transition-colors hover:bg-white">
                           <div className="flex items-center gap-2">
                             <Avatar className="h-7 w-7 shrink-0">
                               {m.avatar_url ? <AvatarImage src={avatarThumb(m.avatar_url)} alt={m.full_name || 'User'} className="object-cover" /> : null}
@@ -636,37 +640,31 @@ export default function TimetablePage() {
                               </AvatarFallback>
                             </Avatar>
                             <div className="min-w-0 flex-1">
-                              <div className="text-xs font-medium text-slate-800 truncate">{m.full_name || 'User'}</div>
-                              {m.major && <div className="text-[10px] text-slate-400 truncate">{m.major}</div>}
+                              <div className="truncate text-xs font-medium text-slate-800">{m.full_name || 'User'}</div>
+                              {m.major && <div className="truncate text-[10px] text-slate-400">{m.major}</div>}
                             </div>
                           </div>
                           {fs.kind !== 'self' && (
-                            <div className="mt-1.5 ml-9">
+                            <div className="ml-9 mt-1.5">
                               {fs.kind === 'friend' && (
-                                <button onClick={() => openDM(m.id)}
-                                  className="flex items-center gap-1 text-[10px] font-medium text-blue-600 hover:text-blue-800 transition-colors">
+                                <button onClick={() => openDM(m.id)} className="flex items-center gap-1 text-[10px] font-medium text-blue-600 transition-colors hover:text-blue-800">
                                   <Mail className="h-3 w-3" />DM
                                 </button>
                               )}
                               {fs.kind === 'none' && (
-                                <button onClick={() => showAddFriendDialog(m.id, m.full_name)}
-                                  className="flex items-center gap-1 text-[10px] font-medium text-emerald-600 hover:text-emerald-800 transition-colors">
+                                <button onClick={() => showAddFriendDialog(m.id, m.full_name)} className="flex items-center gap-1 text-[10px] font-medium text-emerald-600 transition-colors hover:text-emerald-800">
                                   <UserPlus className="h-3 w-3" />
                                   Add Friend
                                 </button>
                               )}
-                              {fs.kind === 'outgoing' && (
-                                <span className="text-[10px] text-amber-600 font-medium">Requested</span>
-                              )}
+                              {fs.kind === 'outgoing' && <span className="text-[10px] font-medium text-amber-600">Requested</span>}
                               {fs.kind === 'incoming' && (
                                 <div className="flex items-center gap-1.5">
-                                  <button onClick={() => handleRespondFriend(fs.request.id, 'accept')} disabled={friendLoading === fs.request.id}
-                                    className="text-[10px] font-medium text-emerald-600 hover:text-emerald-800 disabled:opacity-50">
+                                  <button onClick={() => handleRespondFriend(fs.request.id, 'accept')} disabled={friendLoading === fs.request.id} className="text-[10px] font-medium text-emerald-600 hover:text-emerald-800 disabled:opacity-50">
                                     {friendLoading === fs.request.id ? <Loader2 className="h-3 w-3 animate-spin" /> : 'Accept'}
                                   </button>
                                   <span className="text-slate-300">|</span>
-                                  <button onClick={() => handleRespondFriend(fs.request.id, 'decline')}
-                                    className="text-[10px] font-medium text-slate-400 hover:text-red-500">
+                                  <button onClick={() => handleRespondFriend(fs.request.id, 'decline')} className="text-[10px] font-medium text-slate-400 hover:text-red-500">
                                     Decline
                                   </button>
                                 </div>
@@ -676,15 +674,14 @@ export default function TimetablePage() {
                         </div>
                       );
                     })}
-                    {chatMembers.length === 0 && (
-                      <div className="text-center py-4 text-xs text-slate-400">No members yet</div>
-                    )}
+                    {chatMembers.length === 0 && <div className="py-4 text-center text-xs text-slate-400">No members yet</div>}
                   </div>
                 </div>
               )}
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
       {/* Friend request confirmation dialog */}
       {friendRequestDialog && (
