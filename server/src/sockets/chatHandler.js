@@ -65,7 +65,6 @@ function chatHandler(io, socket) {
             .select('room_id')
             .eq('topic_id', topicRoomEntry.topic_id)
             .order('room_id', { ascending: true })
-            .limit(1)
             .limit(1);
 
           const canonicalRoomEntry = canonicalRoom?.[0] || null;
@@ -81,7 +80,6 @@ function chatHandler(io, socket) {
               .select('id')
               .eq('user_id', userId)
               .eq('topic_id', topicRoomEntry.topic_id)
-              .limit(1)
               .limit(1);
 
             if (hasTopic?.[0]) {

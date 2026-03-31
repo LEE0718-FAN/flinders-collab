@@ -177,6 +177,8 @@ export function DesktopSidePanel({ onDismiss, onNeverShow }) {
 
 export default function InstallBanner() {
   const [isStandalone, setIsStandalone] = useState(false);
+  const [dismissed, setDismissed] = useState(() => localStorage.getItem('install-banner-hidden') === '1');
+  const device = getDevice();
 
   useEffect(() => {
     const standalone = window.matchMedia('(display-mode: standalone)').matches
@@ -184,6 +186,13 @@ export default function InstallBanner() {
     setIsStandalone(standalone);
   }, []);
 
-  if (isStandalone) return null;
-  return null;
+  if (isStandalone || dismissed || device === 'desktop') return null;
+
+  return (
+    <MobileBanner
+      device={device}
+      onDismiss={() => setDismissed(true)}
+      onNeverShow={() => { localStorage.setItem('install-banner-hidden', '1'); setDismissed(true); }}
+    />
+  );
 }

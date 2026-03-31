@@ -391,7 +391,6 @@ async function ensureTopicRoomMember(req, res, next) {
       .select('room_id')
       .eq('topic_id', topicRoom.topic_id)
       .order('room_id', { ascending: true })
-      .limit(1)
       .limit(1);
 
     if (canonicalRoomError) {
@@ -406,7 +405,6 @@ async function ensureTopicRoomMember(req, res, next) {
       .select('id')
       .eq('user_id', userId)
       .eq('topic_id', topicRoom.topic_id)
-      .limit(1)
       .limit(1);
 
     if (hasTopicError) {

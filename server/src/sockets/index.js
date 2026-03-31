@@ -53,12 +53,16 @@ function initSockets(httpServer) {
     socket.on('disconnect', async (reason) => {
       console.log(`User disconnected: ${socket.userId} (${reason})`);
       try {
-        // Mark any active location sessions as stopped
-        await supabaseAdmin
-          .from('location_sessions')
-          .update({ status: 'stopped', updated_at: new Date().toISOString() })
-          .eq('user_id', socket.userId)
-          .in('status', ['sharing', 'on_the_way', 'arrived', 'late']);
+        // Only stop location sharing if user has no other active sockets
+        const userRoom = `user:${socket.userId}`;
+        const remaining = await io.in(userRoom).fetchSockets();
+        if (remaining.length === 0) {
+          await supabaseAdmin
+            .from('location_sessions')
+            .update({ status: 'stopped', updated_at: new Date().toISOString() })
+            .eq('user_id', socket.userId)
+            .in('status', ['sharing', 'on_the_way', 'arrived', 'late']);
+        }
       } catch (err) {
         console.error('Disconnect cleanup error:', err.message);
       }

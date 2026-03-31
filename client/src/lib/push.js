@@ -97,6 +97,7 @@ export async function subscribeToPush() {
 
     // Get VAPID key from server
     const keyRes = await fetch(`${API}/api/push/vapid-key`);
+    if (!keyRes.ok) return null;
     const { publicKey } = await keyRes.json();
     if (!publicKey) return null;
 
@@ -117,11 +118,14 @@ export async function subscribeToPush() {
     }
 
     // Send subscription to server
-    await fetch(`${API}/api/push/subscribe`, {
+    const subRes = await fetch(`${API}/api/push/subscribe`, {
       method: 'POST',
       headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
       body: JSON.stringify({ subscription }),
     });
+    if (!subRes.ok) {
+      console.warn('Push subscribe API failed:', subRes.status);
+    }
 
     return subscription;
   } catch (err) {

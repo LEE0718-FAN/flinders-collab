@@ -217,7 +217,7 @@ function startTopicCrawler() {
   }, 30000);
 
   const WEEKLY_MS = 7 * 24 * 60 * 60 * 1000;
-  setInterval(crawlFlindersTopics, WEEKLY_MS);
+  setInterval(crawlFlindersTopics, WEEKLY_MS).unref();
   console.log('[topic-crawler] Scheduled weekly crawl');
 }
 

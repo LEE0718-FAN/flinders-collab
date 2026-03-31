@@ -108,6 +108,7 @@ router.patch(
   '/:roomId',
   roomIdParam,
   validate,
+  requireRoomMember,
   roomController.updateRoom
 );
 
