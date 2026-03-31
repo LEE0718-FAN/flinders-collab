@@ -41,6 +41,13 @@ export async function removeTopic(topicId) {
   return parseResponse(res);
 }
 
+export async function getPopularTimes(topicId) {
+  const res = await fetch(apiUrl(`/api/timetable/topic/${topicId}/popular-times`), {
+    headers: getAuthHeaders(),
+  });
+  return parseResponse(res);
+}
+
 export async function getTopicMembers(topicId) {
   const res = await fetch(apiUrl(`/api/timetable/topic/${topicId}/members`), {
     headers: getAuthHeaders(),

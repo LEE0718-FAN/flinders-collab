@@ -1,41 +1,38 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
-import { searchTopics, getMyTimetable, addToTimetable, removeTopic } from '@/services/timetable';
+import { searchTopics, getMyTimetable, addToTimetable, removeTopic, getPopularTimes } from '@/services/timetable';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import {
   Loader2, Search, Plus, X, BookOpen, Clock, MapPin, Users,
-  MessageSquare, ChevronLeft, ChevronRight, GraduationCap, Trash2,
+  MessageSquare, GraduationCap, Trash2, Check,
 } from 'lucide-react';
 
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'];
-const HOURS = Array.from({ length: 13 }, (_, i) => i + 8); // 8am to 8pm
+const HOURS = Array.from({ length: 13 }, (_, i) => i + 8); // 8am–8pm
+const HOUR_HEIGHT = 56; // px per hour row
 
-// Color palette for courses
 const COURSE_COLORS = [
-  { bg: 'bg-blue-100', border: 'border-blue-300', text: 'text-blue-800', accent: 'bg-blue-500' },
-  { bg: 'bg-emerald-100', border: 'border-emerald-300', text: 'text-emerald-800', accent: 'bg-emerald-500' },
-  { bg: 'bg-violet-100', border: 'border-violet-300', text: 'text-violet-800', accent: 'bg-violet-500' },
-  { bg: 'bg-amber-100', border: 'border-amber-300', text: 'text-amber-800', accent: 'bg-amber-500' },
-  { bg: 'bg-rose-100', border: 'border-rose-300', text: 'text-rose-800', accent: 'bg-rose-500' },
-  { bg: 'bg-cyan-100', border: 'border-cyan-300', text: 'text-cyan-800', accent: 'bg-cyan-500' },
-  { bg: 'bg-orange-100', border: 'border-orange-300', text: 'text-orange-800', accent: 'bg-orange-500' },
-  { bg: 'bg-indigo-100', border: 'border-indigo-300', text: 'text-indigo-800', accent: 'bg-indigo-500' },
+  { bg: 'bg-blue-100', border: 'border-blue-300', text: 'text-blue-800', accent: 'bg-blue-500', hex: '#3b82f6' },
+  { bg: 'bg-emerald-100', border: 'border-emerald-300', text: 'text-emerald-800', accent: 'bg-emerald-500', hex: '#10b981' },
+  { bg: 'bg-violet-100', border: 'border-violet-300', text: 'text-violet-800', accent: 'bg-violet-500', hex: '#8b5cf6' },
+  { bg: 'bg-amber-100', border: 'border-amber-300', text: 'text-amber-800', accent: 'bg-amber-500', hex: '#f59e0b' },
+  { bg: 'bg-rose-100', border: 'border-rose-300', text: 'text-rose-800', accent: 'bg-rose-500', hex: '#f43f5e' },
+  { bg: 'bg-cyan-100', border: 'border-cyan-300', text: 'text-cyan-800', accent: 'bg-cyan-500', hex: '#06b6d4' },
+  { bg: 'bg-orange-100', border: 'border-orange-300', text: 'text-orange-800', accent: 'bg-orange-500', hex: '#f97316' },
+  { bg: 'bg-indigo-100', border: 'border-indigo-300', text: 'text-indigo-800', accent: 'bg-indigo-500', hex: '#6366f1' },
 ];
 
-function getColorForIndex(i) {
-  return COURSE_COLORS[i % COURSE_COLORS.length];
-}
+function getColorForIndex(i) { return COURSE_COLORS[i % COURSE_COLORS.length]; }
+function timeToHour(t) { if (!t) return null; const [h, m] = t.split(':').map(Number); return h + m / 60; }
+function hourToTime(h) { const hh = Math.floor(h); const mm = Math.round((h - hh) * 60); return `${String(hh).padStart(2,'0')}:${String(mm).padStart(2,'0')}`; }
+function formatHour(h) { return h > 12 ? `${h-12}pm` : h === 12 ? '12pm' : `${h}am`; }
 
-// Parse time string "HH:MM:SS" or "HH:MM" to hours decimal
-function timeToHour(t) {
-  if (!t) return null;
-  const [h, m] = t.split(':').map(Number);
-  return h + m / 60;
-}
+// Snap to 15-min increments
+function snapHour(h) { return Math.round(h * 4) / 4; }
 
 export default function TimetablePage() {
   const { user } = useAuth();
@@ -43,7 +40,7 @@ export default function TimetablePage() {
 
   const [timetable, setTimetable] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [view, setView] = useState('setup'); // 'setup' or 'calendar'
+  const [view, setView] = useState('setup');
 
   // Course slots
   const [slots, setSlots] = useState([
@@ -53,15 +50,21 @@ export default function TimetablePage() {
     { id: 4, query: '', results: [], selectedTopic: null, searching: false, adding: false, searched: false },
   ]);
 
-  // Class time form (shown after selecting a topic)
-  const [classForm, setClassForm] = useState(null); // { slotId, topicId, dayOfWeek, startTime, endTime, classType, location }
+  // Drag-to-add state
+  const [dragTopic, setDragTopic] = useState(null); // topic being added via calendar drag
+  const [dragOffering, setDragOffering] = useState(null);
+  const [popularTimes, setPopularTimes] = useState([]);
+
+  // Class form (offering selection + mini confirm after drag)
+  const [classForm, setClassForm] = useState(null);
+  const [confirmForm, setConfirmForm] = useState(null); // {topicId, dayOfWeek, startTime, endTime, classType, location}
+
+  const [searchTimers, setSearchTimers] = useState({});
 
   const loadTimetable = useCallback(async () => {
     try {
       const data = await getMyTimetable();
       setTimetable(data);
-
-      // Pre-fill slots with existing topics
       const uniqueTopics = [];
       const seen = new Set();
       for (const entry of data) {
@@ -70,7 +73,6 @@ export default function TimetablePage() {
           uniqueTopics.push(entry.topic);
         }
       }
-
       if (uniqueTopics.length > 0) {
         setSlots((prev) => {
           const newSlots = [...prev];
@@ -83,39 +85,24 @@ export default function TimetablePage() {
         });
         setView('calendar');
       }
-    } catch {
-      // ignore
-    } finally {
-      setLoading(false);
-    }
+    } catch {} finally { setLoading(false); }
   }, []);
 
-  useEffect(() => {
-    loadTimetable();
-  }, [loadTimetable]);
+  useEffect(() => { loadTimetable(); }, [loadTimetable]);
 
-  // Search topics with debounce
+  // Search
   const handleSearch = useCallback(async (slotId, query) => {
-    setSlots((prev) =>
-      prev.map((s) => (s.id === slotId ? { ...s, query, results: [], selectedTopic: null, searched: false } : s))
-    );
-
+    setSlots((prev) => prev.map((s) => (s.id === slotId ? { ...s, query, results: [], selectedTopic: null, searched: false } : s)));
     if (query.trim().length < 2) return;
-
     setSlots((prev) => prev.map((s) => (s.id === slotId ? { ...s, searching: true, searched: false } : s)));
-
     try {
       const results = await searchTopics(query);
-      setSlots((prev) =>
-        prev.map((s) => (s.id === slotId ? { ...s, results, searching: false, searched: true } : s))
-      );
+      setSlots((prev) => prev.map((s) => (s.id === slotId ? { ...s, results, searching: false, searched: true } : s)));
     } catch {
       setSlots((prev) => prev.map((s) => (s.id === slotId ? { ...s, searching: false, searched: true } : s)));
     }
   }, []);
 
-  // Debounced search
-  const [searchTimers, setSearchTimers] = useState({});
   const onQueryChange = (slotId, value) => {
     setSlots((prev) => prev.map((s) => (s.id === slotId ? { ...s, query: value } : s)));
     if (searchTimers[slotId]) clearTimeout(searchTimers[slotId]);
@@ -123,131 +110,110 @@ export default function TimetablePage() {
     setSearchTimers((prev) => ({ ...prev, [slotId]: timer }));
   };
 
-  // Select a topic from search results
+  // Select topic → show offering selection
   const selectTopic = (slotId, topic) => {
-    setSlots((prev) =>
-      prev.map((s) =>
-        s.id === slotId
-          ? { ...s, selectedTopic: topic, query: topic.topic_code, results: [] }
-          : s
-      )
-    );
-    // Show class time form with offerings
-    setClassForm({
-      slotId,
-      topicId: topic.id,
-      topicCode: topic.topic_code,
-      topicTitle: topic.title,
-      offerings: topic.offerings || [],
-      step: (topic.offerings && topic.offerings.length > 0) ? 'offering' : 'time', // show offering selection first if available
-      selectedOffering: null,
-      dayOfWeek: 0,
-      startTime: '09:00',
-      endTime: '11:00',
-      classType: 'lecture',
-      location: '',
-      manualMode: false,
-    });
-  };
-
-  // Add class to timetable
-  const handleAddClass = async () => {
-    if (!classForm) return;
-    const slot = slots.find((s) => s.id === classForm.slotId);
-    if (!slot) return;
-
-    setSlots((prev) => prev.map((s) => (s.id === classForm.slotId ? { ...s, adding: true } : s)));
-
-    try {
-      await addToTimetable({
-        topicId: classForm.topicId,
-        dayOfWeek: classForm.dayOfWeek,
-        startTime: classForm.startTime,
-        endTime: classForm.endTime,
-        classType: classForm.classType,
-        location: classForm.location,
-      });
-      setClassForm(null);
-      await loadTimetable();
-      setView('calendar');
-    } catch {
-      // ignore
-    } finally {
-      setSlots((prev) => prev.map((s) => (s.id === classForm.slotId ? { ...s, adding: false } : s)));
+    setSlots((prev) => prev.map((s) => s.id === slotId ? { ...s, selectedTopic: topic, query: topic.topic_code, results: [] } : s));
+    const offerings = topic.offerings || [];
+    if (offerings.length > 0) {
+      setClassForm({ slotId, topic, offerings, step: 'offering' });
+    } else {
+      // No offerings — go straight to calendar drag mode
+      startDragMode(topic, null);
     }
   };
 
-  // Add another class for the same topic (e.g., tutorial after lecture)
-  const addAnotherClass = (topic) => {
-    setClassForm({
-      slotId: slots.find((s) => s.selectedTopic?.id === topic.id)?.id || 1,
-      topicId: topic.id,
-      topicCode: topic.topic_code,
-      topicTitle: topic.title,
-      offerings: topic.offerings || [],
-      step: 'time', // skip offering for additional classes
-      selectedOffering: null,
-      dayOfWeek: 0,
-      startTime: '09:00',
-      endTime: '11:00',
-      classType: 'tutorial',
-      location: '',
-      manualMode: false,
+  // Start drag mode on calendar
+  const startDragMode = async (topic, offering) => {
+    setDragTopic(topic);
+    setDragOffering(offering);
+    setClassForm(null);
+    setView('calendar');
+    // Fetch popular times
+    try {
+      const popular = await getPopularTimes(topic.id);
+      setPopularTimes(popular);
+    } catch { setPopularTimes([]); }
+  };
+
+  // After drag completes on calendar
+  const handleDragComplete = (dayOfWeek, startHour, endHour) => {
+    if (!dragTopic) return;
+    setConfirmForm({
+      topicId: dragTopic.id,
+      topicCode: dragTopic.topic_code,
+      topicTitle: dragTopic.title,
+      dayOfWeek,
+      startTime: hourToTime(startHour),
+      endTime: hourToTime(endHour),
+      classType: 'lecture',
+      location: dragOffering?.campus || '',
     });
   };
 
-  // Remove a topic entirely
+  // Confirm the dragged class
+  const handleConfirmAdd = async () => {
+    if (!confirmForm) return;
+    try {
+      await addToTimetable({
+        topicId: confirmForm.topicId,
+        dayOfWeek: confirmForm.dayOfWeek,
+        startTime: confirmForm.startTime,
+        endTime: confirmForm.endTime,
+        classType: confirmForm.classType,
+        location: confirmForm.location,
+      });
+      setConfirmForm(null);
+      // Don't exit drag mode — user may want to add tutorial/workshop too
+      await loadTimetable();
+    } catch {}
+  };
+
+  // Finish adding classes for this topic
+  const finishAdding = () => {
+    setDragTopic(null);
+    setDragOffering(null);
+    setPopularTimes([]);
+    setConfirmForm(null);
+  };
+
+  // Add another class for the same topic (from setup view)
+  const addAnotherClass = (topic) => {
+    startDragMode(topic, null);
+  };
+
   const handleRemoveTopic = async (topicId) => {
     try {
       await removeTopic(topicId);
-      setSlots((prev) =>
-        prev.map((s) =>
-          s.selectedTopic?.id === topicId
-            ? { ...s, selectedTopic: null, query: '', results: [] }
-            : s
-        )
-      );
+      setSlots((prev) => prev.map((s) => s.selectedTopic?.id === topicId ? { ...s, selectedTopic: null, query: '', results: [] } : s));
       await loadTimetable();
-    } catch {
-      // ignore
-    }
+    } catch {}
   };
 
-  // Add a new slot
   const addSlot = () => {
     const nextId = Math.max(...slots.map((s) => s.id)) + 1;
-    setSlots((prev) => [...prev, { id: nextId, query: '', results: [], selectedTopic: null, searching: false, adding: false }]);
+    setSlots((prev) => [...prev, { id: nextId, query: '', results: [], selectedTopic: null, searching: false, adding: false, searched: false }]);
   };
 
-  // Remove an empty slot
   const removeSlot = (slotId) => {
     if (slots.length <= 1) return;
     const slot = slots.find((s) => s.id === slotId);
-    if (slot?.selectedTopic) return; // don't remove filled slots
+    if (slot?.selectedTopic) return;
     setSlots((prev) => prev.filter((s) => s.id !== slotId));
   };
 
-  // Navigate to chat room
-  const goToRoom = (roomId) => {
-    if (roomId) navigate(`/rooms/${roomId}`);
-  };
+  const goToRoom = (roomId) => { if (roomId) navigate(`/rooms/${roomId}`); };
 
-  // Build calendar data from timetable entries
   const calendarEntries = timetable.filter((e) => e.day_of_week != null && e.start_time);
-
-  // Get unique topics with their colors
   const uniqueTopicIds = [...new Set(timetable.map((e) => e.topic?.id).filter(Boolean))];
   const topicColorMap = {};
-  uniqueTopicIds.forEach((id, i) => {
-    topicColorMap[id] = getColorForIndex(i);
-  });
+  uniqueTopicIds.forEach((id, i) => { topicColorMap[id] = getColorForIndex(i); });
+  // Also assign color for drag topic if not already in map
+  if (dragTopic && !topicColorMap[dragTopic.id]) {
+    topicColorMap[dragTopic.id] = getColorForIndex(uniqueTopicIds.length);
+  }
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center h-full">
-        <Loader2 className="h-6 w-6 animate-spin text-blue-500" />
-      </div>
-    );
+    return <div className="flex items-center justify-center h-full"><Loader2 className="h-6 w-6 animate-spin text-blue-500" /></div>;
   }
 
   return (
@@ -258,150 +224,177 @@ export default function TimetablePage() {
           <div className="flex items-center gap-2">
             <GraduationCap className="h-5 w-5 text-blue-600" />
             <h1 className="text-lg font-bold text-slate-900">Timetable Buddy</h1>
-            {timetable.length > 0 && (
-              <Badge className="rounded-full bg-blue-100 text-blue-700 border-blue-200 text-[10px]">
-                {uniqueTopicIds.length} topics
-              </Badge>
+            {uniqueTopicIds.length > 0 && (
+              <Badge className="rounded-full bg-blue-100 text-blue-700 border-blue-200 text-[10px]">{uniqueTopicIds.length} topics</Badge>
             )}
           </div>
           <div className="flex gap-2">
-            <Button
-              variant={view === 'setup' ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setView('setup')}
-              className="h-8 text-xs rounded-full"
-            >
-              <BookOpen className="h-3.5 w-3.5 mr-1" />
-              Courses
+            {dragTopic && (
+              <Button size="sm" onClick={finishAdding} className="h-8 text-xs rounded-full bg-emerald-600 hover:bg-emerald-700">
+                <Check className="h-3.5 w-3.5 mr-1" />
+                Done
+              </Button>
+            )}
+            <Button variant={view === 'setup' ? 'default' : 'outline'} size="sm" onClick={() => { setView('setup'); finishAdding(); }} className="h-8 text-xs rounded-full">
+              <BookOpen className="h-3.5 w-3.5 mr-1" />Courses
             </Button>
-            <Button
-              variant={view === 'calendar' ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setView('calendar')}
-              className="h-8 text-xs rounded-full"
-              disabled={timetable.length === 0}
-            >
-              <Clock className="h-3.5 w-3.5 mr-1" />
-              Calendar
+            <Button variant={view === 'calendar' ? 'default' : 'outline'} size="sm" onClick={() => setView('calendar')} className="h-8 text-xs rounded-full" disabled={timetable.length === 0 && !dragTopic}>
+              <Clock className="h-3.5 w-3.5 mr-1" />Calendar
             </Button>
           </div>
         </div>
       </div>
 
+      {/* Drag mode banner */}
+      {dragTopic && view === 'calendar' && (
+        <div className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-4 py-2.5">
+          <div className="max-w-5xl mx-auto flex items-center justify-between">
+            <div className="flex items-center gap-2 text-sm">
+              <Plus className="h-4 w-4" />
+              <span className="font-medium">{dragTopic.topic_code}</span>
+              <span className="opacity-80">— Drag on the calendar to add class times</span>
+              {dragOffering && <Badge className="rounded-full text-[10px] bg-white/20 border-0">{dragOffering.semester} · {dragOffering.campus}</Badge>}
+            </div>
+            <Button size="sm" variant="ghost" onClick={finishAdding} className="h-7 text-xs text-white/80 hover:text-white hover:bg-white/10">
+              Done adding
+            </Button>
+          </div>
+        </div>
+      )}
+
       <div className="max-w-5xl mx-auto p-4">
         {view === 'setup' ? (
           <SetupView
-            slots={slots}
-            timetable={timetable}
-            topicColorMap={topicColorMap}
-            classForm={classForm}
-            setClassForm={setClassForm}
-            onQueryChange={onQueryChange}
-            selectTopic={selectTopic}
-            handleAddClass={handleAddClass}
-            handleRemoveTopic={handleRemoveTopic}
-            addAnotherClass={addAnotherClass}
-            addSlot={addSlot}
-            removeSlot={removeSlot}
-            goToRoom={goToRoom}
+            slots={slots} timetable={timetable} topicColorMap={topicColorMap}
+            onQueryChange={onQueryChange} selectTopic={selectTopic}
+            handleRemoveTopic={handleRemoveTopic} addAnotherClass={addAnotherClass}
+            addSlot={addSlot} removeSlot={removeSlot} goToRoom={goToRoom}
           />
         ) : (
           <CalendarView
-            entries={calendarEntries}
-            topicColorMap={topicColorMap}
-            goToRoom={goToRoom}
-            timetable={timetable}
+            entries={calendarEntries} topicColorMap={topicColorMap} goToRoom={goToRoom}
+            timetable={timetable} dragTopic={dragTopic} popularTimes={popularTimes}
+            onDragComplete={handleDragComplete}
           />
         )}
       </div>
+
+      {/* Offering selection modal */}
+      {classForm && (
+        <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
+          <Card className="w-full max-w-md shadow-2xl">
+            <CardContent className="p-5">
+              <h3 className="font-semibold text-slate-900 mb-1">Select Your Class</h3>
+              <p className="text-sm text-slate-500 mb-4">{classForm.topic.topic_code} — {classForm.topic.title}</p>
+              <div className="space-y-2">
+                {classForm.offerings.map((offering, i) => (
+                  <button key={i} onClick={() => startDragMode(classForm.topic, offering)}
+                    className="w-full text-left p-3 rounded-xl border-2 border-slate-200 transition-all hover:border-blue-400 hover:bg-blue-50">
+                    <div className="flex items-center gap-2">
+                      <Badge className="rounded-full text-[10px] bg-blue-100 text-blue-700 border-blue-200">{offering.semester || 'TBC'}</Badge>
+                      <span className="text-sm font-medium text-slate-800">{offering.campus || 'TBC'}</span>
+                    </div>
+                    <div className="text-[11px] text-slate-400 mt-1">{offering.mode || 'In person'}</div>
+                  </button>
+                ))}
+                <button onClick={() => startDragMode(classForm.topic, null)} className="w-full text-center text-xs text-slate-400 hover:text-blue-500 py-2 mt-2">
+                  None of these? Add manually on calendar
+                </button>
+                <Button variant="outline" onClick={() => setClassForm(null)} className="w-full h-10 rounded-xl mt-2">Cancel</Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* Confirm after drag */}
+      {confirmForm && (
+        <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
+          <Card className="w-full max-w-sm shadow-2xl">
+            <CardContent className="p-5">
+              <h3 className="font-semibold text-slate-900 mb-1">Confirm Class</h3>
+              <p className="text-sm text-slate-500 mb-3">{confirmForm.topicCode} — {DAYS[confirmForm.dayOfWeek]} {confirmForm.startTime}–{confirmForm.endTime}</p>
+
+              <div className="space-y-3">
+                <div>
+                  <label className="text-xs font-medium text-slate-600 mb-1 block">Type</label>
+                  <div className="flex gap-1 flex-wrap">
+                    {['lecture', 'tutorial', 'practical', 'workshop', 'seminar'].map((type) => (
+                      <Button key={type} variant={confirmForm.classType === type ? 'default' : 'outline'} size="sm"
+                        onClick={() => setConfirmForm((f) => ({ ...f, classType: type }))} className="h-8 text-xs rounded-full capitalize">
+                        {type}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-slate-600 mb-1 block">Location (optional)</label>
+                  <Input placeholder="e.g. Room 101" value={confirmForm.location}
+                    onChange={(e) => setConfirmForm((f) => ({ ...f, location: e.target.value }))} className="h-9 rounded-lg" />
+                </div>
+              </div>
+
+              <div className="flex gap-2 mt-4">
+                <Button variant="outline" onClick={() => setConfirmForm(null)} className="flex-1 h-10 rounded-xl">Cancel</Button>
+                <Button onClick={handleConfirmAdd} className="flex-1 h-10 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600">Add</Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
     </div>
   );
 }
 
-function SetupView({
-  slots, timetable, topicColorMap, classForm, setClassForm,
-  onQueryChange, selectTopic, handleAddClass, handleRemoveTopic,
-  addAnotherClass, addSlot, removeSlot, goToRoom,
-}) {
+/* ========== Setup View ========== */
+function SetupView({ slots, timetable, topicColorMap, onQueryChange, selectTopic, handleRemoveTopic, addAnotherClass, addSlot, removeSlot, goToRoom }) {
   return (
     <div className="space-y-4">
-      <p className="text-sm text-slate-500">
-        Add your courses below. Each course automatically creates a group chat with classmates.
-      </p>
-
+      <p className="text-sm text-slate-500">Add your courses below, then drag on the calendar to set class times.</p>
       {slots.map((slot, idx) => {
         const color = slot.selectedTopic ? topicColorMap[slot.selectedTopic.id] || getColorForIndex(idx) : null;
-        const topicEntries = slot.selectedTopic
-          ? timetable.filter((e) => e.topic?.id === slot.selectedTopic.id)
-          : [];
-
+        const topicEntries = slot.selectedTopic ? timetable.filter((e) => e.topic?.id === slot.selectedTopic.id) : [];
         return (
           <Card key={slot.id} className={`shadow-sm transition-all ${color ? `${color.border} border-l-4` : 'border-slate-200'}`}>
             <CardContent className="p-4">
-              {/* Slot header */}
               <div className="flex items-center gap-2 mb-3">
-                <div className={`h-8 w-8 rounded-lg flex items-center justify-center text-sm font-bold text-white ${color ? color.accent : 'bg-slate-300'}`}>
-                  {idx + 1}
-                </div>
+                <div className={`h-8 w-8 rounded-lg flex items-center justify-center text-sm font-bold text-white ${color ? color.accent : 'bg-slate-300'}`}>{idx + 1}</div>
                 {slot.selectedTopic ? (
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
                       <span className="font-semibold text-slate-900">{slot.selectedTopic.topic_code}</span>
                       <span className="text-sm text-slate-500 truncate">{slot.selectedTopic.title}</span>
                     </div>
-                    {slot.selectedTopic.school && (
-                      <p className="text-[11px] text-slate-400 truncate">{slot.selectedTopic.school}</p>
-                    )}
+                    {slot.selectedTopic.school && <p className="text-[11px] text-slate-400 truncate">{slot.selectedTopic.school}</p>}
                   </div>
-                ) : (
-                  <span className="text-sm text-slate-400">Course {idx + 1}</span>
-                )}
+                ) : <span className="text-sm text-slate-400">Course {idx + 1}</span>}
                 <div className="flex gap-1 ml-auto">
                   {slot.selectedTopic && (
                     <>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => goToRoom(topicEntries[0]?.room_id)}
-                        className="h-7 text-xs text-blue-600 hover:text-blue-700"
-                        disabled={!topicEntries[0]?.room_id}
-                      >
-                        <MessageSquare className="h-3.5 w-3.5 mr-1" />
-                        Chat
+                      <Button variant="ghost" size="sm" onClick={() => goToRoom(topicEntries[0]?.room_id)} className="h-7 text-xs text-blue-600" disabled={!topicEntries[0]?.room_id}>
+                        <MessageSquare className="h-3.5 w-3.5 mr-1" />Chat
                       </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleRemoveTopic(slot.selectedTopic.id)}
-                        className="h-7 text-xs text-red-500 hover:text-red-600"
-                      >
+                      <Button variant="ghost" size="sm" onClick={() => addAnotherClass(slot.selectedTopic)} className="h-7 text-xs text-emerald-600">
+                        <Plus className="h-3.5 w-3.5 mr-1" />Add class
+                      </Button>
+                      <Button variant="ghost" size="sm" onClick={() => handleRemoveTopic(slot.selectedTopic.id)} className="h-7 text-xs text-red-500">
                         <Trash2 className="h-3.5 w-3.5" />
                       </Button>
                     </>
                   )}
                   {!slot.selectedTopic && slots.length > 1 && (
-                    <Button variant="ghost" size="sm" onClick={() => removeSlot(slot.id)} className="h-7 text-xs text-slate-400">
-                      <X className="h-3.5 w-3.5" />
-                    </Button>
+                    <Button variant="ghost" size="sm" onClick={() => removeSlot(slot.id)} className="h-7 text-xs text-slate-400"><X className="h-3.5 w-3.5" /></Button>
                   )}
                 </div>
               </div>
 
-              {/* Search input (if no topic selected) */}
               {!slot.selectedTopic && (
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                  <Input
-                    placeholder="Enter topic code (e.g. COMP2711)"
-                    value={slot.query}
-                    onChange={(e) => onQueryChange(slot.id, e.target.value)}
-                    className="pl-9 h-10 rounded-xl bg-slate-50 border-slate-200"
-                  />
-                  {slot.searching && (
-                    <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-blue-500" />
-                  )}
+                  <Input placeholder="Enter topic code (e.g. COMP2711)" value={slot.query}
+                    onChange={(e) => onQueryChange(slot.id, e.target.value)} className="pl-9 h-10 rounded-xl bg-slate-50 border-slate-200" />
+                  {slot.searching && <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-blue-500" />}
 
-                  {/* No results message */}
                   {slot.searched && slot.results.length === 0 && slot.query.length >= 2 && !slot.searching && (
                     <div className="absolute top-full left-0 right-0 z-30 mt-1 bg-white border border-slate-200 rounded-xl shadow-lg p-4 text-center">
                       <p className="text-sm text-slate-500">No results for "{slot.query}"</p>
@@ -409,19 +402,13 @@ function SetupView({
                     </div>
                   )}
 
-                  {/* Search results dropdown */}
                   {slot.results.length > 0 && (
                     <div className="absolute top-full left-0 right-0 z-30 mt-1 bg-white border border-slate-200 rounded-xl shadow-lg max-h-60 overflow-auto">
                       {slot.results.map((topic) => (
-                        <button
-                          key={topic.id}
-                          onClick={() => selectTopic(slot.id, topic)}
-                          className="w-full text-left px-4 py-3 hover:bg-blue-50 border-b border-slate-50 last:border-0 transition-colors"
-                        >
+                        <button key={topic.id} onClick={() => selectTopic(slot.id, topic)}
+                          className="w-full text-left px-4 py-3 hover:bg-blue-50 border-b border-slate-50 last:border-0 transition-colors">
                           <div className="flex items-center gap-2">
-                            <Badge className="rounded bg-slate-100 text-slate-700 border-slate-200 text-xs font-mono">
-                              {topic.topic_code}
-                            </Badge>
+                            <Badge className="rounded bg-slate-100 text-slate-700 border-slate-200 text-xs font-mono">{topic.topic_code}</Badge>
                             <span className="text-sm font-medium text-slate-800 truncate">{topic.title}</span>
                           </div>
                           <div className="flex gap-2 mt-1 text-[11px] text-slate-400">
@@ -437,256 +424,100 @@ function SetupView({
                 </div>
               )}
 
-              {/* Class entries for this topic */}
               {slot.selectedTopic && topicEntries.length > 0 && (
                 <div className="space-y-2 mt-2">
                   {topicEntries.map((entry) => (
                     <div key={entry.id} className={`flex items-center gap-3 px-3 py-2 rounded-lg ${color?.bg || 'bg-slate-50'}`}>
                       <Clock className={`h-3.5 w-3.5 ${color?.text || 'text-slate-500'}`} />
                       <span className="text-sm font-medium">{DAYS[entry.day_of_week]}</span>
-                      <span className="text-sm text-slate-600">
-                        {entry.start_time?.slice(0, 5)} — {entry.end_time?.slice(0, 5)}
-                      </span>
-                      {entry.class_type && (
-                        <Badge className="rounded-full text-[10px] bg-white/60 border-0 capitalize">
-                          {entry.class_type}
-                        </Badge>
-                      )}
-                      {entry.location && (
-                        <span className="text-[11px] text-slate-400 flex items-center gap-1">
-                          <MapPin className="h-3 w-3" />
-                          {entry.location}
-                        </span>
-                      )}
+                      <span className="text-sm text-slate-600">{entry.start_time?.slice(0,5)} — {entry.end_time?.slice(0,5)}</span>
+                      {entry.class_type && <Badge className="rounded-full text-[10px] bg-white/60 border-0 capitalize">{entry.class_type}</Badge>}
+                      {entry.location && <span className="text-[11px] text-slate-400 flex items-center gap-1"><MapPin className="h-3 w-3" />{entry.location}</span>}
                     </div>
                   ))}
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => addAnotherClass(slot.selectedTopic)}
-                    className="h-7 text-xs text-blue-500"
-                  >
-                    <Plus className="h-3 w-3 mr-1" />
-                    Add another class (tutorial, practical...)
-                  </Button>
                 </div>
               )}
             </CardContent>
           </Card>
         );
       })}
-
-      {/* Add slot button */}
-      <Button
-        variant="outline"
-        onClick={addSlot}
-        className="w-full h-11 rounded-xl border-dashed border-2 border-slate-200 text-slate-400 hover:text-blue-500 hover:border-blue-300"
-      >
-        <Plus className="h-4 w-4 mr-2" />
-        Add another course
+      <Button variant="outline" onClick={addSlot} className="w-full h-11 rounded-xl border-dashed border-2 border-slate-200 text-slate-400 hover:text-blue-500 hover:border-blue-300">
+        <Plus className="h-4 w-4 mr-2" />Add another course
       </Button>
-
-      {/* Class time form modal */}
-      {classForm && (
-        <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
-          <Card className="w-full max-w-md shadow-2xl max-h-[90vh] overflow-auto">
-            <CardContent className="p-5">
-              <h3 className="font-semibold text-slate-900 mb-1">
-                {classForm.step === 'offering' ? 'Select Your Class' : 'Set Class Time'}
-              </h3>
-              <p className="text-sm text-slate-500 mb-4">
-                {classForm.topicCode} — {classForm.topicTitle}
-              </p>
-
-              {/* Step 1: Offering selection */}
-              {classForm.step === 'offering' && (
-                <div className="space-y-2">
-                  <label className="text-xs font-medium text-slate-600 mb-1 block">Available classes</label>
-                  {classForm.offerings.map((offering, i) => (
-                    <button
-                      key={i}
-                      onClick={() => setClassForm((f) => ({
-                        ...f,
-                        selectedOffering: offering,
-                        location: offering.campus || '',
-                        step: 'time',
-                      }))}
-                      className={`w-full text-left p-3 rounded-xl border-2 transition-all hover:border-blue-400 hover:bg-blue-50 ${
-                        classForm.selectedOffering === offering ? 'border-blue-500 bg-blue-50' : 'border-slate-200'
-                      }`}
-                    >
-                      <div className="flex items-center gap-2">
-                        <Badge className="rounded-full text-[10px] bg-blue-100 text-blue-700 border-blue-200">
-                          {offering.semester || 'TBC'}
-                        </Badge>
-                        <span className="text-sm font-medium text-slate-800">{offering.campus || 'TBC'}</span>
-                      </div>
-                      <div className="text-[11px] text-slate-400 mt-1">
-                        {offering.mode || 'In person'}
-                      </div>
-                    </button>
-                  ))}
-
-                  <button
-                    onClick={() => setClassForm((f) => ({ ...f, step: 'time', manualMode: true }))}
-                    className="w-full text-center text-xs text-slate-400 hover:text-blue-500 py-2 mt-2"
-                  >
-                    None of these? Enter manually
-                  </button>
-
-                  <Button
-                    variant="outline"
-                    onClick={() => setClassForm(null)}
-                    className="w-full h-10 rounded-xl mt-2"
-                  >
-                    Cancel
-                  </Button>
-                </div>
-              )}
-
-              {/* Step 2: Time entry */}
-              {classForm.step === 'time' && (
-                <div className="space-y-3">
-                  {classForm.selectedOffering && (
-                    <div className="flex items-center gap-2 p-2 bg-blue-50 rounded-lg text-xs text-blue-700 mb-2">
-                      <Badge className="rounded-full text-[10px] bg-blue-100 border-blue-200">
-                        {classForm.selectedOffering.semester}
-                      </Badge>
-                      <span>{classForm.selectedOffering.campus}</span>
-                      <span className="text-blue-400">·</span>
-                      <span>{classForm.selectedOffering.mode}</span>
-                    </div>
-                  )}
-
-                  {/* Day */}
-                  <div>
-                    <label className="text-xs font-medium text-slate-600 mb-1 block">Day</label>
-                    <div className="flex gap-1">
-                      {DAYS.map((day, i) => (
-                        <Button
-                          key={day}
-                          variant={classForm.dayOfWeek === i ? 'default' : 'outline'}
-                          size="sm"
-                          onClick={() => setClassForm((f) => ({ ...f, dayOfWeek: i }))}
-                          className="flex-1 h-9 text-xs rounded-lg"
-                        >
-                          {day}
-                        </Button>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Time */}
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="text-xs font-medium text-slate-600 mb-1 block">Start</label>
-                      <Input
-                        type="time"
-                        value={classForm.startTime}
-                        onChange={(e) => setClassForm((f) => ({ ...f, startTime: e.target.value }))}
-                        className="h-9 rounded-lg"
-                      />
-                    </div>
-                    <div>
-                      <label className="text-xs font-medium text-slate-600 mb-1 block">End</label>
-                      <Input
-                        type="time"
-                        value={classForm.endTime}
-                        onChange={(e) => setClassForm((f) => ({ ...f, endTime: e.target.value }))}
-                        className="h-9 rounded-lg"
-                      />
-                    </div>
-                  </div>
-
-                  {/* Class type */}
-                  <div>
-                    <label className="text-xs font-medium text-slate-600 mb-1 block">Type</label>
-                    <div className="flex gap-1 flex-wrap">
-                      {['lecture', 'tutorial', 'practical', 'workshop', 'seminar'].map((type) => (
-                        <Button
-                          key={type}
-                          variant={classForm.classType === type ? 'default' : 'outline'}
-                          size="sm"
-                          onClick={() => setClassForm((f) => ({ ...f, classType: type }))}
-                          className="h-8 text-xs rounded-full capitalize"
-                        >
-                          {type}
-                        </Button>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Location */}
-                  <div>
-                    <label className="text-xs font-medium text-slate-600 mb-1 block">Location (optional)</label>
-                    <Input
-                      placeholder="e.g. Room 101, Engineering Building"
-                      value={classForm.location}
-                      onChange={(e) => setClassForm((f) => ({ ...f, location: e.target.value }))}
-                      className="h-9 rounded-lg"
-                    />
-                  </div>
-
-                  <div className="flex gap-2 mt-3">
-                    <Button
-                      variant="outline"
-                      onClick={() => {
-                        if (classForm.offerings.length > 0 && !classForm.manualMode) {
-                          setClassForm((f) => ({ ...f, step: 'offering', selectedOffering: null }));
-                        } else {
-                          setClassForm(null);
-                        }
-                      }}
-                      className="flex-1 h-10 rounded-xl"
-                    >
-                      {classForm.offerings.length > 0 && !classForm.manualMode ? 'Back' : 'Cancel'}
-                    </Button>
-                    <Button
-                      onClick={handleAddClass}
-                      className="flex-1 h-10 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600"
-                    >
-                      Add to Timetable
-                    </Button>
-                  </div>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </div>
-      )}
     </div>
   );
 }
 
-function CalendarView({ entries, topicColorMap, goToRoom, timetable }) {
-  // Get unique topics for the legend
+/* ========== Calendar View with Drag ========== */
+function CalendarView({ entries, topicColorMap, goToRoom, timetable, dragTopic, popularTimes, onDragComplete }) {
+  const gridRef = useRef(null);
+  const [dragging, setDragging] = useState(null); // {dayOfWeek, startHour, currentHour}
+
+  // Unique topics for legend
   const uniqueTopics = [];
   const seen = new Set();
   for (const e of timetable) {
-    if (e.topic && !seen.has(e.topic.id)) {
-      seen.add(e.topic.id);
-      uniqueTopics.push({ ...e.topic, roomId: e.room_id });
-    }
+    if (e.topic && !seen.has(e.topic.id)) { seen.add(e.topic.id); uniqueTopics.push({ ...e.topic, roomId: e.room_id }); }
   }
+
+  // Convert mouse/touch position to day + hour
+  const posToCell = useCallback((clientX, clientY) => {
+    if (!gridRef.current) return null;
+    const rect = gridRef.current.getBoundingClientRect();
+    const x = clientX - rect.left;
+    const y = clientY - rect.top;
+
+    const timeColWidth = 60;
+    const dayWidth = (rect.width - timeColWidth) / 5;
+    const dayOfWeek = Math.floor((x - timeColWidth) / dayWidth);
+    const hour = 8 + y / HOUR_HEIGHT;
+
+    if (dayOfWeek < 0 || dayOfWeek > 4) return null;
+    return { dayOfWeek, hour: snapHour(Math.max(8, Math.min(20, hour))) };
+  }, []);
+
+  const handlePointerDown = (e) => {
+    if (!dragTopic) return;
+    const cell = posToCell(e.clientX, e.clientY);
+    if (!cell) return;
+    e.preventDefault();
+    setDragging({ dayOfWeek: cell.dayOfWeek, startHour: cell.hour, currentHour: cell.hour + 1 });
+  };
+
+  const handlePointerMove = (e) => {
+    if (!dragging) return;
+    const cell = posToCell(e.clientX, e.clientY);
+    if (!cell) return;
+    e.preventDefault();
+    setDragging((prev) => ({ ...prev, currentHour: Math.max(prev.startHour + 0.5, cell.hour) }));
+  };
+
+  const handlePointerUp = () => {
+    if (!dragging) return;
+    const startH = Math.min(dragging.startHour, dragging.currentHour);
+    const endH = Math.max(dragging.startHour, dragging.currentHour);
+    if (endH - startH >= 0.25) {
+      onDragComplete(dragging.dayOfWeek, startH, endH);
+    }
+    setDragging(null);
+  };
 
   return (
     <div className="space-y-4">
       {/* Legend */}
-      <div className="flex flex-wrap gap-2">
-        {uniqueTopics.map((topic) => {
-          const color = topicColorMap[topic.id];
-          return (
-            <button
-              key={topic.id}
-              onClick={() => goToRoom(topic.roomId)}
-              className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium ${color?.bg} ${color?.text} ${color?.border} border hover:shadow-md transition-shadow`}
-            >
-              <MessageSquare className="h-3 w-3" />
-              {topic.topic_code}
-            </button>
-          );
-        })}
-      </div>
+      {uniqueTopics.length > 0 && (
+        <div className="flex flex-wrap gap-2">
+          {uniqueTopics.map((topic) => {
+            const color = topicColorMap[topic.id];
+            return (
+              <button key={topic.id} onClick={() => goToRoom(topic.roomId)}
+                className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium ${color?.bg} ${color?.text} ${color?.border} border hover:shadow-md transition-shadow`}>
+                <MessageSquare className="h-3 w-3" />{topic.topic_code}
+              </button>
+            );
+          })}
+        </div>
+      )}
 
       {/* Calendar grid */}
       <Card className="shadow-sm overflow-hidden">
@@ -696,57 +527,79 @@ function CalendarView({ entries, topicColorMap, goToRoom, timetable }) {
             <div className="grid grid-cols-[60px_repeat(5,1fr)] border-b border-slate-100">
               <div className="p-2" />
               {DAYS.map((day) => (
-                <div key={day} className="p-2 text-center text-xs font-semibold text-slate-500 border-l border-slate-100">
-                  {day}
-                </div>
+                <div key={day} className="p-2 text-center text-xs font-semibold text-slate-500 border-l border-slate-100">{day}</div>
               ))}
             </div>
 
-            {/* Time slots */}
-            <div className="relative">
+            {/* Time grid */}
+            <div className="relative select-none" ref={gridRef}
+              onPointerDown={handlePointerDown} onPointerMove={handlePointerMove} onPointerUp={handlePointerUp}
+              onPointerLeave={handlePointerUp} style={{ touchAction: dragTopic ? 'none' : 'auto', cursor: dragTopic ? 'crosshair' : 'default' }}>
+
               {HOURS.map((hour) => (
                 <div key={hour} className="grid grid-cols-[60px_repeat(5,1fr)] h-14 border-b border-slate-50">
-                  <div className="p-1 text-[11px] text-slate-400 text-right pr-2 pt-0">
-                    {hour > 12 ? `${hour - 12}pm` : hour === 12 ? '12pm' : `${hour}am`}
-                  </div>
+                  <div className="p-1 text-[11px] text-slate-400 text-right pr-2 pt-0">{formatHour(hour)}</div>
                   {DAYS.map((_, di) => (
-                    <div key={di} className="border-l border-slate-50 relative" />
+                    <div key={di} className={`border-l border-slate-50 ${dragTopic ? 'hover:bg-blue-50/30' : ''}`} />
                   ))}
                 </div>
               ))}
 
-              {/* Render entries as positioned blocks */}
+              {/* Popular time suggestions (faded blocks) */}
+              {dragTopic && popularTimes.map((pt, i) => {
+                const startH = timeToHour(pt.start_time);
+                const endH = timeToHour(pt.end_time);
+                if (startH == null || endH == null || pt.day_of_week == null) return null;
+                const top = (startH - 8) * HOUR_HEIGHT;
+                const height = (endH - startH) * HOUR_HEIGHT;
+                const left = `calc(60px + ${pt.day_of_week} * ((100% - 60px) / 5) + 2px)`;
+                const width = `calc((100% - 60px) / 5 - 4px)`;
+                return (
+                  <div key={`pop-${i}`} className="absolute rounded-lg border-2 border-dashed border-blue-300 bg-blue-50/40 flex items-center justify-center pointer-events-none"
+                    style={{ top: `${top}px`, height: `${Math.max(height, 28)}px`, left, width }}>
+                    <span className="text-[10px] text-blue-400 font-medium">
+                      <Users className="h-3 w-3 inline mr-0.5" />{pt.count} {pt.count === 1 ? 'student' : 'students'}
+                    </span>
+                  </div>
+                );
+              })}
+
+              {/* Drag preview */}
+              {dragging && dragTopic && (() => {
+                const startH = Math.min(dragging.startHour, dragging.currentHour);
+                const endH = Math.max(dragging.startHour, dragging.currentHour);
+                const top = (startH - 8) * HOUR_HEIGHT;
+                const height = (endH - startH) * HOUR_HEIGHT;
+                const left = `calc(60px + ${dragging.dayOfWeek} * ((100% - 60px) / 5) + 2px)`;
+                const width = `calc((100% - 60px) / 5 - 4px)`;
+                const color = topicColorMap[dragTopic.id];
+                return (
+                  <div className={`absolute rounded-lg border-2 ${color?.border || 'border-blue-400'} ${color?.bg || 'bg-blue-100'} opacity-70 pointer-events-none flex items-center justify-center`}
+                    style={{ top: `${top}px`, height: `${Math.max(height, 14)}px`, left, width }}>
+                    <span className={`text-[11px] font-bold ${color?.text || 'text-blue-700'}`}>
+                      {dragTopic.topic_code} · {hourToTime(startH)}–{hourToTime(endH)}
+                    </span>
+                  </div>
+                );
+              })()}
+
+              {/* Existing entries */}
               {entries.map((entry) => {
                 const startH = timeToHour(entry.start_time);
                 const endH = timeToHour(entry.end_time);
                 if (startH == null || endH == null) return null;
-
-                const top = (startH - 8) * 56; // 56px = h-14
-                const height = (endH - startH) * 56;
+                const top = (startH - 8) * HOUR_HEIGHT;
+                const height = (endH - startH) * HOUR_HEIGHT;
                 const left = `calc(60px + ${entry.day_of_week} * ((100% - 60px) / 5) + 2px)`;
                 const width = `calc((100% - 60px) / 5 - 4px)`;
                 const color = topicColorMap[entry.topic?.id];
-
                 return (
-                  <button
-                    key={entry.id}
-                    onClick={() => goToRoom(entry.room_id)}
+                  <button key={entry.id} onClick={() => goToRoom(entry.room_id)}
                     className={`absolute rounded-lg p-1.5 overflow-hidden cursor-pointer hover:shadow-lg transition-shadow border ${color?.bg || 'bg-blue-100'} ${color?.border || 'border-blue-300'} ${color?.text || 'text-blue-800'}`}
-                    style={{ top: `${top}px`, height: `${Math.max(height, 28)}px`, left, width }}
-                  >
-                    <div className="text-[11px] font-bold leading-tight truncate">
-                      {entry.topic?.topic_code}
-                    </div>
-                    {height >= 42 && (
-                      <div className="text-[10px] opacity-70 truncate capitalize">
-                        {entry.class_type}
-                      </div>
-                    )}
-                    {height >= 56 && entry.location && (
-                      <div className="text-[9px] opacity-60 truncate">
-                        {entry.location}
-                      </div>
-                    )}
+                    style={{ top: `${top}px`, height: `${Math.max(height, 28)}px`, left, width }}>
+                    <div className="text-[11px] font-bold leading-tight truncate">{entry.topic?.topic_code}</div>
+                    {height >= 42 && <div className="text-[10px] opacity-70 truncate capitalize">{entry.class_type}</div>}
+                    {height >= 56 && entry.location && <div className="text-[9px] opacity-60 truncate">{entry.location}</div>}
                   </button>
                 );
               })}

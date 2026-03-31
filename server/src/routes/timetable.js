@@ -23,4 +23,7 @@ router.delete('/topic/:topicId', timetableController.removeTopic);
 // Get member count for a topic
 router.get('/topic/:topicId/members', timetableController.getTopicMembers);
 
+// Get popular times for a topic (from other students)
+router.get('/topic/:topicId/popular-times', timetableController.getPopularTimes);
+
 module.exports = router;

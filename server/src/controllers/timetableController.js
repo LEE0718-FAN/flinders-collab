@@ -296,6 +296,40 @@ async function getTopicMembers(req, res, next) {
   }
 }
 
+/**
+ * GET /timetable/topic/:topicId/popular-times
+ * Get aggregated class times from other students for the same topic (for recommendations).
+ */
+async function getPopularTimes(req, res, next) {
+  try {
+    const { topicId } = req.params;
+    const userId = req.user.id;
+
+    const { data, error } = await supabaseAdmin
+      .from('user_timetable')
+      .select('day_of_week, start_time, end_time, class_type, location')
+      .eq('topic_id', topicId)
+      .neq('user_id', userId);
+
+    if (error) return res.status(500).json({ error: error.message });
+
+    // Aggregate: count how many students have each day+time combo
+    const counts = {};
+    for (const entry of (data || [])) {
+      const key = `${entry.day_of_week}-${entry.start_time}-${entry.end_time}`;
+      if (!counts[key]) {
+        counts[key] = { ...entry, count: 0 };
+      }
+      counts[key].count++;
+    }
+
+    const popular = Object.values(counts).sort((a, b) => b.count - a.count);
+    res.json(popular);
+  } catch (err) {
+    next(err);
+  }
+}
+
 function generateInviteCode() {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
   let code = '';
@@ -312,4 +346,5 @@ module.exports = {
   removeFromTimetable,
   removeTopic,
   getTopicMembers,
+  getPopularTimes,
 };
