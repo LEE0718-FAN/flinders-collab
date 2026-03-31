@@ -340,7 +340,7 @@ async function ensureTopicRoomMember(req, res, next) {
     const userId = req.user.id;
     const { roomId } = req.params;
 
-    // Check if this is a topic room
+    // Find the topic for this room
     const { data: topicRoom } = await supabaseAdmin
       .from('topic_rooms')
       .select('topic_id')
@@ -348,6 +348,17 @@ async function ensureTopicRoomMember(req, res, next) {
       .maybeSingle();
 
     if (!topicRoom) return res.status(404).json({ error: 'Not a topic room' });
+
+    // Find the canonical (oldest) room for this topic — fixes duplicate room issues
+    const { data: canonicalRoom } = await supabaseAdmin
+      .from('topic_rooms')
+      .select('room_id')
+      .eq('topic_id', topicRoom.topic_id)
+      .order('room_id', { ascending: true })
+      .limit(1)
+      .maybeSingle();
+
+    const canonicalRoomId = canonicalRoom?.room_id || roomId;
 
     // Check user has this topic in their timetable
     const { data: hasTopic } = await supabaseAdmin
@@ -360,28 +371,37 @@ async function ensureTopicRoomMember(req, res, next) {
 
     if (!hasTopic) return res.status(403).json({ error: 'Topic not in your timetable' });
 
-    // Auto-join if not already a member
+    // If user's timetable points to a different room, update it to canonical
+    if (canonicalRoomId !== roomId) {
+      await supabaseAdmin
+        .from('user_timetable')
+        .update({ room_id: canonicalRoomId })
+        .eq('user_id', userId)
+        .eq('topic_id', topicRoom.topic_id);
+    }
+
+    // Auto-join canonical room if not already a member
     const { data: existingMember } = await supabaseAdmin
       .from('room_members')
       .select('id')
-      .eq('room_id', roomId)
+      .eq('room_id', canonicalRoomId)
       .eq('user_id', userId)
       .maybeSingle();
 
     if (!existingMember) {
       await supabaseAdmin
         .from('room_members')
-        .insert({ room_id: roomId, user_id: userId, role: 'member' });
+        .insert({ room_id: canonicalRoomId, user_id: userId, role: 'member' });
     }
 
-    // Return member list
+    // Return member list + the canonical room id so client can use the right one
     const { data: members } = await supabaseAdmin
       .from('room_members')
       .select(`
         id, role, joined_at,
         users (id, full_name, university_email, avatar_url, major)
       `)
-      .eq('room_id', roomId)
+      .eq('room_id', canonicalRoomId)
       .order('joined_at', { ascending: true });
 
     const result = (members || []).map((entry) => ({
@@ -390,7 +410,7 @@ async function ensureTopicRoomMember(req, res, next) {
       joined_at: entry.joined_at,
     }));
 
-    res.json(result);
+    res.json({ members: result, canonicalRoomId });
   } catch (err) {
     next(err);
   }

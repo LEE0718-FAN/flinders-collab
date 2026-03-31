@@ -46,6 +46,7 @@ function chatHandler(io, socket) {
   socket.on('chat:join', async ({ roomId }) => {
     if (!roomId) return;
     try {
+      let effectiveRoomId = roomId;
       let member = await isRoomMember(roomId, userId);
       if (!member) {
         // Auto-join if this is a topic room and user has the topic in their timetable
@@ -56,21 +57,36 @@ function chatHandler(io, socket) {
           .maybeSingle();
 
         if (topicRoom) {
-          const { data: hasTopic } = await supabaseAdmin
-            .from('user_timetable')
-            .select('id')
-            .eq('user_id', userId)
+          // Find canonical (oldest) room for this topic
+          const { data: canonicalRoom } = await supabaseAdmin
+            .from('topic_rooms')
+            .select('room_id')
             .eq('topic_id', topicRoom.topic_id)
+            .order('room_id', { ascending: true })
             .limit(1)
             .maybeSingle();
 
-          if (hasTopic) {
-            await supabaseAdmin
-              .from('room_members')
-              .insert({ room_id: roomId, user_id: userId, role: 'member' });
-            // Invalidate cache
-            membershipCache.delete(`${roomId}:${userId}`);
-            member = true;
+          if (canonicalRoom && canonicalRoom.room_id !== roomId) {
+            effectiveRoomId = canonicalRoom.room_id;
+            member = await isRoomMember(effectiveRoomId, userId);
+          }
+
+          if (!member) {
+            const { data: hasTopic } = await supabaseAdmin
+              .from('user_timetable')
+              .select('id')
+              .eq('user_id', userId)
+              .eq('topic_id', topicRoom.topic_id)
+              .limit(1)
+              .maybeSingle();
+
+            if (hasTopic) {
+              await supabaseAdmin
+                .from('room_members')
+                .insert({ room_id: effectiveRoomId, user_id: userId, role: 'member' });
+              membershipCache.delete(`${effectiveRoomId}:${userId}`);
+              member = true;
+            }
           }
         }
 
@@ -81,8 +97,8 @@ function chatHandler(io, socket) {
     } catch (err) {
       return socket.emit('chat:error', { error: 'Failed to verify room access' });
     }
-    socket.join(`room:${roomId}`);
-    console.log(`User ${userId} joined chat room:${roomId}`);
+    socket.join(`room:${effectiveRoomId}`);
+    console.log(`User ${userId} joined chat room:${effectiveRoomId}`);
   });
 
   /**

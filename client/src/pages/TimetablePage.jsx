@@ -307,8 +307,14 @@ export default function TimetablePage() {
         method: 'POST',
         headers: getAuthHeaders(),
       });
-      const members = await parseResponse(res);
-      setChatMembers(members || []);
+      const data = await parseResponse(res);
+      const members = data?.members || data || [];
+      const canonicalRoomId = data?.canonicalRoomId || roomId;
+      setChatMembers(members);
+      // Update popup to use the canonical room if different
+      if (canonicalRoomId !== roomId) {
+        setChatPopup((prev) => prev ? { ...prev, roomId: canonicalRoomId } : prev);
+      }
     } catch {}
   };
 
