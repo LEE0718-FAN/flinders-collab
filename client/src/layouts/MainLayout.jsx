@@ -252,7 +252,7 @@ function getPageLabel(pathname) {
 }
 
 export default function MainLayout({ children }) {
-  const { user, logout } = useAuth();
+  const { user, session, logout, refreshProfile } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const mainScrollRef = useRef(null);
@@ -356,6 +356,7 @@ export default function MainLayout({ children }) {
     const items = [];
 
     rooms.forEach((room) => {
+      if (room.room_type === 'direct' || room.room_type === 'topic') return;
       const count = Number(roomBadgeCounts[room.id] || 0);
       if (count <= 0) return;
       items.push({
@@ -547,6 +548,30 @@ export default function MainLayout({ children }) {
     window.addEventListener('profile-updated', handleProfileUpdated);
     return () => window.removeEventListener('profile-updated', handleProfileUpdated);
   }, []);
+
+  useEffect(() => {
+    if (!session?.access_token) {
+      if (socket.connected) {
+        socket.disconnect();
+      }
+      return undefined;
+    }
+
+    socket.auth = { token: session.access_token };
+    if (!socket.connected) {
+      socket.connect();
+    }
+
+    const handleRemoteProfileUpdated = () => {
+      refreshProfile().catch(() => {});
+      setAvatarRenderKey((value) => value + 1);
+    };
+
+    socket.on('profile:updated', handleRemoteProfileUpdated);
+    return () => {
+      socket.off('profile:updated', handleRemoteProfileUpdated);
+    };
+  }, [refreshProfile, session?.access_token]);
 
   useEffect(() => {
     if (location.pathname === '/messages') {

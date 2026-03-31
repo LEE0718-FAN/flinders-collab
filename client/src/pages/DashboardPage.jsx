@@ -72,6 +72,8 @@ export default function DashboardPage() {
   const orderPersistTimerRef = useRef(null);
   const latestOrderRef = useRef([]);
 
+  const visibleRooms = rooms.filter((room) => room.room_type !== 'direct' && room.room_type !== 'topic');
+
   const broadcastRoomUpdate = useCallback((nextRooms, orderedIds = roomOrderIds) => {
     window.dispatchEvent(new CustomEvent(ROOM_NAVIGATION_UPDATED_EVENT, {
       detail: {
@@ -138,7 +140,7 @@ export default function DashboardPage() {
   }, []);
 
   // Fetch events only once when rooms are first loaded (use room IDs as stable dependency)
-  const roomIds = rooms.filter(r => !String(r.id).startsWith(TEMP_ROOM_PREFIX)).map(r => r.id).sort().join(',');
+  const roomIds = visibleRooms.filter(r => !String(r.id).startsWith(TEMP_ROOM_PREFIX)).map(r => r.id).sort().join(',');
   useEffect(() => {
     if (!roomIds) {
       setUpcomingEvents([]);
@@ -378,7 +380,7 @@ export default function DashboardPage() {
               <div className="grid grid-cols-2 gap-2 self-start lg:min-w-[240px]">
                 <div className="rounded-2xl border border-white/10 bg-white/10 px-3 py-3 backdrop-blur-sm">
                   <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-white/60">Rooms</p>
-                  <p className="mt-1.5 text-[1.75rem] font-black">{rooms.length}</p>
+                  <p className="mt-1.5 text-[1.75rem] font-black">{visibleRooms.length}</p>
                 </div>
                 <div className="rounded-2xl border border-white/10 bg-white/10 px-3 py-3 backdrop-blur-sm">
                   <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-white/60">Meetings</p>
@@ -463,7 +465,7 @@ export default function DashboardPage() {
         {/* Section header */}
         <div className="flex items-center justify-between gap-3">
           <h2 className="text-base font-bold text-foreground sm:text-lg">Your Rooms</h2>
-          {!loading && <span className="rounded-full bg-indigo-100 px-2.5 py-1 text-xs font-semibold text-indigo-700">{rooms.length} total</span>}
+          {!loading && <span className="rounded-full bg-indigo-100 px-2.5 py-1 text-xs font-semibold text-indigo-700">{visibleRooms.length} total</span>}
         </div>
 
         {loading ? (
@@ -473,9 +475,9 @@ export default function DashboardPage() {
               <p className="text-sm text-muted-foreground">Loading your rooms...</p>
             </div>
           </div>
-        ) : rooms.length > 0 ? (
+        ) : visibleRooms.length > 0 ? (
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3" data-tour="room-grid">
-            {rooms.map((room) => (
+            {visibleRooms.map((room) => (
               <div
                 key={room.id}
                 ref={(node) => {

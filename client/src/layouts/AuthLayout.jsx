@@ -40,10 +40,10 @@ export default function AuthLayout({ children }) {
 
   return (
     <div
-      className="relative min-h-[var(--viewport-dynamic-height,100dvh)] overflow-x-hidden overflow-y-auto px-3 py-3 sm:min-h-app sm:px-6 sm:py-6"
+      className="relative min-h-[var(--viewport-dynamic-height,100dvh)] overflow-x-hidden overflow-y-auto px-4 py-4 sm:min-h-app sm:px-6 sm:py-6"
       style={{
-        paddingTop: 'max(0.75rem, env(safe-area-inset-top))',
-        paddingBottom: 'max(1rem, calc(env(safe-area-inset-bottom) + 1rem))',
+        paddingTop: 'max(1rem, calc(env(safe-area-inset-top) + 0.5rem))',
+        paddingBottom: 'max(1.25rem, calc(env(safe-area-inset-bottom) + 1rem))',
       }}
     >
       {/* Background */}
@@ -65,29 +65,29 @@ export default function AuthLayout({ children }) {
       <div className="absolute bottom-1/3 left-1/3 hidden h-[200px] w-[200px] rounded-full bg-purple-500/10 blur-[80px] animate-float sm:block" style={{ animationDelay: '6s' }} />
 
       {/* Main content — login card + optional side panel */}
-      <div className="relative z-10 flex min-h-[var(--viewport-dynamic-height,100dvh)] flex-col justify-start py-1 sm:min-h-app sm:justify-center sm:py-3">
+      <div className="relative z-10 flex min-h-[var(--viewport-dynamic-height,100dvh)] flex-col justify-center py-2 sm:min-h-app sm:py-3">
         <div className="mb-3 hidden w-full md:block xl:hidden">
           <InstallBanner />
         </div>
         <div className="relative flex w-full items-center justify-center">
           {/* Login column */}
-          <div className="w-full max-w-[452px] animate-slide-up min-[1380px]:max-w-[472px]">
+          <div className="w-full max-w-[392px] animate-slide-up sm:max-w-[440px] min-[1380px]:max-w-[472px]">
             {/* Logo area */}
-            <div className="mb-3 text-center sm:mb-4 min-[1380px]:mb-5">
-              <div className="mx-auto mb-2 flex h-11 items-center justify-center min-[1380px]:mb-2.5 min-[1380px]:h-16">
+            <div className="mb-4 text-center sm:mb-4 min-[1380px]:mb-5">
+              <div className="mx-auto mb-2.5 flex h-12 items-center justify-center min-[1380px]:mb-2.5 min-[1380px]:h-16">
                 <img
                   src="/images/flinders-logo.png"
                   alt="Flinders University"
-                  className="h-9 object-contain min-[1380px]:h-14"
+                  className="h-10 object-contain min-[1380px]:h-14"
                 />
               </div>
-              <h1 className="text-[1.35rem] font-bold tracking-tight text-white sm:text-[1.55rem] min-[1380px]:text-3xl">
+              <h1 className="text-[1.95rem] font-bold tracking-tight text-white sm:text-[1.65rem] min-[1380px]:text-3xl">
                 Flinders <span className="bg-gradient-to-r from-blue-400 to-violet-400 bg-clip-text text-transparent">Collab</span>
               </h1>
-              <p className="mt-1 text-[11px] text-white/45 sm:text-xs min-[1380px]:mt-1.5 min-[1380px]:text-sm">
+              <p className="mt-1.5 text-[12px] text-white/50 sm:text-xs min-[1380px]:mt-1.5 min-[1380px]:text-sm">
                 Team collaboration for Flinders University students
               </p>
-              <div className="mx-auto mt-2 h-0.5 w-14 rounded-full bg-gradient-to-r from-transparent via-indigo-400/60 to-transparent min-[1380px]:mt-3.5" />
+              <div className="mx-auto mt-3 h-0.5 w-16 rounded-full bg-gradient-to-r from-transparent via-indigo-400/60 to-transparent min-[1380px]:mt-3.5" />
             </div>
 
             {/* Subtle glow behind card */}
@@ -95,8 +95,8 @@ export default function AuthLayout({ children }) {
 
             <div className="relative">
               {/* Auth card */}
-              <Card className="relative rounded-[24px] border border-white/10 bg-white/[0.98] shadow-xl shadow-black/30 backdrop-blur-xl sm:rounded-[28px] sm:shadow-2xl">
-                <CardContent className="p-4 pb-5 sm:p-6 min-[1380px]:p-7">
+              <Card className="relative rounded-[28px] border border-white/10 bg-white/[0.985] shadow-xl shadow-black/30 backdrop-blur-xl sm:rounded-[28px] sm:shadow-2xl">
+                <CardContent className="p-5 pb-5 sm:p-6 min-[1380px]:p-7">
                   {children}
                 </CardContent>
               </Card>
@@ -110,7 +110,7 @@ export default function AuthLayout({ children }) {
             </div>
 
             {/* Footer - university info */}
-            <p className="mt-3 text-center text-[10px] text-white/25 sm:mt-5 sm:text-xs">
+            <p className="mt-4 text-center text-[10px] text-white/28 sm:mt-5 sm:text-xs">
               Flinders University &middot; Adelaide, South Australia
             </p>
           </div>

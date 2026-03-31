@@ -527,6 +527,17 @@ async function updateProfile(req, res, next) {
       return res.status(500).json({ error: 'Failed to update profile' });
     }
 
+    const io = req.app?.get?.('io');
+    io?.to(`user:${userId}`).emit('profile:updated', {
+      user_id: userId,
+      avatar_url: data.avatar_url || null,
+      full_name: data.full_name || null,
+      major: data.major || null,
+      student_id: data.student_id || null,
+      year_level: data.year_level ?? null,
+      semester: data.semester ?? null,
+    });
+
     res.json(data);
   } catch (err) {
     next(err);

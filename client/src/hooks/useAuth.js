@@ -339,5 +339,7 @@ export function useAuth() {
     apiLogout(accessToken).catch(() => {});
   }, [clearAuth, guestCleanup]);
 
-  return { user, session, isLoading, login, signup, completeSignup, logout, updateUser, requestPasswordReset, guestLogin, guestCleanup };
+  const refreshProfile = useCallback(() => syncProfileFromServer(loadSession() || session), [session, syncProfileFromServer]);
+
+  return { user, session, isLoading, login, signup, completeSignup, logout, updateUser, requestPasswordReset, guestLogin, guestCleanup, refreshProfile };
 }

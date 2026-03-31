@@ -9,14 +9,14 @@ export function useSocket() {
   useEffect(() => {
     if (session?.access_token) {
       socket.auth = { token: session.access_token };
-      socket.connect();
+      if (!socket.connected) {
+        socket.connect();
+      }
     } else {
       socket.disconnect();
     }
 
-    return () => {
-      socket.disconnect();
-    };
+    return undefined;
   }, [session?.access_token]);
 
   const emit = useCallback((event, data) => {
