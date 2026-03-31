@@ -13,6 +13,7 @@ import {
   MessageSquare, GraduationCap, Trash2, Check, Pencil, UserPlus, Mail,
 } from 'lucide-react';
 import { getFriendRequests, sendFriendRequest, respondToFriendRequest } from '@/services/flinders';
+import { socket } from '@/lib/socket';
 
 const ChatPanel = lazy(() => import('@/components/chat/ChatPanel'));
 
@@ -71,6 +72,7 @@ export default function TimetablePage() {
   const [friendLoading, setFriendLoading] = useState(null); // userId being acted on
   const [friendRequestDialog, setFriendRequestDialog] = useState(null); // { memberId, memberName }
   const [friendRequestMsg, setFriendRequestMsg] = useState('');
+  const [topicUnread, setTopicUnread] = useState({}); // roomId → count
 
   const [searchTimers, setSearchTimers] = useState({});
 
@@ -102,6 +104,41 @@ export default function TimetablePage() {
   }, []);
 
   useEffect(() => { loadTimetable(); }, [loadTimetable]);
+
+  // Join topic rooms for unread badge via Socket.IO
+  useEffect(() => {
+    const roomIds = [...new Set(timetable.map((e) => e.room_id).filter(Boolean))];
+    if (roomIds.length === 0) return;
+
+    roomIds.forEach((rid) => socket.emit('chat:join', { roomId: rid }));
+
+    const handleMessage = (msg) => {
+      if (msg.user_id === user?.id) return;
+      // Only count if the chat popup is NOT open for this room
+      if (chatPopup?.roomId === msg.room_id) return;
+      if (roomIds.includes(msg.room_id)) {
+        setTopicUnread((prev) => ({ ...prev, [msg.room_id]: (prev[msg.room_id] || 0) + 1 }));
+      }
+    };
+
+    socket.on('chat:message', handleMessage);
+    return () => {
+      socket.off('chat:message', handleMessage);
+      roomIds.forEach((rid) => socket.emit('chat:leave', { roomId: rid }));
+    };
+  }, [timetable, user?.id, chatPopup?.roomId]);
+
+  // Clear unread when opening a chat popup
+  useEffect(() => {
+    if (chatPopup?.roomId) {
+      setTopicUnread((prev) => {
+        if (!prev[chatPopup.roomId]) return prev;
+        const next = { ...prev };
+        delete next[chatPopup.roomId];
+        return next;
+      });
+    }
+  }, [chatPopup?.roomId]);
 
   // Search
   const handleSearch = useCallback(async (slotId, query) => {
@@ -410,6 +447,7 @@ export default function TimetablePage() {
             entries={calendarEntries} topicColorMap={topicColorMap} openChat={openChat}
             timetable={timetable} dragTopic={dragTopic} popularTimes={popularTimes}
             onDragComplete={handleDragComplete} openEditEntry={openEditEntry}
+            topicUnread={topicUnread}
           />
         )}
       </div>
@@ -792,7 +830,7 @@ function SetupView({ slots, timetable, topicColorMap, onQueryChange, selectTopic
 }
 
 /* ========== Calendar View with Drag ========== */
-function CalendarView({ entries, topicColorMap, openChat, timetable, dragTopic, popularTimes, onDragComplete, openEditEntry }) {
+function CalendarView({ entries, topicColorMap, openChat, timetable, dragTopic, popularTimes, onDragComplete, openEditEntry, topicUnread = {} }) {
   const gridRef = useRef(null);
   const [dragging, setDragging] = useState(null); // {dayOfWeek, startHour, currentHour}
 
@@ -852,10 +890,16 @@ function CalendarView({ entries, topicColorMap, openChat, timetable, dragTopic, 
         <div className="flex flex-wrap gap-2">
           {uniqueTopics.map((topic) => {
             const color = topicColorMap[topic.id];
+            const unread = topicUnread[topic.roomId] || 0;
             return (
               <button key={topic.id} onClick={() => openChat(topic.roomId, topic.topic_code, topic.title)}
-                className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium ${color?.bg} ${color?.text} ${color?.border} border hover:shadow-md transition-shadow`}>
+                className={`relative flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium ${color?.bg} ${color?.text} ${color?.border} border hover:shadow-md transition-shadow`}>
                 <MessageSquare className="h-3 w-3" />{topic.topic_code}
+                {unread > 0 && (
+                  <span className="absolute -top-1.5 -right-1.5 flex h-4.5 min-w-4.5 items-center justify-center rounded-full bg-rose-500 px-1 text-[9px] font-bold text-white shadow-sm">
+                    {unread > 99 ? '99+' : unread}
+                  </span>
+                )}
               </button>
             );
           })}
@@ -936,6 +980,7 @@ function CalendarView({ entries, topicColorMap, openChat, timetable, dragTopic, 
                 const left = `calc(60px + ${entry.day_of_week} * ((100% - 60px) / 5) + 2px)`;
                 const width = `calc((100% - 60px) / 5 - 4px)`;
                 const color = topicColorMap[entry.topic?.id];
+                const blockUnread = topicUnread[entry.room_id] || 0;
                 return (
                   <button key={entry.id} onClick={() => openChat(entry.room_id, entry.topic?.topic_code, entry.topic?.title)}
                     className={`absolute rounded-lg p-1.5 overflow-hidden cursor-pointer hover:shadow-lg hover:ring-2 hover:ring-blue-400 transition-all border ${color?.bg || 'bg-blue-100'} ${color?.border || 'border-blue-300'} ${color?.text || 'text-blue-800'}`}
@@ -943,6 +988,11 @@ function CalendarView({ entries, topicColorMap, openChat, timetable, dragTopic, 
                     <div className="text-[11px] font-bold leading-tight truncate">{entry.topic?.topic_code}</div>
                     {height >= 42 && <div className="text-[10px] opacity-70 truncate capitalize">{entry.class_type}</div>}
                     {height >= 56 && entry.location && <div className="text-[9px] opacity-60 truncate">{entry.location}</div>}
+                    {blockUnread > 0 && (
+                      <span className="absolute top-1 right-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-rose-500 px-0.5 text-[8px] font-bold text-white shadow">
+                        {blockUnread > 99 ? '99+' : blockUnread}
+                      </span>
+                    )}
                   </button>
                 );
               })}
