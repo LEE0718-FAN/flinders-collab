@@ -315,9 +315,37 @@ export default function TimetablePage() {
     setChatMembers([]);
 
     try {
-      const data = topicId
-        ? await openTopicChat(topicId)
-        : await ensureRoomMember(initialRoomId);
+      let data = null;
+      let lastError = null;
+
+      if (topicId) {
+        try {
+          data = await openTopicChat(topicId);
+        } catch (err) {
+          lastError = err;
+        }
+      }
+
+      if (!data && initialRoomId) {
+        try {
+          data = await ensureRoomMember(initialRoomId);
+        } catch (err) {
+          lastError = err;
+        }
+      }
+
+      if (!data && roomId && roomId !== initialRoomId) {
+        try {
+          data = await ensureRoomMember(roomId);
+        } catch (err) {
+          lastError = err;
+        }
+      }
+
+      if (!data) {
+        throw lastError || new Error('Failed to open this topic chat.');
+      }
+
       const members = data?.members || data || [];
       const canonicalRoomId = data?.canonicalRoomId || initialRoomId;
       setChatMembers(Array.isArray(members) ? members : []);
