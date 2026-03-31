@@ -2,8 +2,8 @@ const { supabaseAdmin } = require('../services/supabase');
 
 const SITEMAP_INDEX = 'https://handbook.flinders.edu.au/sitemap.xml';
 const TOPIC_YEAR = 2026;
-const BATCH_SIZE = 10;
-const BATCH_DELAY_MS = 300;
+const BATCH_SIZE = 3;
+const BATCH_DELAY_MS = 500;
 
 /**
  * Fetch and parse sitemap XML to extract topic URLs for the target year.
@@ -168,10 +168,27 @@ async function crawlFlindersTopics() {
 
 /**
  * Start the topic crawler on a weekly schedule.
+ * Only runs the full crawl if the DB has fewer than 500 topics (i.e., initial or incomplete crawl).
+ * Otherwise, waits for the weekly interval.
  */
 function startTopicCrawler() {
-  // Run initial crawl after a short delay (let server boot first)
-  setTimeout(() => crawlFlindersTopics(), 15000);
+  // Check if we need an initial crawl (DB might already be populated from local run)
+  setTimeout(async () => {
+    try {
+      const { count } = await supabaseAdmin
+        .from('flinders_topics')
+        .select('id', { count: 'exact', head: true });
+
+      if ((count || 0) < 500) {
+        console.log(`[topic-crawler] Only ${count || 0} topics in DB, starting crawl...`);
+        crawlFlindersTopics().catch((err) => console.error('[topic-crawler] Crawl error:', err.message));
+      } else {
+        console.log(`[topic-crawler] ${count} topics already in DB, skipping initial crawl`);
+      }
+    } catch (err) {
+      console.log('[topic-crawler] Check failed:', err.message);
+    }
+  }, 30000);
 
   // Re-crawl weekly (every 7 days)
   const WEEKLY_MS = 7 * 24 * 60 * 60 * 1000;
