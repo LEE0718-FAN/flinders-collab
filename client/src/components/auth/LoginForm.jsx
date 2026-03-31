@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Loader2, Mail, Lock } from 'lucide-react';
+import { Loader2, Mail, Lock, UserPlus } from 'lucide-react';
 
 export default function LoginForm({
   onSubmit,
@@ -207,10 +207,17 @@ export default function LoginForm({
           </div>
         </div>
 
-        <p className="text-center text-sm leading-relaxed text-muted-foreground">
-          Don&apos;t have an account?{' '}
-          <Link to="/signup" className="font-semibold text-blue-600 hover:text-blue-700">Sign up</Link>
-        </p>
+        <Button
+          type="button"
+          variant="outline"
+          className="w-full h-12 rounded-xl border-2 border-blue-600/30 text-blue-600 hover:bg-blue-50 hover:border-blue-600/50 font-semibold text-[15px]"
+          asChild
+        >
+          <Link to="/signup">
+            <UserPlus className="mr-2 h-4 w-4" />
+            Create an Account
+          </Link>
+        </Button>
 
         {testerModeEnabled && (
           <>
