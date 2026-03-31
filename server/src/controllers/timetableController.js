@@ -340,35 +340,53 @@ async function ensureTopicRoomMember(req, res, next) {
     const userId = req.user.id;
     const { roomId } = req.params;
 
-    // Find the topic for this room
-    const { data: topicRoom } = await supabaseAdmin
+    // Find the topic for this room. Historical duplicates should not break chat opening.
+    const { data: topicRoomRows, error: topicRoomError } = await supabaseAdmin
       .from('topic_rooms')
       .select('topic_id')
       .eq('room_id', roomId)
-      .maybeSingle();
+      .limit(1);
 
-    if (!topicRoom) return res.status(404).json({ error: 'Not a topic room' });
+    if (topicRoomError) {
+      console.error('ensure-member topic lookup error:', topicRoomError.message);
+      return res.status(200).json({ members: [], canonicalRoomId: roomId });
+    }
+
+    const topicRoom = topicRoomRows?.[0] || null;
+    if (!topicRoom?.topic_id) {
+      return res.status(200).json({ members: [], canonicalRoomId: roomId });
+    }
 
     // Find the canonical (oldest) room for this topic — fixes duplicate room issues
-    const { data: canonicalRoom } = await supabaseAdmin
+    const { data: canonicalRoomRows, error: canonicalRoomError } = await supabaseAdmin
       .from('topic_rooms')
       .select('room_id')
       .eq('topic_id', topicRoom.topic_id)
       .order('room_id', { ascending: true })
       .limit(1)
-      .maybeSingle();
+      .limit(1);
 
-    const canonicalRoomId = canonicalRoom?.room_id || roomId;
+    if (canonicalRoomError) {
+      console.error('ensure-member canonical room lookup error:', canonicalRoomError.message);
+    }
+
+    const canonicalRoomId = canonicalRoomRows?.[0]?.room_id || roomId;
 
     // Check user has this topic in their timetable
-    const { data: hasTopic } = await supabaseAdmin
+    const { data: hasTopicRows, error: hasTopicError } = await supabaseAdmin
       .from('user_timetable')
       .select('id')
       .eq('user_id', userId)
       .eq('topic_id', topicRoom.topic_id)
       .limit(1)
-      .maybeSingle();
+      .limit(1);
 
+    if (hasTopicError) {
+      console.error('ensure-member timetable lookup error:', hasTopicError.message);
+      return res.status(200).json({ members: [], canonicalRoomId });
+    }
+
+    const hasTopic = hasTopicRows?.[0] || null;
     if (!hasTopic) return res.status(403).json({ error: 'Topic not in your timetable' });
 
     // If user's timetable points to a different room, update it to canonical
@@ -381,12 +399,18 @@ async function ensureTopicRoomMember(req, res, next) {
     }
 
     // Auto-join canonical room if not already a member
-    const { data: existingMember } = await supabaseAdmin
+    const { data: existingMemberRows, error: existingMemberError } = await supabaseAdmin
       .from('room_members')
       .select('id')
       .eq('room_id', canonicalRoomId)
       .eq('user_id', userId)
-      .maybeSingle();
+      .limit(1);
+
+    if (existingMemberError) {
+      console.error('ensure-member existing member lookup error:', existingMemberError.message);
+    }
+
+    const existingMember = existingMemberRows?.[0] || null;
 
     if (!existingMember) {
       const { error: joinError } = await supabaseAdmin
@@ -408,13 +432,14 @@ async function ensureTopicRoomMember(req, res, next) {
     if (memberError) console.error('ensure-member query error:', memberError.message);
 
     const result = (members || []).map((entry) => ({
-      ...entry.users,
+      ...(entry.users || {}),
       role: entry.role,
       joined_at: entry.joined_at,
     }));
 
     res.json({ members: result, canonicalRoomId });
   } catch (err) {
+    console.error('ensure-member fatal error:', err.message);
     next(err);
   }
 }

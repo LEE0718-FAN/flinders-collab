@@ -633,7 +633,7 @@ export default function TimetablePage() {
 
       {/* Chat popup */}
       {chatPopup && typeof document !== 'undefined' && createPortal(
-        <div className="fixed inset-0 z-[90] flex items-stretch justify-center bg-black/55 p-0 sm:items-center sm:p-4" onClick={() => { setChatPopup(null); setChatOpenError(''); }}>
+        <div className="fixed inset-0 z-[90] flex items-stretch justify-center bg-black/55 p-0 sm:items-center sm:p-4" onClick={() => { setShowMembers(false); setChatPopup(null); setChatOpenError(''); }}>
           <div
             className={`relative flex h-[var(--viewport-dynamic-height,100dvh)] w-full min-h-0 flex-col overflow-hidden bg-white shadow-2xl sm:h-[82vh] ${showMembers ? 'sm:max-w-3xl' : 'sm:max-w-2xl'} sm:rounded-2xl`}
             onClick={(e) => e.stopPropagation()}
@@ -650,7 +650,7 @@ export default function TimetablePage() {
                 <button onClick={() => setShowMembers((v) => !v)} className={`rounded-full p-2 transition-colors ${showMembers ? 'bg-white/30' : 'hover:bg-white/20'}`} title="Toggle members">
                   <Users className="h-4 w-4" />
                 </button>
-                <button onClick={() => { setChatPopup(null); setChatOpenError(''); }} className="rounded-full p-2 transition-colors hover:bg-white/20">
+                <button onClick={() => { setShowMembers(false); setChatPopup(null); setChatOpenError(''); }} className="rounded-full p-2 transition-colors hover:bg-white/20">
                   <X className="h-4 w-4" />
                 </button>
               </div>
@@ -686,14 +686,28 @@ export default function TimetablePage() {
               </div>
 
               {showMembers && (
-                <div
-                  className="absolute inset-y-0 right-0 z-10 flex w-[84vw] max-w-[18rem] flex-col border-l border-slate-200 bg-slate-50 shadow-2xl sm:static sm:w-56 sm:max-w-none sm:shadow-none"
-                  style={{ paddingTop: 'var(--safe-top)' }}
-                >
-                  <div className="border-b border-slate-200 px-3 py-3 text-xs font-semibold text-slate-500">
-                    Members ({chatMembers.length})
-                  </div>
-                  <div className="flex-1 overflow-y-auto p-2 space-y-0.5">
+                <>
+                  <button
+                    type="button"
+                    aria-label="Close members"
+                    className="absolute inset-0 z-[9] bg-black/10 sm:hidden"
+                    onClick={() => setShowMembers(false)}
+                  />
+                  <div
+                    className="absolute inset-y-0 right-0 z-10 flex w-[84vw] max-w-[18rem] flex-col border-l border-slate-200 bg-slate-50 shadow-2xl sm:static sm:w-56 sm:max-w-none sm:shadow-none"
+                    style={{ paddingTop: 'var(--safe-top)' }}
+                  >
+                    <div className="flex items-center justify-between border-b border-slate-200 px-3 py-3 text-xs font-semibold text-slate-500">
+                      <span>Members ({chatMembers.length})</span>
+                      <button
+                        type="button"
+                        onClick={() => setShowMembers(false)}
+                        className="rounded-full px-2 py-1 text-[10px] font-semibold text-slate-500 hover:bg-white"
+                      >
+                        Close
+                      </button>
+                    </div>
+                    <div className="flex-1 overflow-y-auto p-2 space-y-0.5">
                     {chatMembers.map((m) => {
                       const fs = getFriendStatus(m.id);
                       return (
@@ -741,8 +755,9 @@ export default function TimetablePage() {
                       );
                     })}
                     {chatMembers.length === 0 && <div className="py-4 text-center text-xs text-slate-400">No members yet</div>}
+                    </div>
                   </div>
-                </div>
+                </>
               )}
             </div>
           </div>
