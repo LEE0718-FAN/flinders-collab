@@ -46,9 +46,37 @@ function chatHandler(io, socket) {
   socket.on('chat:join', async ({ roomId }) => {
     if (!roomId) return;
     try {
-      const member = await isRoomMember(roomId, userId);
+      let member = await isRoomMember(roomId, userId);
       if (!member) {
-        return socket.emit('chat:error', { error: 'Not a room member' });
+        // Auto-join if this is a topic room and user has the topic in their timetable
+        const { data: topicRoom } = await supabaseAdmin
+          .from('topic_rooms')
+          .select('topic_id')
+          .eq('room_id', roomId)
+          .maybeSingle();
+
+        if (topicRoom) {
+          const { data: hasTopic } = await supabaseAdmin
+            .from('user_timetable')
+            .select('id')
+            .eq('user_id', userId)
+            .eq('topic_id', topicRoom.topic_id)
+            .limit(1)
+            .maybeSingle();
+
+          if (hasTopic) {
+            await supabaseAdmin
+              .from('room_members')
+              .insert({ room_id: roomId, user_id: userId, role: 'member' });
+            // Invalidate cache
+            membershipCache.delete(`${roomId}:${userId}`);
+            member = true;
+          }
+        }
+
+        if (!member) {
+          return socket.emit('chat:error', { error: 'Not a room member' });
+        }
       }
     } catch (err) {
       return socket.emit('chat:error', { error: 'Failed to verify room access' });

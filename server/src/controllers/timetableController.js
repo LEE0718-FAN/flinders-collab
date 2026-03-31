@@ -330,6 +330,72 @@ async function getPopularTimes(req, res, next) {
   }
 }
 
+/**
+ * POST /timetable/room/:roomId/ensure-member
+ * Ensure the user is a member of a topic room (auto-join if they have the topic in timetable).
+ * Returns the member list.
+ */
+async function ensureTopicRoomMember(req, res, next) {
+  try {
+    const userId = req.user.id;
+    const { roomId } = req.params;
+
+    // Check if this is a topic room
+    const { data: topicRoom } = await supabaseAdmin
+      .from('topic_rooms')
+      .select('topic_id')
+      .eq('room_id', roomId)
+      .maybeSingle();
+
+    if (!topicRoom) return res.status(404).json({ error: 'Not a topic room' });
+
+    // Check user has this topic in their timetable
+    const { data: hasTopic } = await supabaseAdmin
+      .from('user_timetable')
+      .select('id')
+      .eq('user_id', userId)
+      .eq('topic_id', topicRoom.topic_id)
+      .limit(1)
+      .maybeSingle();
+
+    if (!hasTopic) return res.status(403).json({ error: 'Topic not in your timetable' });
+
+    // Auto-join if not already a member
+    const { data: existingMember } = await supabaseAdmin
+      .from('room_members')
+      .select('id')
+      .eq('room_id', roomId)
+      .eq('user_id', userId)
+      .maybeSingle();
+
+    if (!existingMember) {
+      await supabaseAdmin
+        .from('room_members')
+        .insert({ room_id: roomId, user_id: userId, role: 'member' });
+    }
+
+    // Return member list
+    const { data: members } = await supabaseAdmin
+      .from('room_members')
+      .select(`
+        id, role, joined_at,
+        users (id, full_name, university_email, avatar_url, major)
+      `)
+      .eq('room_id', roomId)
+      .order('joined_at', { ascending: true });
+
+    const result = (members || []).map((entry) => ({
+      ...entry.users,
+      role: entry.role,
+      joined_at: entry.joined_at,
+    }));
+
+    res.json(result);
+  } catch (err) {
+    next(err);
+  }
+}
+
 function generateInviteCode() {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
   let code = '';
@@ -347,4 +413,5 @@ module.exports = {
   removeTopic,
   getTopicMembers,
   getPopularTimes,
+  ensureTopicRoomMember,
 };

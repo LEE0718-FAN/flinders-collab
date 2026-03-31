@@ -2,14 +2,17 @@ import React, { useState, useEffect, useCallback, useRef, lazy, Suspense } from 
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { searchTopics, getMyTimetable, addToTimetable, removeFromTimetable, removeTopic, getPopularTimes } from '@/services/timetable';
+import { apiUrl } from '@/lib/api';
+import { getAuthHeaders, parseResponse } from '@/lib/api-headers';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import {
   Loader2, Search, Plus, X, BookOpen, Clock, MapPin, Users,
-  MessageSquare, GraduationCap, Trash2, Check, Pencil,
+  MessageSquare, GraduationCap, Trash2, Check, Pencil, UserPlus, Mail,
 } from 'lucide-react';
+import { getFriendRequests, sendFriendRequest, respondToFriendRequest } from '@/services/flinders';
 
 const ChatPanel = lazy(() => import('@/components/chat/ChatPanel'));
 
@@ -62,6 +65,10 @@ export default function TimetablePage() {
   const [confirmForm, setConfirmForm] = useState(null); // {topicId, dayOfWeek, startTime, endTime, classType, location}
   const [editEntry, setEditEntry] = useState(null); // entry being edited
   const [chatPopup, setChatPopup] = useState(null); // {roomId, topicCode, topicTitle}
+  const [showMembers, setShowMembers] = useState(false);
+  const [chatMembers, setChatMembers] = useState([]);
+  const [friendState, setFriendState] = useState({ incoming: [], outgoing: [], friends: [] });
+  const [friendLoading, setFriendLoading] = useState(null); // userId being acted on
 
   const [searchTimers, setSearchTimers] = useState({});
 
@@ -250,11 +257,72 @@ export default function TimetablePage() {
     setSlots((prev) => prev.filter((s) => s.id !== slotId));
   };
 
-  const openChat = (roomId, topicCode, topicTitle) => {
-    if (roomId) setChatPopup({ roomId, topicCode: topicCode || '', topicTitle: topicTitle || '' });
+  const openChat = async (roomId, topicCode, topicTitle) => {
+    if (!roomId) return;
+    setChatPopup({ roomId, topicCode: topicCode || '', topicTitle: topicTitle || '' });
+    setShowMembers(false);
+    setChatMembers([]);
+    try {
+      // Ensure membership + get members in one call
+      const res = await fetch(apiUrl(`/api/timetable/room/${roomId}/ensure-member`), {
+        method: 'POST',
+        headers: getAuthHeaders(),
+      });
+      const members = await parseResponse(res);
+      setChatMembers(members || []);
+    } catch {}
   };
 
   const goToRoom = (roomId) => { if (roomId) navigate(`/rooms/${roomId}`); };
+
+  // Load friend state when chat popup opens
+  const loadFriends = useCallback(async () => {
+    try {
+      const data = await getFriendRequests();
+      setFriendState({
+        incoming: Array.isArray(data?.incoming) ? data.incoming : [],
+        outgoing: Array.isArray(data?.outgoing) ? data.outgoing : [],
+        friends: Array.isArray(data?.friends) ? data.friends : [],
+      });
+    } catch {
+      setFriendState({ incoming: [], outgoing: [], friends: [] });
+    }
+  }, []);
+
+  useEffect(() => {
+    if (chatPopup) loadFriends();
+  }, [chatPopup, loadFriends]);
+
+  const getFriendStatus = (memberId) => {
+    if (memberId === user?.id) return { kind: 'self' };
+    const friend = friendState.friends.find((f) => f.other_user?.user_id === memberId);
+    if (friend) return { kind: 'friend', request: friend };
+    const incoming = friendState.incoming.find((f) => f.other_user?.user_id === memberId);
+    if (incoming) return { kind: 'incoming', request: incoming };
+    const outgoing = friendState.outgoing.find((f) => f.other_user?.user_id === memberId);
+    if (outgoing) return { kind: 'outgoing', request: outgoing };
+    return { kind: 'none' };
+  };
+
+  const handleAddFriend = async (memberId) => {
+    setFriendLoading(memberId);
+    try {
+      await sendFriendRequest({ target_user_id: memberId });
+      await loadFriends();
+    } catch {} finally { setFriendLoading(null); }
+  };
+
+  const handleRespondFriend = async (requestId, action) => {
+    setFriendLoading(requestId);
+    try {
+      await respondToFriendRequest(requestId, action);
+      await loadFriends();
+    } catch {} finally { setFriendLoading(null); }
+  };
+
+  const openDM = (memberId) => {
+    navigate('/messages');
+  };
 
   const calendarEntries = timetable.filter((e) => e.day_of_week != null && e.start_time);
   const uniqueTopicIds = [...new Set(timetable.map((e) => e.topic?.id).filter(Boolean))];
@@ -292,7 +360,7 @@ export default function TimetablePage() {
               <BookOpen className="h-3.5 w-3.5 mr-1" />Courses
             </Button>
             <Button variant={view === 'calendar' ? 'default' : 'outline'} size="sm" onClick={() => setView('calendar')} className="h-8 text-xs rounded-full" disabled={timetable.length === 0 && !dragTopic}>
-              <Clock className="h-3.5 w-3.5 mr-1" />Calendar
+              <Clock className="h-3.5 w-3.5 mr-1" />Timetable
             </Button>
           </div>
         </div>
@@ -467,21 +535,93 @@ export default function TimetablePage() {
       {/* Chat popup */}
       {chatPopup && (
         <div className="fixed inset-0 z-50 bg-black/40 flex items-end sm:items-center justify-center p-0 sm:p-4" onClick={() => setChatPopup(null)}>
-          <div className="w-full sm:max-w-lg h-[85vh] sm:h-[75vh] bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl flex flex-col overflow-hidden" onClick={(e) => e.stopPropagation()}>
+          <div className={`w-full ${showMembers ? 'sm:max-w-2xl' : 'sm:max-w-lg'} h-[85vh] sm:h-[75vh] bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl flex flex-col overflow-hidden transition-all`} onClick={(e) => e.stopPropagation()}>
             {/* Popup header */}
             <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100 bg-gradient-to-r from-blue-600 to-indigo-600 text-white shrink-0">
               <div className="min-w-0">
                 <h3 className="font-bold text-sm truncate">{chatPopup.topicCode}{chatPopup.topicTitle ? ` — ${chatPopup.topicTitle}` : ''}</h3>
               </div>
-              <button onClick={() => setChatPopup(null)} className="shrink-0 ml-2 p-1.5 rounded-full hover:bg-white/20 transition-colors">
-                <X className="h-4 w-4" />
-              </button>
+              <div className="flex items-center gap-1 shrink-0 ml-2">
+                <button onClick={() => setShowMembers((v) => !v)} className={`p-1.5 rounded-full transition-colors ${showMembers ? 'bg-white/30' : 'hover:bg-white/20'}`} title="Toggle members">
+                  <Users className="h-4 w-4" />
+                </button>
+                <button onClick={() => setChatPopup(null)} className="p-1.5 rounded-full hover:bg-white/20 transition-colors">
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
             </div>
-            {/* Chat content */}
-            <div className="flex-1 min-h-0">
-              <Suspense fallback={<div className="flex items-center justify-center h-full"><Loader2 className="h-6 w-6 animate-spin text-blue-500" /></div>}>
-                <ChatPanel roomId={chatPopup.roomId} />
-              </Suspense>
+            {/* Chat + Members */}
+            <div className="flex flex-1 min-h-0">
+              <div className="flex-1 min-h-0">
+                <Suspense fallback={<div className="flex items-center justify-center h-full"><Loader2 className="h-6 w-6 animate-spin text-blue-500" /></div>}>
+                  <ChatPanel roomId={chatPopup.roomId} />
+                </Suspense>
+              </div>
+              {showMembers && (
+                <div className="w-56 border-l border-slate-200 bg-slate-50 flex flex-col shrink-0">
+                  <div className="px-3 py-2 border-b border-slate-200 text-xs font-semibold text-slate-500">
+                    Members ({chatMembers.length})
+                  </div>
+                  <div className="flex-1 overflow-y-auto p-2 space-y-0.5">
+                    {chatMembers.map((m) => {
+                      const fs = getFriendStatus(m.id);
+                      return (
+                        <div key={m.id} className="px-2 py-2 rounded-lg hover:bg-white transition-colors">
+                          <div className="flex items-center gap-2">
+                            {m.avatar_url ? (
+                              <img src={m.avatar_url} alt="" className="h-7 w-7 rounded-full object-cover shrink-0" />
+                            ) : (
+                              <div className="h-7 w-7 rounded-full bg-blue-100 flex items-center justify-center text-[11px] font-bold text-blue-600 shrink-0">
+                                {(m.full_name || '?')[0].toUpperCase()}
+                              </div>
+                            )}
+                            <div className="min-w-0 flex-1">
+                              <div className="text-xs font-medium text-slate-800 truncate">{m.full_name || 'User'}</div>
+                              {m.major && <div className="text-[10px] text-slate-400 truncate">{m.major}</div>}
+                            </div>
+                          </div>
+                          {fs.kind !== 'self' && (
+                            <div className="mt-1.5 ml-9">
+                              {fs.kind === 'friend' && (
+                                <button onClick={() => openDM(m.id)}
+                                  className="flex items-center gap-1 text-[10px] font-medium text-blue-600 hover:text-blue-800 transition-colors">
+                                  <Mail className="h-3 w-3" />DM
+                                </button>
+                              )}
+                              {fs.kind === 'none' && (
+                                <button onClick={() => handleAddFriend(m.id)} disabled={friendLoading === m.id}
+                                  className="flex items-center gap-1 text-[10px] font-medium text-emerald-600 hover:text-emerald-800 transition-colors disabled:opacity-50">
+                                  {friendLoading === m.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <UserPlus className="h-3 w-3" />}
+                                  Add Friend
+                                </button>
+                              )}
+                              {fs.kind === 'outgoing' && (
+                                <span className="text-[10px] text-amber-600 font-medium">Requested</span>
+                              )}
+                              {fs.kind === 'incoming' && (
+                                <div className="flex items-center gap-1.5">
+                                  <button onClick={() => handleRespondFriend(fs.request.id, 'accept')} disabled={friendLoading === fs.request.id}
+                                    className="text-[10px] font-medium text-emerald-600 hover:text-emerald-800 disabled:opacity-50">
+                                    {friendLoading === fs.request.id ? <Loader2 className="h-3 w-3 animate-spin" /> : 'Accept'}
+                                  </button>
+                                  <span className="text-slate-300">|</span>
+                                  <button onClick={() => handleRespondFriend(fs.request.id, 'decline')}
+                                    className="text-[10px] font-medium text-slate-400 hover:text-red-500">
+                                    Decline
+                                  </button>
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                    {chatMembers.length === 0 && (
+                      <div className="text-center py-4 text-xs text-slate-400">No members yet</div>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -740,7 +880,7 @@ function CalendarView({ entries, topicColorMap, openChat, timetable, dragTopic, 
                 const width = `calc((100% - 60px) / 5 - 4px)`;
                 const color = topicColorMap[entry.topic?.id];
                 return (
-                  <button key={entry.id} onClick={() => openEditEntry(entry)}
+                  <button key={entry.id} onClick={() => openChat(entry.room_id, entry.topic?.topic_code, entry.topic?.title)}
                     className={`absolute rounded-lg p-1.5 overflow-hidden cursor-pointer hover:shadow-lg hover:ring-2 hover:ring-blue-400 transition-all border ${color?.bg || 'bg-blue-100'} ${color?.border || 'border-blue-300'} ${color?.text || 'text-blue-800'}`}
                     style={{ top: `${top}px`, height: `${Math.max(height, 28)}px`, left, width }}>
                     <div className="text-[11px] font-bold leading-tight truncate">{entry.topic?.topic_code}</div>

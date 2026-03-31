@@ -155,6 +155,7 @@ async function getRooms(req, res, next) {
           description,
           owner_id,
           invite_code,
+          room_type,
           created_at
         )
       `)

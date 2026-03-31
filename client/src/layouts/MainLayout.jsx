@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { LayoutDashboard, LogOut, Menu, Users, ChevronRight, Shield, User, CalendarClock, CalendarDays, MessageSquare, Wrench, GraduationCap, Settings } from 'lucide-react';
+import { LayoutDashboard, LogOut, Menu, Users, ChevronRight, Shield, User, CalendarClock, CalendarDays, MessageSquare, Wrench, GraduationCap, Settings, Mail } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
@@ -108,7 +108,7 @@ function NavItem({ to, isActive, icon: Icon, label, palette, badgeCount = 0, bad
   );
 }
 
-function SidebarContent({ rooms, location, isAdmin, roomBadgeCounts = {}, user, deadlineCount = 0 }) {
+function SidebarContent({ rooms, location, isAdmin, roomBadgeCounts = {}, user, deadlineCount = 0, dmUnreadCount = 0, dmMessageBadge = 0 }) {
   return (
     <nav className="flex flex-col gap-1" role="navigation" aria-label="Main navigation" data-tour="sidebar-nav">
       <NavItem
@@ -136,6 +136,15 @@ function SidebarContent({ rooms, location, isAdmin, roomBadgeCounts = {}, user, 
         tourId="nav-social"
         onIntent={() => preloadRoute('/board')}
       />
+      <NavItem
+        to="/messages"
+        isActive={location.pathname === '/messages'}
+        icon={Mail}
+        label="Messages"
+        tourId="nav-messages"
+        badgeCount={dmUnreadCount + (dmMessageBadge || 0)}
+        onIntent={() => preloadRoute('/messages')}
+      />
       {(user?.account_type || user?.user_metadata?.account_type || 'flinders') !== 'general' && (
         <NavItem
           to="/flinders-life"
@@ -162,16 +171,16 @@ function SidebarContent({ rooms, location, isAdmin, roomBadgeCounts = {}, user, 
           Your Rooms
         </span>
         <div className="h-px flex-1 bg-white/5" />
-        {rooms.length > 0 && (
+        {rooms.filter((r) => r.room_type !== 'direct').length > 0 && (
           <span className="text-[10px] tabular-nums text-slate-500 bg-white/10 px-1.5 py-0.5 rounded-md">
-            {rooms.length}
+            {rooms.filter((r) => r.room_type !== 'direct').length}
           </span>
         )}
       </div>
 
-      {/* Room list */}
+      {/* Room list (exclude DM rooms — those appear in Messages) */}
       <div className="flex flex-col gap-0.5" data-tour="sidebar-rooms">
-        {rooms.map((room) => {
+        {rooms.filter((r) => r.room_type !== 'direct').map((room) => {
           const unread = roomBadgeCounts[room.id] || 0;
           return (
             <div key={room.id} className="relative">
@@ -315,10 +324,18 @@ export default function MainLayout({ children }) {
     return next;
   }, [announcementUnreadCounts, recentActivityCounts]);
 
+  // DM unread badge: sum of badges for rooms with room_type='direct' + real-time socket count
+  const dmUnreadCount = useMemo(() => {
+    const activityCount = rooms
+      .filter((r) => r.room_type === 'direct')
+      .reduce((sum, r) => sum + (roomBadgeCounts[r.id] || 0), 0);
+    return activityCount;
+  }, [rooms, roomBadgeCounts]);
+
   const totalAppBadgeCount = useMemo(() => {
     const roomUnreadTotal = Object.values(roomBadgeCounts).reduce((sum, value) => sum + Number(value || 0), 0);
-    return roomUnreadTotal;
-  }, [roomBadgeCounts]);
+    return roomUnreadTotal + dmUnreadCount;
+  }, [roomBadgeCounts, dmUnreadCount]);
 
   const mobileUnreadItems = useMemo(() => {
     const items = [];
@@ -482,6 +499,37 @@ export default function MainLayout({ children }) {
     syncAppBadge(totalAppBadgeCount).catch(() => {});
   }, [totalAppBadgeCount]);
 
+  // Join DM rooms for real-time message badge updates
+  const [dmMessageBadge, setDmMessageBadge] = useState(0);
+  useEffect(() => {
+    const dmRooms = rooms.filter((r) => r.room_type === 'direct');
+    if (dmRooms.length === 0) return;
+
+    // Join all DM rooms so we receive messages
+    dmRooms.forEach((r) => socket.emit('chat:join', { roomId: r.id }));
+
+    const handleDmMessage = (msg) => {
+      if (msg.user_id === user?.id) return;
+      const isDm = dmRooms.some((r) => r.id === msg.room_id);
+      if (isDm && location.pathname !== '/messages') {
+        setDmMessageBadge((prev) => prev + 1);
+      }
+    };
+
+    socket.on('chat:message', handleDmMessage);
+    return () => {
+      socket.off('chat:message', handleDmMessage);
+      dmRooms.forEach((r) => socket.emit('chat:leave', { roomId: r.id }));
+    };
+  }, [rooms, user?.id, location.pathname]);
+
+  // Clear DM badge when visiting messages page
+  useEffect(() => {
+    if (location.pathname === '/messages') {
+      setDmMessageBadge(0);
+    }
+  }, [location.pathname]);
+
   // Listen for maintenance notifications via Socket.IO
   useEffect(() => {
     const onUpcoming = (data) => {
@@ -637,7 +685,7 @@ export default function MainLayout({ children }) {
 
         {/* Sidebar navigation */}
         <div className="flex-1 overflow-y-auto px-3 py-4 custom-scrollbar">
-          <SidebarContent rooms={rooms} location={location} isAdmin={user?.is_admin} roomBadgeCounts={roomBadgeCounts} user={user} deadlineCount={deadlineCount} />
+          <SidebarContent rooms={rooms} location={location} isAdmin={user?.is_admin} roomBadgeCounts={roomBadgeCounts} user={user} deadlineCount={deadlineCount} dmUnreadCount={dmUnreadCount} dmMessageBadge={dmMessageBadge} />
         </div>
 
         {/* Sidebar footer / user info */}
@@ -699,7 +747,7 @@ export default function MainLayout({ children }) {
                 </SheetHeader>
                 <div className="h-px bg-gradient-to-r from-white/10 via-white/5 to-transparent mx-3" />
                 <div className="px-3 py-4">
-                  <SidebarContent rooms={rooms} location={location} isAdmin={user?.is_admin} roomBadgeCounts={roomBadgeCounts} user={user} deadlineCount={deadlineCount} />
+                  <SidebarContent rooms={rooms} location={location} isAdmin={user?.is_admin} roomBadgeCounts={roomBadgeCounts} user={user} deadlineCount={deadlineCount} dmUnreadCount={dmUnreadCount} dmMessageBadge={dmMessageBadge} />
                 </div>
               </SheetContent>
             </Sheet>
