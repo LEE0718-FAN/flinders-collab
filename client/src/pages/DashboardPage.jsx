@@ -11,6 +11,7 @@ import { hydratePreferences, updatePreferences } from '@/lib/preferences';
 import { useNavigate } from 'react-router-dom';
 import { format, formatDistanceToNow } from 'date-fns';
 import { Loader2, LayoutGrid } from 'lucide-react';
+import WelcomeTutorial from '@/components/WelcomeTutorial';
 
 const TEMP_ROOM_PREFIX = 'temp-room-';
 const ROOM_NAVIGATION_UPDATED_EVENT = 'rooms-updated';
@@ -334,6 +335,7 @@ export default function DashboardPage() {
 
   return (
     <>
+      <WelcomeTutorial />
       <div className="space-y-8">
         {/* Hero Banner */}
         <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-blue-600 via-indigo-600 to-violet-700 px-4 sm:px-6 md:px-8 py-8 sm:py-10 text-white shadow-xl">
