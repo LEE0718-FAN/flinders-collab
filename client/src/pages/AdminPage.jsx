@@ -653,7 +653,7 @@ function MonitoringTab() {
       {showSection('render') && (
         <div className="space-y-4">
           <SectionHeader icon={Server} title="Render" gradient="from-emerald-600 to-teal-700">
-            <Badge className="rounded-full bg-white/20 text-white text-[10px] border-0">Free Tier</Badge>
+            <Badge className="rounded-full bg-white/20 text-white text-[10px] border-0">Starter — $7/mo</Badge>
           </SectionHeader>
 
           {/* Quick stats */}
@@ -696,7 +696,7 @@ function MonitoringTab() {
                   <Server className="h-4 w-4 text-emerald-500" />
                   Render Plan Details
                 </h4>
-                <FeatureRow label="Plan" value="Free" badge="bg-emerald-100 text-emerald-700 border-emerald-200" />
+                <FeatureRow label="Plan" value="Starter ($7/mo)" badge="bg-blue-100 text-blue-700 border-blue-200" />
                 <FeatureRow label="Runtime" value="Node.js (Express)" />
                 <FeatureRow label="Region" value="Singapore" />
                 <FeatureRow label="Auto Deploy" value="On push to main" status="healthy" />
