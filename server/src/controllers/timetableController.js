@@ -1,4 +1,5 @@
 const { supabaseAdmin } = require('../services/supabase');
+const { fetchSingleTopic } = require('../utils/topicCrawler');
 
 /**
  * GET /timetable/topics/search?q=COMP&year=2026
@@ -23,6 +24,25 @@ async function searchTopics(req, res, next) {
       .limit(20);
 
     if (error) return res.status(500).json({ error: error.message });
+
+    // If no results and query looks like a topic code, try fetching from handbook on-demand
+    if ((!data || data.length === 0) && /^[A-Z]{3,4}\d{3,4}/i.test(search)) {
+      try {
+        const fetched = await fetchSingleTopic(search);
+        if (fetched) {
+          const { data: retryData } = await supabaseAdmin
+            .from('flinders_topics')
+            .select('id, topic_code, title, credit_points, level, school, semesters, campuses, delivery_modes')
+            .eq('topic_code', fetched.topic_code)
+            .eq('year', parseInt(year))
+            .limit(1);
+          if (retryData?.length > 0) return res.json(retryData);
+        }
+      } catch {
+        // fall through to empty results
+      }
+    }
+
     res.json(data || []);
   } catch (err) {
     next(err);

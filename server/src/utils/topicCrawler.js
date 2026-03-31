@@ -179,4 +179,26 @@ function startTopicCrawler() {
   console.log('[topic-crawler] Scheduled weekly crawl');
 }
 
-module.exports = { crawlFlindersTopics, startTopicCrawler };
+/**
+ * Fetch and upsert a single topic by code (on-demand when search misses).
+ */
+async function fetchSingleTopic(topicCode) {
+  const code = topicCode.trim().toLowerCase();
+  const url = `https://handbook.flinders.edu.au/topics/${TOPIC_YEAR}/${code}`;
+  const data = await fetchTopicData(url);
+  if (!data) return null;
+
+  const { error } = await supabaseAdmin
+    .from('flinders_topics')
+    .upsert(data, { onConflict: 'topic_code,year' });
+
+  if (error) {
+    console.log(`[topic-crawler] Single upsert error for ${topicCode}:`, error.message);
+    return null;
+  }
+
+  console.log(`[topic-crawler] On-demand fetched: ${data.topic_code} — ${data.title}`);
+  return data;
+}
+
+module.exports = { crawlFlindersTopics, startTopicCrawler, fetchSingleTopic };

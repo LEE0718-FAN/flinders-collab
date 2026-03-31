@@ -47,10 +47,10 @@ export default function TimetablePage() {
 
   // Course slots
   const [slots, setSlots] = useState([
-    { id: 1, query: '', results: [], selectedTopic: null, searching: false, adding: false },
-    { id: 2, query: '', results: [], selectedTopic: null, searching: false, adding: false },
-    { id: 3, query: '', results: [], selectedTopic: null, searching: false, adding: false },
-    { id: 4, query: '', results: [], selectedTopic: null, searching: false, adding: false },
+    { id: 1, query: '', results: [], selectedTopic: null, searching: false, adding: false, searched: false },
+    { id: 2, query: '', results: [], selectedTopic: null, searching: false, adding: false, searched: false },
+    { id: 3, query: '', results: [], selectedTopic: null, searching: false, adding: false, searched: false },
+    { id: 4, query: '', results: [], selectedTopic: null, searching: false, adding: false, searched: false },
   ]);
 
   // Class time form (shown after selecting a topic)
@@ -97,20 +97,20 @@ export default function TimetablePage() {
   // Search topics with debounce
   const handleSearch = useCallback(async (slotId, query) => {
     setSlots((prev) =>
-      prev.map((s) => (s.id === slotId ? { ...s, query, results: [], selectedTopic: null } : s))
+      prev.map((s) => (s.id === slotId ? { ...s, query, results: [], selectedTopic: null, searched: false } : s))
     );
 
     if (query.trim().length < 2) return;
 
-    setSlots((prev) => prev.map((s) => (s.id === slotId ? { ...s, searching: true } : s)));
+    setSlots((prev) => prev.map((s) => (s.id === slotId ? { ...s, searching: true, searched: false } : s)));
 
     try {
       const results = await searchTopics(query);
       setSlots((prev) =>
-        prev.map((s) => (s.id === slotId ? { ...s, results, searching: false } : s))
+        prev.map((s) => (s.id === slotId ? { ...s, results, searching: false, searched: true } : s))
       );
     } catch {
-      setSlots((prev) => prev.map((s) => (s.id === slotId ? { ...s, searching: false } : s)));
+      setSlots((prev) => prev.map((s) => (s.id === slotId ? { ...s, searching: false, searched: true } : s)));
     }
   }, []);
 
@@ -391,6 +391,14 @@ function SetupView({
                   />
                   {slot.searching && (
                     <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-blue-500" />
+                  )}
+
+                  {/* No results message */}
+                  {slot.searched && slot.results.length === 0 && slot.query.length >= 2 && !slot.searching && (
+                    <div className="absolute top-full left-0 right-0 z-30 mt-1 bg-white border border-slate-200 rounded-xl shadow-lg p-4 text-center">
+                      <p className="text-sm text-slate-500">No results for "{slot.query}"</p>
+                      <p className="text-xs text-slate-400 mt-1">Check the topic code and try again</p>
+                    </div>
                   )}
 
                   {/* Search results dropdown */}
