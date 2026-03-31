@@ -427,15 +427,15 @@ export default function TimetablePage() {
 
       {/* Drag mode banner */}
       {dragTopic && view === 'calendar' && (
-        <div className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-4 py-2.5">
-          <div className="max-w-5xl mx-auto flex items-center justify-between">
-            <div className="flex items-center gap-2 text-sm">
-              <Plus className="h-4 w-4" />
+        <div className="bg-gradient-to-r from-blue-600 to-indigo-600 px-3 py-3 text-white sm:px-4 sm:py-2.5">
+          <div className="mx-auto flex max-w-5xl flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex min-w-0 flex-wrap items-center gap-2 text-sm">
+              <Plus className="h-4 w-4 shrink-0" />
               <span className="font-medium">{dragTopic.topic_code}</span>
-              <span className="opacity-80">— Drag on the calendar to add class times</span>
-              {dragOffering && <Badge className="rounded-full text-[10px] bg-white/20 border-0">{dragOffering.semester} · {dragOffering.campus}</Badge>}
+              <span className="opacity-80">Drag on the calendar to add class times</span>
+              {dragOffering && <Badge className="rounded-full border-0 bg-white/20 text-[10px]">{dragOffering.semester} · {dragOffering.campus}</Badge>}
             </div>
-            <Button size="sm" variant="ghost" onClick={finishAdding} className="h-7 text-xs text-white/80 hover:text-white hover:bg-white/10">
+            <Button size="sm" variant="ghost" onClick={finishAdding} className="h-8 self-start rounded-full px-3 text-xs text-white/80 hover:bg-white/10 hover:text-white sm:h-7 sm:self-auto">
               Done adding
             </Button>
           </div>
@@ -463,9 +463,9 @@ export default function TimetablePage() {
 
       {/* Offering selection modal */}
       {classForm && (
-        <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
           <Card className="w-full max-w-md shadow-2xl">
-            <CardContent className="p-5">
+            <CardContent className="max-h-[calc(var(--viewport-dynamic-height,100dvh)-2rem)] overflow-y-auto p-5">
               <h3 className="font-semibold text-slate-900 mb-1">Select Your Class</h3>
               <p className="text-sm text-slate-500 mb-4">{classForm.topic.topic_code} — {classForm.topic.title}</p>
               <div className="space-y-2">
@@ -491,12 +491,12 @@ export default function TimetablePage() {
 
       {/* Edit entry modal */}
       {editEntry && (
-        <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4" onClick={() => setEditEntry(null)}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => setEditEntry(null)}>
           <Card className="w-full max-w-sm shadow-2xl" onClick={(e) => e.stopPropagation()}>
-            <CardContent className="p-5">
-              <div className="flex items-center justify-between mb-1">
+            <CardContent className="max-h-[calc(var(--viewport-dynamic-height,100dvh)-2rem)] overflow-y-auto p-5">
+              <div className="mb-2 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                 <h3 className="font-semibold text-slate-900">Edit Class</h3>
-                <Button variant="ghost" size="sm" onClick={() => { setEditEntry(null); openChat(editEntry.roomId, editEntry.topicCode, editEntry.topicTitle); }} className="h-7 text-xs text-blue-600" disabled={!editEntry.roomId}>
+                <Button variant="ghost" size="sm" onClick={() => { setEditEntry(null); openChat(editEntry.roomId, editEntry.topicCode, editEntry.topicTitle); }} className="h-8 self-start rounded-full px-3 text-xs text-blue-600 sm:h-7" disabled={!editEntry.roomId}>
                   <MessageSquare className="h-3.5 w-3.5 mr-1" />Chat
                 </Button>
               </div>
@@ -505,10 +505,10 @@ export default function TimetablePage() {
               <div className="space-y-3">
                 <div>
                   <label className="text-xs font-medium text-slate-600 mb-1 block">Day</label>
-                  <div className="flex gap-1">
+                  <div className="grid grid-cols-3 gap-1 sm:flex">
                     {DAYS.map((day, i) => (
                       <Button key={day} variant={editEntry.dayOfWeek === i ? 'default' : 'outline'} size="sm"
-                        onClick={() => setEditEntry((e) => ({ ...e, dayOfWeek: i }))} className="h-8 text-xs rounded-full flex-1">
+                        onClick={() => setEditEntry((e) => ({ ...e, dayOfWeek: i }))} className="h-8 text-xs rounded-full sm:flex-1">
                         {day}
                       </Button>
                     ))}
@@ -558,9 +558,9 @@ export default function TimetablePage() {
 
       {/* Confirm after drag */}
       {confirmForm && (
-        <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
           <Card className="w-full max-w-sm shadow-2xl">
-            <CardContent className="p-5">
+            <CardContent className="max-h-[calc(var(--viewport-dynamic-height,100dvh)-2rem)] overflow-y-auto p-5">
               <h3 className="font-semibold text-slate-900 mb-1">Confirm Class</h3>
               <p className="text-sm text-slate-500 mb-3">{confirmForm.topicCode} — {DAYS[confirmForm.dayOfWeek]} {confirmForm.startTime}–{confirmForm.endTime}</p>
 
@@ -747,34 +747,53 @@ function SetupView({ slots, timetable, topicColorMap, onQueryChange, selectTopic
             <CardContent className="p-3.5 sm:p-4">
               <div className="mb-3 flex items-start gap-2">
                 <div className={`h-8 w-8 rounded-lg flex items-center justify-center text-sm font-bold text-white ${color ? color.accent : 'bg-slate-300'}`}>{idx + 1}</div>
-                {slot.selectedTopic ? (
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-start gap-2">
+                <div className="min-w-0 flex-1">
+                  {slot.selectedTopic ? (
+                    <>
+                    <div className="flex flex-col gap-0.5 sm:flex-row sm:items-start sm:gap-2">
                       <span className="font-semibold text-slate-900">{slot.selectedTopic.topic_code}</span>
-                      <span className="truncate text-[13px] text-slate-500 sm:text-sm">{slot.selectedTopic.title}</span>
+                      <span className="text-[13px] leading-snug text-slate-500 sm:truncate sm:text-sm">{slot.selectedTopic.title}</span>
                     </div>
                     {slot.selectedTopic.school && <p className="text-[11px] text-slate-400 truncate">{slot.selectedTopic.school}</p>}
-                  </div>
-                ) : <span className="text-sm text-slate-400">Course {idx + 1}</span>}
-                <div className="ml-auto flex flex-wrap justify-end gap-1">
-                  {slot.selectedTopic && (
-                    <>
-                      <Button variant="ghost" size="sm" onClick={() => openChat(topicEntries[0]?.room_id, slot.selectedTopic.topic_code, slot.selectedTopic.title)} className="h-7 text-xs text-blue-600" disabled={!topicEntries[0]?.room_id}>
-                        <MessageSquare className="h-3.5 w-3.5 mr-1" />Chat
-                      </Button>
-                      <Button variant="ghost" size="sm" onClick={() => addAnotherClass(slot.selectedTopic)} className="h-7 text-xs text-emerald-600">
-                        <Plus className="h-3.5 w-3.5 mr-1" />Add class
-                      </Button>
-                      <Button variant="ghost" size="sm" onClick={() => handleRemoveTopic(slot.selectedTopic.id)} className="h-7 text-xs text-red-500">
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </Button>
                     </>
-                  )}
+                  ) : <span className="text-sm text-slate-400">Course {idx + 1}</span>}
+                </div>
+                <div className="ml-auto shrink-0">
                   {!slot.selectedTopic && slots.length > 1 && (
-                    <Button variant="ghost" size="sm" onClick={() => removeSlot(slot.id)} className="h-7 text-xs text-slate-400"><X className="h-3.5 w-3.5" /></Button>
+                    <Button variant="ghost" size="sm" onClick={() => removeSlot(slot.id)} className="h-7 px-2 text-xs text-slate-400"><X className="h-3.5 w-3.5" /></Button>
                   )}
                 </div>
               </div>
+
+              {slot.selectedTopic && (
+                <div className="mb-3 grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:justify-end">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => openChat(topicEntries[0]?.room_id, slot.selectedTopic.topic_code, slot.selectedTopic.title)}
+                    className="h-9 rounded-xl border-blue-200 bg-blue-50 text-xs text-blue-700 hover:bg-blue-100 sm:h-8 sm:w-auto"
+                    disabled={!topicEntries[0]?.room_id}
+                  >
+                    <MessageSquare className="mr-1.5 h-3.5 w-3.5" />Chat
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => addAnotherClass(slot.selectedTopic)}
+                    className="h-9 rounded-xl border-emerald-200 bg-emerald-50 text-xs text-emerald-700 hover:bg-emerald-100 sm:h-8 sm:w-auto"
+                  >
+                    <Plus className="mr-1.5 h-3.5 w-3.5" />Add class
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleRemoveTopic(slot.selectedTopic.id)}
+                    className="col-span-2 h-9 rounded-xl text-xs text-red-500 hover:bg-red-50 sm:col-span-1 sm:h-8 sm:w-auto"
+                  >
+                    <Trash2 className="mr-1.5 h-3.5 w-3.5" />Remove topic
+                  </Button>
+                </div>
+              )}
 
               {!slot.selectedTopic && (
                 <div className="relative">
@@ -816,13 +835,23 @@ function SetupView({ slots, timetable, topicColorMap, onQueryChange, selectTopic
                 <div className="space-y-2 mt-2">
                   {topicEntries.map((entry) => (
                     <button key={entry.id} onClick={() => openEditEntry(entry)}
-                      className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg ${color?.bg || 'bg-slate-50'} hover:ring-2 hover:ring-blue-300 transition-all text-left`}>
-                      <Clock className={`h-3.5 w-3.5 ${color?.text || 'text-slate-500'}`} />
-                      <span className="text-sm font-medium">{DAYS[entry.day_of_week]}</span>
-                      <span className="text-sm text-slate-600">{entry.start_time?.slice(0,5)} — {entry.end_time?.slice(0,5)}</span>
-                      {entry.class_type && <Badge className="rounded-full text-[10px] bg-white/60 border-0 capitalize">{entry.class_type}</Badge>}
-                      {entry.location && <span className="text-[11px] text-slate-400 flex items-center gap-1"><MapPin className="h-3 w-3" />{entry.location}</span>}
-                      <Pencil className="h-3 w-3 text-slate-400 ml-auto shrink-0" />
+                      className={`w-full rounded-xl px-3 py-2.5 text-left transition-all hover:ring-2 hover:ring-blue-300 ${color?.bg || 'bg-slate-50'}`}>
+                      <div className="flex items-start gap-2">
+                        <Clock className={`mt-0.5 h-3.5 w-3.5 shrink-0 ${color?.text || 'text-slate-500'}`} />
+                        <div className="min-w-0 flex-1">
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            <span className="text-sm font-semibold text-slate-800">{DAYS[entry.day_of_week]}</span>
+                            <span className="text-sm text-slate-600">{entry.start_time?.slice(0,5)} — {entry.end_time?.slice(0,5)}</span>
+                            {entry.class_type && <Badge className="rounded-full border-0 bg-white/70 text-[10px] capitalize">{entry.class_type}</Badge>}
+                          </div>
+                          {entry.location && (
+                            <span className="mt-1 flex items-center gap-1 text-[11px] text-slate-400">
+                              <MapPin className="h-3 w-3 shrink-0" />{entry.location}
+                            </span>
+                          )}
+                        </div>
+                        <Pencil className="mt-0.5 h-3 w-3 shrink-0 text-slate-400" />
+                      </div>
                     </button>
                   ))}
                 </div>

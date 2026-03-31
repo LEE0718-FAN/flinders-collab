@@ -87,6 +87,14 @@
     height: var(--viewport-height);
   }
 
+  html.auth-scroll-page,
+  body.auth-scroll-page,
+  #root.auth-scroll-page {
+    height: auto;
+    min-height: 100%;
+    overflow-y: auto;
+  }
+
   #root {
     isolation: isolate;
     overflow-x: clip;

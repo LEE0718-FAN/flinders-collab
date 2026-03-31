@@ -18,6 +18,18 @@ export default function AuthLayout({ children }) {
     setShowSidePanel(true);
   }, []);
 
+  useEffect(() => {
+    document.documentElement.classList.add('auth-scroll-page');
+    document.body.classList.add('auth-scroll-page');
+    document.getElementById('root')?.classList.add('auth-scroll-page');
+
+    return () => {
+      document.documentElement.classList.remove('auth-scroll-page');
+      document.body.classList.remove('auth-scroll-page');
+      document.getElementById('root')?.classList.remove('auth-scroll-page');
+    };
+  }, []);
+
   const handleDismiss = () => {
     setShowSidePanel(false);
   };
@@ -28,7 +40,7 @@ export default function AuthLayout({ children }) {
 
   return (
     <div
-      className="relative min-h-app overflow-y-auto overflow-x-hidden px-3 py-3 sm:px-6 sm:py-6"
+      className="relative min-h-[var(--viewport-dynamic-height,100dvh)] overflow-x-hidden overflow-y-auto px-3 py-3 sm:min-h-app sm:px-6 sm:py-6"
       style={{
         paddingTop: 'max(0.75rem, env(safe-area-inset-top))',
         paddingBottom: 'max(1rem, calc(env(safe-area-inset-bottom) + 1rem))',
@@ -53,7 +65,7 @@ export default function AuthLayout({ children }) {
       <div className="absolute bottom-1/3 left-1/3 hidden h-[200px] w-[200px] rounded-full bg-purple-500/10 blur-[80px] animate-float sm:block" style={{ animationDelay: '6s' }} />
 
       {/* Main content — login card + optional side panel */}
-      <div className="relative z-10 flex min-h-app flex-col justify-start py-1 sm:justify-center sm:py-3">
+      <div className="relative z-10 flex min-h-[var(--viewport-dynamic-height,100dvh)] flex-col justify-start py-1 sm:min-h-app sm:justify-center sm:py-3">
         <div className="mb-3 hidden w-full md:block xl:hidden">
           <InstallBanner />
         </div>
@@ -84,10 +96,7 @@ export default function AuthLayout({ children }) {
             <div className="relative">
               {/* Auth card */}
               <Card className="relative rounded-[24px] border border-white/10 bg-white/[0.98] shadow-xl shadow-black/30 backdrop-blur-xl sm:rounded-[28px] sm:shadow-2xl">
-                <CardContent
-                  className="overflow-y-auto p-4 pb-5 sm:max-h-none sm:p-6 min-[1380px]:p-7"
-                  style={{ maxHeight: 'calc(var(--viewport-dynamic-height, 100dvh) - 8.5rem)' }}
-                >
+                <CardContent className="p-4 pb-5 sm:p-6 min-[1380px]:p-7">
                   {children}
                 </CardContent>
               </Card>

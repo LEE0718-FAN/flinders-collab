@@ -42,6 +42,21 @@ export default function LoginForm({
     setSuccess(initialSuccess || '');
   }, [initialSuccess]);
 
+  useEffect(() => {
+    const handleFocusIn = (event) => {
+      const target = event.target;
+      if (!(target instanceof HTMLElement)) return;
+      if (!target.matches('input, textarea, select')) return;
+
+      window.setTimeout(() => {
+        target.scrollIntoView({ block: 'center', behavior: 'smooth' });
+      }, 260);
+    };
+
+    document.addEventListener('focusin', handleFocusIn);
+    return () => document.removeEventListener('focusin', handleFocusIn);
+  }, []);
+
   const formatCooldown = (seconds) => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;

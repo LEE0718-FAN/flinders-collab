@@ -56,6 +56,24 @@ export async function triggerHealthCheck() {
   return parseResponse(res);
 }
 
+export async function getCrawlerStats() {
+  const headers = getAuthHeaders();
+  const res = await fetch(apiUrl('/api/admin/crawlers'), { headers });
+  return parseResponse(res);
+}
+
+export async function runEventCrawler() {
+  const headers = getAuthHeaders();
+  const res = await fetch(apiUrl('/api/admin/crawlers/events/run'), { method: 'POST', headers });
+  return parseResponse(res);
+}
+
+export async function runTopicCrawler() {
+  const headers = getAuthHeaders();
+  const res = await fetch(apiUrl('/api/admin/crawlers/topics/run'), { method: 'POST', headers });
+  return parseResponse(res);
+}
+
 export async function getDeletedFiles() {
   const headers = getAuthHeaders();
   const res = await fetch(apiUrl('/api/admin/files/deleted'), { headers });

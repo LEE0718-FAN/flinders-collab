@@ -17,12 +17,12 @@ import {
   AlertDialogContent, AlertDialogDescription, AlertDialogFooter,
   AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { getReports, updateReport, getAdminUsers, toggleUserAdmin, deleteAdminUser, getMonitorStats, resolveAlert, triggerHealthCheck, getDeletedFiles, restoreDeletedFile, getFileIntegrityReport } from '@/services/reports';
+import { getReports, updateReport, getAdminUsers, toggleUserAdmin, deleteAdminUser, getMonitorStats, resolveAlert, triggerHealthCheck, getDeletedFiles, restoreDeletedFile, getFileIntegrityReport, getCrawlerStats, runEventCrawler, runTopicCrawler } from '@/services/reports';
 import { useAuth } from '@/hooks/useAuth';
 import {
   Loader2, ChevronDown, Shield, ShieldOff, AlertCircle, User, ShieldAlert, Search, Trash2, Mail, GraduationCap, Calendar,
   Activity, Server, Database, Clock, Zap, AlertTriangle, CheckCircle2, XCircle, RefreshCw, Cpu, HardDrive, TrendingUp, Eye, EyeOff, Bell,
-  ArchiveRestore, ShieldCheck,
+  ArchiveRestore, ShieldCheck, Newspaper, BookOpen, MapPinned,
 } from 'lucide-react';
 import { format, formatDistanceToNow } from 'date-fns';
 
@@ -1185,6 +1185,164 @@ function MonitoringTab() {
   );
 }
 
+function CrawlerStatusCard({ icon: Icon, title, schedule, source, latestCrawledAt, latestItemTitle, totalCached, freshness, action, actionLabel, actionLoading }) {
+  const freshnessClass = freshness === 'healthy'
+    ? 'bg-emerald-100 text-emerald-700 border-emerald-200'
+    : freshness === 'stale'
+      ? 'bg-amber-100 text-amber-700 border-amber-200'
+      : 'bg-slate-100 text-slate-600 border-slate-200';
+
+  return (
+    <Card className="shadow-sm">
+      <CardContent className="p-4">
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex items-start gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-100 text-slate-700">
+              <Icon className="h-5 w-5" />
+            </div>
+            <div>
+              <h4 className="text-sm font-semibold text-slate-800">{title}</h4>
+              <p className="mt-0.5 text-xs text-slate-500">{schedule}</p>
+            </div>
+          </div>
+          <Badge className={`rounded-full text-[10px] ${freshnessClass}`}>{freshness}</Badge>
+        </div>
+
+        <div className="mt-4 space-y-2">
+          <FeatureRow label="Source" value={source} />
+          <FeatureRow label="Cached Items" value={String(totalCached || 0)} />
+          <FeatureRow
+            label="Last Crawl"
+            value={latestCrawledAt ? formatDistanceToNow(new Date(latestCrawledAt), { addSuffix: true }) : 'Never'}
+            status={freshness === 'healthy' ? 'healthy' : freshness === 'stale' ? 'warning' : undefined}
+          />
+          {latestItemTitle ? <FeatureRow label="Latest Item" value={latestItemTitle} /> : null}
+        </div>
+
+        {action ? (
+          <Button onClick={action} disabled={actionLoading} variant="outline" size="sm" className="mt-4 h-8 gap-1.5 rounded-full text-xs">
+            {actionLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
+            {actionLabel}
+          </Button>
+        ) : null}
+      </CardContent>
+    </Card>
+  );
+}
+
+function CrawlersTab() {
+  const [stats, setStats] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [eventRunning, setEventRunning] = useState(false);
+  const [topicRunning, setTopicRunning] = useState(false);
+
+  const fetchStats = async () => {
+    try {
+      const data = await getCrawlerStats();
+      setStats(data);
+    } catch {
+      // silent
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchStats();
+  }, []);
+
+  const handleRunEvents = async () => {
+    setEventRunning(true);
+    try {
+      await runEventCrawler();
+      await fetchStats();
+    } finally {
+      setEventRunning(false);
+    }
+  };
+
+  const handleRunTopics = async () => {
+    setTopicRunning(true);
+    try {
+      await runTopicCrawler();
+      await fetchStats();
+    } finally {
+      setTopicRunning(false);
+    }
+  };
+
+  if (loading) {
+    return <div className="flex justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>;
+  }
+
+  if (!stats?.crawlers) {
+    return <div className="py-12 text-center text-sm text-muted-foreground">Failed to load crawler status</div>;
+  }
+
+  const { events, topics, news } = stats.crawlers;
+
+  return (
+    <div className="space-y-4">
+      <SectionHeader icon={RefreshCw} title="Crawlers" gradient="from-sky-600 to-indigo-700">
+        <Badge className="rounded-full border-0 bg-white/20 text-[10px] text-white">Auto refresh</Badge>
+      </SectionHeader>
+
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+        <CrawlerStatusCard
+          icon={Newspaper}
+          title={events.label}
+          schedule={events.schedule}
+          source={events.source}
+          latestCrawledAt={events.latestCrawledAt}
+          latestItemTitle={events.latestItemTitle}
+          totalCached={events.totalCached}
+          freshness={events.freshness}
+          action={handleRunEvents}
+          actionLabel="Run Event Crawl"
+          actionLoading={eventRunning}
+        />
+        <CrawlerStatusCard
+          icon={BookOpen}
+          title={topics.label}
+          schedule={topics.schedule}
+          source={topics.source}
+          latestCrawledAt={topics.latestCrawledAt}
+          latestItemTitle={topics.latestItemTitle}
+          totalCached={topics.totalCached}
+          freshness={topics.freshness}
+          action={handleRunTopics}
+          actionLabel="Run Topic Crawl"
+          actionLoading={topicRunning}
+        />
+      </div>
+
+      <Card className="shadow-sm">
+        <CardContent className="p-4">
+          <div className="flex items-start gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-100 text-slate-700">
+              <MapPinned className="h-5 w-5" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <h4 className="text-sm font-semibold text-slate-800">{news.label}</h4>
+                  <p className="mt-0.5 text-xs text-slate-500">{news.schedule}</p>
+                </div>
+                <Badge className="rounded-full border-slate-200 bg-slate-100 text-[10px] text-slate-600">{news.freshness}</Badge>
+              </div>
+              <div className="mt-4 space-y-2">
+                <FeatureRow label="Source" value={news.source} />
+                <FeatureRow label="Mode" value="Short-lived server cache" />
+                <FeatureRow label="Purpose" value="Reduce repeated upstream requests" />
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
 function FileBackupsTab() {
   const [deletedFiles, setDeletedFiles] = useState([]);
   const [integrity, setIntegrity] = useState(null);
@@ -1384,6 +1542,10 @@ export default function AdminPage() {
               <Activity className="h-3.5 w-3.5" />
               Monitoring
             </TabsTrigger>
+            <TabsTrigger value="crawlers" className="rounded-xl data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-600 data-[state=active]:to-indigo-600 data-[state=active]:text-white data-[state=active]:shadow-md text-slate-500 gap-1.5">
+              <RefreshCw className="h-3.5 w-3.5" />
+              Crawlers
+            </TabsTrigger>
             <TabsTrigger value="reports" className="rounded-xl data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-600 data-[state=active]:to-indigo-600 data-[state=active]:text-white data-[state=active]:shadow-md text-slate-500">Reports</TabsTrigger>
             <TabsTrigger value="users" className="rounded-xl data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-600 data-[state=active]:to-indigo-600 data-[state=active]:text-white data-[state=active]:shadow-md text-slate-500">Users</TabsTrigger>
             <TabsTrigger value="files" className="rounded-xl data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-600 data-[state=active]:to-indigo-600 data-[state=active]:text-white data-[state=active]:shadow-md text-slate-500 gap-1.5">
@@ -1394,6 +1556,10 @@ export default function AdminPage() {
 
           <TabsContent value="monitoring" className="mt-4">
             <MonitoringTab />
+          </TabsContent>
+
+          <TabsContent value="crawlers" className="mt-4">
+            <CrawlersTab />
           </TabsContent>
 
           <TabsContent value="reports" className="mt-4">

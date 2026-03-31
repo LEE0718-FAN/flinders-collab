@@ -4,6 +4,8 @@ const { authenticate } = require('../middleware/auth');
 const { supabaseAdmin } = require('../services/supabase');
 const monitor = require('../utils/monitor');
 const { getNextMaintenanceTime, runOptimization } = require('../utils/maintenance');
+const { crawlFlindersEvents } = require('../utils/eventCrawler');
+const { crawlFlindersTopics } = require('../utils/topicCrawler');
 const config = require('../config');
 const path = require('path');
 
@@ -121,6 +123,81 @@ router.get('/health', async (req, res) => {
     });
   } catch (err) {
     res.status(500).json({ error: 'Health check failed' });
+  }
+});
+
+router.get('/crawlers', async (req, res) => {
+  try {
+    const currentYear = Number(process.env.TOPIC_CRAWL_YEAR || new Date().getFullYear());
+    const now = Date.now();
+
+    const [
+      { count: eventCount },
+      { count: topicCount },
+      { data: latestEvent },
+      { data: latestTopic },
+    ] = await Promise.all([
+      supabaseAdmin.from('flinders_events_cache').select('id', { count: 'exact', head: true }),
+      supabaseAdmin.from('flinders_topics').select('id', { count: 'exact', head: true }).eq('year', currentYear),
+      supabaseAdmin.from('flinders_events_cache').select('crawled_at,title,event_date').order('crawled_at', { ascending: false }).limit(1).maybeSingle(),
+      supabaseAdmin.from('flinders_topics').select('crawled_at,topic_code,title').eq('year', currentYear).order('crawled_at', { ascending: false }).limit(1).maybeSingle(),
+    ]);
+
+    const latestEventAt = latestEvent?.crawled_at || null;
+    const latestTopicAt = latestTopic?.crawled_at || null;
+    const eventAgeMs = latestEventAt ? now - Date.parse(latestEventAt) : null;
+    const topicAgeMs = latestTopicAt ? now - Date.parse(latestTopicAt) : null;
+
+    res.json({
+      generatedAt: new Date().toISOString(),
+      crawlers: {
+        events: {
+          label: 'Flinders Events',
+          schedule: 'Auto refresh every 30 minutes',
+          source: 'Flinders events WordPress API',
+          latestCrawledAt: latestEventAt,
+          latestItemTitle: latestEvent?.title || null,
+          latestItemDate: latestEvent?.event_date || null,
+          totalCached: eventCount || 0,
+          freshness: eventAgeMs == null ? 'unknown' : eventAgeMs <= 45 * 60 * 1000 ? 'healthy' : 'stale',
+        },
+        topics: {
+          label: 'Timetable Buddy Topics',
+          schedule: `Auto refresh every 24 hours (${currentYear})`,
+          source: 'Flinders handbook sitemap + topic pages',
+          latestCrawledAt: latestTopicAt,
+          latestItemTitle: latestTopic?.topic_code ? `${latestTopic.topic_code} — ${latestTopic.title || ''}` : null,
+          totalCached: topicCount || 0,
+          freshness: topicAgeMs == null ? 'unknown' : topicAgeMs <= 36 * 60 * 60 * 1000 ? 'healthy' : 'stale',
+        },
+        news: {
+          label: 'Flinders News',
+          schedule: 'Request-time refresh with short cache',
+          source: 'Flinders student news WordPress API',
+          freshness: 'live',
+        },
+      },
+    });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to load crawler status' });
+  }
+});
+
+router.post('/crawlers/events/run', async (req, res) => {
+  try {
+    await crawlFlindersEvents();
+    res.json({ message: 'Event crawler finished' });
+  } catch (err) {
+    res.status(500).json({ error: `Event crawler failed: ${err.message}` });
+  }
+});
+
+router.post('/crawlers/topics/run', async (req, res) => {
+  try {
+    await crawlFlindersTopics();
+    res.json({ message: 'Topic crawler finished' });
+  } catch (err) {
+    res.status(500).json({ error: `Topic crawler failed: ${err.message}` });
   }
 });
 
