@@ -310,12 +310,14 @@ export default function TimetablePage() {
       const data = await parseResponse(res);
       const members = data?.members || data || [];
       const canonicalRoomId = data?.canonicalRoomId || roomId;
-      setChatMembers(members);
+      setChatMembers(Array.isArray(members) ? members : []);
       // Update popup to use the canonical room if different
       if (canonicalRoomId !== roomId) {
         setChatPopup((prev) => prev ? { ...prev, roomId: canonicalRoomId } : prev);
       }
-    } catch {}
+    } catch (err) {
+      console.error('ensure-member failed:', err);
+    }
   };
 
   const goToRoom = (roomId) => { if (roomId) navigate(`/rooms/${roomId}`); };

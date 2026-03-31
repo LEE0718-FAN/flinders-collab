@@ -389,13 +389,14 @@ async function ensureTopicRoomMember(req, res, next) {
       .maybeSingle();
 
     if (!existingMember) {
-      await supabaseAdmin
+      const { error: joinError } = await supabaseAdmin
         .from('room_members')
         .insert({ room_id: canonicalRoomId, user_id: userId, role: 'member' });
+      if (joinError) console.error('ensure-member insert error:', joinError.message);
     }
 
     // Return member list + the canonical room id so client can use the right one
-    const { data: members } = await supabaseAdmin
+    const { data: members, error: memberError } = await supabaseAdmin
       .from('room_members')
       .select(`
         id, role, joined_at,
@@ -403,6 +404,8 @@ async function ensureTopicRoomMember(req, res, next) {
       `)
       .eq('room_id', canonicalRoomId)
       .order('joined_at', { ascending: true });
+
+    if (memberError) console.error('ensure-member query error:', memberError.message);
 
     const result = (members || []).map((entry) => ({
       ...entry.users,
