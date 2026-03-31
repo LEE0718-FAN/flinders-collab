@@ -45,8 +45,8 @@ function chatHandler(io, socket) {
    */
   socket.on('chat:join', async ({ roomId }) => {
     if (!roomId) return;
+    let effectiveRoomId = roomId;
     try {
-      let effectiveRoomId = roomId;
       let member = await isRoomMember(roomId, userId);
       if (!member) {
         // Auto-join if this is a topic room and user has the topic in their timetable
