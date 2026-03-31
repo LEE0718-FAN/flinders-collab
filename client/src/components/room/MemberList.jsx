@@ -1,6 +1,7 @@
 import React from 'react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
+import { avatarThumb } from '@/lib/avatar';
 
 export default function MemberList({ members = [] }) {
   return (
@@ -13,7 +14,7 @@ export default function MemberList({ members = [] }) {
         return (
           <div key={member.id || member.membership_id} className="flex items-center gap-3 rounded-lg border p-3">
             <Avatar className="h-9 w-9">
-              {member.avatar_url && <AvatarImage src={member.avatar_url} alt={name} className="object-cover" />}
+              {member.avatar_url && <AvatarImage src={avatarThumb(member.avatar_url)} alt={name} className="object-cover" />}
               <AvatarFallback className="text-xs">{initials}</AvatarFallback>
             </Avatar>
             <div className="flex-1 min-w-0">

@@ -474,6 +474,33 @@ ALTER TABLE flinders_friend_requests ADD COLUMN IF NOT EXISTS pair_key TEXT;
 UPDATE flinders_friend_requests
 SET pair_key = LEAST(requester_id::text, target_id::text) || ':' || GREATEST(requester_id::text, target_id::text)
 WHERE pair_key IS NULL;
+
+-- Enable Realtime on campus presence & friend requests (Pro plan)
+DO $$ BEGIN
+  BEGIN
+    ALTER PUBLICATION supabase_realtime ADD TABLE flinders_campus_presence;
+  EXCEPTION WHEN duplicate_object THEN NULL;
+  END;
+  BEGIN
+    ALTER PUBLICATION supabase_realtime ADD TABLE flinders_friend_requests;
+  EXCEPTION WHEN duplicate_object THEN NULL;
+  END;
+END $$;
+
+-- Set REPLICA IDENTITY FULL for complete row data in Realtime events
+ALTER TABLE flinders_campus_presence REPLICA IDENTITY FULL;
+ALTER TABLE flinders_friend_requests REPLICA IDENTITY FULL;
+
+-- RLS for Realtime subscriptions
+ALTER TABLE flinders_campus_presence ENABLE ROW LEVEL SECURITY;
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'flinders_campus_presence' AND policyname = 'realtime_select_presence') THEN
+    CREATE POLICY realtime_select_presence ON flinders_campus_presence FOR SELECT TO authenticated USING (sharing_enabled = true);
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'flinders_campus_presence' AND policyname = 'own_presence_all') THEN
+    CREATE POLICY own_presence_all ON flinders_campus_presence FOR ALL TO authenticated USING (user_id = auth.uid()) WITH CHECK (user_id = auth.uid());
+  END IF;
+END $$;
 `;
 
 async function runMigration() {

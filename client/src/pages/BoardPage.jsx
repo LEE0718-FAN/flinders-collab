@@ -23,6 +23,7 @@ import {
   toggleReaction as apiToggleReaction, votePoll as apiVotePoll, updateBoardState,
 } from '@/services/board';
 import { getLatestBoardTimestamp } from '@/lib/board-notifications';
+import { avatarThumb } from '@/lib/avatar';
 
 const CATEGORIES = [
   { value: 'all', label: 'All', shortLabel: 'All', icon: Sparkles },
@@ -297,7 +298,7 @@ function CommentSection({ postId }) {
             return (
               <div key={c.id} className="group flex gap-2">
                 <Avatar className="h-6 w-6 shrink-0 mt-0.5">
-                  {c.users?.avatar_url && <AvatarImage src={c.users.avatar_url} />}
+                  {c.users?.avatar_url && <AvatarImage src={avatarThumb(c.users.avatar_url)} />}
                   <AvatarFallback className="text-[9px] bg-slate-100">{initials}</AvatarFallback>
                 </Avatar>
                 <div className="flex-1 min-w-0">
@@ -391,7 +392,7 @@ function PostCard({ post, myStatus, onParticipate, onDelete, onReaction, onVote,
       {/* Header */}
       <div className="flex items-start gap-3">
         <Avatar className={`h-10 w-10 ring-2 ring-white shadow-sm shrink-0 ${isAnonymous ? 'opacity-70' : ''}`}>
-          {!isAnonymous && post.users?.avatar_url && <AvatarImage src={post.users.avatar_url} />}
+          {!isAnonymous && post.users?.avatar_url && <AvatarImage src={avatarThumb(post.users.avatar_url)} />}
           <AvatarFallback className={`text-xs font-bold text-white ${isAnonymous ? 'bg-slate-400' : 'bg-gradient-to-br from-indigo-500 to-purple-600'}`}>
             {initials}
           </AvatarFallback>

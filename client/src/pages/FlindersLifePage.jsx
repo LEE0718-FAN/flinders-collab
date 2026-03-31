@@ -9,6 +9,8 @@ import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { GraduationCap, Calendar, BookOpen, ExternalLink, Loader2, ChevronDown, ChevronUp, MapPin, Star, Clock, ChevronLeft, ChevronRight, Users, Shield, RefreshCw, EyeOff, UserPlus, MessageCircle, Check, X, Send } from 'lucide-react';
 import { getRecommendedEvents, getCampusPresence, updateCampusPresence, clearCampusPresence, getFriendRequests, sendFriendRequest, respondToFriendRequest } from '@/services/flinders';
 import { hydratePreferences, updatePreferences } from '@/lib/preferences';
+import { supabase } from '@/lib/supabase';
+import { avatarThumb, avatarMedium } from '@/lib/avatar';
 import OnboardingTour from '@/components/OnboardingTour';
 import PageTour from '@/components/PageTour';
 import { format, parseISO, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isToday, getDay, addMonths, subMonths, isWithinInterval } from 'date-fns';
@@ -589,10 +591,76 @@ export function FlinapPanel({ currentUserId }) {
     loadFriendState();
   }, [loadFriendState]);
 
+  // Supabase Realtime: instant campus presence updates (Pro plan)
+  useEffect(() => {
+    const channel = supabase
+      .channel('campus-presence-changes')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'flinders_campus_presence' },
+        () => {
+          // Refetch full presence on any change (insert/update/delete)
+          fetchPresence({ silent: true });
+        },
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [fetchPresence]);
+
+  // Supabase Realtime: instant friend request updates
+  useEffect(() => {
+    if (!currentUserId) return undefined;
+    const channel = supabase
+      .channel('friend-request-changes')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'flinders_friend_requests' },
+        (payload) => {
+          const row = payload.new || payload.old;
+          if (row?.requester_id === currentUserId || row?.target_id === currentUserId) {
+            loadFriendState();
+          }
+        },
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [currentUserId, loadFriendState]);
+
+  // Supabase Presence: track online friends
+  const [onlineUsers, setOnlineUsers] = useState(new Set());
+  useEffect(() => {
+    if (!currentUserId) return undefined;
+    const channel = supabase.channel('flinap-online', {
+      config: { presence: { key: currentUserId } },
+    });
+
+    channel
+      .on('presence', { event: 'sync' }, () => {
+        const state = channel.presenceState();
+        setOnlineUsers(new Set(Object.keys(state)));
+      })
+      .subscribe(async (status) => {
+        if (status === 'SUBSCRIBED') {
+          await channel.track({ user_id: currentUserId, online_at: new Date().toISOString() });
+        }
+      });
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [currentUserId]);
+
+  // Fallback polling (reduced interval since Realtime handles most updates)
   useEffect(() => {
     const intervalId = window.setInterval(() => {
       fetchPresence({ silent: true });
-    }, 45000);
+    }, 120000);
     return () => window.clearInterval(intervalId);
   }, [fetchPresence]);
 
@@ -1017,7 +1085,7 @@ export function FlinapPanel({ currentUserId }) {
                         </div>
                       )}
                       <Avatar className={`h-11 w-11 rounded-2xl border border-white/80 bg-gradient-to-br ${selectedCampusMeta.accent} shadow-lg`}>
-                        {member.avatar_url && <AvatarImage src={member.avatar_url} alt={member.full_name} className="object-cover" />}
+                        {member.avatar_url && <AvatarImage src={avatarThumb(member.avatar_url)} alt={member.full_name} className="object-cover" />}
                         <AvatarFallback className={`rounded-2xl bg-gradient-to-br ${selectedCampusMeta.accent} text-xs font-black text-white`}>
                           {getMemberInitials(member)}
                         </AvatarFallback>
@@ -1232,18 +1300,26 @@ export function FlinapPanel({ currentUserId }) {
                   onClick={() => openMemberCard(member)}
                   className={`flex w-full items-center gap-3 rounded-[22px] border px-4 py-3 text-left transition ${member.is_me ? 'border-blue-200 bg-blue-50' : 'border-slate-200 bg-slate-50 hover:bg-white'}`}
                 >
-                  <Avatar className={`h-12 w-12 shrink-0 rounded-[18px] bg-gradient-to-br ${selectedCampusMeta.accent} shadow-sm`}>
-                    {member.avatar_url && <AvatarImage src={member.avatar_url} alt={member.full_name} className="object-cover" />}
-                    <AvatarFallback className={`rounded-[18px] bg-gradient-to-br ${selectedCampusMeta.accent} text-sm font-black text-white`}>
-                      {getMemberInitials(member)}
-                    </AvatarFallback>
-                  </Avatar>
+                  <div className="relative shrink-0">
+                    <Avatar className={`h-12 w-12 rounded-[18px] bg-gradient-to-br ${selectedCampusMeta.accent} shadow-sm`}>
+                      {member.avatar_url && <AvatarImage src={avatarThumb(member.avatar_url)} alt={member.full_name} className="object-cover" />}
+                      <AvatarFallback className={`rounded-[18px] bg-gradient-to-br ${selectedCampusMeta.accent} text-sm font-black text-white`}>
+                        {getMemberInitials(member)}
+                      </AvatarFallback>
+                    </Avatar>
+                    {onlineUsers.has(member.user_id) && (
+                      <span className="absolute -bottom-0.5 -right-0.5 h-3.5 w-3.5 rounded-full border-2 border-white bg-emerald-400" />
+                    )}
+                  </div>
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
                       <p className="truncate text-sm font-bold text-slate-900">
                         {member.full_name}
                         {member.user_id === currentUserId ? ' (You)' : ''}
                       </p>
+                      {onlineUsers.has(member.user_id) && (
+                        <span className="text-[10px] font-medium text-emerald-500">online</span>
+                      )}
                     </div>
                     <div className="mt-1 flex flex-wrap items-center gap-2">
                       <span className={`inline-flex rounded-full border px-2 py-0.5 text-[10px] font-semibold ${getActivityMeta(member.activity_status).chip}`}>
@@ -1432,7 +1508,7 @@ export function FlinapPanel({ currentUserId }) {
                 </DialogClose>
                 <div className="flex items-start gap-4 pr-12">
                   <Avatar className="h-14 w-14 shrink-0 rounded-[20px] bg-white/15 shadow-sm">
-                    {activeMember.avatar_url && <AvatarImage src={activeMember.avatar_url} alt={activeMember.full_name} className="object-cover" />}
+                    {activeMember.avatar_url && <AvatarImage src={avatarMedium(activeMember.avatar_url)} alt={activeMember.full_name} className="object-cover" />}
                     <AvatarFallback className="rounded-[20px] bg-white/15 text-lg font-black text-white">
                       {getMemberInitials(activeMember)}
                     </AvatarFallback>

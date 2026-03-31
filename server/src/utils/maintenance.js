@@ -39,7 +39,18 @@ async function runOptimization() {
   }
 
   try {
-    // 2. Clean up old read messages metadata (older than 30 days)
+    // 2. Clean up stale campus presence (older than 8 hours)
+    const { count: presenceCount } = await supabaseAdmin
+      .from('flinders_campus_presence')
+      .delete({ count: 'exact' })
+      .lt('updated_at', new Date(Date.now() - 8 * 60 * 60 * 1000).toISOString());
+    results.push(`Stale campus presence: ${presenceCount || 0} removed`);
+  } catch (err) {
+    results.push(`Presence cleanup failed: ${err.message}`);
+  }
+
+  try {
+    // 3. Clean up old read messages metadata (older than 30 days)
     const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
     const { count: msgCount } = await supabaseAdmin
       .from('messages')

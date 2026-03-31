@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Camera, Loader2 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
+import { avatarLarge } from '@/lib/avatar';
 import { apiGetMe } from '@/services/auth';
 import { FLINDERS_PROGRAMS } from '@/lib/flinders-programs';
 
@@ -176,7 +177,7 @@ export default function ProfileDialog({ open, onOpenChange }) {
               <div className="relative cursor-pointer group" onClick={() => fileInputRef.current?.click()}>
                 <Avatar className="h-24 w-24 ring-4 ring-indigo-100 shadow">
                   {(avatarPreview || currentAvatarUrl) && (
-                    <AvatarImage src={avatarPreview || currentAvatarUrl} alt="Profile" className="object-cover" />
+                    <AvatarImage src={avatarPreview || avatarLarge(currentAvatarUrl)} alt="Profile" className="object-cover" />
                   )}
                   <AvatarFallback className="bg-gradient-to-br from-blue-500 to-indigo-600 text-3xl font-bold text-white">
                     {initials}
