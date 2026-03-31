@@ -2,9 +2,7 @@ import React, { useState, useEffect, useCallback, useRef, lazy, Suspense } from 
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
-import { searchTopics, getMyTimetable, addToTimetable, removeFromTimetable, removeTopic, getPopularTimes } from '@/services/timetable';
-import { apiUrl } from '@/lib/api';
-import { getAuthHeaders, parseResponse } from '@/lib/api-headers';
+import { searchTopics, getMyTimetable, addToTimetable, removeFromTimetable, removeTopic, getPopularTimes, ensureRoomMember } from '@/services/timetable';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -300,27 +298,29 @@ export default function TimetablePage() {
     setSlots((prev) => prev.filter((s) => s.id !== slotId));
   };
 
-  const openChat = async (roomId, topicCode, topicTitle) => {
-    if (!roomId) return;
-    setChatPopup({ roomId, topicCode: topicCode || '', topicTitle: topicTitle || '' });
+  const openChat = async (roomId, topicCode, topicTitle, topicId = null) => {
+    const fallbackRoomId = topicId
+      ? timetable.find((entry) => entry.topic?.id === topicId && entry.room_id)?.room_id
+      : null;
+    const initialRoomId = fallbackRoomId || roomId;
+
+    if (!initialRoomId) return;
+
+    setChatPopup({ roomId: initialRoomId, topicCode: topicCode || '', topicTitle: topicTitle || '' });
     setShowMembers(false);
     setChatMembers([]);
+
     try {
-      // Ensure membership + get members in one call
-      const res = await fetch(apiUrl(`/api/timetable/room/${roomId}/ensure-member`), {
-        method: 'POST',
-        headers: getAuthHeaders(),
-      });
-      const data = await parseResponse(res);
+      const data = await ensureRoomMember(initialRoomId);
       const members = data?.members || data || [];
-      const canonicalRoomId = data?.canonicalRoomId || roomId;
+      const canonicalRoomId = data?.canonicalRoomId || initialRoomId;
       setChatMembers(Array.isArray(members) ? members : []);
-      // Update popup to use the canonical room if different
-      if (canonicalRoomId !== roomId) {
+      if (canonicalRoomId !== initialRoomId) {
         setChatPopup((prev) => prev ? { ...prev, roomId: canonicalRoomId } : prev);
       }
     } catch (err) {
       console.error('ensure-member failed:', err);
+      setChatMembers([]);
     }
   };
 
@@ -528,7 +528,7 @@ export default function TimetablePage() {
             <CardContent className="max-h-[calc(var(--viewport-dynamic-height,100dvh)-2rem)] overflow-y-auto p-5">
               <div className="mb-2 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                 <h3 className="font-semibold text-slate-900">Edit Class</h3>
-                <Button variant="ghost" size="sm" onClick={() => { setEditEntry(null); openChat(editEntry.roomId, editEntry.topicCode, editEntry.topicTitle); }} className="h-8 self-start rounded-full px-3 text-xs text-blue-600 sm:h-7" disabled={!editEntry.roomId}>
+                <Button variant="ghost" size="sm" onClick={() => { setEditEntry(null); openChat(editEntry.roomId, editEntry.topicCode, editEntry.topicTitle, editEntry.topicId); }} className="h-8 self-start rounded-full px-3 text-xs text-blue-600 sm:h-7" disabled={!editEntry.roomId}>
                   <MessageSquare className="h-3.5 w-3.5 mr-1" />Chat
                 </Button>
               </div>
@@ -626,20 +626,24 @@ export default function TimetablePage() {
 
       {/* Chat popup */}
       {chatPopup && typeof document !== 'undefined' && createPortal(
-        <div className="fixed inset-0 z-[90] flex items-end justify-center bg-black/55 p-0 sm:items-center sm:p-4" onClick={() => setChatPopup(null)}>
+        <div className="fixed inset-0 z-[90] flex items-stretch justify-center bg-black/55 p-0 sm:items-center sm:p-4" onClick={() => setChatPopup(null)}>
           <div
-            className={`relative flex h-[var(--viewport-dynamic-height,100dvh)] w-full flex-col overflow-hidden bg-white shadow-2xl sm:h-[82vh] ${showMembers ? 'sm:max-w-3xl' : 'sm:max-w-2xl'} sm:rounded-2xl`}
+            className={`relative flex h-[var(--viewport-dynamic-height,100dvh)] w-full min-h-0 flex-col overflow-hidden bg-white shadow-2xl sm:h-[82vh] ${showMembers ? 'sm:max-w-3xl' : 'sm:max-w-2xl'} sm:rounded-2xl`}
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex shrink-0 items-center justify-between border-b border-slate-100 bg-gradient-to-r from-blue-600 to-indigo-600 px-4 py-3 text-white">
-              <div className="min-w-0">
-                <h3 className="truncate text-sm font-bold">{chatPopup.topicCode}{chatPopup.topicTitle ? ` — ${chatPopup.topicTitle}` : ''}</h3>
+            <div
+              className="flex shrink-0 items-start justify-between border-b border-slate-100 bg-gradient-to-r from-blue-600 to-indigo-600 px-3.5 pb-3 pt-4 text-white sm:items-center sm:px-4 sm:py-3"
+              style={{ paddingTop: 'max(0.9rem, calc(var(--safe-top) + 0.65rem))' }}
+            >
+              <div className="min-w-0 pr-2">
+                <div className="truncate text-[11px] font-semibold uppercase tracking-[0.12em] text-white/70">Topic chat</div>
+                <h3 className="mt-1 truncate text-[15px] font-bold leading-tight sm:text-sm">{chatPopup.topicCode}{chatPopup.topicTitle ? ` — ${chatPopup.topicTitle}` : ''}</h3>
               </div>
-              <div className="ml-2 flex shrink-0 items-center gap-1">
-                <button onClick={() => setShowMembers((v) => !v)} className={`rounded-full p-1.5 transition-colors ${showMembers ? 'bg-white/30' : 'hover:bg-white/20'}`} title="Toggle members">
+              <div className="ml-2 flex shrink-0 items-center gap-1 self-start sm:self-auto">
+                <button onClick={() => setShowMembers((v) => !v)} className={`rounded-full p-2 transition-colors ${showMembers ? 'bg-white/30' : 'hover:bg-white/20'}`} title="Toggle members">
                   <Users className="h-4 w-4" />
                 </button>
-                <button onClick={() => setChatPopup(null)} className="rounded-full p-1.5 transition-colors hover:bg-white/20">
+                <button onClick={() => setChatPopup(null)} className="rounded-full p-2 transition-colors hover:bg-white/20">
                   <X className="h-4 w-4" />
                 </button>
               </div>
@@ -653,7 +657,10 @@ export default function TimetablePage() {
               </div>
 
               {showMembers && (
-                <div className="absolute inset-y-0 right-0 z-10 flex w-[84vw] max-w-[18rem] flex-col border-l border-slate-200 bg-slate-50 shadow-2xl sm:static sm:w-56 sm:max-w-none sm:shadow-none">
+                <div
+                  className="absolute inset-y-0 right-0 z-10 flex w-[84vw] max-w-[18rem] flex-col border-l border-slate-200 bg-slate-50 shadow-2xl sm:static sm:w-56 sm:max-w-none sm:shadow-none"
+                  style={{ paddingTop: 'var(--safe-top)' }}
+                >
                   <div className="border-b border-slate-200 px-3 py-3 text-xs font-semibold text-slate-500">
                     Members ({chatMembers.length})
                   </div>
@@ -806,7 +813,7 @@ function SetupView({ slots, timetable, topicColorMap, onQueryChange, selectTopic
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => openChat(topicEntries[0]?.room_id, slot.selectedTopic.topic_code, slot.selectedTopic.title)}
+                    onClick={() => openChat(topicEntries[0]?.room_id, slot.selectedTopic.topic_code, slot.selectedTopic.title, slot.selectedTopic.id)}
                     className="h-9 rounded-xl border-blue-200 bg-blue-50 text-xs text-blue-700 hover:bg-blue-100 sm:h-8 sm:w-auto"
                     disabled={!topicEntries[0]?.room_id}
                   >
@@ -958,7 +965,7 @@ function CalendarView({ entries, topicColorMap, openChat, timetable, dragTopic, 
             const color = topicColorMap[topic.id];
             const unread = topicUnread[topic.roomId] || 0;
             return (
-              <button key={topic.id} onClick={() => openChat(topic.roomId, topic.topic_code, topic.title)}
+              <button key={topic.id} onClick={() => openChat(topic.roomId, topic.topic_code, topic.title, topic.id)}
                 className={`relative flex shrink-0 items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-medium ${color?.bg} ${color?.text} ${color?.border} transition-shadow hover:shadow-md`}>
                 <MessageSquare className="h-3 w-3" />{topic.topic_code}
                 {unread > 0 && (
@@ -1051,7 +1058,7 @@ function CalendarView({ entries, topicColorMap, openChat, timetable, dragTopic, 
                 const color = topicColorMap[entry.topic?.id];
                 const blockUnread = topicUnread[entry.room_id] || 0;
                 return (
-                  <button key={entry.id} onClick={() => openChat(entry.room_id, entry.topic?.topic_code, entry.topic?.title)}
+                  <button key={entry.id} onClick={() => openChat(entry.room_id, entry.topic?.topic_code, entry.topic?.title, entry.topic?.id)}
                     className={`absolute rounded-lg p-1.5 overflow-hidden cursor-pointer hover:shadow-lg hover:ring-2 hover:ring-blue-400 transition-all border ${color?.bg || 'bg-blue-100'} ${color?.border || 'border-blue-300'} ${color?.text || 'text-blue-800'}`}
                     style={{ top: `${top}px`, height: `${Math.max(height, 28)}px`, left, width }}>
                     <div className="text-[11px] font-bold leading-tight truncate">{entry.topic?.topic_code}</div>
