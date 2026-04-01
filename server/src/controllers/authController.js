@@ -577,7 +577,11 @@ async function sendEmailVerification(req, res, next) {
     });
 
     if (error) {
-      return res.status(400).json({ error: error.message });
+      const msg = error.message || '';
+      if (msg.toLowerCase().includes('rate') || msg.toLowerCase().includes('limit') || msg.toLowerCase().includes('exceeded')) {
+        return res.status(429).json({ error: 'Email sending limit reached. Please wait a few minutes and try again.' });
+      }
+      return res.status(400).json({ error: msg });
     }
 
     res.json({ message: 'Verification code sent', email });

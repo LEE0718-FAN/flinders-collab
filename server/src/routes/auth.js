@@ -30,9 +30,10 @@ const loginLimiter = rateLimit({
 
 const signupLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 5,
+  max: 30,
   standardHeaders: true,
   legacyHeaders: false,
+  keyGenerator: (req) => req.body?.email || req.ip,
   message: { error: 'Too many signup attempts. Please try again in 15 minutes.' },
 });
 
