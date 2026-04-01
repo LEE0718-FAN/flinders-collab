@@ -1,9 +1,21 @@
 import { useEffect, useCallback } from 'react';
 import { useAuthStore } from '@/store/authStore';
-import { apiSignup, apiLogin, apiLogout, apiUpdateProfile, apiGuestLogin, apiGuestCleanup, apiRequestPasswordReset, apiRefreshSession, apiGetMe, apiCompleteSignup } from '@/services/auth';
+import {
+  apiSignup,
+  apiLogin,
+  apiLogout,
+  apiUpdateProfile,
+  apiGuestLogin,
+  apiGuestCleanup,
+  apiRequestPasswordReset,
+  apiVerifyPasswordResetCode,
+  apiCompletePasswordReset,
+  apiRefreshSession,
+  apiGetMe,
+  apiCompleteSignup,
+} from '@/services/auth';
 import { saveSession, loadSession, loadStoredSession, clearSession, isSessionExpired, getSecondsUntilExpiry } from '@/lib/auth-token';
 import { subscribeToPush } from '@/lib/push';
-import { supabase } from '@/lib/supabase';
 
 function buildSessionData(result, fallback = {}) {
   const accountType = result.user.account_type || fallback.account_type || 'flinders';
@@ -260,20 +272,47 @@ export function useAuth() {
       throw new Error('Email is required');
     }
 
-    // Server-side rate limit check (throws on 429)
     await apiRequestPasswordReset(normalizedEmail);
-
-    // Client initiates the actual reset so Supabase JS stores the PKCE
-    // code_verifier in localStorage — required for code exchange on the
-    // reset-password page after the user clicks the email link.
-    const redirectTo = `${window.location.origin}/reset-password`;
-    const { error } = await supabase.auth.resetPasswordForEmail(normalizedEmail, { redirectTo });
-    if (error) {
-      console.warn('[auth] resetPasswordForEmail:', error.message);
-      // Don't throw — server already accepted the request; Supabase may
-      // silently succeed for security (email-existence hiding).
-    }
   }, []);
+
+  const verifyPasswordResetCode = useCallback(async (email, token) => {
+    const normalizedEmail = String(email || '').trim().toLowerCase();
+    const result = await apiVerifyPasswordResetCode(normalizedEmail, token);
+
+    const tempSession = {
+      access_token: result.session.access_token,
+      refresh_token: result.session.refresh_token,
+      expires_at: result.session.expires_at,
+      user: {
+        id: result.user.id,
+        email: result.user.email,
+      },
+    };
+
+    saveSession(tempSession);
+    return tempSession;
+  }, []);
+
+  const completePasswordReset = useCallback(async ({ session: resetSession, password }) => {
+    const tempSession = {
+      access_token: resetSession.access_token,
+      refresh_token: resetSession.refresh_token,
+      expires_at: resetSession.expires_at,
+      user: resetSession.user || { id: 'pending' },
+    };
+    saveSession(tempSession);
+
+    try {
+      const result = await apiCompletePasswordReset(password);
+      clearSession();
+      clearAuth();
+      return result;
+    } catch (err) {
+      clearSession();
+      clearAuth();
+      throw err;
+    }
+  }, [clearAuth]);
 
   const completeSignup = useCallback(async ({ session: otpSession, password, full_name, student_id, major, university, account_type }) => {
     // Temporarily store the OTP session so apiCompleteSignup can use auth headers
@@ -369,5 +408,20 @@ export function useAuth() {
 
   const refreshProfile = useCallback(() => syncProfileFromServer(loadSession() || session), [session, syncProfileFromServer]);
 
-  return { user, session, isLoading, login, signup, completeSignup, logout, updateUser, requestPasswordReset, guestLogin, guestCleanup, refreshProfile };
+  return {
+    user,
+    session,
+    isLoading,
+    login,
+    signup,
+    completeSignup,
+    logout,
+    updateUser,
+    requestPasswordReset,
+    verifyPasswordResetCode,
+    completePasswordReset,
+    guestLogin,
+    guestCleanup,
+    refreshProfile,
+  };
 }

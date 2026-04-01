@@ -9,6 +9,8 @@ export default function LoginForm({
   onSubmit,
   onGuestLogin,
   onRequestPasswordReset,
+  onVerifyPasswordResetCode,
+  onCompletePasswordReset,
   testerModeEnabled = false,
   initialSuccess = '',
   initialEmail = '',
@@ -23,6 +25,11 @@ export default function LoginForm({
   const [resetLoading, setResetLoading] = useState(false);
   const [resetOpen, setResetOpen] = useState(false);
   const [resetEmail, setResetEmail] = useState('');
+  const [resetStep, setResetStep] = useState('email');
+  const [resetCode, setResetCode] = useState(['', '', '', '', '', '']);
+  const [resetSession, setResetSession] = useState(null);
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmResetPassword, setConfirmResetPassword] = useState('');
   const [resetMessage, setResetMessage] = useState('');
   const [resetCooldown, setResetCooldown] = useState(0);
 
@@ -116,7 +123,8 @@ export default function LoginForm({
     try {
       await onRequestPasswordReset?.(normalizedEmail);
       setResetCooldown(RESET_COOLDOWN_SECONDS);
-      setResetMessage(`If an account exists for ${normalizedEmail}, a password reset link has been sent. Please check your inbox and spam folder.`);
+      setResetMessage(`If an account exists for ${normalizedEmail}, a 6-digit reset code has been sent. Please check your inbox and spam folder.`);
+      setResetStep('verify');
     } catch (err) {
       const msg = err.message || 'Failed to send password reset request';
       if (msg === 'Failed to fetch' || msg === 'Load failed') {
@@ -132,10 +140,73 @@ export default function LoginForm({
     }
   };
 
+  const handleResetCodeChange = (index, value) => {
+    if (!/^\d*$/.test(value)) return;
+    const next = [...resetCode];
+    next[index] = value.slice(-1);
+    setResetCode(next);
+  };
+
+  const handleVerifyResetCode = async () => {
+    setError('');
+    setResetMessage('');
+    const token = resetCode.join('');
+
+    if (token.length < 6) {
+      setError('Please enter the full 6-digit reset code.');
+      return;
+    }
+
+    setResetLoading(true);
+    try {
+      const session = await onVerifyPasswordResetCode?.(resetEmail.trim().toLowerCase(), token);
+      setResetSession(session);
+      setResetStep('password');
+      setResetMessage('Code verified. Set your new password.');
+    } catch (err) {
+      setError(err.message || 'Invalid reset code');
+    } finally {
+      setResetLoading(false);
+    }
+  };
+
+  const handleCompletePasswordReset = async () => {
+    setError('');
+    setResetMessage('');
+
+    if (newPassword.length < 6) {
+      setError('Password must be at least 6 characters.');
+      return;
+    }
+
+    if (newPassword !== confirmResetPassword) {
+      setError('Passwords do not match.');
+      return;
+    }
+
+    setResetLoading(true);
+    try {
+      await onCompletePasswordReset?.({ session: resetSession, password: newPassword });
+      setResetMessage('Your password has been updated. You can sign in now.');
+      setResetOpen(false);
+      setSuccess('Your password has been updated. Sign in with the new password.');
+      setPassword('');
+    } catch (err) {
+      setError(err.message || 'Failed to update password');
+    } finally {
+      setResetLoading(false);
+    }
+  };
+
   const openResetDialog = () => {
     setError('');
     setResetMessage('');
     setResetEmail(email.trim().toLowerCase());
+    setResetStep('email');
+    setResetCode(['', '', '', '', '', '']);
+    setResetSession(null);
+    setNewPassword('');
+    setConfirmResetPassword('');
     setResetOpen(true);
   };
 
@@ -288,26 +359,84 @@ export default function LoginForm({
           <DialogHeader>
             <DialogTitle>Reset password</DialogTitle>
             <DialogDescription>
-              Enter your email address. We&apos;ll send you a password reset link.
+              Use a 6-digit verification code to reset your password.
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4">
-            <div className="space-y-2">
-              <label htmlFor="reset-email" className="text-[13px] font-semibold text-foreground/70">Email</label>
-              <div className="relative">
-                <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/40" />
-                <Input
-                  id="reset-email"
-                  type="email"
-                  placeholder="you@university.edu"
-                  value={resetEmail}
-                  onChange={(e) => setResetEmail(e.target.value)}
-                  className="h-12 rounded-xl pl-10 bg-muted/30 border-border/40 focus:bg-white"
-                  disabled={resetLoading}
-                />
+            {resetStep === 'email' && (
+              <div className="space-y-2">
+                <label htmlFor="reset-email" className="text-[13px] font-semibold text-foreground/70">Email</label>
+                <div className="relative">
+                  <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/40" />
+                  <Input
+                    id="reset-email"
+                    type="email"
+                    placeholder="you@university.edu"
+                    value={resetEmail}
+                    onChange={(e) => setResetEmail(e.target.value)}
+                    className="h-12 rounded-xl pl-10 bg-muted/30 border-border/40 focus:bg-white"
+                    disabled={resetLoading}
+                  />
+                </div>
               </div>
-            </div>
+            )}
+
+            {resetStep === 'verify' && (
+              <div className="space-y-3">
+                <p className="text-sm text-muted-foreground">
+                  Enter the 6-digit code sent to <span className="font-semibold text-foreground">{resetEmail}</span>.
+                </p>
+                <div className="flex justify-center gap-2">
+                  {resetCode.map((digit, index) => (
+                    <input
+                      key={index}
+                      type="text"
+                      inputMode="numeric"
+                      maxLength={1}
+                      value={digit}
+                      onChange={(e) => handleResetCodeChange(index, e.target.value)}
+                      className="h-12 w-11 rounded-xl border-2 border-border/40 bg-muted/30 text-center text-lg font-bold focus:border-blue-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all"
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {resetStep === 'password' && (
+              <div className="space-y-3">
+                <div className="space-y-2">
+                  <label htmlFor="new-reset-password" className="text-[13px] font-semibold text-foreground/70">New password</label>
+                  <div className="relative">
+                    <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/40" />
+                    <Input
+                      id="new-reset-password"
+                      type="password"
+                      placeholder="Min. 6 characters"
+                      value={newPassword}
+                      onChange={(e) => setNewPassword(e.target.value)}
+                      className="h-12 rounded-xl pl-10 bg-muted/30 border-border/40 focus:bg-white"
+                      disabled={resetLoading}
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <label htmlFor="confirm-reset-password" className="text-[13px] font-semibold text-foreground/70">Confirm password</label>
+                  <div className="relative">
+                    <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/40" />
+                    <Input
+                      id="confirm-reset-password"
+                      type="password"
+                      placeholder="Repeat password"
+                      value={confirmResetPassword}
+                      onChange={(e) => setConfirmResetPassword(e.target.value)}
+                      className="h-12 rounded-xl pl-10 bg-muted/30 border-border/40 focus:bg-white"
+                      disabled={resetLoading}
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
 
             {resetMessage && (
               <div className="rounded-xl border border-emerald-100 bg-emerald-50 px-4 py-3">
@@ -328,15 +457,35 @@ export default function LoginForm({
             <Button type="button" variant="outline" onClick={() => setResetOpen(false)} disabled={resetLoading} className="w-full sm:w-auto">
               Cancel
             </Button>
-            <Button type="button" onClick={handlePasswordReset} disabled={resetLoading || resetCooldown > 0} className="w-full whitespace-normal sm:w-auto">
-              {resetLoading ? (
-                <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Sending...</>
-              ) : resetCooldown > 0 ? (
-                `Resend in ${formatCooldown(resetCooldown)}`
-              ) : (
-                'Send reset link'
-              )}
-            </Button>
+            {resetStep === 'email' && (
+              <Button type="button" onClick={handlePasswordReset} disabled={resetLoading || resetCooldown > 0} className="w-full whitespace-normal sm:w-auto">
+                {resetLoading ? (
+                  <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Sending...</>
+                ) : resetCooldown > 0 ? (
+                  `Resend in ${formatCooldown(resetCooldown)}`
+                ) : (
+                  'Send reset code'
+                )}
+              </Button>
+            )}
+            {resetStep === 'verify' && (
+              <Button type="button" onClick={handleVerifyResetCode} disabled={resetLoading} className="w-full whitespace-normal sm:w-auto">
+                {resetLoading ? (
+                  <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Verifying...</>
+                ) : (
+                  'Verify code'
+                )}
+              </Button>
+            )}
+            {resetStep === 'password' && (
+              <Button type="button" onClick={handleCompletePasswordReset} disabled={resetLoading} className="w-full whitespace-normal sm:w-auto">
+                {resetLoading ? (
+                  <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Updating...</>
+                ) : (
+                  'Update password'
+                )}
+              </Button>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>

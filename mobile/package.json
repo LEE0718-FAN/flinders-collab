@@ -1,7 +1,7 @@
 {
   "name": "flinders-collab-mobile",
   "version": "1.0.0",
-  "main": "expo-router/entry",
+  "main": "App.js",
   "scripts": {
     "start": "expo start",
     "android": "expo start --android",
@@ -11,7 +11,7 @@
   "dependencies": {
     "expo": "~55.0.0",
     "expo-status-bar": "~2.2.0",
-    "react": "18.3.2",
+    "react": "^19.0.0",
     "react-native": "0.79.2",
     "@react-navigation/native": "^7.0.0",
     "@react-navigation/native-stack": "^7.0.0",

@@ -66,13 +66,31 @@ export async function apiRefreshSession(refreshToken) {
 }
 
 export async function apiRequestPasswordReset(email) {
-  const res = await fetch(apiUrl('/api/auth/password/reset'), {
+  const res = await fetch(apiUrl('/api/auth/password/reset/send'), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ email }),
   });
   const data = await parseResponse(res);
   return data;
+}
+
+export async function apiVerifyPasswordResetCode(email, token) {
+  const res = await fetch(apiUrl('/api/auth/password/reset/confirm'), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, token }),
+  });
+  return parseResponse(res);
+}
+
+export async function apiCompletePasswordReset(password) {
+  const res = await fetch(apiUrl('/api/auth/password/reset/complete'), {
+    method: 'POST',
+    headers: getAuthHeaders(),
+    body: JSON.stringify({ password }),
+  });
+  return parseResponse(res);
 }
 
 export async function apiLogout(accessToken) {

@@ -1,98 +1,82 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Loader2, Lock } from 'lucide-react';
+import { Loader2, Lock, Mail } from 'lucide-react';
 import AuthLayout from '@/layouts/AuthLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { supabase } from '@/lib/supabase';
+import { useAuth } from '@/hooks/useAuth';
+
+const RESET_COOLDOWN_SECONDS = 60;
 
 export default function ResetPasswordPage() {
   const navigate = useNavigate();
+  const { requestPasswordReset, verifyPasswordResetCode, completePasswordReset } = useAuth();
+  const [step, setStep] = useState('email');
+  const [email, setEmail] = useState('');
+  const [code, setCode] = useState(['', '', '', '', '', '']);
+  const [resetSession, setResetSession] = useState(null);
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
-  const [checking, setChecking] = useState(true);
-  const [ready, setReady] = useState(false);
+  const [cooldown, setCooldown] = useState(0);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
   useEffect(() => {
-    let active = true;
+    if (cooldown <= 0) return undefined;
+    const timer = window.setInterval(() => {
+      setCooldown((prev) => (prev <= 1 ? 0 : prev - 1));
+    }, 1000);
+    return () => window.clearInterval(timer);
+  }, [cooldown]);
 
-    const initRecovery = async () => {
-      const params = new URLSearchParams(window.location.search);
-      const hash = new URLSearchParams(window.location.hash.replace(/^#/, ''));
-      const code = params.get('code') || '';
-      const tokenHash = params.get('token_hash') || '';
-      const accessToken = hash.get('access_token') || '';
-      const refreshToken = hash.get('refresh_token') || '';
+  const sendCode = async () => {
+    const normalizedEmail = email.trim().toLowerCase();
+    setError('');
+    setSuccess('');
 
-      // Attempt to establish a session from recovery params
-      try {
-        if (code) {
-          const { error: err } = await supabase.auth.exchangeCodeForSession(code);
-          if (err) console.warn('[reset] code exchange:', err.message);
-        } else if (tokenHash) {
-          const { error: err } = await supabase.auth.verifyOtp({
-            token_hash: tokenHash,
-            type: 'recovery',
-          });
-          if (err) console.warn('[reset] verifyOtp:', err.message);
-        } else if (accessToken && refreshToken) {
-          const { error: err } = await supabase.auth.setSession({
-            access_token: accessToken,
-            refresh_token: refreshToken,
-          });
-          if (err) console.warn('[reset] setSession:', err.message);
-        }
-      } catch (e) {
-        // Code may already have been consumed by detectSessionInUrl — that's OK
-        console.warn('[reset] exchange attempt error (may be normal):', e.message);
-      }
+    if (!normalizedEmail) {
+      setError('Email is required.');
+      return;
+    }
 
-      if (!active) return;
+    setLoading(true);
+    try {
+      await requestPasswordReset(normalizedEmail);
+      setCooldown(RESET_COOLDOWN_SECONDS);
+      setStep('verify');
+      setSuccess(`If an account exists for ${normalizedEmail}, a 6-digit code has been sent.`);
+    } catch (err) {
+      setError(err.message || 'Failed to send reset code.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
-      // Regardless of exchange result, check if we have a valid session now
-      try {
-        const { data } = await supabase.auth.getSession();
-        if (!active) return;
+  const verifyCode = async () => {
+    setError('');
+    setSuccess('');
+    const token = code.join('');
 
-        if (data.session) {
-          setReady(true);
-          setError('');
-          if (window.location.hash || window.location.search) {
-            window.history.replaceState({}, document.title, '/reset-password');
-          }
-        } else {
-          setError('This reset link is invalid or has expired. Please request a new one.');
-        }
-      } catch (e) {
-        if (!active) return;
-        setError('Unable to connect. Please check your internet connection and try again.');
-      }
+    if (token.length < 6) {
+      setError('Please enter the full 6-digit code.');
+      return;
+    }
 
-      if (active) setChecking(false);
-    };
+    setLoading(true);
+    try {
+      const session = await verifyPasswordResetCode(email.trim().toLowerCase(), token);
+      setResetSession(session);
+      setStep('password');
+      setSuccess('Code verified. Set your new password.');
+    } catch (err) {
+      setError(err.message || 'Invalid reset code.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    initRecovery();
-
-    // Backup: listen for auth state changes (Supabase may auto-detect recovery from URL)
-    const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
-      if (!active) return;
-      if ((event === 'PASSWORD_RECOVERY' || event === 'SIGNED_IN') && session) {
-        setReady(true);
-        setError('');
-        setChecking(false);
-      }
-    });
-
-    return () => {
-      active = false;
-      authListener.subscription.unsubscribe();
-    };
-  }, []);
-
-  const handleSubmit = async (event) => {
+  const updatePassword = async (event) => {
     event.preventDefault();
     setError('');
     setSuccess('');
@@ -109,19 +93,11 @@ export default function ResetPasswordPage() {
 
     setLoading(true);
     try {
-      const { error: updateError } = await supabase.auth.updateUser({ password });
-      if (updateError) throw updateError;
-
+      await completePasswordReset({ session: resetSession, password });
       setSuccess('Your password has been updated. Redirecting to login...');
-      await supabase.auth.signOut();
       window.setTimeout(() => navigate('/login', { replace: true }), 1200);
     } catch (err) {
-      const msg = err.message || '';
-      if (msg === 'Failed to fetch' || msg === 'Load failed') {
-        setError('Unable to connect. Please check your internet connection and try again.');
-      } else {
-        setError(msg || 'Failed to update password.');
-      }
+      setError(err.message || 'Failed to update password.');
     } finally {
       setLoading(false);
     }
@@ -132,15 +108,75 @@ export default function ResetPasswordPage() {
       <div className="space-y-5">
         <div className="text-center space-y-1">
           <h2 className="text-2xl font-bold tracking-tight">Reset password</h2>
-          <p className="text-sm text-muted-foreground/70">Set a new password for your account</p>
+          <p className="text-sm text-muted-foreground/70">Use a 6-digit verification code to update your password</p>
         </div>
 
-        {checking ? (
-          <div className="flex items-center justify-center rounded-xl border border-border/40 bg-muted/20 px-4 py-8">
-            <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+        {step === 'email' && (
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <label htmlFor="reset-email" className="text-[13px] font-semibold text-foreground/70">Email</label>
+              <div className="relative">
+                <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/40" />
+                <Input
+                  id="reset-email"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="you@university.edu"
+                  className="h-12 rounded-xl pl-10 bg-muted/30 border-border/40 focus:bg-white"
+                  disabled={loading}
+                />
+              </div>
+            </div>
+
+            <Button
+              type="button"
+              onClick={sendCode}
+              disabled={loading || cooldown > 0}
+              className="w-full h-12 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 font-semibold text-[15px] shadow-lg shadow-blue-600/20 text-white"
+            >
+              {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {loading ? 'Sending...' : cooldown > 0 ? `Resend in ${cooldown}s` : 'Send reset code'}
+            </Button>
           </div>
-        ) : (
-          <form onSubmit={handleSubmit} className="space-y-4">
+        )}
+
+        {step === 'verify' && (
+          <div className="space-y-4">
+            <p className="text-center text-sm text-muted-foreground">
+              Enter the 6-digit code sent to <span className="font-semibold text-foreground">{email}</span>.
+            </p>
+            <div className="flex justify-center gap-2">
+              {code.map((digit, index) => (
+                <input
+                  key={index}
+                  type="text"
+                  inputMode="numeric"
+                  maxLength={1}
+                  value={digit}
+                  onChange={(e) => {
+                    if (!/^\d*$/.test(e.target.value)) return;
+                    const next = [...code];
+                    next[index] = e.target.value.slice(-1);
+                    setCode(next);
+                  }}
+                  className="h-12 w-11 rounded-xl border-2 border-border/40 bg-muted/30 text-center text-lg font-bold focus:border-blue-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all"
+                />
+              ))}
+            </div>
+            <div className="flex gap-2">
+              <Button type="button" variant="outline" onClick={() => setStep('email')} className="flex-1">
+                Back
+              </Button>
+              <Button type="button" onClick={verifyCode} disabled={loading} className="flex-1">
+                {loading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Verifying...</> : 'Verify code'}
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {step === 'password' && (
+          <form onSubmit={updatePassword} className="space-y-4">
             <div className="space-y-2">
               <label htmlFor="new-password" className="text-[13px] font-semibold text-foreground/70">New password</label>
               <div className="relative">
@@ -152,11 +188,10 @@ export default function ResetPasswordPage() {
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="Min. 6 characters"
                   className="h-12 rounded-xl pl-10 bg-muted/30 border-border/40 focus:bg-white"
-                  disabled={!ready || loading}
+                  disabled={loading}
                 />
               </div>
             </div>
-
             <div className="space-y-2">
               <label htmlFor="confirm-password" className="text-[13px] font-semibold text-foreground/70">Confirm password</label>
               <div className="relative">
@@ -166,39 +201,38 @@ export default function ResetPasswordPage() {
                   type="password"
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
-                  placeholder="Re-enter password"
+                  placeholder="Repeat password"
                   className="h-12 rounded-xl pl-10 bg-muted/30 border-border/40 focus:bg-white"
-                  disabled={!ready || loading}
+                  disabled={loading}
                 />
               </div>
             </div>
-
-            {success && (
-              <div className="rounded-xl border border-emerald-100 bg-emerald-50 px-4 py-3">
-                <p className="text-sm text-emerald-700">{success}</p>
-              </div>
-            )}
-
-            {error && (
-              <div className="rounded-xl border border-red-100 bg-red-50 px-4 py-3">
-                <p className="text-sm text-red-700">{error}</p>
-              </div>
-            )}
-
             <Button
               type="submit"
-              disabled={!ready || loading}
+              disabled={loading}
               className="w-full h-12 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 font-semibold text-[15px] shadow-lg shadow-blue-600/20 text-white"
             >
               {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               {loading ? 'Updating...' : 'Update password'}
             </Button>
-
-            <p className="text-center text-sm text-muted-foreground">
-              <Link to="/login" className="font-semibold text-blue-600 hover:text-blue-700">Back to login</Link>
-            </p>
           </form>
         )}
+
+        {success && (
+          <div className="rounded-xl border border-emerald-100 bg-emerald-50 px-4 py-3">
+            <p className="text-sm text-emerald-700">{success}</p>
+          </div>
+        )}
+
+        {error && (
+          <div className="rounded-xl border border-red-100 bg-red-50 px-4 py-3">
+            <p className="text-sm text-red-700">{error}</p>
+          </div>
+        )}
+
+        <p className="text-center text-sm text-muted-foreground">
+          <Link to="/login" className="font-semibold text-blue-600 hover:text-blue-700">Back to login</Link>
+        </p>
       </div>
     </AuthLayout>
   );

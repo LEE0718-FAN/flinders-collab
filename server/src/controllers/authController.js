@@ -53,8 +53,10 @@ function resolveEmailVerificationRedirectUrl(req) {
   }
 }
 
-// In-memory rate limit for password reset (email → timestamp)
+// In-memory rate limits (email → timestamp)
+const _signupVerificationCooldowns = new Map();
 const _resetCooldowns = new Map();
+const VERIFY_EMAIL_COOLDOWN_MS = 60 * 1000; // 60 seconds
 const RESET_COOLDOWN_MS = 2 * 60 * 1000; // 2 minutes
 
 async function ignoreQueryError(query) {
@@ -243,8 +245,8 @@ async function refreshSession(req, res, next) {
 }
 
 /**
- * POST /auth/password/reset
- * Send a password reset email via Supabase Auth (service role key).
+ * POST /auth/password/reset/send
+ * Send a password reset code via Supabase Auth recovery email.
  */
 async function requestPasswordReset(req, res, next) {
   try {
@@ -263,17 +265,87 @@ async function requestPasswordReset(req, res, next) {
       });
     }
 
-    // Set cooldown immediately to prevent timing attacks on email existence
+    // Set cooldown immediately to prevent timing attacks on email existence.
     _resetCooldowns.set(email, Date.now());
 
-    // The actual resetPasswordForEmail call is made from the CLIENT so that
-    // the Supabase JS SDK can generate and store a PKCE code_verifier in the
-    // browser.  This endpoint only enforces the server-side rate limit.
+    const { error } = await supabasePublic.auth.resetPasswordForEmail(email);
 
-    // Always return same response regardless of email existence
+    if (error) {
+      const message = String(error.message || '').toLowerCase();
+      if (message.includes('rate') || message.includes('limit') || message.includes('too many')) {
+        return res.status(429).json({
+          error: 'Please wait a moment before requesting another reset code.',
+        });
+      }
+    }
+
     res.json({
-      message: 'If an account exists for that email, a password reset link has been sent.',
+      message: 'If an account exists for that email, a 6-digit reset code has been sent.',
     });
+  } catch (err) {
+    next(err);
+  }
+}
+
+/**
+ * POST /auth/password/reset/confirm
+ * Verify the password reset code and return a temporary session.
+ */
+async function verifyPasswordResetCode(req, res, next) {
+  try {
+    const email = String(req.body.email || '').trim().toLowerCase();
+    const token = String(req.body.token || '').trim();
+
+    if (!email || !token) {
+      return res.status(400).json({ error: 'Email and reset code are required' });
+    }
+
+    const { data, error } = await supabasePublic.auth.verifyOtp({
+      email,
+      token,
+      type: 'recovery',
+    });
+
+    if (error || !data?.session || !data?.user) {
+      return res.status(400).json({ error: 'Invalid or expired reset code. Please request a new one.' });
+    }
+
+    res.json({
+      message: 'Reset code verified',
+      session: {
+        access_token: data.session.access_token,
+        refresh_token: data.session.refresh_token,
+        expires_at: data.session.expires_at,
+      },
+      user: {
+        id: data.user.id,
+        email: data.user.email,
+      },
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
+/**
+ * POST /auth/password/reset/complete
+ * Update the password after a verified reset-code session.
+ */
+async function completePasswordReset(req, res, next) {
+  try {
+    const userId = req.user.id;
+    const password = String(req.body.password || '');
+
+    if (password.length < 6) {
+      return res.status(400).json({ error: 'Password must be at least 6 characters' });
+    }
+
+    const { error } = await supabaseAdmin.auth.admin.updateUserById(userId, { password });
+    if (error) {
+      return res.status(500).json({ error: 'Failed to update password. Please try again.' });
+    }
+
+    res.json({ message: 'Password updated successfully' });
   } catch (err) {
     next(err);
   }
@@ -571,6 +643,14 @@ async function sendEmailVerification(req, res, next) {
       return res.status(409).json({ error: 'An account with this email already exists. Please sign in instead.' });
     }
 
+    const lastSentAt = _signupVerificationCooldowns.get(email);
+    if (lastSentAt && Date.now() - lastSentAt < VERIFY_EMAIL_COOLDOWN_MS) {
+      const remainSec = Math.ceil((VERIFY_EMAIL_COOLDOWN_MS - (Date.now() - lastSentAt)) / 1000);
+      return res.status(429).json({
+        error: `A verification code was already sent. Please wait ${remainSec} seconds before requesting another code.`,
+      });
+    }
+
     const { error } = await supabasePublic.auth.signInWithOtp({
       email,
       options: { shouldCreateUser: true },
@@ -584,6 +664,8 @@ async function sendEmailVerification(req, res, next) {
       }
       return res.status(400).json({ error: msg });
     }
+
+    _signupVerificationCooldowns.set(email, Date.now());
 
     res.json({ message: 'Verification code sent', email });
   } catch (err) {
@@ -837,6 +919,8 @@ module.exports = {
   login,
   refreshSession,
   requestPasswordReset,
+  verifyPasswordResetCode,
+  completePasswordReset,
   logout,
   getMe,
   getPreferences,

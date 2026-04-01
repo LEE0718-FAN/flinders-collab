@@ -1,5 +1,8 @@
 import { API_URL } from './config';
 import { supabase } from './supabase';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+const SESSION_KEY = 'flinders_session';
 
 /**
  * Get the current session's access token from Supabase.
@@ -7,7 +10,15 @@ import { supabase } from './supabase';
  */
 async function getAccessToken() {
   const { data } = await supabase.auth.getSession();
-  return data?.session?.access_token || null;
+  if (data?.session?.access_token) return data.session.access_token;
+
+  try {
+    const rawSession = await AsyncStorage.getItem(SESSION_KEY);
+    const parsed = rawSession ? JSON.parse(rawSession) : null;
+    return parsed?.access_token || null;
+  } catch {
+    return null;
+  }
 }
 
 /**

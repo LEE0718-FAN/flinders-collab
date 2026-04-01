@@ -52,13 +52,6 @@ export const useAuthStore = create((set, get) => ({
     return data;
   },
 
-  /** Signup action */
-  signup: async (userData) => {
-    const { signup: authSignup } = await import('../services/auth');
-    const data = await authSignup(userData);
-    return data;
-  },
-
   /** Logout action — clears session from store and AsyncStorage */
   logout: async () => {
     try {

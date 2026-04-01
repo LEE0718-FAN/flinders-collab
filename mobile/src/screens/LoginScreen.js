@@ -26,8 +26,6 @@ export function LoginScreen({ navigation }) {
     const newErrors = {};
     if (!email.trim()) {
       newErrors.email = 'Email is required';
-    } else if (!email.toLowerCase().endsWith('@flinders.edu.au')) {
-      newErrors.email = 'Must use a @flinders.edu.au email address';
     }
     if (!password) {
       newErrors.password = 'Password is required';
@@ -106,6 +104,13 @@ export function LoginScreen({ navigation }) {
           </Button>
 
           <TouchableOpacity
+            style={styles.resetLink}
+            onPress={() => navigation.navigate('ResetPassword')}
+          >
+            <Text style={styles.resetLinkText}>Forgot password?</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
             style={styles.signupLink}
             onPress={() => navigation.navigate('Signup')}
           >
@@ -175,6 +180,15 @@ const styles = StyleSheet.create({
   },
   loginBtn: {
     marginTop: 8,
+  },
+  resetLink: {
+    marginTop: 14,
+    alignItems: 'center',
+  },
+  resetLinkText: {
+    fontSize: 14,
+    color: colors.accent,
+    fontWeight: '600',
   },
   signupLink: {
     marginTop: 20,

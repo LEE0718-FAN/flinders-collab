@@ -6,7 +6,7 @@ import ReportButton from '@/components/ReportButton';
 import { useAuth } from '@/hooks/useAuth';
 
 export default function LoginPage() {
-  const { login, guestLogin, requestPasswordReset } = useAuth();
+  const { login, guestLogin, requestPasswordReset, verifyPasswordResetCode, completePasswordReset } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const testerModeEnabled = import.meta.env.DEV || import.meta.env.VITE_ENABLE_TESTER_MODE === 'true';
@@ -41,6 +41,14 @@ export default function LoginPage() {
     await requestPasswordReset(email);
   };
 
+  const handleVerifyPasswordResetCode = async (email, token) => {
+    return verifyPasswordResetCode(email, token);
+  };
+
+  const handleCompletePasswordReset = async ({ session, password }) => {
+    return completePasswordReset({ session, password });
+  };
+
   const verifiedNotice = typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('verified') === '1'
     ? 'Your email has been verified. You can sign in now.'
     : '';
@@ -52,6 +60,8 @@ export default function LoginPage() {
           onSubmit={handleLogin}
           onGuestLogin={handleGuestLogin}
           onRequestPasswordReset={handlePasswordReset}
+          onVerifyPasswordResetCode={handleVerifyPasswordResetCode}
+          onCompletePasswordReset={handleCompletePasswordReset}
           testerModeEnabled={testerModeEnabled}
           initialSuccess={signupNotice || verifiedNotice}
           initialEmail={signupEmail}

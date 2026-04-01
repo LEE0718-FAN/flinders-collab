@@ -8,19 +8,25 @@ export async function login(email, password) {
   return api.post('/api/auth/login', { email, password });
 }
 
-/**
- * Register a new Flinders student account.
- * @param {{ email, password, full_name, student_id, major }} userData
- * Returns { message, user }.
- */
-export async function signup({ email, password, full_name, student_id, major }) {
-  return api.post('/api/auth/signup', {
+export async function sendSignupVerification(email, accountType = 'flinders') {
+  return api.post('/api/auth/verify-email/send', {
     email,
+    account_type: accountType,
+  });
+}
+
+export async function verifySignupCode(email, token) {
+  return api.post('/api/auth/verify-email/confirm', { email, token });
+}
+
+export async function completeSignup({ password, full_name, student_id, major, university, account_type }) {
+  return api.post('/api/auth/complete-signup', {
     password,
     full_name,
     student_id,
     major,
-    account_type: 'flinders',
+    university,
+    account_type,
   });
 }
 
@@ -49,5 +55,13 @@ export async function refreshSession(refreshToken) {
  * Send a password reset email.
  */
 export async function requestPasswordReset(email) {
-  return api.post('/api/auth/password/reset', { email });
+  return api.post('/api/auth/password/reset/send', { email });
+}
+
+export async function verifyPasswordResetCode(email, token) {
+  return api.post('/api/auth/password/reset/confirm', { email, token });
+}
+
+export async function completePasswordReset(password) {
+  return api.post('/api/auth/password/reset/complete', { password });
 }

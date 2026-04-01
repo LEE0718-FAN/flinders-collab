@@ -55,8 +55,17 @@ router.post('/login', loginLimiter, loginValidation, validate, authController.lo
 // POST /auth/refresh - Refresh session using refresh token
 router.post('/refresh', authController.refreshSession);
 
-// POST /auth/password/reset - Send password reset email
+// POST /auth/password/reset - Backward-compatible alias for sending a reset code
 router.post('/password/reset', loginLimiter, passwordResetValidation, validate, authController.requestPasswordReset);
+
+// POST /auth/password/reset/send - Send password reset code
+router.post('/password/reset/send', loginLimiter, passwordResetValidation, validate, authController.requestPasswordReset);
+
+// POST /auth/password/reset/confirm - Verify password reset code
+router.post('/password/reset/confirm', loginLimiter, authController.verifyPasswordResetCode);
+
+// POST /auth/password/reset/complete - Set a new password after reset verification
+router.post('/password/reset/complete', authenticate, authController.completePasswordReset);
 
 // POST /auth/logout - Sign out (requires auth)
 router.post('/logout', authenticate, authController.logout);
