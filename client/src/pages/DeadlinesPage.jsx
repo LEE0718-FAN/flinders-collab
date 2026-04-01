@@ -80,13 +80,13 @@ export default function DeadlinesPage() {
   return (
     <>
       <OnboardingTour
-        tourId="deadlines"
+        tourId="deadlines-onboarding"
         steps={[
           {
             target: null,
-            title: 'Your Deadlines',
-            description: 'All your deadlines from every room, in one place. Never miss a thing!',
-            icon: '\u{1F4C5}',
+            title: 'Deadlines',
+            description: 'All events and deadlines from every room you\'ve joined — collected in one place so you never miss anything!',
+            icon: '⏰',
           },
         ]}
       />

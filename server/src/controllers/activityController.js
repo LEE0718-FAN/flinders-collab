@@ -102,7 +102,7 @@ function addUnreadCounts(rows, lastVisitedByRoom, counts) {
   }
 }
 
-async function getUnreadActivityCounts(memberships) {
+async function getUnreadActivityCounts(memberships, userId) {
   const roomIds = memberships.map((membership) => membership.room_id).filter(Boolean);
   if (roomIds.length === 0) return {};
 
@@ -132,6 +132,7 @@ async function getUnreadActivityCounts(memberships) {
         .from('messages')
         .select('room_id, created_at')
         .in('room_id', roomIds)
+        .neq('user_id', userId)
     ),
     applyDateFloor(
       supabaseAdmin
@@ -139,18 +140,21 @@ async function getUnreadActivityCounts(memberships) {
         .select('room_id, created_at')
         .in('room_id', roomIds)
         .is('deleted_at', null)
+        .neq('uploaded_by', userId)
     ),
     applyDateFloor(
       supabaseAdmin
         .from('events')
         .select('room_id, created_at')
         .in('room_id', roomIds)
+        .neq('created_by', userId)
     ),
     applyDateFloor(
       supabaseAdmin
         .from('tasks')
         .select('room_id, created_at')
         .in('room_id', roomIds)
+        .neq('assigned_by', userId)
     ),
   ]);
 
@@ -208,7 +212,7 @@ async function getActivitySummary(req, res, next) {
       return res.json(cached);
     }
 
-    const summary = await getUnreadActivityCounts(memberships || []);
+    const summary = await getUnreadActivityCounts(memberships || [], userId);
     setCacheEntry(activitySummaryCache, cacheKey, summary);
     res.json(summary);
   } catch (err) {

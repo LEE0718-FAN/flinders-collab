@@ -8,6 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import PageTour from '@/components/PageTour';
+import OnboardingTour from '@/components/OnboardingTour';
 
 export default function FlindersSocialPage() {
   const { user, updateUser } = useAuth();
@@ -73,6 +74,23 @@ export default function FlindersSocialPage() {
 
   return (
     <div className="px-0.5 py-1.5 sm:px-0 sm:py-3">
+      <OnboardingTour
+        tourId="where-are-you-onboarding"
+        steps={[
+          {
+            target: null,
+            title: 'Where are you?',
+            description: 'Share your campus location so friends can see who\'s around!',
+            icon: '📍',
+          },
+          {
+            target: null,
+            title: 'Heads up!',
+            description: 'Your location is only visible while you\'re on campus. Once you leave, it\'s automatically removed — nothing is stored!',
+            icon: '⚠️',
+          },
+        ]}
+      />
       <Dialog open={gateOpen}>
         <DialogContent className="w-[min(calc(100vw-1rem),28rem)] rounded-2xl sm:max-w-md">
           <DialogHeader>

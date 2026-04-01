@@ -238,7 +238,7 @@ export default function OnboardingTour({ tourId, steps = [], delay = 600 }) {
     }
   };
 
-  if (!isTester || !active || steps.length === 0) return null;
+  if (!active || steps.length === 0) return null;
 
   const s = steps[step];
   const isLast = step === steps.length - 1;

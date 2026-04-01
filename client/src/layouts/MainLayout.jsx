@@ -94,12 +94,16 @@ function NavItem({ to, isActive, icon: Icon, label, palette, badgeCount = 0, bad
               : 'text-slate-500 group-hover:text-slate-300'
           }`}
         />
-        <span className="min-w-0 flex flex-1 items-center gap-2">
+        <span className="min-w-0 flex flex-1 items-center gap-1.5">
           <span className="min-w-0 truncate">{label}</span>
           {hasBadge && (
-            <span className="inline-flex h-5 min-w-5 max-w-[5.5rem] items-center justify-center rounded-full bg-rose-500 px-2 text-[10px] font-bold tabular-nums text-white shadow-sm whitespace-nowrap">
-              {badgeLabel || (badgeCount > 99 ? '99+' : badgeCount)}
-            </span>
+            badgeLabel
+              ? <span className="inline-flex h-[16px] items-center justify-center rounded-full bg-rose-500 px-1.5 text-[8px] font-bold text-white shadow-sm whitespace-nowrap shrink-0">
+                  {badgeLabel}
+                </span>
+              : <span className="inline-flex h-5 min-w-5 max-w-[5.5rem] items-center justify-center rounded-full bg-rose-500 px-2 text-[10px] font-bold tabular-nums text-white shadow-sm whitespace-nowrap shrink-0">
+                  {badgeCount > 99 ? '99+' : badgeCount}
+                </span>
           )}
         </span>
         <ChevronRight className={`ml-2 h-3.5 w-3.5 shrink-0 text-slate-400 transition-opacity ${isActive ? 'opacity-40' : 'opacity-0'}`} />
@@ -515,6 +519,12 @@ export default function MainLayout({ children }) {
       const safeTimestamp = Number(timestamp || Date.now());
       setRoomLastVisitedMap((prev) => ({ ...prev, [roomId]: safeTimestamp }));
       setRecentActivityCounts((prev) => {
+        if (!(roomId in prev)) return prev;
+        const next = { ...prev };
+        delete next[roomId];
+        return next;
+      });
+      setAnnouncementUnreadCounts((prev) => {
         if (!(roomId in prev)) return prev;
         const next = { ...prev };
         delete next[roomId];

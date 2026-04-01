@@ -16,6 +16,7 @@ import { getFriendRequests, sendFriendRequest, respondToFriendRequest } from '@/
 import { socket } from '@/lib/socket';
 import { avatarThumb } from '@/lib/avatar';
 import PageTour from '@/components/PageTour';
+import OnboardingTour from '@/components/OnboardingTour';
 
 const ChatPanel = lazy(() => import('@/components/chat/ChatPanel'));
 
@@ -438,6 +439,24 @@ export default function TimetablePage() {
 
   return (
     <div className="min-h-full bg-gradient-to-b from-slate-50 to-white">
+      <OnboardingTour
+        tourId="timetable-onboarding"
+        steps={[
+          {
+            target: null,
+            title: 'Timetable Buddy',
+            description: 'Add your classes and chat with students taking the same course!',
+            icon: '📅',
+          },
+          {
+            target: '[data-tour="timetable-course-list"]',
+            title: 'Chat with classmates',
+            description: 'Tap a course to open its chat — talk with anyone enrolled in the same class.',
+            icon: '💬',
+            position: 'bottom',
+          },
+        ]}
+      />
       <PageTour
         tourId="timetable"
         steps={[
