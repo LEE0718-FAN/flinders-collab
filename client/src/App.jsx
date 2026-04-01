@@ -4,6 +4,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { ToastProvider } from '@/components/ui/toast';
 import ErrorBoundary from '@/components/ErrorBoundary';
+import InteractiveTutorial from '@/components/InteractiveTutorial';
 import MainLayout from '@/layouts/MainLayout';
 import { Loader2 } from 'lucide-react';
 import { loadSession, clearSession, saveSession } from '@/lib/auth-token';
@@ -91,15 +92,14 @@ function useViewportMetrics() {
 function lazyRetry(importFn) {
   return lazy(() =>
     importFn().catch(() => {
-      // If chunk fails to load (hash mismatch after deploy), reload once
       const reloaded = sessionStorage.getItem('chunk_reload');
       if (!reloaded) {
         sessionStorage.setItem('chunk_reload', '1');
         window.location.reload();
-        return new Promise(() => {}); // never resolves — page is reloading
+        return new Promise(() => {});
       }
       sessionStorage.removeItem('chunk_reload');
-      return importFn(); // second attempt after reload
+      return importFn();
     })
   );
 }
@@ -239,6 +239,7 @@ export default function App() {
       <ToastProvider>
         <TooltipProvider>
           <BrowserRouter>
+            <InteractiveTutorial />
             <Routes>
               <Route path="/" element={<Navigate to="/dashboard" replace />} />
               <Route path="/login" element={<Suspense fallback={<PageLoader />}><PublicRoute><LoginPage /></PublicRoute></Suspense>} />

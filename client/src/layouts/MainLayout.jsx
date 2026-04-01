@@ -53,14 +53,8 @@ function NavItem({ to, isActive, icon: Icon, label, palette, badgeCount = 0, bad
 
   const activeAccentColor = palette ? palette.icon : '#818cf8';
   const hasBadge = Boolean(badgeLabel) || badgeCount > 0;
-  const isPromoBadge = Boolean(badgeLabel);
-  const handleClick = () => {
-    if (!tourId || typeof window === 'undefined') return;
-    window.sessionStorage.setItem('page-tour-trigger', tourId);
-  };
-
   return (
-    <Link to={to} onClick={handleClick}>
+    <Link to={to}>
       <button
         data-tour={tourId}
         onMouseEnter={onIntent}
