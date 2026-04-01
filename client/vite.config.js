@@ -17,6 +17,7 @@ export default defineConfig({
           'vendor-supabase': ['@supabase/supabase-js'],
           'vendor-socket': ['socket.io-client'],
           'vendor-date': ['date-fns'],
+          'vendor-icons': ['lucide-react'],
           'vendor-radix': [
             '@radix-ui/react-dialog',
             '@radix-ui/react-tabs',
