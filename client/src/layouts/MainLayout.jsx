@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { LayoutDashboard, LogOut, Menu, Users, ChevronRight, Shield, User, CalendarClock, CalendarDays, MapPinned, Wrench, GraduationCap, Settings, Mail } from 'lucide-react';
+import { LayoutDashboard, LogOut, Menu, Users, ChevronRight, Shield, User, CalendarClock, CalendarDays, MapPinned, Wrench, GraduationCap, Settings, Mail, X, Info, AlertTriangle, CheckCircle2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
@@ -20,7 +20,7 @@ import { applyRoomOrder } from '@/lib/room-order';
 import { getCachedPreferences, hydratePreferences } from '@/lib/preferences';
 import { avatarThumb } from '@/lib/avatar';
 import { preloadRoute } from '@/lib/route-preload';
-import { getUnreadCounts } from '@/services/announcements';
+import { getUnreadCounts, getActiveAnnouncements } from '@/services/announcements';
 import { syncAppBadge } from '@/lib/app-badge';
 
 const ROOM_NAVIGATION_UPDATED_EVENT = 'rooms-updated';
@@ -135,6 +135,7 @@ function SidebarContent({ rooms, location, isAdmin, roomBadgeCounts = {}, user, 
           icon={CalendarDays}
           label="Timetable Buddy"
           tourId="nav-timetable"
+          badgeLabel="NEW!"
           onIntent={() => preloadRoute('/timetable')}
         />
       )}
@@ -144,6 +145,7 @@ function SidebarContent({ rooms, location, isAdmin, roomBadgeCounts = {}, user, 
         icon={MapPinned}
         label="Where are you?"
         tourId="nav-social"
+        badgeLabel="NEW!"
         onIntent={() => preloadRoute('/board')}
       />
       {(user?.account_type || user?.user_metadata?.account_type || 'flinders') !== 'general' && (
@@ -249,6 +251,54 @@ function getPageLabel(pathname) {
   if (pathname === '/settings') return 'Settings';
   if (pathname === '/admin') return 'Admin';
   return 'Flinders Collab';
+}
+
+const BANNER_ICONS = { info: Info, warning: AlertTriangle, success: CheckCircle2 };
+const BANNER_STYLES = {
+  info: 'bg-blue-50 border-blue-200 text-blue-800',
+  warning: 'bg-amber-50 border-amber-200 text-amber-800',
+  success: 'bg-emerald-50 border-emerald-200 text-emerald-800',
+};
+
+function GlobalAnnouncementsBanner() {
+  const [announcements, setAnnouncements] = useState([]);
+  const [dismissed, setDismissed] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('dismissed-announcements') || '[]'); } catch { return []; }
+  });
+
+  useEffect(() => {
+    getActiveAnnouncements().then(setAnnouncements).catch(() => {});
+  }, []);
+
+  const visible = announcements.filter((a) => !dismissed.includes(a.id));
+  if (visible.length === 0) return null;
+
+  const dismiss = (id) => {
+    const next = [...dismissed, id];
+    setDismissed(next);
+    localStorage.setItem('dismissed-announcements', JSON.stringify(next));
+  };
+
+  return (
+    <div className="space-y-2 px-2 pt-2 sm:px-4">
+      {visible.map((a) => {
+        const Icon = BANNER_ICONS[a.type] || Info;
+        const style = BANNER_STYLES[a.type] || BANNER_STYLES.info;
+        return (
+          <div key={a.id} className={`relative flex items-start gap-2 rounded-lg border px-3 py-2 text-sm ${style}`}>
+            <Icon className="mt-0.5 h-4 w-4 flex-shrink-0" />
+            <div className="flex-1 min-w-0">
+              {a.title && <p className="font-semibold">{a.title}</p>}
+              {a.content && <p className="text-xs opacity-80">{a.content}</p>}
+            </div>
+            <button onClick={() => dismiss(a.id)} className="ml-1 flex-shrink-0 opacity-60 hover:opacity-100">
+              <X className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        );
+      })}
+    </div>
+  );
 }
 
 export default function MainLayout({ children }) {
@@ -616,9 +666,9 @@ export default function MainLayout({ children }) {
     if (logoutPending) return;
     setLogoutPending(true);
     setLogoutOpen(false);
-    logout();
-    navigate('/login', { replace: true });
-    window.setTimeout(() => setLogoutPending(false), 300);
+    try { logout(); } catch {}
+    // Force full navigation to /login to clear all React state
+    window.location.href = '/login';
   };
 
   const initials = user?.user_metadata?.name
@@ -945,6 +995,7 @@ export default function MainLayout({ children }) {
               background: 'radial-gradient(ellipse at 20% 0%, rgba(99,102,241,0.08) 0%, transparent 50%), radial-gradient(ellipse at 80% 100%, rgba(59,130,246,0.06) 0%, transparent 50%)',
             }}
           />
+          <GlobalAnnouncementsBanner />
           <div className="relative">
             {children}
           </div>

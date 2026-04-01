@@ -32,3 +32,39 @@ export async function getUnreadCounts() {
   const res = await fetch(apiUrl('/api/announcements/unread-counts'), { headers });
   return parseResponse(res);
 }
+
+// ── Admin global announcements ──
+
+export async function getActiveAnnouncements() {
+  const res = await fetch(apiUrl('/api/announcements/active'));
+  if (!res.ok) return [];
+  return res.json();
+}
+
+export async function getAdminAnnouncements() {
+  const headers = getAuthHeaders();
+  const res = await fetch(apiUrl('/api/admin/announcements'), { headers });
+  return parseResponse(res);
+}
+
+export async function createAdminAnnouncement({ title, content, type, expires_at }) {
+  const headers = getAuthHeaders();
+  const res = await fetch(apiUrl('/api/admin/announcements'), {
+    method: 'POST', headers, body: JSON.stringify({ title, content, type, expires_at }),
+  });
+  return parseResponse(res);
+}
+
+export async function updateAdminAnnouncement(id, updates) {
+  const headers = getAuthHeaders();
+  const res = await fetch(apiUrl(`/api/admin/announcements/${id}`), {
+    method: 'PATCH', headers, body: JSON.stringify(updates),
+  });
+  return parseResponse(res);
+}
+
+export async function deleteAdminAnnouncement(id) {
+  const headers = getAuthHeaders();
+  const res = await fetch(apiUrl(`/api/admin/announcements/${id}`), { method: 'DELETE', headers });
+  return parseResponse(res);
+}

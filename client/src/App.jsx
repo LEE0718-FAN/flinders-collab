@@ -7,7 +7,7 @@ import ErrorBoundary from '@/components/ErrorBoundary';
 import InteractiveTutorial from '@/components/InteractiveTutorial';
 import MainLayout from '@/layouts/MainLayout';
 import { Loader2 } from 'lucide-react';
-import { loadSession, clearSession } from '@/lib/auth-token';
+import { loadSession, clearSession, saveSession } from '@/lib/auth-token';
 import { apiGuestCleanup } from '@/services/auth';
 
 function hasRecoveryParams() {
@@ -129,6 +129,23 @@ if (typeof window !== 'undefined') {
         window.location.href = '/login';
       }
     });
+  }
+
+  // Handle Supabase magic link redirect (hash contains access_token after email link click)
+  const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ''));
+  const hashAccessToken = hashParams.get('access_token');
+  const hashRefreshToken = hashParams.get('refresh_token');
+  const hashType = hashParams.get('type');
+  if (hashAccessToken && (hashType === 'magiclink' || hashType === 'signup' || hashType === 'email')) {
+    // Save the session from magic link
+    const expiresIn = parseInt(hashParams.get('expires_in') || '3600', 10);
+    saveSession({
+      access_token: hashAccessToken,
+      refresh_token: hashRefreshToken || '',
+      expires_at: Math.floor(Date.now() / 1000) + expiresIn,
+    });
+    // Clean the hash from URL
+    window.history.replaceState(null, '', window.location.pathname + window.location.search);
   }
 }
 

@@ -37,7 +37,7 @@ const ADELAIDE_UNIVERSITIES = [
   'CQUniversity Adelaide',
 ];
 
-const RESEND_COOLDOWN = 60;
+const RESEND_COOLDOWN = 30;
 
 export default function SignupForm({ onComplete }) {
   // Shared state

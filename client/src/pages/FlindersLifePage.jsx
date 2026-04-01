@@ -728,7 +728,15 @@ export function FlinapPanel({ currentUserId }) {
       },
       (geoError) => {
         setLocating(false);
-        setError(geoError.message || 'Could not read your current location.');
+        if (geoError.code === 1) {
+          setError('Location permission denied. Please allow location access in your browser/device settings, then try again.');
+        } else if (geoError.code === 2) {
+          setError('Could not determine your location. Please check that location services are enabled on your device.');
+        } else if (geoError.code === 3) {
+          setError('Location request timed out. Please try again.');
+        } else {
+          setError(geoError.message || 'Could not read your current location.');
+        }
       },
       {
         enableHighAccuracy: false,

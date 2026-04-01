@@ -572,6 +572,18 @@ DO $$ BEGIN
     CREATE POLICY topic_rooms_select_all ON topic_rooms FOR SELECT TO authenticated USING (true);
   END IF;
 END $$;
+
+-- Admin global announcements (site-wide banners)
+CREATE TABLE IF NOT EXISTS admin_announcements (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    title TEXT NOT NULL,
+    content TEXT DEFAULT '',
+    type TEXT DEFAULT 'info' CHECK (type IN ('info','warning','success')),
+    is_active BOOLEAN DEFAULT true,
+    author_id UUID REFERENCES users(id) ON DELETE SET NULL,
+    created_at TIMESTAMPTZ DEFAULT now(),
+    expires_at TIMESTAMPTZ
+);
 `;
 
 async function runMigration() {

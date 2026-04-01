@@ -71,6 +71,22 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
+// Public active announcements endpoint (no auth required)
+app.get('/api/announcements/active', async (req, res) => {
+  try {
+    const { supabaseAdmin } = require('./services/supabase');
+    const { data, error } = await supabaseAdmin
+      .from('admin_announcements')
+      .select('id, title, content, type, created_at, expires_at')
+      .eq('is_active', true)
+      .or(`expires_at.is.null,expires_at.gt.${new Date().toISOString()}`)
+      .order('created_at', { ascending: false })
+      .limit(3);
+    if (error) return res.json([]);
+    res.json(data || []);
+  } catch { res.json([]); }
+});
+
 // Public maintenance schedule endpoint
 app.get('/api/maintenance/schedule', (req, res) => {
   const { getNextMaintenanceTime } = require('./utils/maintenance');

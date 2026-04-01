@@ -578,8 +578,9 @@ async function sendEmailVerification(req, res, next) {
 
     if (error) {
       const msg = error.message || '';
-      if (msg.toLowerCase().includes('rate') || msg.toLowerCase().includes('limit') || msg.toLowerCase().includes('exceeded')) {
-        return res.status(429).json({ error: 'Email sending limit reached. Please wait a few minutes and try again.' });
+      const lower = msg.toLowerCase();
+      if (lower.includes('rate') || lower.includes('limit') || lower.includes('exceeded') || lower.includes('email rate') || lower.includes('too many')) {
+        return res.status(429).json({ error: 'Please wait about 30 seconds before requesting another code. Supabase limits how often emails can be sent.' });
       }
       return res.status(400).json({ error: msg });
     }

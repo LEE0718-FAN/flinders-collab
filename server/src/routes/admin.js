@@ -405,4 +405,58 @@ router.get('/files/integrity', async (req, res) => {
   }
 });
 
+// ── Admin Announcements (global site-wide banners) ──
+
+// GET /admin/announcements
+router.get('/announcements', async (req, res) => {
+  const { data, error } = await supabaseAdmin
+    .from('admin_announcements')
+    .select('*, users(full_name)')
+    .order('created_at', { ascending: false });
+  if (error) return res.status(500).json({ error: error.message });
+  res.json(data || []);
+});
+
+// POST /admin/announcements
+router.post('/announcements', async (req, res) => {
+  const { title, content, type, expires_at } = req.body;
+  if (!title) return res.status(400).json({ error: 'Title is required' });
+  const { data, error } = await supabaseAdmin
+    .from('admin_announcements')
+    .insert({ title, content: content || '', type: type || 'info', author_id: req.user.id, expires_at: expires_at || null })
+    .select()
+    .single();
+  if (error) return res.status(500).json({ error: error.message });
+  res.json(data);
+});
+
+// PATCH /admin/announcements/:id
+router.patch('/announcements/:id', async (req, res) => {
+  const { title, content, type, is_active, expires_at } = req.body;
+  const updates = {};
+  if (title !== undefined) updates.title = title;
+  if (content !== undefined) updates.content = content;
+  if (type !== undefined) updates.type = type;
+  if (is_active !== undefined) updates.is_active = is_active;
+  if (expires_at !== undefined) updates.expires_at = expires_at;
+  const { data, error } = await supabaseAdmin
+    .from('admin_announcements')
+    .update(updates)
+    .eq('id', req.params.id)
+    .select()
+    .single();
+  if (error) return res.status(500).json({ error: error.message });
+  res.json(data);
+});
+
+// DELETE /admin/announcements/:id
+router.delete('/announcements/:id', async (req, res) => {
+  const { error } = await supabaseAdmin
+    .from('admin_announcements')
+    .delete()
+    .eq('id', req.params.id);
+  if (error) return res.status(500).json({ error: error.message });
+  res.json({ message: 'Deleted' });
+});
+
 module.exports = router;
