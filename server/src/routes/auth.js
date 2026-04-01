@@ -22,7 +22,7 @@ const upload = multer({
 
 const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 10,
+  max: 100,
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: 'Too many login attempts. Please try again in 15 minutes.' },
@@ -30,7 +30,7 @@ const loginLimiter = rateLimit({
 
 const signupLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 30,
+  max: 100,
   standardHeaders: true,
   legacyHeaders: false,
   keyGenerator: (req) => req.body?.email || req.ip,
@@ -90,7 +90,7 @@ router.patch(
 // POST /auth/guest - Create temp tester account (rate limited)
 const guestLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 5,
+  max: 50,
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: 'Too many attempts. Please try again later.' },

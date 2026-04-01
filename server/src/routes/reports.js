@@ -11,7 +11,7 @@ router.use(authenticate);
 
 const reportCreateLimiter = rateLimit({
   windowMs: 10 * 60 * 1000,
-  max: 10,
+  max: 50,
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: 'Too many reports submitted. Please try again later.' },

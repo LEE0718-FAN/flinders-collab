@@ -17,7 +17,7 @@ router.use(authenticate);
 
 const joinLimiter = rateLimit({
   windowMs: 10 * 60 * 1000,
-  max: 15,
+  max: 100,
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: 'Too many join attempts. Please wait a few minutes before trying again.' },
