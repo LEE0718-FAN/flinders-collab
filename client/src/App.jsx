@@ -4,7 +4,6 @@ import { useAuth } from '@/hooks/useAuth';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { ToastProvider } from '@/components/ui/toast';
 import ErrorBoundary from '@/components/ErrorBoundary';
-import InteractiveTutorial from '@/components/InteractiveTutorial';
 import MainLayout from '@/layouts/MainLayout';
 import { Loader2 } from 'lucide-react';
 import { loadSession, clearSession, saveSession } from '@/lib/auth-token';
@@ -240,7 +239,6 @@ export default function App() {
       <ToastProvider>
         <TooltipProvider>
           <BrowserRouter>
-            <InteractiveTutorial />
             <Routes>
               <Route path="/" element={<Navigate to="/dashboard" replace />} />
               <Route path="/login" element={<Suspense fallback={<PageLoader />}><PublicRoute><LoginPage /></PublicRoute></Suspense>} />
