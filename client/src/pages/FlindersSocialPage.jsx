@@ -141,13 +141,13 @@ export default function FlindersSocialPage() {
               {
                 target: '[data-tour="social-hero"]',
                 title: 'Flinders Social',
-                desc: 'Share your campus status and find friends nearby.',
+                desc: 'Share your location on campus, set your status, and see where your friends are!',
                 position: 'bottom',
               },
               {
                 target: '[data-tour="social-map"]',
                 title: 'Live Campus Map',
-                desc: 'Turn sharing on to appear here.',
+                desc: 'Your location shows up here. Chat with friends and send friend requests!',
                 position: 'top',
               },
             ]}

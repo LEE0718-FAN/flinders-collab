@@ -1,6 +1,14 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { ChevronRight } from 'lucide-react';
 
+/**
+ * Reusable per-page guided tour with spotlight + tooltip.
+ *
+ * Props:
+ *   tourId  — unique key (localStorage: `page-tour-${tourId}`)
+ *   steps   — [{ target: 'CSS selector', title, desc, position: 'bottom'|'right'|'left'|'top' }]
+ *   delay   — ms before tour starts (default 600)
+ */
 export default function PageTour({ tourId, steps = [], delay = 600 }) {
   const storageKey = `page-tour-${tourId}`;
   const [active, setActive] = useState(false);
@@ -12,6 +20,7 @@ export default function PageTour({ tourId, steps = [], delay = 600 }) {
     if (localStorage.getItem(storageKey)) return;
 
     const timer = setTimeout(() => {
+      // Don't start if WelcomeTutorial is still showing
       const welcomeOverlay = document.querySelector('[class*="z-[99997]"]');
       if (welcomeOverlay) {
         const poll = setInterval(() => {
@@ -32,6 +41,7 @@ export default function PageTour({ tourId, steps = [], delay = 600 }) {
 
     const el = document.querySelector(steps[step].target);
     if (!el) {
+      // Skip missing targets
       if (step < steps.length - 1) {
         setStep((s) => s + 1);
       } else {
@@ -78,6 +88,7 @@ export default function PageTour({ tourId, steps = [], delay = 600 }) {
   const spotW = rect.width + pad * 2;
   const spotH = rect.height + pad * 2;
 
+  // Tooltip positioning
   let tooltipStyle = {};
   const pos = current.position || 'bottom';
   if (pos === 'bottom') {
@@ -96,6 +107,7 @@ export default function PageTour({ tourId, steps = [], delay = 600 }) {
       left: Math.min(rect.left + rect.width + 14, window.innerWidth - 292),
     };
   } else {
+    // left
     tooltipStyle = {
       top: Math.max(12, rect.top + rect.height / 2 - 40),
       right: window.innerWidth - rect.left + 14,
@@ -104,6 +116,7 @@ export default function PageTour({ tourId, steps = [], delay = 600 }) {
 
   return (
     <div className="fixed inset-0 z-[99998]" onClick={next}>
+      {/* Dark overlay with spotlight cutout */}
       <svg className="absolute inset-0 h-full w-full" style={{ pointerEvents: 'none' }}>
         <defs>
           <mask id={`tour-mask-${tourId}`}>
@@ -114,11 +127,13 @@ export default function PageTour({ tourId, steps = [], delay = 600 }) {
         <rect x="0" y="0" width="100%" height="100%" fill="rgba(0,0,0,0.55)" mask={`url(#tour-mask-${tourId})`} />
       </svg>
 
+      {/* Spotlight glow */}
       <div
         className="absolute rounded-xl ring-2 ring-blue-400/60 ring-offset-2 ring-offset-transparent transition-all duration-300"
         style={{ top: spotY, left: spotX, width: spotW, height: spotH, pointerEvents: 'none' }}
       />
 
+      {/* Tooltip */}
       <div
         className="absolute w-[280px] rounded-xl bg-white px-4 py-3.5 shadow-2xl transition-all duration-300"
         style={tooltipStyle}

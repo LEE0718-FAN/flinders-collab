@@ -444,25 +444,25 @@ export default function TimetablePage() {
           {
             target: '[data-tour="timetable-header"]',
             title: 'Timetable Buddy',
-            desc: 'Add your class and chat with students in the same class.',
+            desc: 'Manage your subjects and switch between course setup and weekly timetable here.',
             position: 'bottom',
           },
           {
             target: '[data-tour="timetable-courses-tab"]',
             title: 'Courses',
-            desc: 'Register your class here.',
+            desc: 'Add topics, open topic chat, and manage class entries from this tab.',
             position: 'bottom',
           },
           {
             target: '[data-tour="timetable-calendar-tab"]',
             title: 'Timetable',
-            desc: 'See your weekly schedule here.',
+            desc: 'Review your weekly class blocks and tap a topic chip to open its chat.',
             position: 'bottom',
           },
           {
             target: '[data-tour="timetable-course-list"]',
             title: 'Topic Cards',
-            desc: 'Open and manage each topic here.',
+            desc: 'Each card keeps the useful actions close together so mobile scrolling stays short.',
             position: 'top',
           },
         ]}
@@ -470,17 +470,12 @@ export default function TimetablePage() {
       {/* Header */}
       <div data-tour="timetable-header" className="sticky top-0 z-20 border-b border-slate-100 bg-white/90 px-3 py-3 backdrop-blur-md safe-area-top sm:px-4">
         <div className="mx-auto flex max-w-5xl flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div className="min-w-0">
-            <div className="flex flex-wrap items-center gap-2">
-              <GraduationCap className="h-5 w-5 text-blue-600" />
-              <h1 className="text-base font-bold text-slate-900 sm:text-lg">Timetable Buddy</h1>
-              {uniqueTopicIds.length > 0 && (
-                <Badge className="rounded-full bg-blue-100 text-blue-700 border-blue-200 text-[10px]">{uniqueTopicIds.length} topics</Badge>
-              )}
-            </div>
-            <p className="mt-1 text-sm font-semibold text-blue-700">
-              Register your class and chat with students in the same class.
-            </p>
+          <div className="flex items-center gap-2">
+            <GraduationCap className="h-5 w-5 text-blue-600" />
+            <h1 className="text-base font-bold text-slate-900 sm:text-lg">Timetable Buddy</h1>
+            {uniqueTopicIds.length > 0 && (
+              <Badge className="rounded-full bg-blue-100 text-blue-700 border-blue-200 text-[10px]">{uniqueTopicIds.length} topics</Badge>
+            )}
           </div>
           <div className="grid grid-cols-2 gap-2 sm:flex">
             {dragTopic && (

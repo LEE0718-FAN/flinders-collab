@@ -73,17 +73,20 @@ export default function WelcomeTutorial() {
           animating ? 'opacity-0 translate-y-2' : 'opacity-100 translate-y-0'
         }`}
       >
+        {/* Gradient header */}
         <div className={`flex items-center justify-center rounded-t-2xl bg-gradient-to-r ${step.gradient} py-10`}>
           <div className="flex h-16 w-16 items-center justify-center rounded-full bg-white/20 backdrop-blur-sm">
             <Icon className="h-8 w-8 text-white" />
           </div>
         </div>
 
+        {/* Content */}
         <div className="px-6 pt-5 pb-4 text-center">
           <h2 className="text-lg font-bold text-slate-900">{step.title}</h2>
           <p className="mt-2 text-sm leading-relaxed text-slate-500">{step.description}</p>
         </div>
 
+        {/* Dot indicators */}
         <div className="flex justify-center gap-1.5 pb-4">
           {steps.map((_, i) => (
             <div
@@ -95,6 +98,7 @@ export default function WelcomeTutorial() {
           ))}
         </div>
 
+        {/* Actions */}
         <div className="flex items-center justify-between border-t border-slate-100 px-6 py-3">
           <button
             onClick={dismiss}

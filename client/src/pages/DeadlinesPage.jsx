@@ -85,7 +85,7 @@ export default function DeadlinesPage() {
           {
             target: null,
             title: 'Your Deadlines',
-            description: 'See all your deadlines in one place.',
+            description: 'All your deadlines from every room, in one place. Never miss a thing!',
             icon: '\u{1F4C5}',
           },
         ]}
@@ -96,7 +96,7 @@ export default function DeadlinesPage() {
           {
             target: '[data-tour="deadlines-header"]',
             title: 'Deadlines',
-            desc: 'Check what is due next.',
+            desc: 'All your upcoming events and deadlines across every room show up here. Create a room, schedule events, and never miss a thing!',
             position: 'bottom',
           },
         ]}

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'collab-v2';
+const CACHE_NAME = 'collab-v3';
 const OFFLINE_URLS = [
   '/',
   '/index.html',

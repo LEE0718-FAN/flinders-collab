@@ -91,11 +91,10 @@ async function buildRoomActivityEntries(roomId) {
   return activities.slice(0, 15);
 }
 
-function addUnreadCounts(rows, lastVisitedByRoom, counts, userId, authorField = 'user_id') {
+function addUnreadCounts(rows, lastVisitedByRoom, counts) {
   for (const row of rows || []) {
     const roomId = row?.room_id;
     if (!roomId) continue;
-    if (userId && row?.[authorField] === userId) continue;
     const createdAt = new Date(row.created_at).getTime();
     const lastVisitedAt = lastVisitedByRoom.get(roomId) || 0;
     if (!Number.isFinite(createdAt) || createdAt <= lastVisitedAt) continue;
@@ -103,7 +102,7 @@ function addUnreadCounts(rows, lastVisitedByRoom, counts, userId, authorField = 
   }
 }
 
-async function getUnreadActivityCounts(memberships, userId) {
+async function getUnreadActivityCounts(memberships) {
   const roomIds = memberships.map((membership) => membership.room_id).filter(Boolean);
   if (roomIds.length === 0) return {};
 
@@ -131,26 +130,26 @@ async function getUnreadActivityCounts(memberships, userId) {
     applyDateFloor(
       supabaseAdmin
         .from('messages')
-        .select('room_id, created_at, user_id')
+        .select('room_id, created_at')
         .in('room_id', roomIds)
     ),
     applyDateFloor(
       supabaseAdmin
         .from('files')
-        .select('room_id, created_at, uploaded_by')
+        .select('room_id, created_at')
         .in('room_id', roomIds)
         .is('deleted_at', null)
     ),
     applyDateFloor(
       supabaseAdmin
         .from('events')
-        .select('room_id, created_at, created_by')
+        .select('room_id, created_at')
         .in('room_id', roomIds)
     ),
     applyDateFloor(
       supabaseAdmin
         .from('tasks')
-        .select('room_id, created_at, created_by')
+        .select('room_id, created_at')
         .in('room_id', roomIds)
     ),
   ]);
@@ -164,10 +163,10 @@ async function getUnreadActivityCounts(memberships, userId) {
   }
 
   const counts = new Map();
-  addUnreadCounts(messagesResult.data, lastVisitedByRoom, counts, userId, 'user_id');
-  addUnreadCounts(filesResult.data, lastVisitedByRoom, counts, userId, 'uploaded_by');
-  addUnreadCounts(eventsResult.data, lastVisitedByRoom, counts, userId, 'created_by');
-  addUnreadCounts(tasksResult.data, lastVisitedByRoom, counts, userId, 'created_by');
+  addUnreadCounts(messagesResult.data, lastVisitedByRoom, counts);
+  addUnreadCounts(filesResult.data, lastVisitedByRoom, counts);
+  addUnreadCounts(eventsResult.data, lastVisitedByRoom, counts);
+  addUnreadCounts(tasksResult.data, lastVisitedByRoom, counts);
 
   return Object.fromEntries([...counts.entries()].filter(([, count]) => count > 0));
 }
@@ -209,7 +208,7 @@ async function getActivitySummary(req, res, next) {
       return res.json(cached);
     }
 
-    const summary = await getUnreadActivityCounts(memberships || [], userId);
+    const summary = await getUnreadActivityCounts(memberships || []);
     setCacheEntry(activitySummaryCache, cacheKey, summary);
     res.json(summary);
   } catch (err) {

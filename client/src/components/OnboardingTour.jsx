@@ -12,6 +12,16 @@ const getActiveOnboardingTourId = () => {
   return window.__activeOnboardingTourId || null;
 };
 
+/**
+ * Premium onboarding tour with animated cursor that actually clicks elements.
+ *
+ * Props:
+ *   tourId    - unique key per page
+ *   steps     - array of { target, title, description, position?, icon?, action? }
+ *               action: { click: true } to click the target element
+ *               action: { click: 'selector' } to click a different element
+ *   delay     - ms before tour starts (default 600)
+ */
 export default function OnboardingTour({ tourId, steps = [], delay = 600 }) {
   const session = useAuthStore((s) => s.session);
   const isTester = Boolean(session?.is_tester || session?.user?.is_tester);
@@ -22,7 +32,7 @@ export default function OnboardingTour({ tourId, steps = [], delay = 600 }) {
   const [tipPos, setTipPos] = useState({});
   const [cursorPos, setCursorPos] = useState({ x: 0, y: 0 });
   const [cursorVisible, setCursorVisible] = useState(false);
-  const [phase, setPhase] = useState('idle');
+  const [phase, setPhase] = useState('idle'); // idle | cursor-moving | clicking | shown
   const overlayRef = useRef(null);
   const tipRef = useRef(null);
   const isBlockedByOtherTutorial = useCallback(() => {
@@ -31,6 +41,8 @@ export default function OnboardingTour({ tourId, steps = [], delay = 600 }) {
     return interactivePhase !== 'idle' || Boolean(otherOnboardingTourId && otherOnboardingTourId !== tourId);
   }, [tourId]);
 
+  // ── Should this tour show? ──
+  // Only skip if permanently dismissed via "Don't show again" checkbox
   useEffect(() => {
     const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
     if (saved[tourId] || isBlockedByOtherTutorial()) return;
@@ -43,6 +55,8 @@ export default function OnboardingTour({ tourId, steps = [], delay = 600 }) {
     return () => clearTimeout(t);
   }, [delay, isBlockedByOtherTutorial, tourId]);
 
+  // ── Close helpers ──
+  // All dismissals are permanent — user clearly doesn't want to see it again
   const dismissForever = useCallback(() => {
     const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
     saved[tourId] = Date.now();
@@ -53,6 +67,7 @@ export default function OnboardingTour({ tourId, steps = [], delay = 600 }) {
     setActive(false);
   }, [tourId]);
 
+  // All close actions (X, skip, complete) permanently dismiss
   const dismiss = dismissForever;
   const skipAll = dismissForever;
 
@@ -73,6 +88,7 @@ export default function OnboardingTour({ tourId, steps = [], delay = 600 }) {
     }
   }, [tourId]);
 
+  // ── Position calculation ──
   const computePositions = useCallback(() => {
     const s = steps[step];
     if (!s) return;
@@ -138,6 +154,7 @@ export default function OnboardingTour({ tourId, steps = [], delay = 600 }) {
     setTipPos(style);
   }, [step, steps]);
 
+  // ── Animate step transitions (with real clicks) ──
   useEffect(() => {
     if (!active) return;
     const s = steps[step];
@@ -145,6 +162,7 @@ export default function OnboardingTour({ tourId, steps = [], delay = 600 }) {
 
     setPhase('cursor-moving');
 
+    // 1) Scroll target into view
     if (s.target) {
       const el = document.querySelector(s.target);
       if (el) {
@@ -152,6 +170,7 @@ export default function OnboardingTour({ tourId, steps = [], delay = 600 }) {
       }
     }
 
+    // 2) Animate cursor to target center
     const moveCursor = () => {
       if (s.target) {
         const el = document.querySelector(s.target);
@@ -167,8 +186,11 @@ export default function OnboardingTour({ tourId, steps = [], delay = 600 }) {
     };
 
     const t1 = setTimeout(moveCursor, 100);
+
+    // 3) After cursor arrives — optionally click, then show tooltip
     const clickDelay = s.target ? 500 : 200;
     const t2 = setTimeout(() => {
+      // If step has an action.click, actually click the element
       if (s.action?.click) {
         setPhase('clicking');
         const clickTarget = typeof s.action.click === 'string'
@@ -177,6 +199,7 @@ export default function OnboardingTour({ tourId, steps = [], delay = 600 }) {
         if (clickTarget) {
           clickTarget.click();
         }
+        // Wait for UI to update after click
         setTimeout(() => {
           computePositions();
           setPhase('shown');
@@ -193,6 +216,7 @@ export default function OnboardingTour({ tourId, steps = [], delay = 600 }) {
     };
   }, [active, step, steps, computePositions]);
 
+  // ── Reposition on resize/scroll ──
   useEffect(() => {
     if (!active || phase !== 'shown') return;
     const h = () => computePositions();
@@ -209,6 +233,7 @@ export default function OnboardingTour({ tourId, steps = [], delay = 600 }) {
       setPhase('idle');
       setStep((s) => s + 1);
     } else {
+      // Last step — always permanently dismiss
       dismissForever();
     }
   };
@@ -221,6 +246,7 @@ export default function OnboardingTour({ tourId, steps = [], delay = 600 }) {
 
   return (
     <>
+      {/* ── Overlay with spotlight cutout ── */}
       <div ref={overlayRef} className="fixed inset-0" style={{ zIndex: 99998 }}>
         <svg className="absolute inset-0 w-full h-full">
           <defs>
@@ -254,6 +280,7 @@ export default function OnboardingTour({ tourId, steps = [], delay = 600 }) {
         </svg>
       </div>
 
+      {/* ── Animated cursor ── */}
       {cursorVisible && (
         <div
           className="fixed pointer-events-none"
@@ -275,6 +302,7 @@ export default function OnboardingTour({ tourId, steps = [], delay = 600 }) {
         </div>
       )}
 
+      {/* ── Tooltip ── */}
       <div
         ref={tipRef}
         className={`fixed transition-all duration-400 ease-out ${
@@ -283,6 +311,7 @@ export default function OnboardingTour({ tourId, steps = [], delay = 600 }) {
         style={{ ...tipPos, zIndex: 100000 }}
       >
         <div className="rounded-2xl bg-white/95 backdrop-blur-xl shadow-[0_20px_60px_-12px_rgba(0,0,0,0.25)] border border-white/60 overflow-hidden">
+          {/* Progress bar */}
           <div className="h-[3px] bg-gradient-to-r from-indigo-500 via-violet-500 to-purple-500">
             <div
               className="h-full bg-white/40 transition-all duration-700 ease-out"
@@ -291,6 +320,7 @@ export default function OnboardingTour({ tourId, steps = [], delay = 600 }) {
           </div>
 
           <div className="px-5 pt-4 pb-3">
+            {/* Header */}
             <div className="flex items-start justify-between gap-3 mb-1">
               <div className="flex items-center gap-2.5">
                 {s.icon && <span className="text-xl leading-none">{s.icon}</span>}
@@ -304,11 +334,13 @@ export default function OnboardingTour({ tourId, steps = [], delay = 600 }) {
               </button>
             </div>
 
+            {/* Description */}
             <p className="text-[13px] leading-relaxed text-slate-500 pl-[30px]">
               {s.description}
             </p>
           </div>
 
+          {/* Footer */}
           <div className="px-5 py-2.5 bg-slate-50/60">
             <div className="flex items-center justify-between">
               <span className="text-[10px] font-semibold text-slate-400 tracking-wide">

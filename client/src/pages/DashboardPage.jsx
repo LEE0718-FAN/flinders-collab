@@ -345,13 +345,13 @@ export default function DashboardPage() {
           {
             target: '[data-tour="create-room"]',
             title: 'Create a Room',
-            desc: 'Make a room for your team.',
+            desc: 'Start a new room for your course or project team. Share the invite code with your teammates!',
             position: 'bottom',
           },
           {
             target: '[data-tour="join-room"]',
             title: 'Join a Room',
-            desc: 'Have a code? Paste it here.',
+            desc: 'Got an invite code from a friend? Paste it here to join their room instantly.',
             position: 'bottom',
           },
         ]}

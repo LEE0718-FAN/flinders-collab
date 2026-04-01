@@ -14,7 +14,6 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { avatarMedium, avatarThumb } from '@/lib/avatar';
 import PageTour from '@/components/PageTour';
-import { markRoomVisited as markRoomVisitedApi } from '@/services/rooms';
 
 const ChatPanel = lazy(() => import('@/components/chat/ChatPanel'));
 
@@ -49,26 +48,6 @@ export default function MessagesPage() {
   useEffect(() => {
     loadFriends();
   }, [loadFriends]);
-
-  useEffect(() => {
-    if (!user?.id) return;
-    const directRoomIds = friends
-      .map((friend) => friend.direct_room_id)
-      .filter(Boolean);
-
-    if (directRoomIds.length === 0) return;
-
-    directRoomIds.forEach((roomId) => {
-      markRoomVisitedApi(roomId)
-        .then((result) => {
-          const timestamp = result?.last_visited_at ? new Date(result.last_visited_at).getTime() : Date.now();
-          window.dispatchEvent(new CustomEvent('room-activity-visited', {
-            detail: { roomId, timestamp },
-          }));
-        })
-        .catch(() => {});
-    });
-  }, [friends, user?.id]);
 
   // Close menu on outside click
   useEffect(() => {
@@ -117,14 +96,6 @@ export default function MessagesPage() {
     try {
       const chatFriend = friend.direct_room_id ? friend : await openDirectFriendChat(friend.id);
       if (chatFriend?.direct_room_id) {
-        markRoomVisitedApi(chatFriend.direct_room_id)
-          .then((result) => {
-            const timestamp = result?.last_visited_at ? new Date(result.last_visited_at).getTime() : Date.now();
-            window.dispatchEvent(new CustomEvent('room-activity-visited', {
-              detail: { roomId: chatFriend.direct_room_id, timestamp },
-            }));
-          })
-          .catch(() => {});
         setActiveChat({ roomId: chatFriend.direct_room_id, friend: chatFriend });
         setProfileFriend(null);
         await loadFriends();
@@ -214,19 +185,19 @@ export default function MessagesPage() {
           {
             target: '[data-tour="messages-header"]',
             title: 'Messages',
-            desc: 'Chat with friends here.',
+            desc: 'Direct messages and friend requests are managed from here.',
             position: 'bottom',
           },
           {
             target: '[data-tour="messages-search"]',
             title: 'Search Friends',
-            desc: 'Find a friend faster.',
+            desc: 'Filter your conversations quickly when the friend list grows.',
             position: 'bottom',
           },
           {
             target: '[data-tour="messages-list"]',
             title: 'Conversation List',
-            desc: 'Open a chat or profile here.',
+            desc: 'Open a chat, view a profile, or manage a friend from each row menu.',
             position: 'right',
           },
         ]}
