@@ -23,6 +23,8 @@ const getActiveOnboardingTourId = () => {
  *   delay     - ms before tour starts (default 600)
  */
 export default function OnboardingTour({ tourId, steps = [], delay = 600 }) {
+  return null;
+
   const session = useAuthStore((s) => s.session);
   const isTester = Boolean(session?.is_tester || session?.user?.is_tester);
 

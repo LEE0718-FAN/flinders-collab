@@ -1129,6 +1129,14 @@ export function FlinapPanel({ currentUserId }) {
 
           <div className="mb-4 rounded-[24px] border border-slate-200 bg-white p-3 shadow-sm lg:hidden">
             <div className={`rounded-2xl border px-3 py-3 ${sharingEnabled ? 'border-emerald-200 bg-emerald-50' : 'border-slate-200 bg-slate-50'}`}>
+              <div className="mb-3 rounded-2xl border border-blue-200 bg-blue-50 px-3 py-3">
+                <p className="text-base font-black leading-tight tracking-tight text-blue-900">
+                  Don&apos;t worry. Your location is only shared when you are on campus.
+                </p>
+                <p className="mt-1 text-[12px] font-medium leading-relaxed text-blue-800">
+                  If you leave City, Bedford Park, or Tonsley, sharing hides automatically.
+                </p>
+              </div>
               <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">My Status</p>
               <p className="mt-2 text-sm font-semibold text-slate-900">{sharingEnabled ? 'Sharing is on' : 'Sharing is off'}</p>
               {presenceData.my_presence ? (
@@ -1515,6 +1523,14 @@ export function FlinapPanel({ currentUserId }) {
         </div>
 
         <div className="mt-4 rounded-2xl border border-amber-100 bg-amber-50 p-3">
+          <div className="mb-3 rounded-2xl border border-blue-200 bg-blue-50 px-3 py-3">
+            <p className="text-base font-black leading-tight tracking-tight text-blue-900">
+              Don&apos;t worry. Your location is only shared when you are on campus.
+            </p>
+            <p className="mt-1 text-[12px] font-medium leading-relaxed text-blue-800">
+              If you leave City, Bedford Park, or Tonsley, sharing hides automatically.
+            </p>
+          </div>
           <p className="text-[11px] font-semibold uppercase tracking-wide text-amber-700">Notice</p>
           <p className="mt-1 text-[12px] leading-relaxed text-amber-800">
             Flinap only shows a campus-level label to other students. Exact coordinates are turned into a campus match inside your browser first and are not stored on the server.
@@ -1755,7 +1771,7 @@ export default function FlindersLifePage() {
           {
             target: null,
             title: 'Flinders Life',
-            description: 'Events, academic calendar, study rooms — pick your interests for recommendations!',
+            description: 'Check events, dates, and study rooms here.',
             icon: '\u{1F393}',
           },
         ]}
@@ -1767,19 +1783,19 @@ export default function FlindersLifePage() {
           {
             target: '[data-tutorial="flinders-tab-events"]',
             title: 'Campus Events',
-            desc: 'Browse events happening across campus. Filter by your interests and save your favourites!',
+            desc: 'Browse campus events here.',
             position: 'bottom',
           },
           {
             target: '[data-tutorial="flinders-tab-academic-calendar"]',
             title: 'Academic Calendar',
-            desc: 'View semester dates, holidays, exam periods, and important deadlines at a glance.',
+            desc: 'Check key semester dates here.',
             position: 'bottom',
           },
           {
             target: '[data-tutorial="flinders-tab-study-rooms"]',
             title: 'Study Rooms',
-            desc: 'Book study rooms at City Campus, Bedford Park, or Tonsley — links straight to the booking system.',
+            desc: 'Find a study room here.',
             position: 'bottom',
           },
         ]}

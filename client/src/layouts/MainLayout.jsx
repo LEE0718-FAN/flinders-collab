@@ -53,9 +53,14 @@ function NavItem({ to, isActive, icon: Icon, label, palette, badgeCount = 0, bad
 
   const activeAccentColor = palette ? palette.icon : '#818cf8';
   const hasBadge = Boolean(badgeLabel) || badgeCount > 0;
+  const isPromoBadge = Boolean(badgeLabel);
+  const handleClick = () => {
+    if (!tourId || typeof window === 'undefined') return;
+    window.sessionStorage.setItem('page-tour-trigger', tourId);
+  };
 
   return (
-    <Link to={to}>
+    <Link to={to} onClick={handleClick}>
       <button
         data-tour={tourId}
         onMouseEnter={onIntent}
@@ -94,14 +99,20 @@ function NavItem({ to, isActive, icon: Icon, label, palette, badgeCount = 0, bad
               : 'text-slate-500 group-hover:text-slate-300'
           }`}
         />
-        <span className="min-w-0 flex flex-1 items-center gap-2">
+        <span className="min-w-0 flex flex-1 items-center gap-2 pr-2">
           <span className="min-w-0 truncate">{label}</span>
-          {hasBadge && (
-            <span className="inline-flex h-5 min-w-5 max-w-[5.5rem] items-center justify-center rounded-full bg-rose-500 px-2 text-[10px] font-bold tabular-nums text-white shadow-sm whitespace-nowrap">
-              {badgeLabel || (badgeCount > 99 ? '99+' : badgeCount)}
-            </span>
-          )}
         </span>
+        {hasBadge && (
+          <span
+            className={`shrink-0 whitespace-nowrap font-bold shadow-sm ${
+              isPromoBadge
+                ? 'inline-flex h-4 items-center justify-center rounded-full border border-rose-300/70 bg-rose-500/90 px-1.5 text-[9px] uppercase tracking-[0.08em] text-white'
+                : 'inline-flex h-5 items-center justify-center rounded-full bg-rose-500 px-2 text-[10px] tabular-nums text-white'
+            }`}
+          >
+            {badgeLabel || (badgeCount > 99 ? '99+' : badgeCount)}
+          </span>
+        )}
         <ChevronRight className={`ml-2 h-3.5 w-3.5 shrink-0 text-slate-400 transition-opacity ${isActive ? 'opacity-40' : 'opacity-0'}`} />
       </button>
     </Link>
@@ -399,8 +410,8 @@ export default function MainLayout({ children }) {
 
   const totalAppBadgeCount = useMemo(() => {
     const roomUnreadTotal = Object.values(roomBadgeCounts).reduce((sum, value) => sum + Number(value || 0), 0);
-    return roomUnreadTotal + dmUnreadCount;
-  }, [roomBadgeCounts, dmUnreadCount]);
+    return roomUnreadTotal + (dmMessageBadge || 0);
+  }, [roomBadgeCounts, dmMessageBadge]);
 
   const mobileUnreadItems = useMemo(() => {
     const items = [];

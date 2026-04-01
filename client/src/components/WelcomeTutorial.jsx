@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Users, MessageSquare, Calendar, Rocket } from 'lucide-react';
+import { Users, MapPin, Rocket } from 'lucide-react';
 
 const STORAGE_KEY = 'welcome-tutorial-seen';
 
@@ -7,30 +7,26 @@ const steps = [
   {
     icon: Rocket,
     title: 'Welcome to Flinders Collab!',
-    description: 'Your all-in-one platform for university teamwork. Let\u2019s show you around.',
+    description: 'Start simple. Make a room and invite your team.',
     gradient: 'from-blue-500 to-indigo-600',
   },
   {
     icon: Users,
-    title: 'Create or Join Rooms',
-    description: 'Create team rooms for your courses or join existing ones with an invite code.',
+    title: 'Create or Join a Room',
+    description: 'Make a room or join one with a code.',
     gradient: 'from-indigo-500 to-violet-600',
   },
   {
-    icon: MessageSquare,
-    title: 'Chat, Share & Collaborate',
-    description: 'Chat with your team, share files, and schedule events \u2014 all in one place.',
-    gradient: 'from-violet-500 to-purple-600',
-  },
-  {
-    icon: Calendar,
-    title: 'Get Started',
-    description: 'Create your first room or join one with an invite code. You\u2019re all set!',
+    icon: MapPin,
+    title: 'Share Location if You Want',
+    description: 'Only share when you are on campus.',
     gradient: 'from-purple-500 to-pink-600',
   },
 ];
 
 export default function WelcomeTutorial() {
+  return null;
+
   const [visible, setVisible] = useState(false);
   const [current, setCurrent] = useState(0);
   const [animating, setAnimating] = useState(false);

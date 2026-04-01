@@ -13,19 +13,19 @@ export default function SettingsPage() {
           {
             target: '[data-tour="settings-header"]',
             title: 'Settings',
-            desc: 'This page controls your profile details and notification preferences.',
+            desc: 'Change your profile and app settings here.',
             position: 'bottom',
           },
           {
             target: '[data-tour="settings-profile"]',
             title: 'Profile',
-            desc: 'Update your photo, academic info, and identity details here.',
+            desc: 'Update your photo and details.',
             position: 'bottom',
           },
           {
             target: '[data-tour="settings-preferences"]',
             title: 'Preferences',
-            desc: 'Choose what alerts and badges you want across desktop web and the PWA app.',
+            desc: 'Choose what alerts you want.',
             position: 'top',
           },
         ]}

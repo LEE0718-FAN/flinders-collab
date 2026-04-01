@@ -30,7 +30,7 @@ async function getAnnouncements(req, res, next) {
 
     const enriched = (data || []).map(a => ({
       ...a,
-      is_read: readSet.has(a.id),
+      is_read: a.author_id === userId || readSet.has(a.id),
     }));
 
     res.json(enriched);
@@ -66,7 +66,7 @@ async function createAnnouncement(req, res, next) {
 
     if (error) return res.status(400).json({ error: error.message });
 
-    res.status(201).json({ ...data, is_read: false });
+    res.status(201).json({ ...data, is_read: true });
 
     notifyRoom(req.params.roomId, req.user.id, {
       type: 'announcements',
@@ -190,7 +190,7 @@ async function getUnreadCounts(req, res, next) {
     // Get all announcements in those rooms
     const { data: announcements } = await supabaseAdmin
       .from('room_announcements')
-      .select('id, room_id')
+      .select('id, room_id, author_id')
       .in('room_id', roomIds);
 
     if (!announcements || announcements.length === 0) {
@@ -211,6 +211,7 @@ async function getUnreadCounts(req, res, next) {
     // Count unread per room
     const counts = {};
     for (const ann of announcements) {
+      if (ann.author_id === userId) continue;
       if (!readSet.has(ann.id)) {
         counts[ann.room_id] = (counts[ann.room_id] || 0) + 1;
       }

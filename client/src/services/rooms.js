@@ -134,7 +134,10 @@ export async function markRoomVisited(roomId) {
     method: 'POST',
     headers,
   });
-  return parseResponse(res);
+  const data = await parseResponse(res);
+  memoryCache.delete('room-activity-summary');
+  memoryCache.delete(`room-activity:${roomId}`);
+  return data;
 }
 
 export async function getQuickLinks(roomId) {
