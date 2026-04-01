@@ -7,7 +7,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Textarea } from '@/components/ui/textarea';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { GraduationCap, Calendar, BookOpen, ExternalLink, Loader2, ChevronDown, ChevronUp, MapPin, Star, Clock, ChevronLeft, ChevronRight, Users, Shield, RefreshCw, EyeOff, UserPlus, MessageCircle, Check, X, Send } from 'lucide-react';
-import { getRecommendedEvents, getCampusPresence, updateCampusPresence, clearCampusPresence, getFriendRequests, sendFriendRequest, respondToFriendRequest } from '@/services/flinders';
+import { getRecommendedEvents, getCampusPresence, updateCampusPresence, clearCampusPresence, getFriendRequests, sendFriendRequest, respondToFriendRequest, openDirectFriendChat } from '@/services/flinders';
 import { hydratePreferences, updatePreferences } from '@/lib/preferences';
 import { supabase } from '@/lib/supabase';
 import { avatarThumb, avatarMedium } from '@/lib/avatar';
@@ -892,11 +892,6 @@ export function FlinapPanel({ currentUserId }) {
     try {
       const updated = await respondToFriendRequest(relationship.request.id, action);
       await loadFriendState();
-      if (action === 'accept' && updated?.direct_room_id) {
-        setActiveMember(null);
-        navigate(`/rooms/${updated.direct_room_id}`);
-        return;
-      }
       setStatusMessage(action === 'accept' ? 'Friend request accepted.' : 'Friend request declined.');
     } catch (err) {
       setError(err.message || 'Failed to respond to friend request');
@@ -907,9 +902,20 @@ export function FlinapPanel({ currentUserId }) {
 
   const handleOpenDirectChat = useCallback(() => {
     const relationship = getFriendRelationship(activeMember);
-    if (!relationship.request?.direct_room_id) return;
-    setActiveMember(null);
-    navigate(`/rooms/${relationship.request.direct_room_id}`);
+    if (!relationship.request?.id) return;
+
+    setFriendActionLoading(true);
+    openDirectFriendChat(relationship.request.id)
+      .then((updated) => {
+        setActiveMember(null);
+        navigate(`/rooms/${updated.direct_room_id}`);
+      })
+      .catch((err) => {
+        setError(err.message || 'Failed to open direct chat');
+      })
+      .finally(() => {
+        setFriendActionLoading(false);
+      });
   }, [activeMember, getFriendRelationship, navigate]);
 
   const handleSelectActivity = useCallback((nextActivity) => {

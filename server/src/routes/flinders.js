@@ -1038,15 +1038,7 @@ router.post('/flinders/friend-requests/:requestId/respond', async (req, res) => 
       return res.status(409).json({ error: 'This friend request has already been handled.' });
     }
 
-    let directRoomId = requestRow.direct_room_id || null;
-    if (action === 'accept') {
-      directRoomId = await getOrCreateDirectRoom(
-        requestRow.requester_id,
-        requestRow.target_id,
-        requestRow.requester?.full_name,
-        requestRow.target?.full_name,
-      );
-    }
+    const directRoomId = requestRow.direct_room_id || null;
 
     const nextStatus = action === 'accept' ? 'accepted' : 'declined';
     const { data, error } = await supabaseAdmin
@@ -1088,13 +1080,96 @@ router.post('/flinders/friend-requests/:requestId/respond', async (req, res) => 
         type: 'friend_requests',
         title: 'Friend request accepted',
         body: `${requestRow.target?.full_name || 'A student'} accepted your friend request.`,
-        url: directRoomId ? `/rooms/${directRoomId}` : '/board',
+        url: '/messages',
       });
     }
 
     res.json(mapFriendRequestRow(data, userId));
   } catch (err) {
     res.status(500).json({ error: 'Failed to respond to friend request' });
+  }
+});
+
+// POST /flinders/friend-requests/:requestId/direct-room — Create or fetch DM room on demand
+router.post('/flinders/friend-requests/:requestId/direct-room', async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const requestId = String(req.params.requestId || '').trim();
+
+    const { data: requestRow, error: requestError } = await supabaseAdmin
+      .from('flinders_friend_requests')
+      .select(`
+        id,
+        requester_id,
+        target_id,
+        status,
+        direct_room_id,
+        requester:requester_id (
+          id,
+          full_name,
+          avatar_url
+        ),
+        target:target_id (
+          id,
+          full_name,
+          avatar_url
+        )
+      `)
+      .eq('id', requestId)
+      .maybeSingle();
+
+    if (requestError || !requestRow) {
+      return res.status(404).json({ error: 'Friend request not found' });
+    }
+
+    if (requestRow.requester_id !== userId && requestRow.target_id !== userId) {
+      return res.status(403).json({ error: 'You cannot open this chat' });
+    }
+
+    if (requestRow.status !== 'accepted') {
+      return res.status(409).json({ error: 'Direct chat is only available after the friend request is accepted.' });
+    }
+
+    const directRoomId = await getOrCreateDirectRoom(
+      requestRow.requester_id,
+      requestRow.target_id,
+      requestRow.requester?.full_name,
+      requestRow.target?.full_name,
+    );
+
+    const { data, error } = await supabaseAdmin
+      .from('flinders_friend_requests')
+      .update({ direct_room_id: directRoomId })
+      .eq('id', requestId)
+      .select(`
+        id,
+        requester_id,
+        target_id,
+        message,
+        status,
+        direct_room_id,
+        created_at,
+        responded_at,
+        requester:requester_id (
+          id,
+          full_name,
+          avatar_url
+        ),
+        target:target_id (
+          id,
+          full_name,
+          avatar_url
+        )
+      `)
+      .single();
+
+    if (error) {
+      return res.status(500).json({ error: 'Failed to open direct chat' });
+    }
+
+    res.json(mapFriendRequestRow(data, userId));
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to open direct chat' });
   }
 });
 

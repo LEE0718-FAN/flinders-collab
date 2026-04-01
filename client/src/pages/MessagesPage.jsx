@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef, lazy, Suspense } from 'react';
 import { useAuth } from '@/hooks/useAuth';
-import { getFriendRequests, respondToFriendRequest, removeFriend, blockFriend, toggleFriendLocationVisibility } from '@/services/flinders';
+import { getFriendRequests, respondToFriendRequest, removeFriend, blockFriend, toggleFriendLocationVisibility, openDirectFriendChat } from '@/services/flinders';
 import { getMessages } from '@/services/chat';
 import { apiUrl } from '@/lib/api';
 import { getAuthHeaders, parseResponse } from '@/lib/api-headers';
@@ -92,11 +92,15 @@ export default function MessagesPage() {
     }
   };
 
-  const openChat = (friend) => {
-    if (friend.direct_room_id) {
-      setActiveChat({ roomId: friend.direct_room_id, friend });
-      setProfileFriend(null);
-    }
+  const openChat = async (friend) => {
+    try {
+      const chatFriend = friend.direct_room_id ? friend : await openDirectFriendChat(friend.id);
+      if (chatFriend?.direct_room_id) {
+        setActiveChat({ roomId: chatFriend.direct_room_id, friend: chatFriend });
+        setProfileFriend(null);
+        await loadFriends();
+      }
+    } catch {}
   };
 
   const handleRemoveFriend = async () => {

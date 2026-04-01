@@ -71,6 +71,15 @@ export async function respondToFriendRequest(requestId, action) {
   return parseResponse(res);
 }
 
+export async function openDirectFriendChat(requestId) {
+  const headers = getAuthHeaders();
+  const res = await fetch(apiUrl(`/api/flinders/friend-requests/${requestId}/direct-room`), {
+    method: 'POST',
+    headers,
+  });
+  return parseResponse(res);
+}
+
 export async function removeFriend(requestId) {
   const headers = getAuthHeaders();
   const res = await fetch(apiUrl(`/api/flinders/friend-requests/${requestId}`), {
