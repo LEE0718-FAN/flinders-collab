@@ -7,9 +7,24 @@ import { requestLocationPermission, watchPosition, clearLocationWatch } from '@/
 
 const UPDATE_INTERVAL_MS = 10_000; // throttle location updates to every 10s
 
+function LocationHelp() {
+  return (
+    <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-3 text-left">
+      <p className="text-xs font-semibold uppercase tracking-wide text-amber-700">If location is blocked</p>
+      <div className="mt-2 space-y-2 text-xs leading-relaxed text-amber-900">
+        <p><span className="font-semibold">MacBook + Safari/Chrome:</span> turn on System Settings &gt; Privacy &amp; Security &gt; Location Services, then allow location for your browser.</p>
+        <p><span className="font-semibold">Samsung/Windows laptops:</span> turn on Windows Settings &gt; Privacy &amp; security &gt; Location, then allow location access for your browser.</p>
+        <p><span className="font-semibold">Browser blocked it before:</span> click the lock icon next to the address bar, set Location to Allow, then refresh and try again.</p>
+        <p><span className="font-semibold">Still not working:</span> some laptops do not have reliable GPS. Try Wi-Fi on, reload the page, or use manual status updates instead.</p>
+      </div>
+    </div>
+  );
+}
+
 export default function LocationToggle({ roomId, eventId, isSharing, onToggle }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [showHelp, setShowHelp] = useState(false);
   const watchIdRef = useRef(null);
   const lastSentRef = useRef(0);
 
@@ -64,12 +79,14 @@ export default function LocationToggle({ roomId, eventId, isSharing, onToggle })
       const hasPermission = await requestLocationPermission();
       if (!hasPermission) {
         setError('Location permission denied. Please allow access in your settings.');
+        setShowHelp(true);
         return;
       }
       await startSharing(eventId);
       onToggle?.(true);
     } catch (err) {
       setError(err.message || 'Failed to start sharing location.');
+      setShowHelp(true);
     } finally {
       setLoading(false);
     }
@@ -98,6 +115,7 @@ export default function LocationToggle({ roomId, eventId, isSharing, onToggle })
           Stop Sharing
         </Button>
         {error && <p className="text-xs text-destructive">{error}</p>}
+        {showHelp && <LocationHelp />}
       </div>
     );
   }
@@ -118,6 +136,7 @@ export default function LocationToggle({ roomId, eventId, isSharing, onToggle })
               Your location will be visible to other room members for this event. You can stop sharing at any time.
             </AlertDialogDescription>
           </AlertDialogHeader>
+          <LocationHelp />
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction onClick={handleStart}>Share Location</AlertDialogAction>
@@ -125,6 +144,14 @@ export default function LocationToggle({ roomId, eventId, isSharing, onToggle })
         </AlertDialogContent>
       </AlertDialog>
       {error && <p className="text-xs text-destructive">{error}</p>}
+      <button
+        type="button"
+        onClick={() => setShowHelp((prev) => !prev)}
+        className="text-xs font-medium text-amber-700 underline-offset-2 hover:underline"
+      >
+        {showHelp ? 'Hide location help' : 'Location not working on your laptop?'}
+      </button>
+      {showHelp && <LocationHelp />}
     </div>
   );
 }
