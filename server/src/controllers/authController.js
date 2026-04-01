@@ -686,18 +686,27 @@ async function verifyEmailCode(req, res, next) {
       return res.status(400).json({ error: 'Email and verification code are required' });
     }
 
-    const { data, error } = await supabasePublic.auth.verifyOtp({
-      email,
-      token,
-      type: 'email',
-    });
+    let data = null;
+    let error = null;
 
-    if (error) {
-      return res.status(400).json({ error: 'Invalid or expired verification code. Please try again.' });
+    for (const otpType of ['signup', 'email']) {
+      const result = await supabasePublic.auth.verifyOtp({
+        email,
+        token,
+        type: otpType,
+      });
+
+      if (!result.error && result.data?.session) {
+        data = result.data;
+        error = null;
+        break;
+      }
+
+      error = result.error;
     }
 
-    if (!data?.session) {
-      return res.status(400).json({ error: 'Verification failed. Please request a new code.' });
+    if (error || !data?.session) {
+      return res.status(400).json({ error: 'Invalid or expired verification code. Please try again.' });
     }
 
     res.json({
