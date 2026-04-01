@@ -1,7 +1,7 @@
 import { useEffect, useCallback } from 'react';
 import { useAuthStore } from '@/store/authStore';
 import { apiSignup, apiLogin, apiLogout, apiUpdateProfile, apiGuestLogin, apiGuestCleanup, apiRequestPasswordReset, apiRefreshSession, apiGetMe, apiCompleteSignup } from '@/services/auth';
-import { saveSession, loadSession, loadStoredSession, clearSession, isSessionExpired } from '@/lib/auth-token';
+import { saveSession, loadSession, loadStoredSession, clearSession, isSessionExpired, getSecondsUntilExpiry } from '@/lib/auth-token';
 import { subscribeToPush } from '@/lib/push';
 import { supabase } from '@/lib/supabase';
 
@@ -39,6 +39,31 @@ const PROFILE_SYNC_INTERVAL_MS = 5 * 1000;
 
 export function useAuth() {
   const { user, session, isLoading, setUser, setSession, setLoading, logout: clearAuth } = useAuthStore();
+
+  // Silently refresh the access token if expired or about to expire
+  const ensureFreshToken = useCallback(async () => {
+    const current = loadSession();
+    if (!current?.refresh_token) return current;
+    // Refresh if expired or within 60s of expiry
+    if (!isSessionExpired(current, 60_000)) return current;
+
+    try {
+      const refreshed = await apiRefreshSession(current.refresh_token);
+      const sessionData = buildSessionData(refreshed, {
+        account_type: current.account_type,
+        is_tester: current.is_tester,
+      });
+      saveSession(sessionData);
+      setSession(sessionData);
+      setUser(sessionData.user);
+      return sessionData;
+    } catch {
+      // Refresh token itself is invalid — force logout
+      clearSession();
+      clearAuth();
+      return null;
+    }
+  }, [setSession, setUser, clearAuth]);
 
   const syncProfileFromServer = useCallback(async (baseSession) => {
     if (!baseSession?.access_token || !baseSession?.user) return baseSession;
@@ -138,9 +163,11 @@ export function useAuth() {
   useEffect(() => {
     if (!session?.access_token) return undefined;
 
-    const handleVisibilityChange = () => {
+    const handleVisibilityChange = async () => {
       if (document.visibilityState === 'visible') {
-        syncProfileFromServer(loadSession() || session).catch(() => {});
+        // Refresh token first if expired, then sync profile
+        const fresh = await ensureFreshToken();
+        if (fresh) syncProfileFromServer(fresh).catch(() => {});
       }
     };
 
@@ -150,17 +177,18 @@ export function useAuth() {
       window.removeEventListener('focus', handleVisibilityChange);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [session, syncProfileFromServer]);
+  }, [session, syncProfileFromServer, ensureFreshToken]);
 
   useEffect(() => {
     if (!session?.access_token) return undefined;
 
-    const intervalId = window.setInterval(() => {
-      syncProfileFromServer(loadSession() || session).catch(() => {});
+    const intervalId = window.setInterval(async () => {
+      const fresh = await ensureFreshToken();
+      if (fresh) syncProfileFromServer(fresh).catch(() => {});
     }, PROFILE_SYNC_INTERVAL_MS);
 
     return () => window.clearInterval(intervalId);
-  }, [session, syncProfileFromServer]);
+  }, [session, syncProfileFromServer, ensureFreshToken]);
 
   const login = useCallback(async (email, password) => {
     const result = await apiLogin({ email, password });
