@@ -10,7 +10,7 @@ import { applyRoomOrder, buildOrderedIds } from '@/lib/room-order';
 import { hydratePreferences, updatePreferences } from '@/lib/preferences';
 import { useNavigate } from 'react-router-dom';
 import { format, formatDistanceToNow } from 'date-fns';
-import { Loader2, LayoutGrid } from 'lucide-react';
+import { Loader2, LayoutGrid, Download, X } from 'lucide-react';
 import WelcomeTutorial from '@/components/WelcomeTutorial';
 import PageTour from '@/components/PageTour';
 
@@ -402,6 +402,30 @@ export default function DashboardPage() {
             </div>
           </div>
         </div>
+
+        {/* PWA install nudge — only on mobile web, dismissible */}
+        {!window.matchMedia('(display-mode: standalone)').matches && /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent) && !localStorage.getItem('pwa-nudge-dismissed') && (
+          <div className="flex items-center gap-3 rounded-2xl border border-blue-200/60 bg-gradient-to-r from-blue-50 to-indigo-50 px-4 py-3 shadow-sm" id="pwa-nudge">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-blue-100">
+              <Download className="h-4.5 w-4.5 text-blue-600" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-[13px] font-semibold text-slate-800">Install as App</p>
+              <p className="mt-0.5 text-[11px] leading-snug text-slate-500">
+                {/iPhone|iPad/i.test(navigator.userAgent)
+                  ? 'Tap Share ↗ then "Add to Home Screen" for the full app experience.'
+                  : 'Tap ⋮ menu → "Install app" to add it to your home screen.'}
+              </p>
+            </div>
+            <button
+              onClick={() => { localStorage.setItem('pwa-nudge-dismissed', '1'); document.getElementById('pwa-nudge')?.remove(); }}
+              className="shrink-0 rounded-full p-1.5 text-slate-400 transition hover:bg-slate-200/60 hover:text-slate-600"
+              aria-label="Dismiss"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+        )}
 
         {error && (
           <div className="rounded-md border border-destructive/50 bg-destructive/10 p-3 text-sm text-destructive">
