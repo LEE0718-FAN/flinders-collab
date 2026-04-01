@@ -7,7 +7,7 @@ let hasTriedRefresh = false;
 
 async function refreshTokenIfNeeded() {
   const session = loadStoredSession();
-  if (!session?.refresh_token) return null;
+  if (!session?.refresh_token) return { token: null, invalid: true };
 
   // Deduplicate concurrent refresh attempts
   if (refreshPromise) return refreshPromise;
@@ -19,7 +19,12 @@ async function refreshTokenIfNeeded() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ refresh_token: session.refresh_token }),
       });
-      if (!res.ok) return null;
+      if (!res.ok) {
+        return {
+          token: null,
+          invalid: res.status === 400 || res.status === 401,
+        };
+      }
       const result = await res.json();
       const newSession = {
         ...session,
@@ -28,9 +33,9 @@ async function refreshTokenIfNeeded() {
         expires_at: result.session.expires_at,
       };
       saveSession(newSession);
-      return newSession.access_token;
+      return { token: newSession.access_token, invalid: false };
     } catch {
-      return null;
+      return { token: null, invalid: false };
     } finally {
       refreshPromise = null;
     }
@@ -60,19 +65,22 @@ export async function parseResponse(res) {
   // On 401, try refreshing token once then reload so all data re-fetches
   if (res.status === 401 && !hasTriedRefresh) {
     hasTriedRefresh = true;
-    const freshToken = await refreshTokenIfNeeded();
-    if (freshToken) {
+    const refreshResult = await refreshTokenIfNeeded();
+    if (refreshResult?.token) {
       // Token refreshed — reload page so all hooks re-fetch with fresh token
       window.location.reload();
       // Return a pending promise to prevent further processing during reload
       return new Promise(() => {});
     }
-    // Refresh failed — force logout
-    clearSession();
-    if (typeof window !== 'undefined' && window.location.pathname !== '/login') {
-      window.location.href = '/login';
+
+    // Only force logout when the refresh token is definitely invalid.
+    if (refreshResult?.invalid) {
+      clearSession();
+      if (typeof window !== 'undefined' && window.location.pathname !== '/login') {
+        window.location.href = '/login';
+      }
+      return new Promise(() => {});
     }
-    return new Promise(() => {});
   }
 
   if (!res.ok) {

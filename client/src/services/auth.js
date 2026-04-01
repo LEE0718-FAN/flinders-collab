@@ -1,6 +1,12 @@
 import { apiUrl } from '@/lib/api';
 import { getAuthHeaders, parseResponse } from '@/lib/api-headers';
 
+function buildStatusError(message, status) {
+  const error = new Error(message);
+  error.status = status;
+  return error;
+}
+
 function buildBearerHeaders(accessToken, isJson = true) {
   if (!accessToken) {
     return getAuthHeaders(isJson);
@@ -62,7 +68,18 @@ export async function apiRefreshSession(refreshToken) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ refresh_token: refreshToken }),
   });
-  return parseResponse(res);
+  let body = null;
+  try {
+    body = await res.json();
+  } catch {
+    body = null;
+  }
+
+  if (!res.ok) {
+    throw buildStatusError(body?.error || `Request failed (${res.status})`, res.status);
+  }
+
+  return body;
 }
 
 export async function apiRequestPasswordReset(email) {

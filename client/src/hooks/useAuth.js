@@ -69,11 +69,15 @@ export function useAuth() {
       setSession(sessionData);
       setUser(sessionData.user);
       return sessionData;
-    } catch {
-      // Refresh token itself is invalid — force logout
-      clearSession();
-      clearAuth();
-      return null;
+    } catch (err) {
+      // Only hard-logout when the refresh token is definitely invalid.
+      if (err?.status === 400 || err?.status === 401) {
+        clearSession();
+        clearAuth();
+        return null;
+      }
+
+      return current;
     }
   }, [setSession, setUser, clearAuth]);
 
@@ -155,10 +159,18 @@ export function useAuth() {
           setUser(sessionData.user);
           syncProfileFromServer(sessionData).catch(() => {});
         }
-      } catch {
-        clearSession();
+      } catch (err) {
+        if (err?.status === 400 || err?.status === 401) {
+          clearSession();
+          if (active) {
+            clearAuth();
+          }
+          return;
+        }
+
         if (active) {
-          clearAuth();
+          setSession(stored);
+          setUser(stored.user || null);
         }
       } finally {
         if (active) setLoading(false);
