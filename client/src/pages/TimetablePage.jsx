@@ -444,16 +444,16 @@ export default function TimetablePage() {
         steps={[
           {
             target: '[data-tour="timetable-courses-tab"]',
-            title: 'Add your classes',
-            description: 'Search for your course code and add it to your timetable.',
-            icon: '📅',
+            title: 'Search your courses!',
+            description: 'Tap here and search your course code — we\'ll build your timetable for you!',
+            icon: '🔍',
             position: 'bottom',
           },
           {
             target: '[data-tour="timetable-course-list"]',
-            title: 'Chat with classmates',
-            description: 'Tap any course to open a group chat with students in the same class!',
-            icon: '💬',
+            title: 'Meet your classmates!',
+            description: 'Tap any course to jump into a group chat with everyone in the same class. Say hi!',
+            icon: '👋',
             position: 'top',
           },
         ]}
@@ -462,28 +462,16 @@ export default function TimetablePage() {
         tourId="timetable"
         steps={[
           {
-            target: '[data-tour="timetable-header"]',
-            title: 'Timetable Buddy',
-            desc: 'Manage your subjects and switch between course setup and weekly timetable here.',
-            position: 'bottom',
-          },
-          {
             target: '[data-tour="timetable-courses-tab"]',
-            title: 'Courses',
-            desc: 'Add topics, open topic chat, and manage class entries from this tab.',
+            title: 'Start here!',
+            desc: 'Search your course code and add your classes — it only takes a sec!',
             position: 'bottom',
           },
           {
             target: '[data-tour="timetable-calendar-tab"]',
-            title: 'Timetable',
-            desc: 'Review your weekly class blocks and tap a topic chip to open its chat.',
+            title: 'See your week!',
+            desc: 'Switch to calendar view to see your full weekly timetable at a glance.',
             position: 'bottom',
-          },
-          {
-            target: '[data-tour="timetable-course-list"]',
-            title: 'Topic Cards',
-            desc: 'Each card keeps the useful actions close together so mobile scrolling stays short.',
-            position: 'top',
           },
         ]}
       />

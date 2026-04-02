@@ -1750,13 +1750,21 @@ export default function FlindersLifePage() {
   return (
     <>
       <OnboardingTour
-        tourId="flinders-life"
+        tourId="flinders-life-onboarding"
         steps={[
           {
-            target: null,
-            title: 'Flinders Life',
-            description: 'Events, academic calendar, study rooms — pick your interests for recommendations!',
-            icon: '\u{1F393}',
+            target: '[data-tutorial="flinders-tab-events"]',
+            title: 'What\'s happening on campus?',
+            description: 'Tap here to browse events — find clubs, workshops, and social stuff near you!',
+            icon: '🎉',
+            position: 'bottom',
+          },
+          {
+            target: '[data-tutorial="flinders-tab-study-rooms"]',
+            title: 'Need a study spot?',
+            description: 'Book a study room at any campus in just a few taps!',
+            icon: '📚',
+            position: 'bottom',
           },
         ]}
       />
@@ -1766,20 +1774,20 @@ export default function FlindersLifePage() {
         steps={[
           {
             target: '[data-tutorial="flinders-tab-events"]',
-            title: 'Campus Events',
-            desc: 'Browse events happening across campus. Filter by your interests and save your favourites!',
+            title: 'Check out events!',
+            desc: 'See what\'s on across campus. Filter by your interests and save your faves!',
             position: 'bottom',
           },
           {
             target: '[data-tutorial="flinders-tab-academic-calendar"]',
-            title: 'Academic Calendar',
-            desc: 'View semester dates, holidays, exam periods, and important deadlines at a glance.',
+            title: 'Key dates!',
+            desc: 'Semester dates, exam periods, holidays — all in one place.',
             position: 'bottom',
           },
           {
             target: '[data-tutorial="flinders-tab-study-rooms"]',
-            title: 'Study Rooms',
-            desc: 'Book study rooms at City Campus, Bedford Park, or Tonsley — links straight to the booking system.',
+            title: 'Book a room!',
+            desc: 'Find and book study rooms at Bedford Park, City Campus, or Tonsley.',
             position: 'bottom',
           },
         ]}

@@ -84,9 +84,9 @@ export default function DeadlinesPage() {
         steps={[
           {
             target: '[data-tour="deadlines-header"]',
-            title: 'Your Deadlines',
-            description: 'All events from every room — collected here so you never miss anything!',
-            icon: '⏰',
+            title: 'Never miss a deadline!',
+            description: 'Every event from all your rooms shows up here automatically. You\'re covered!',
+            icon: '🔥',
             position: 'bottom',
           },
         ]}

@@ -79,16 +79,16 @@ export default function FlindersSocialPage() {
         steps={[
           {
             target: '[data-tour="social-map"]',
-            title: 'Share your location',
-            description: 'Share where you are on campus so friends can find you!',
+            title: 'See who\'s on campus!',
+            description: 'Drop your pin on the map and find out which friends are nearby right now!',
             icon: '📍',
             position: 'top',
           },
           {
             target: '[data-tour="social-map"]',
-            title: 'Auto-removed!',
-            description: 'Your location disappears when you leave campus — nothing is stored.',
-            icon: '⚠️',
+            title: 'Don\'t worry — it\'s private!',
+            description: 'Leave campus and your pin vanishes. We never store your location.',
+            icon: '🔒',
             position: 'top',
           },
         ]}

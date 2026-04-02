@@ -14,6 +14,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { avatarMedium, avatarThumb } from '@/lib/avatar';
 import PageTour from '@/components/PageTour';
+import OnboardingTour from '@/components/OnboardingTour';
 
 const ChatPanel = lazy(() => import('@/components/chat/ChatPanel'));
 
@@ -179,25 +180,31 @@ export default function MessagesPage() {
 
   return (
     <div className="flex h-full min-h-0 flex-col overflow-hidden rounded-[22px] border border-slate-200/70 bg-white shadow-sm">
+      <OnboardingTour
+        tourId="messages-onboarding"
+        steps={[
+          {
+            target: '[data-tour="messages-list"]',
+            title: 'Your DMs live here!',
+            description: 'Send friend requests from Timetable Buddy, then chat privately right here!',
+            icon: '💬',
+            position: 'right',
+          },
+        ]}
+      />
       <PageTour
         tourId="messages"
         steps={[
           {
-            target: '[data-tour="messages-header"]',
-            title: 'Messages',
-            desc: 'Direct messages and friend requests are managed from here.',
-            position: 'bottom',
-          },
-          {
             target: '[data-tour="messages-search"]',
-            title: 'Search Friends',
-            desc: 'Filter your conversations quickly when the friend list grows.',
+            title: 'Find a friend!',
+            desc: 'Type a name to quickly find someone in your list.',
             position: 'bottom',
           },
           {
             target: '[data-tour="messages-list"]',
-            title: 'Conversation List',
-            desc: 'Open a chat, view a profile, or manage a friend from each row menu.',
+            title: 'Tap to chat!',
+            desc: 'Pick any friend to start a private conversation. Easy as that!',
             position: 'right',
           },
         ]}

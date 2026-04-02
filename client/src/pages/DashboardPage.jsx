@@ -344,14 +344,14 @@ export default function DashboardPage() {
         steps={[
           {
             target: '[data-tour="create-room"]',
-            title: 'Create a Room',
-            desc: 'Start a new room for your course or project team. Share the invite code with your teammates!',
+            title: 'Start here!',
+            desc: 'Tap this to create a room for your team — invite your mates with a code!',
             position: 'bottom',
           },
           {
             target: '[data-tour="join-room"]',
-            title: 'Join a Room',
-            desc: 'Got an invite code from a friend? Paste it here to join their room instantly.',
+            title: 'Got an invite?',
+            desc: 'Paste your friend\'s code right here and you\'re in. Easy!',
             position: 'bottom',
           },
         ]}
