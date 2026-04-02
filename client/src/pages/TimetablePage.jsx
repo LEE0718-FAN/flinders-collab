@@ -443,17 +443,18 @@ export default function TimetablePage() {
         tourId="timetable-onboarding"
         steps={[
           {
-            target: null,
-            title: 'Timetable Buddy',
-            description: 'Add your classes and chat with students taking the same course!',
+            target: '[data-tour="timetable-courses-tab"]',
+            title: 'Add your classes',
+            description: 'Search for your course code and add it to your timetable.',
             icon: '📅',
+            position: 'bottom',
           },
           {
             target: '[data-tour="timetable-course-list"]',
             title: 'Chat with classmates',
-            description: 'Tap a course to open its chat — talk with anyone enrolled in the same class.',
+            description: 'Tap any course to open a group chat with students in the same class!',
             icon: '💬',
-            position: 'bottom',
+            position: 'top',
           },
         ]}
       />

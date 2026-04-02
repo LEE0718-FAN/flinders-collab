@@ -83,10 +83,11 @@ export default function DeadlinesPage() {
         tourId="deadlines-onboarding"
         steps={[
           {
-            target: null,
-            title: 'Deadlines',
-            description: 'All events and deadlines from every room you\'ve joined — collected in one place so you never miss anything!',
+            target: '[data-tour="deadlines-header"]',
+            title: 'Your Deadlines',
+            description: 'All events from every room — collected here so you never miss anything!',
             icon: '⏰',
+            position: 'bottom',
           },
         ]}
       />

@@ -358,6 +358,9 @@ export default function MainLayout({ children }) {
   const roomsRef = useRef(rooms);
   roomsRef.current = rooms;
 
+  const locationRef = useRef(location);
+  locationRef.current = location;
+
   const refreshRecentActivityCounts = useCallback(async (targetRooms) => {
     if (!user?.id) {
       setRecentActivityCounts({});
@@ -367,8 +370,12 @@ export default function MainLayout({ children }) {
     const resolvedRooms = targetRooms || roomsRef.current;
     try {
       const summary = await getRoomActivitySummary();
+      // Exclude the room the user is currently viewing
+      const currentRoomMatch = locationRef.current.pathname.match(/^\/rooms\/(.+)$/);
+      const currentRoomId = currentRoomMatch?.[1] || null;
       const next = {};
       resolvedRooms.forEach((room) => {
+        if (room.id === currentRoomId) return; // skip current room
         const count = Number(summary?.[room.id] || 0);
         if (count > 0) next[room.id] = count;
       });
@@ -633,9 +640,27 @@ export default function MainLayout({ children }) {
     };
   }, [refreshProfile, session?.access_token]);
 
+  // Clear badges immediately when navigating to pages
   useEffect(() => {
     if (location.pathname === '/messages') {
       setDmMessageBadge(0);
+    }
+    // Clear room badge instantly on room enter (don't wait for API)
+    const roomMatch = location.pathname.match(/^\/rooms\/(.+)$/);
+    if (roomMatch) {
+      const roomId = roomMatch[1];
+      setRecentActivityCounts((prev) => {
+        if (!(roomId in prev)) return prev;
+        const next = { ...prev };
+        delete next[roomId];
+        return next;
+      });
+      setAnnouncementUnreadCounts((prev) => {
+        if (!(roomId in prev)) return prev;
+        const next = { ...prev };
+        delete next[roomId];
+        return next;
+      });
     }
   }, [location.pathname]);
 

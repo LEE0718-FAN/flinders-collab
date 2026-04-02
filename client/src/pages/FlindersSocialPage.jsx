@@ -78,16 +78,18 @@ export default function FlindersSocialPage() {
         tourId="where-are-you-onboarding"
         steps={[
           {
-            target: null,
-            title: 'Where are you?',
-            description: 'Share your campus location so friends can see who\'s around!',
+            target: '[data-tour="social-map"]',
+            title: 'Share your location',
+            description: 'Share where you are on campus so friends can find you!',
             icon: '📍',
+            position: 'top',
           },
           {
-            target: null,
-            title: 'Heads up!',
-            description: 'Your location is only visible while you\'re on campus. Once you leave, it\'s automatically removed — nothing is stored!',
+            target: '[data-tour="social-map"]',
+            title: 'Auto-removed!',
+            description: 'Your location disappears when you leave campus — nothing is stored.',
             icon: '⚠️',
+            position: 'top',
           },
         ]}
       />
