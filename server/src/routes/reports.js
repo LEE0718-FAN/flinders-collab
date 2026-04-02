@@ -5,9 +5,26 @@ const reportController = require('../controllers/reportController');
 const { authenticate } = require('../middleware/auth');
 const { validate } = require('../middleware/validate');
 const { body, param, query } = require('express-validator');
+const { supabaseAdmin } = require('../services/supabase');
 
 // All routes require authentication
 router.use(authenticate);
+
+async function requireAdmin(req, res, next) {
+  try {
+    const { data: profile } = await supabaseAdmin
+      .from('users')
+      .select('is_admin')
+      .eq('id', req.user.id)
+      .single();
+    if (!profile?.is_admin) {
+      return res.status(403).json({ error: 'Admin access required' });
+    }
+    next();
+  } catch {
+    return res.status(500).json({ error: 'Failed to verify admin status' });
+  }
+}
 
 const reportCreateLimiter = rateLimit({
   windowMs: 10 * 60 * 1000,
@@ -34,6 +51,7 @@ router.post(
 // GET /api/reports - Get all reports (admin only)
 router.get(
   '/reports',
+  requireAdmin,
   [
     query('status').optional().isIn(['open', 'in_progress', 'resolved', 'closed']),
     query('section').optional().trim().isLength({ max: 50 }),
@@ -45,6 +63,7 @@ router.get(
 // PATCH /api/reports/:reportId - Update report status (admin only)
 router.patch(
   '/reports/:reportId',
+  requireAdmin,
   [
     param('reportId').isUUID(),
     body('status').trim().notEmpty().isIn(['open', 'in_progress', 'resolved', 'closed']),
@@ -54,11 +73,12 @@ router.patch(
 );
 
 // GET /api/admin/users - Get all users (admin only)
-router.get('/admin/users', reportController.getUsers);
+router.get('/admin/users', requireAdmin, reportController.getUsers);
 
 // PATCH /api/admin/users/:userId/admin - Toggle admin status (admin only)
 router.patch(
   '/admin/users/:userId/admin',
+  requireAdmin,
   [param('userId').isUUID()],
   validate,
   reportController.toggleAdmin
@@ -67,6 +87,7 @@ router.patch(
 // DELETE /api/admin/users/:userId - Delete a user (admin only)
 router.delete(
   '/admin/users/:userId',
+  requireAdmin,
   [param('userId').isUUID()],
   validate,
   reportController.deleteUser

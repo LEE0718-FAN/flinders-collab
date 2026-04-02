@@ -187,11 +187,13 @@ async function uploadFile(req, res, next) {
       }
     } catch {}
 
-    // Allow custom filename from client
+    // Allow custom filename from client (sanitize dangerous characters)
     if (req.body.file_name) {
       const customName = String(req.body.file_name).trim();
       if (customName) originalName = customName;
     }
+    // Strip path separators and null bytes to prevent path traversal
+    originalName = originalName.replace(/[/\\:\0]/g, '_').replace(/\.{2,}/g, '.').substring(0, 255);
 
     const ext = path.extname(originalName);
     const fileUuid = uuidv4();
@@ -236,8 +238,8 @@ async function uploadFile(req, res, next) {
       file_size: file.size,
       backup_path: backupPath,
     };
-    if (req.body.category) insertObj.category = req.body.category;
-    if (req.body.description) insertObj.file_description = req.body.description;
+    if (req.body.category) insertObj.category = String(req.body.category).trim().substring(0, 50);
+    if (req.body.description) insertObj.file_description = String(req.body.description).trim().substring(0, 1000);
     if (req.body.event_id) insertObj.event_id = req.body.event_id;
 
     const { data, error: dbError } = await supabaseAdmin

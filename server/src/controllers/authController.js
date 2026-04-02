@@ -59,6 +59,47 @@ const _resetCooldowns = new Map();
 const VERIFY_EMAIL_COOLDOWN_MS = 60 * 1000; // 60 seconds
 const RESET_COOLDOWN_MS = 2 * 60 * 1000; // 2 minutes
 
+// OTP brute-force protection: email → { attempts, lockedUntil }
+const _otpAttempts = new Map();
+const OTP_MAX_ATTEMPTS = 5;
+const OTP_LOCKOUT_MS = 30 * 60 * 1000; // 30 minutes
+
+// Prune stale OTP lockout entries every 5 minutes
+setInterval(() => {
+  const now = Date.now();
+  for (const [key, val] of _otpAttempts) {
+    if (val.lockedUntil && now > val.lockedUntil) _otpAttempts.delete(key);
+    else if (!val.lockedUntil && now - val.lastAttempt > OTP_LOCKOUT_MS) _otpAttempts.delete(key);
+  }
+}, 5 * 60 * 1000);
+
+function checkOtpRateLimit(email) {
+  const entry = _otpAttempts.get(email);
+  if (!entry) return null;
+  if (entry.lockedUntil && Date.now() < entry.lockedUntil) {
+    const minutesLeft = Math.ceil((entry.lockedUntil - Date.now()) / 60000);
+    return `Too many failed attempts. Try again in ${minutesLeft} minute${minutesLeft > 1 ? 's' : ''}.`;
+  }
+  if (entry.lockedUntil && Date.now() >= entry.lockedUntil) {
+    _otpAttempts.delete(email);
+  }
+  return null;
+}
+
+function recordOtpFailure(email) {
+  const entry = _otpAttempts.get(email) || { attempts: 0, lastAttempt: 0, lockedUntil: null };
+  entry.attempts += 1;
+  entry.lastAttempt = Date.now();
+  if (entry.attempts >= OTP_MAX_ATTEMPTS) {
+    entry.lockedUntil = Date.now() + OTP_LOCKOUT_MS;
+  }
+  _otpAttempts.set(email, entry);
+}
+
+function clearOtpAttempts(email) {
+  _otpAttempts.delete(email);
+}
+
 async function ignoreQueryError(query) {
   try {
     await query;
@@ -300,6 +341,11 @@ async function verifyPasswordResetCode(req, res, next) {
       return res.status(400).json({ error: 'Email and reset code are required' });
     }
 
+    const lockMsg = checkOtpRateLimit(email);
+    if (lockMsg) {
+      return res.status(429).json({ error: lockMsg });
+    }
+
     const { data, error } = await supabasePublic.auth.verifyOtp({
       email,
       token,
@@ -307,8 +353,11 @@ async function verifyPasswordResetCode(req, res, next) {
     });
 
     if (error || !data?.session || !data?.user) {
+      recordOtpFailure(email);
       return res.status(400).json({ error: 'Invalid or expired reset code. Please request a new one.' });
     }
+
+    clearOtpAttempts(email);
 
     res.json({
       message: 'Reset code verified',
@@ -686,6 +735,11 @@ async function verifyEmailCode(req, res, next) {
       return res.status(400).json({ error: 'Email and verification code are required' });
     }
 
+    const lockMsg = checkOtpRateLimit(email);
+    if (lockMsg) {
+      return res.status(429).json({ error: lockMsg });
+    }
+
     let data = null;
     let error = null;
 
@@ -706,8 +760,11 @@ async function verifyEmailCode(req, res, next) {
     }
 
     if (error || !data?.session) {
+      recordOtpFailure(email);
       return res.status(400).json({ error: 'Invalid or expired verification code. Please try again.' });
     }
+
+    clearOtpAttempts(email);
 
     res.json({
       message: 'Email verified',

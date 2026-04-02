@@ -584,6 +584,124 @@ CREATE TABLE IF NOT EXISTS admin_announcements (
     created_at TIMESTAMPTZ DEFAULT now(),
     expires_at TIMESTAMPTZ
 );
+-- ============================================================
+-- Security: Harden storage policies (room members only)
+-- ============================================================
+
+-- Drop old overly-permissive SELECT policy and replace with member-only
+DO $$ BEGIN
+  IF EXISTS (SELECT 1 FROM pg_policies WHERE schemaname = 'storage' AND tablename = 'objects' AND policyname = 'room_files_select') THEN
+    DROP POLICY "room_files_select" ON storage.objects;
+  END IF;
+END $$;
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname = 'storage' AND tablename = 'objects' AND policyname = 'room_files_select_members') THEN
+    CREATE POLICY "room_files_select_members" ON storage.objects
+      FOR SELECT USING (
+        bucket_id = 'room-files'
+        AND auth.uid() IN (
+          SELECT rm.user_id FROM room_members rm
+          WHERE rm.room_id::text = (storage.foldername(name))[2]
+        )
+      );
+  END IF;
+END $$;
+
+-- Drop old overly-permissive INSERT policy and replace with member-only
+DO $$ BEGIN
+  IF EXISTS (SELECT 1 FROM pg_policies WHERE schemaname = 'storage' AND tablename = 'objects' AND policyname = 'room_files_insert') THEN
+    DROP POLICY "room_files_insert" ON storage.objects;
+  END IF;
+END $$;
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname = 'storage' AND tablename = 'objects' AND policyname = 'room_files_insert_members') THEN
+    CREATE POLICY "room_files_insert_members" ON storage.objects
+      FOR INSERT WITH CHECK (
+        bucket_id = 'room-files'
+        AND auth.uid() IN (
+          SELECT rm.user_id FROM room_members rm
+          WHERE rm.room_id::text = (storage.foldername(name))[2]
+        )
+      );
+  END IF;
+END $$;
+
+-- ============================================================
+-- Security: RLS for all unprotected tables
+-- ============================================================
+
+-- 1. friend_requests: only requester or target can see/modify
+ALTER TABLE flinders_friend_requests ENABLE ROW LEVEL SECURITY;
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'flinders_friend_requests' AND policyname = 'friend_requests_own') THEN
+    CREATE POLICY friend_requests_own ON flinders_friend_requests FOR SELECT TO authenticated
+      USING (requester_id = auth.uid() OR target_id = auth.uid());
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'flinders_friend_requests' AND policyname = 'friend_requests_insert_own') THEN
+    CREATE POLICY friend_requests_insert_own ON flinders_friend_requests FOR INSERT TO authenticated
+      WITH CHECK (requester_id = auth.uid());
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'flinders_friend_requests' AND policyname = 'friend_requests_update_own') THEN
+    CREATE POLICY friend_requests_update_own ON flinders_friend_requests FOR UPDATE TO authenticated
+      USING (requester_id = auth.uid() OR target_id = auth.uid());
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'flinders_friend_requests' AND policyname = 'friend_requests_delete_own') THEN
+    CREATE POLICY friend_requests_delete_own ON flinders_friend_requests FOR DELETE TO authenticated
+      USING (requester_id = auth.uid() OR target_id = auth.uid());
+  END IF;
+END $$;
+
+-- 2. admin_announcements: all authenticated can read, only admins can write
+ALTER TABLE admin_announcements ENABLE ROW LEVEL SECURITY;
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'admin_announcements' AND policyname = 'admin_announcements_read') THEN
+    CREATE POLICY admin_announcements_read ON admin_announcements FOR SELECT TO authenticated
+      USING (true);
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'admin_announcements' AND policyname = 'admin_announcements_write') THEN
+    CREATE POLICY admin_announcements_write ON admin_announcements FOR INSERT TO authenticated
+      WITH CHECK (EXISTS (SELECT 1 FROM users WHERE id = auth.uid() AND is_admin = true));
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'admin_announcements' AND policyname = 'admin_announcements_update') THEN
+    CREATE POLICY admin_announcements_update ON admin_announcements FOR UPDATE TO authenticated
+      USING (EXISTS (SELECT 1 FROM users WHERE id = auth.uid() AND is_admin = true));
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'admin_announcements' AND policyname = 'admin_announcements_delete') THEN
+    CREATE POLICY admin_announcements_delete ON admin_announcements FOR DELETE TO authenticated
+      USING (EXISTS (SELECT 1 FROM users WHERE id = auth.uid() AND is_admin = true));
+  END IF;
+END $$;
+
+-- 3. deadline_reminders: users can only see/create their own reminders
+ALTER TABLE deadline_reminders ENABLE ROW LEVEL SECURITY;
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'deadline_reminders' AND policyname = 'deadline_reminders_own') THEN
+    CREATE POLICY deadline_reminders_own ON deadline_reminders FOR ALL TO authenticated
+      USING (user_id = auth.uid()) WITH CHECK (user_id = auth.uid());
+  END IF;
+END $$;
+
+-- 4. flinders_events_cache: public read for authenticated users (cached campus events)
+CREATE TABLE IF NOT EXISTS flinders_events_cache (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  source TEXT,
+  title TEXT,
+  description TEXT,
+  start_date TIMESTAMPTZ,
+  end_date TIMESTAMPTZ,
+  location TEXT,
+  url TEXT,
+  image_url TEXT,
+  category TEXT,
+  crawled_at TIMESTAMPTZ DEFAULT now()
+);
+ALTER TABLE flinders_events_cache ENABLE ROW LEVEL SECURITY;
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'flinders_events_cache' AND policyname = 'events_cache_read') THEN
+    CREATE POLICY events_cache_read ON flinders_events_cache FOR SELECT TO authenticated
+      USING (true);
+  END IF;
+END $$;
 `;
 
 async function runMigration() {
